@@ -1,659 +1,167 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light" data-theme-color="indigo">
+<html lang="id" data-theme="light" data-theme-color="green">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#6366f1">
+  <meta name="theme-color" content="#059669">
   <title>WebPOS - Pengaturan</title>
 
-  <!-- Font Awesome & Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-  <!-- Styles -->
   <style>
-    :root{--primary:#6366f1;--primary-dark:#4f46e5;--secondary:#ec4899;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#3b82f6;--primary-rgb:99,102,241}
-    [data-theme-color="blue"]{--primary:#3b82f6;--primary-dark:#2563eb;--secondary:#06b6d4;--primary-rgb:59,130,246}
-    [data-theme-color="green"]{--primary:#10b981;--primary-dark:#059669;--secondary:#84cc16;--primary-rgb:16,185,129}
-    [data-theme-color="orange"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#f59e0b;--primary-rgb:249,115,22}
-    [data-theme-color="purple"]{--primary:#8b5cf6;--primary-dark:#7c3aed;--secondary:#d946ef;--primary-rgb:139,92,246}
-    [data-theme-color="red"]{--primary:#ef4444;--primary-dark:#dc2626;--secondary:#f97316;--primary-rgb:239,68,68}
-    [data-theme-color="pink"]{--primary:#ec4899;--primary-dark:#db2777;--secondary:#8b5cf6;--primary-rgb:236,72,153}
-    [data-theme-color="teal"]{--primary:#14b8a6;--primary-dark:#0d9488;--secondary:#06b6d4;--primary-rgb:20,184,166}
+    :root {
+      --primary: #059669; --primary-dark: #047857; --secondary: #84cc16;
+      --bg-gradient: radial-gradient(120% 120% at 0% 0%, #ecfdf5 0%, #f0fdf4 50%, #ffffff 100%);
+      --bg-card: rgba(255, 255, 255, 0.85); --bg-card-solid: #ffffff; --bg-secondary: #f0fdf4;
+      --bg-glass: rgba(255, 255, 255, 0.7); --text-primary: #064e3b; --text-secondary: #065f46;
+      --text-muted: #10b981; --border-color: rgba(5, 150, 105, 0.15);
+      --radius-xl: 1.25rem; --sidebar-width: 270px; --header-height: 68px;
+    }
+    [data-theme="dark"] {
+      --bg-gradient: radial-gradient(120% 120% at 0% 0%, #064e3b 0%, #022c22 60%, #011f18 100%);
+      --bg-card: rgba(6, 78, 59, 0.75); --bg-card-solid: #065f46; --bg-secondary: #064e3b;
+      --text-primary: #ecfdf5; --text-secondary: #a7f3d0; --border-color: rgba(52, 211, 153, 0.2);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background: var(--bg-gradient); color: var(--text-primary); font-family: 'Plus Jakarta Sans', sans-serif; min-height:100vh; }
+    .app-container { display:flex; min-height:100vh; }
 
-    :root{--bg-primary:#f8fafc;--bg-secondary:#f1f5f9;--bg-card:#fff;--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--border-color:#e2e8f0;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 6px rgba(0,0,0,0.1);--shadow-lg:0 10px 15px rgba(0,0,0,0.1);--radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;--radius-xl:1rem;--sidebar-width:280px;--sidebar-collapsed:76px;--header-height:70px;--bottom-nav-height:70px}
-    [data-theme="dark"]{--bg-primary:#0f172a;--bg-secondary:#1e293b;--bg-card:#1e293b;--text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#64748b;--border-color:#334155}
+    .sidebar { position:fixed; top:0; left:0; width:var(--sidebar-width); height:100vh; background:var(--bg-glass); backdrop-filter:blur(25px); border-right:1px solid var(--border-color); display:flex; flex-direction:column; z-index:1000; }
+    .sidebar-header { padding:1.25rem; display:flex; align-items:center; gap:0.75rem; height:var(--header-height); }
+    .logo-icon { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg, var(--primary), var(--secondary)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+    .sidebar-nav { flex:1; padding:1rem 0.75rem; }
+    .nav-link { display:flex; align-items:center; gap:0.85rem; padding:0.65rem 0.85rem; border-radius:10px; color:var(--text-secondary); text-decoration:none; font-weight:700; }
+    .nav-link.active { background:linear-gradient(135deg, var(--primary), #10b981); color:#fff; }
 
-    *{margin:0;padding:0;box-sizing:border-box}
-    html{font-size:16px;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden}
-    body{background:var(--bg-primary);color:var(--text-primary);line-height:1.6;min-height:100vh;overflow-x:hidden}
+    .main-content { flex:1; margin-left:var(--sidebar-width); display:flex; flex-direction:column; }
+    .main-header { height:var(--header-height); background:var(--bg-glass); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; }
+    .page-content { padding:1.5rem; max-width:800px; }
 
-    .app-container{display:flex;min-height:100vh}
-    .sidebar{position:fixed;top:0;left:0;width:var(--sidebar-width);height:100vh;background:var(--bg-card);border-right:1px solid var(--border-color);z-index:1000;display:flex;flex-direction:column;transition:all .25s}
-    .sidebar.collapsed{width:var(--sidebar-collapsed)}
-    @media(max-width:1024px){.sidebar{transform:translateX(-100%)}.sidebar.mobile-open{transform:translateX(0)}}
+    .tabs-bar { display:flex; gap:0.5rem; margin-bottom:1.25rem; border-bottom:1.5px solid var(--border-color); padding-bottom:0.5rem; }
+    .tab-btn { padding:0.65rem 1.25rem; border-radius:10px; border:none; background:transparent; font-weight:700; color:var(--text-secondary); cursor:pointer; }
+    .tab-btn.active { background:var(--primary); color:#fff; }
+    .tab-pane { display:none; }
+    .tab-pane.active { display:block; }
 
-    .sidebar-header{padding:1.25rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:1rem;min-height:var(--header-height)}
-    .logo-container{display:flex;align-items:center;gap:.5rem}
-    .logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:.75rem;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.25rem}
-    .logo-text{font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .sidebar.collapsed .logo-text{opacity:0;width:0}
-
-    .menu-toggle{position:absolute;right:-14px;top:24px;width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1001;font-size:.75rem}
-    .sidebar-search{padding:1rem;border-bottom:1px solid var(--border-color)}
-    .search-input-wrapper{position:relative;display:flex;align-items:center}
-    .search-input-wrapper i{position:absolute;left:1rem;color:var(--text-muted);font-size:.875rem}
-    .search-input{width:100%;padding:.5rem 1rem .5rem 2.5rem;border:1px solid var(--border-color);border-radius:.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.875rem}
-
-    .sidebar-nav{flex:1;overflow-y:auto;padding:1rem}
-    .nav-section{margin-bottom:1.5rem}
-    .nav-section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.5rem 1rem;margin-bottom:.25rem}
-    .sidebar.collapsed .nav-section-title{display:none}
-    .nav-menu{list-style:none}
-    .nav-item{margin-bottom:2px}
-    .nav-link{display:flex;align-items:center;gap:1rem;padding:.625rem 1rem;border-radius:.75rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;font-weight:500;transition:all .15s}
-    .nav-link:hover{background:rgba(99,102,241,.05);color:var(--primary)}
-    .nav-link.active{background:rgba(99,102,241,.1);color:var(--primary);font-weight:600}
-    .nav-link i{width:22px;text-align:center;font-size:1.05rem}
-    .nav-link span{white-space:nowrap}
-    .sidebar.collapsed .nav-link span{display:none}
-
-    .nav-dropdown{position:relative}
-    .nav-dropdown-toggle{justify-content:space-between}
-    .nav-dropdown-toggle .dropdown-arrow{transition:transform .2s;font-size:.75rem;margin-left:auto}
-    .nav-dropdown.open .nav-dropdown-toggle .dropdown-arrow{transform:rotate(180deg)}
-    .nav-submenu{list-style:none;padding-left:2.75rem;max-height:0;overflow:hidden;transition:max-height .25s}
-    .sidebar.collapsed .nav-submenu{display:none}
-    .nav-dropdown.open .nav-submenu{max-height:500px}
-    .nav-submenu .nav-link{padding:.5rem 1rem;font-size:.85rem}
-
-    .sidebar-footer{padding:1rem;border-top:1px solid var(--border-color);background:var(--bg-card)}
-    .user-profile{display:flex;align-items:center;gap:1rem;cursor:pointer}
-    .user-avatar{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:.875rem}
-    .user-info{flex:1;overflow:hidden}
-    .user-name{font-weight:600;font-size:.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .user-role{font-size:.75rem;color:var(--text-muted);text-transform:capitalize}
-
-    .main-content{flex:1;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s;min-width:0 !important}
-    .sidebar.collapsed~.main-content{margin-left:var(--sidebar-collapsed)}
-    @media(max-width:1024px){.main-content{margin-left:0}.sidebar.collapsed~.main-content{margin-left:0}}
-
-    .main-header{height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:100}
-    .header-left{display:flex;align-items:center;gap:1rem}
-    .header-title{font-size:1.35rem;font-weight:700;color:var(--text-primary)}
-    .header-actions{display:flex;align-items:center;gap:.5rem}
-
-    .page-content{flex:1;padding:1.5rem;overflow-y:auto}
-    @media(max-width:768px){.page-content{padding:0.75rem;padding-bottom:calc(var(--bottom-nav-height) + 0.75rem)}}
-
-    /* Components Settings */
-    .settings-tabs-wrapper{width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:1.5rem}
-    .settings-tabs-wrapper::-webkit-scrollbar{display:none}
-    .settings-tabs{display:flex;gap:0.5rem;width:max-content;padding:0.25rem 0}
-    .tab-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.625rem 1.25rem;border-radius:0.75rem;border:1.5px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0}
-    .tab-btn:hover{border-color:var(--primary);color:var(--primary)}
-    .tab-btn.active{background:var(--primary);color:white;border-color:var(--primary);box-shadow:0 4px 12px rgba(99,102,241,0.25)}
-    .tab-panel{display:none}
-    .tab-panel.active{display:block;animation:fadeIn 0.2s ease}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-    .settings-grid{display:grid;grid-template-columns:1fr;gap:1.5rem}
-    @media(min-width:769px){.settings-grid{grid-template-columns:repeat(auto-fit,minmax(350px,1fr))}}
-
-    .card{background:var(--bg-card);border-radius:1rem;border:1px solid var(--border-color);overflow:hidden;box-shadow:var(--shadow-sm);max-width:100%;min-width:0}
-    .card-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between}
-    .card-title{font-size:1.1rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:.5rem}
-    .card-body{padding:1.5rem;overflow-x:hidden}
-
-    .setting-item{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--border-color)}
-    .setting-item:last-child{border-bottom:none}
-    .setting-info{flex:1;min-width:0}
-    .setting-label{font-weight:600;color:var(--text-primary);margin-bottom:0.25rem}
-    .setting-desc{font-size:0.875rem;color:var(--text-muted)}
-
-    .toggle-switch{position:relative;width:50px;height:26px}
-    .toggle-switch input{opacity:0;width:0;height:0}
-    .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:50px;transition:0.3s}
-    .toggle-slider:before{content:"";position:absolute;height:20px;width:20px;left:2px;bottom:2px;background:white;border-radius:50%;transition:0.3s;box-shadow:var(--shadow-sm)}
-    input:checked+.toggle-slider{background:var(--primary);border-color:var(--primary)}
-    input:checked+.toggle-slider:before{transform:translateX(24px)}
-
-    .theme-grid{display:grid !important;width:100% !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:0.5rem !important;margin-top:1rem}
-    @media(min-width:481px){.theme-grid{grid-template-columns:repeat(4,minmax(0,1fr)) !important}}
-    @media(min-width:769px){.theme-grid{grid-template-columns:repeat(5,minmax(0,1fr)) !important;gap:0.75rem !important}}
-    .theme-option{display:flex;flex-direction:column;align-items:center;gap:0.5rem;padding:0.75rem 0.5rem;border-radius:var(--radius-xl);border:2px solid var(--border-color);cursor:pointer;transition:all .15s}
-    .theme-option:hover{border-color:var(--text-muted);transform:translateY(-2px)}
-    .theme-option.active{border-color:var(--primary);background:rgba(99,102,241,0.08)}
-    .theme-color{width:36px;height:36px;border-radius:50%;box-shadow:var(--shadow-md)}
-    .theme-name{font-size:0.7rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center}
-
-    .theme-indigo{background:linear-gradient(135deg,#6366f1,#ec4899)}
-    .theme-green{background:linear-gradient(135deg,#10b981,#84cc16)}
-    .theme-ocean{background:linear-gradient(135deg,#0ea5e9,#06b6d4)}
-    .theme-sunset{background:linear-gradient(135deg,#f97316,#c026d3)}
-    .theme-midnight{background:linear-gradient(135deg,#1e293b,#334155)}
-    .theme-berry{background:linear-gradient(135deg,#be185d,#f43f5e)}
-    .theme-cyan{background:linear-gradient(135deg,#0891b2,#06b6d4)}
-    .theme-amber{background:linear-gradient(135deg,#d97706,#fbbf24)}
-    .theme-rose{background:linear-gradient(135deg,#e11d48,#fb7185)}
-
-    .form-group{margin-bottom:1.25rem}
-    .form-label{display:block;font-size:0.875rem;font-weight:500;color:var(--text-secondary);margin-bottom:0.5rem}
-    .form-input,.form-textarea{width:100%;padding:0.75rem 1rem;border:1.5px solid var(--border-color);border-radius:var(--radius-lg);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;font-family:inherit}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem 1.5rem;border-radius:var(--radius-lg);font-size:0.875rem;font-weight:600;border:none;cursor:pointer;transition:all .15s}
-    .btn-primary{background:var(--primary);color:white}
-    .btn-secondary{background:var(--secondary);color:white}
-    .btn-danger{background:var(--danger);color:white}
-    .btn-outline{background:transparent;border:1.5px solid var(--border-color);color:var(--text-secondary)}
-    .btn-block{width:100%}
-    .btn-icon{width:40px;height:40px;padding:0;border-radius:.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer}
-
-    .danger-zone{border:1px solid var(--danger);border-radius:var(--radius-lg);padding:1rem;margin-top:1rem;background:rgba(239,68,68,0.03)}
-    .danger-zone-title{color:var(--danger);font-weight:600;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem}
-
-    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:2000;opacity:0;visibility:hidden;transition:all .25s;padding:1rem}
-    .modal-overlay.active{opacity:1;visibility:visible}
-    .modal-content{background:var(--bg-card);border-radius:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
-    .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between}
-    .modal-title{font-size:1.15rem;font-weight:700;color:var(--text-primary)}
-    .modal-close{width:36px;height:36px;border:none;border-radius:.75rem;background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
-    .modal-body{padding:1.5rem}
-    .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border-color);display:flex;gap:.75rem;justify-content:flex-end}
-
-    .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;opacity:0;visibility:hidden}
-    .loading-overlay.active{opacity:1;visibility:visible}
-    .spinner{width:48px;height:48px;border:4px solid var(--border-color);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
-
-    .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);background:var(--bg-card);border-top:1px solid var(--border-color);z-index:999;padding:0 1rem}
-    .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;color:var(--text-muted);text-decoration:none;font-size:.7rem;font-weight:500}
-    .mobile-nav-item.active{color:var(--primary)}
-    @media(max-width:768px){.mobile-nav{display:flex}}
+    .card-setting { background:var(--bg-card); border-radius:var(--radius-xl); border:1px solid var(--border-color); padding:1.5rem; margin-bottom:1.25rem; box-shadow:0 4px 15px rgba(0,0,0,0.04); }
+    .form-group { margin-bottom:1rem; }
+    .form-label { display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem; }
+    .form-input { width:100%; padding:0.75rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-card-solid); font-weight:600; color:var(--text-primary); }
+    .btn-save { padding:0.75rem 1.5rem; border-radius:10px; border:none; background:linear-gradient(135deg, var(--primary), #10b981); color:#fff; font-weight:800; cursor:pointer; }
   </style>
 </head>
 <body>
   <div class="app-container">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="logo-container">
-          <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
-          <span class="logo-text">WebPOS</span>
-        </div>
-      </div>
-      <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
-      <div class="sidebar-search">
-        <div class="search-input-wrapper">
-          <i class="fas fa-search"></i>
-          <input type="text" class="search-input" placeholder="Cari menu...">
-        </div>
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span style="font-weight:800; font-size:1.2rem;">WebPOS</span>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section">
-          <div class="nav-section-title">Utama</div>
-          <ul class="nav-menu">
-            <li class="nav-item"><a href="index.html" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
-            <li class="nav-item"><a href="page-kasir.html" class="nav-link"><i class="fas fa-cash-register"></i><span>Kasir</span></a></li>
-            <li class="nav-item"><a href="page-produk.html" class="nav-link"><i class="fas fa-box"></i><span>Produk</span></a></li>
-          </ul>
-        </div>
-        <div class="nav-section">
-          <div class="nav-section-title">Sistem</div>
-          <ul class="nav-menu">
-            <li class="nav-item"><a href="page-setting.html" class="nav-link active"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
-          </ul>
-        </div>
+        <a href="index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="page-kasir.html" class="nav-link"><i class="fas fa-cash-register"></i> Kasir</a>
+        <a href="page-produk.html" class="nav-link"><i class="fas fa-box"></i> Produk</a>
+        <a href="page-setting.html" class="nav-link active"><i class="fas fa-cog"></i> Pengaturan</a>
       </nav>
-      <div class="sidebar-footer">
-        <div class="user-profile" id="userProfile">
-          <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
-          <div class="user-info">
-            <div class="user-name" id="userName">Loading...</div>
-            <div class="user-role" id="userRole">-</div>
-          </div>
-        </div>
-      </div>
     </aside>
 
     <main class="main-content">
       <header class="main-header">
-        <div class="header-left">
-          <button class="btn-icon" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Pengaturan</h1>
-        </div>
-        <div class="header-actions">
-          <button class="btn-icon" id="btnTheme" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
-          <button class="btn-icon" id="btnLogout"><i class="fas fa-sign-out-alt"></i></button>
-        </div>
+        <h2 style="font-weight:800; font-size:1.2rem;">Pengaturan Sistem</h2>
       </header>
 
       <div class="page-content">
-        <div class="settings-tabs-wrapper">
-          <div class="settings-tabs">
-            <button class="tab-btn active" data-tab="tab-tampilan"><i class="fas fa-palette"></i> Tampilan</button>
-            <button class="tab-btn" data-tab="tab-toko"><i class="fas fa-store"></i> Toko</button>
-            <button class="tab-btn" data-tab="tab-akun"><i class="fas fa-user-circle"></i> Akun</button>
-            <button class="tab-btn" data-tab="tab-printer"><i class="fas fa-print"></i> Printer</button>
-            <button class="tab-btn" data-tab="tab-notifikasi"><i class="fas fa-bell"></i> Notifikasi</button>
-            <button class="tab-btn" data-tab="tab-lanjutan"><i class="fas fa-cog"></i> Lanjutan</button>
+        <div class="tabs-bar">
+          <button class="tab-btn active" onclick="switchSettingTab('tab-toko')"><i class="fas fa-store"></i> Toko</button>
+          <button class="tab-btn" onclick="switchSettingTab('tab-printer')"><i class="fas fa-print"></i> Printer</button>
+        </div>
+
+        <!-- Tab Toko -->
+        <div class="tab-pane active" id="tab-toko">
+          <div class="card-setting">
+            <h3 style="margin-bottom:1rem; font-weight:800;"><i class="fas fa-store"></i> Profil Toko &amp; Footer Struk</h3>
+            <div class="form-group">
+              <label class="form-label">Nama Toko / Konter</label>
+              <input type="text" class="form-input" id="storeName" placeholder="Contoh: WebPOS Cell">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alamat Lengkap</label>
+              <input type="text" class="form-input" id="storeAddress" placeholder="Alamat jalan / kota">
+            </div>
+            <div class="form-group">
+              <label class="form-label">No. Telepon / WhatsApp</label>
+              <input type="text" class="form-input" id="storePhone" placeholder="08xxxxxxxxxx">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pesan Kaki Struk</label>
+              <input type="text" class="form-input" id="storeFooterNote" placeholder="Terima kasih atas kunjungan Anda">
+            </div>
+            <button class="btn-save" id="btnSaveStoreProfile">Simpan Pengaturan Toko</button>
           </div>
         </div>
 
-        <div class="tab-contents">
-          <!-- TAB 1: TAMPILAN -->
-          <div class="tab-panel active" id="tab-tampilan">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-palette"></i> Tema & Gaya</h3></div>
-                <div class="card-body">
-                  <div class="setting-item">
-                    <div class="setting-info">
-                      <div class="setting-label">Mode Gelap</div>
-                      <div class="setting-desc">Aktifkan background malam/redup</div>
-                    </div>
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="darkModeToggle">
-                      <span class="toggle-slider"></span>
-                    </label>
-                  </div>
-                  <div style="margin-top:1.5rem;">
-                    <div class="setting-label">Pilihan Warna Tema</div>
-                    <div class="theme-grid" id="themeGrid"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-th-list"></i> Menu Sidebar</h3></div>
-                <div class="card-body">
-                  <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem">Centang menu yang ingin ditampilkan.</p>
-                  <div id="menuConfigList"></div>
-                </div>
-              </div>
+        <!-- Tab Printer -->
+        <div class="tab-pane" id="tab-printer">
+          <div class="card-setting">
+            <h3 style="margin-bottom:1rem; font-weight:800;"><i class="fas fa-print"></i> Printer Thermal Bluetooth (APK)</h3>
+            <div class="form-group">
+              <label class="form-label">MAC Address Perangkat Printer</label>
+              <input type="text" class="form-input" id="printerMacInput" placeholder="00:11:22:33:44:55">
             </div>
-          </div>
-
-          <!-- TAB 2: TOKO -->
-          <div class="tab-panel" id="tab-toko">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-store"></i> Profil Usaha & Struk</h3></div>
-                <div class="card-body">
-                  <div class="form-group"><label class="form-label">Nama Toko</label><input type="text" class="form-input" id="storeName" placeholder="Nama Toko"></div>
-                  <div class="form-group"><label class="form-label">Alamat</label><textarea class="form-textarea" id="storeAddress" rows="2" placeholder="Alamat Toko"></textarea></div>
-                  <div class="form-group"><label class="form-label">Telepon / Kontak</label><input type="tel" class="form-input" id="storePhone" placeholder="Nomor Telepon"></div>
-                  <div class="form-group"><label class="form-label">Catatan Kaki Struk</label><textarea class="form-textarea" id="receiptFooterNote" rows="2" placeholder="Terima kasih..."></textarea></div>
-                  <button class="btn btn-primary btn-block" id="btnSaveStore"><i class="fas fa-save"></i> Simpan Pengaturan Toko</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 3: AKUN -->
-          <div class="tab-panel" id="tab-akun">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-user-circle"></i> Profil Akun</h3></div>
-                <div class="card-body">
-                  <div class="form-group"><label class="form-label">Nama Lengkap</label><input type="text" class="form-input" id="userFullName"></div>
-                  <div class="form-group"><label class="form-label">Username</label><input type="text" class="form-input" id="userUsername" disabled></div>
-                  <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="userEmail" disabled></div>
-                  <button class="btn btn-primary btn-block" id="btnSaveProfile" style="margin-bottom:0.75rem;"><i class="fas fa-save"></i> Perbarui Nama</button>
-                  <button class="btn btn-secondary btn-block" id="btnChangePassword"><i class="fas fa-key"></i> Ganti Password</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 4: PRINTER -->
-          <div class="tab-panel" id="tab-printer">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-print"></i> Printer Bluetooth</h3></div>
-                <div class="card-body">
-                  <div id="printerStatusBox" style="padding:1rem;background:var(--bg-secondary);border-radius:var(--radius-lg);margin-bottom:1rem;text-align:center;">
-                    <i class="fas fa-print" style="font-size:2rem;color:var(--text-muted);margin-bottom:0.5rem;"></i>
-                    <div style="font-weight:600;color:var(--text-primary);" id="printerStatusText">Tidak terhubung</div>
-                    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;" id="printerMacText">-</div>
-                  </div>
-                  <button class="btn btn-primary btn-block" id="btnScanBluetooth" style="margin-bottom:1rem;"><i class="fas fa-search"></i> Scan Perangkat Bluetooth</button>
-                  <div id="bluetoothDeviceList" style="display:none;">
-                    <div style="font-weight:600;margin-bottom:0.75rem;color:var(--text-secondary);">Perangkat Ditemukan:</div>
-                    <div id="btDevicesContainer" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
-                  </div>
-                  <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-color);">
-                    <button class="btn btn-outline btn-block" id="btnTestPrint" disabled><i class="fas fa-file-alt"></i> Test Print</button>
-                    <button class="btn btn-danger btn-block" id="btnDisconnectPrinter" style="margin-top:0.5rem;" disabled><i class="fas fa-unlink"></i> Putuskan Koneksi</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 5: NOTIFIKASI -->
-          <div class="tab-panel" id="tab-notifikasi">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-bell"></i> Pengingat & Suara</h3></div>
-                <div class="card-body">
-                  <div class="setting-item">
-                    <div class="setting-info"><div class="setting-label">Notifikasi Stok Rendah</div><div class="setting-desc">Pemberitahuan saat stok mencapai batas minimal</div></div>
-                    <label class="toggle-switch"><input type="checkbox" id="stockNotif" checked><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="setting-item">
-                    <div class="setting-info"><div class="setting-label">Suara Transaksi</div><div class="setting-desc">Audio beep saat transaksi berhasil disimpan</div></div>
-                    <label class="toggle-switch"><input type="checkbox" id="soundToggle" checked><span class="toggle-slider"></span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 6: LANJUTAN -->
-          <div class="tab-panel" id="tab-lanjutan">
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-sliders-h"></i> Fitur Dashboard & Keuangan</h3></div>
-                <div class="card-body">
-                  <div class="setting-item">
-                    <div class="setting-info">
-                      <div class="setting-label">Grafik Analisis Dashboard</div>
-                      <div class="setting-desc">Tampilkan grafik garis omset & laba 7 hari di halaman utama</div>
-                    </div>
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="settingShowDashboardChart" checked>
-                      <span class="toggle-slider"></span>
-                    </label>
-                  </div>
-                  <div class="setting-item">
-                    <div class="setting-info">
-                      <div class="setting-label">Menu Keuangan Owner</div>
-                      <div class="setting-desc">Akses privat data omset laba bersih untuk akun owner</div>
-                    </div>
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="settingOwnerFinance">
-                      <span class="toggle-slider"></span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-body">
-                  <div class="danger-zone">
-                    <div class="danger-zone-title"><i class="fas fa-exclamation-triangle"></i> Zona Berbahaya</div>
-                    <p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:1rem;">Tindakan reset akan mengosongkan seluruh database transaksi.</p>
-                    <button class="btn btn-danger" id="btnClearData"><i class="fas fa-trash"></i> Hapus Semua Data</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <button class="btn-save" id="btnSavePrinterMac">Simpan Alamat Printer</button>
           </div>
         </div>
       </div>
     </main>
-
-    <nav class="mobile-nav">
-      <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
-      <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-cash-register"></i><span>Kasir</span></a>
-      <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
-      <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
-      <a href="page-setting.html" class="mobile-nav-item active"><i class="fas fa-cog"></i><span>Setting</span></a>
-    </nav>
   </div>
 
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: var(--text-secondary);">Menyimpan data...</p>
-  </div>
-
-  <!-- Scripts -->
   <script src="js/firebase-config.js?v=2"></script>
-  <script src="js/utils.js?v=3"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-
   <script>
+    function switchSettingTab(id) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      auth.onAuthStateChanged((user) => {
-        if (!user && !Utils.getStorage('webpos_session')) {
-          window.location.href = 'login.html';
-          return;
+      // Ambil data yang tersimpan
+      document.getElementById('storeName').value = localStorage.getItem('webpos_store_name') || '';
+      document.getElementById('storeAddress').value = localStorage.getItem('webpos_store_address') || '';
+      document.getElementById('storePhone').value = localStorage.getItem('webpos_store_phone') || '';
+      document.getElementById('storeFooterNote').value = localStorage.getItem('webpos_footer_note') || '';
+      document.getElementById('printerMacInput').value = localStorage.getItem('webpos_printer_mac') || '';
+
+      // Direct Event Listener (Bebas Macet)
+      document.getElementById('btnSaveStoreProfile').addEventListener('click', () => {
+        const name = document.getElementById('storeName').value.trim();
+        const address = document.getElementById('storeAddress').value.trim();
+        const phone = document.getElementById('storePhone').value.trim();
+        const note = document.getElementById('storeFooterNote').value.trim();
+
+        localStorage.setItem('webpos_store_name', name);
+        localStorage.setItem('webpos_store_address', address);
+        localStorage.setItem('webpos_store_phone', phone);
+        localStorage.setItem('webpos_footer_note', note);
+
+        if (typeof database !== 'undefined') {
+          database.ref('settings/store').set({ name, address, phone, note });
         }
-        if (user) {
-          Auth.loadUserData(user.uid).then(() => initSettings());
-        }
+        alert('Pengaturan toko berhasil disimpan!');
       });
 
-      function initSettings() {
-        const currentUser = Auth.getCurrentUser();
-
-        function updateLogoToko(namaToko) {
-          const logoText = document.querySelector('.logo-text');
-          if (logoText && namaToko) logoText.textContent = namaToko;
-          localStorage.setItem('webpos_store_name', namaToko);
-        }
-
-        document.getElementById('userName').textContent = currentUser?.name || currentUser?.username || 'User';
-        document.getElementById('userRole').textContent = currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'Kasir';
-        document.getElementById('userFullName').value = currentUser?.name || '';
-        document.getElementById('userUsername').value = currentUser?.username || '';
-        document.getElementById('userEmail').value = currentUser?.email || '';
-
-        // Generate theme grid
-        const themeGrid = document.getElementById('themeGrid');
-        const allThemes = [
-          {id:'indigo', name:'Indigo', class:'theme-indigo'},
-          {id:'mint', name:'Mint Fresh', class:'theme-green'},
-          {id:'ocean', name:'Ocean', class:'theme-ocean'},
-          {id:'sunset', name:'Sunset', class:'theme-sunset'},
-          {id:'midnight', name:'Midnight', class:'theme-midnight'},
-          {id:'berry', name:'Berry', class:'theme-berry'},
-          {id:'cyan', name:'Cyan', class:'theme-cyan'},
-          {id:'amber', name:'Amber', class:'theme-amber'},
-          {id:'rose', name:'Rose', class:'theme-rose'}
-        ];
-        const currentTemplate = localStorage.getItem('webpos_theme_template') || 'indigo';
-
-        themeGrid.innerHTML = allThemes.map(theme => `
-          <div class="theme-option ${theme.id === currentTemplate ? 'active' : ''}" data-theme="${theme.id}">
-            <div class="theme-color ${theme.class}"></div>
-            <span class="theme-name">${theme.name}</span>
-          </div>
-        `).join('');
-
-        themeGrid.querySelectorAll('.theme-option').forEach(option => {
-          option.addEventListener('click', () => {
-            themeGrid.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
-            option.classList.add('active');
-            const tpl = option.dataset.theme;
-            localStorage.setItem('webpos_theme_template', tpl);
-            localStorage.setItem('webpos_theme_broadcast', Date.now().toString());
-            if (Utils.Theme && Utils.Theme.loadTemplate) Utils.Theme.loadTemplate();
-            Utils.showToast(`Tema ${option.querySelector('.theme-name').textContent} diterapkan`, 'success');
-          });
-        });
-
-        if (Utils.Theme && Utils.Theme.loadTemplate) Utils.Theme.loadTemplate();
-
-        // Responsive sidebar
-        document.getElementById('menuToggle').addEventListener('click', () => {
-          document.getElementById('sidebar').classList.toggle('collapsed');
-        });
-        const mobileToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.getElementById('sidebar');
-        if (mobileToggle) {
-          mobileToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            sidebar.classList.toggle('mobile-open');
-          });
-        }
-        document.addEventListener('click', (e) => {
-          if (window.innerWidth <= 1024 && sidebar.classList.contains('mobile-open') && !sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
-            sidebar.classList.remove('mobile-open');
-          }
-        });
-
-        document.getElementById('btnLogout').addEventListener('click', () => {
-          Utils.confirm('Yakin ingin logout?', () => Auth.logout());
-        });
-
-        // Load & Save Store Settings
-        async function loadStoreSettings() {
-          try {
-            const snapshot = await database.ref('settings/store').once('value');
-            const settings = snapshot.val();
-            if (settings) {
-              document.getElementById('storeName').value = settings.name || '';
-              document.getElementById('storeAddress').value = settings.address || '';
-              document.getElementById('storePhone').value = settings.phone || '';
-              updateLogoToko(settings.name);
-            }
-            const hdrSnap = await database.ref('settings/receiptHeader').once('value');
-            const hdr = hdrSnap.val() || {};
-            if (hdr.note) document.getElementById('receiptFooterNote').value = hdr.note;
-          } catch (e) {
-            const savedName = localStorage.getItem('webpos_store_name');
-            if (savedName) document.getElementById('storeName').value = savedName;
-          }
-        }
-        loadStoreSettings();
-
-        document.getElementById('btnSaveStore').addEventListener('click', async () => {
-          Utils.showLoading();
-          try {
-            const sName = document.getElementById('storeName').value;
-            const sAddr = document.getElementById('storeAddress').value;
-            const sPhone = document.getElementById('storePhone').value;
-            const footerNote = document.getElementById('receiptFooterNote').value.trim();
-
-            await database.ref('settings/store').set({
-              name: sName, address: sAddr, phone: sPhone, updatedAt: Date.now()
-            });
-            await database.ref('settings/receiptHeader').set({
-              storeName: sName, address: sAddr, phone: sPhone, note: footerNote || 'Terima kasih', updatedAt: Date.now()
-            });
-
-            updateLogoToko(sName);
-            localStorage.setItem('webpos_store_address', sAddr);
-            localStorage.setItem('webpos_store_phone', sPhone);
-            Utils.hideLoading();
-            Utils.showToast('Pengaturan toko berhasil disimpan', 'success');
-          } catch (err) {
-            Utils.hideLoading();
-            Utils.showToast('Gagal menyimpan pengaturan', 'error');
-          }
-        });
-
-        // Load Lanjutan Settings (Toggle Grafik & Owner Menu)
-        async function loadAdvancedSettings() {
-          const chartToggle = document.getElementById('settingShowDashboardChart');
-          const ownerFinanceToggle = document.getElementById('settingOwnerFinance');
-
-          chartToggle.checked = localStorage.getItem('setting_showDashboardChart') !== 'false';
-
-          try {
-            const snap = await database.ref('settings/system').once('value');
-            const sys = snap.val() || {};
-            ownerFinanceToggle.checked = sys.ownerFinanceMenu !== false;
-            if (sys.showDashboardChart !== undefined) {
-              chartToggle.checked = sys.showDashboardChart;
-              localStorage.setItem('setting_showDashboardChart', sys.showDashboardChart.toString());
-            }
-          } catch (e) {
-            ownerFinanceToggle.checked = localStorage.getItem('setting_ownerFinanceMenu') !== 'false';
-          }
-        }
-        loadAdvancedSettings();
-
-        document.getElementById('settingShowDashboardChart').addEventListener('change', async (e) => {
-          const isChecked = e.target.checked;
-          localStorage.setItem('setting_showDashboardChart', isChecked.toString());
-          try {
-            await database.ref('settings/system/showDashboardChart').set(isChecked);
-          } catch (err) { console.error(err); }
-          Utils.showToast(isChecked ? 'Grafik dashboard diaktifkan' : 'Grafik dashboard disembunyikan', 'info');
-        });
-
-        document.getElementById('settingOwnerFinance').addEventListener('change', async (e) => {
-          const val = e.target.checked;
-          localStorage.setItem('setting_ownerFinanceMenu', val ? 'true' : 'false');
-          try {
-            await database.ref('settings/system/ownerFinanceMenu').set(val);
-          } catch (err) { console.error(err); }
-          Utils.showToast(val ? 'Menu keuangan owner diaktifkan' : 'Menu keuangan owner dimatikan', 'success');
-        });
-
-        // Profile save
-        document.getElementById('btnSaveProfile').addEventListener('click', async () => {
-          const newName = document.getElementById('userFullName').value.trim();
-          if (!newName) return Utils.showToast('Nama lengkap tidak boleh kosong', 'error');
-          Utils.showLoading();
-          try {
-            const user = Auth.getCurrentUser();
-            await auth.currentUser.updateProfile({ displayName: newName });
-            await database.ref('users/' + user.uid).update({ name: newName, updatedAt: Date.now() });
-            document.getElementById('userName').textContent = newName;
-            Utils.hideLoading();
-            Utils.showToast('Nama berhasil diperbarui', 'success');
-          } catch (err) {
-            Utils.hideLoading();
-            Utils.showToast('Gagal: ' + err.message, 'error');
-          }
-        });
-
-        // Tab Switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById(btn.dataset.tab).classList.add('active');
-            localStorage.setItem('settings_active_tab', btn.dataset.tab);
-          });
-        });
-        const savedTab = localStorage.getItem('settings_active_tab');
-        if (savedTab && document.getElementById(savedTab)) {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-          document.querySelector(`.tab-btn[data-tab="${savedTab}"]`)?.classList.add('active');
-          document.getElementById(savedTab)?.classList.add('active');
-        }
-
-        // Dark Mode
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const isDark = localStorage.getItem('webpos_theme') === 'dark' || Utils.Theme.isDarkMode();
-        darkModeToggle.checked = isDark;
-        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-
-        darkModeToggle.addEventListener('change', () => {
-          const on = darkModeToggle.checked;
-          document.documentElement.setAttribute('data-theme', on ? 'dark' : 'light');
-          localStorage.setItem('webpos_theme', on ? 'dark' : 'light');
-          localStorage.setItem('webpos_theme_broadcast', Date.now().toString());
-          if (Utils.Theme.setDarkMode) Utils.Theme.setDarkMode(on);
-        });
-
-        document.getElementById('btnTheme').addEventListener('click', () => {
-          const current = document.documentElement.getAttribute('data-theme') === 'dark';
-          const next = !current;
-          document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
-          localStorage.setItem('webpos_theme', next ? 'dark' : 'light');
-          darkModeToggle.checked = next;
-          if (Utils.Theme.setDarkMode) Utils.Theme.setDarkMode(next);
-        });
-
-        // Clear data
-        document.getElementById('btnClearData').addEventListener('click', () => {
-          Utils.confirm('Hapus semua data? Tindakan ini tidak dapat dibatalkan!', () => {
-            window.location.href = 'page-reset.html';
-          });
-        });
-      }
+      document.getElementById('btnSavePrinterMac').addEventListener('click', () => {
+        const mac = document.getElementById('printerMacInput').value.trim();
+        localStorage.setItem('webpos_printer_mac', mac);
+        alert('Alamat MAC Printer disimpan!');
+      });
     });
   </script>
 </body>
