@@ -226,7 +226,7 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* TAB NAV KATEGORI / PRODUK */
+    /* TAB NAV KATEGORI / PRODUK (Kategori di Kiri, Produk di Kanan) */
     .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
     .tab-btn {
       padding: 0.6rem 1.25rem; border: none; background: transparent;
@@ -278,19 +278,17 @@
       .produk-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ⭐ FORMAT LIST VERTIKAL KE BAWAH (Teks Nama Tidak Terpotong) */
+    /* ⭐ FORMAT LIST PRODUK (Tanpa Gambar, Rapi ke Bawah) */
     .produk-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
     .produk-list .produk-card {
       flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
     }
-    .produk-list .produk-image {
-      width: 50px; height: 50px; min-width: 50px; aspect-ratio: auto; border-radius: var(--radius-sm); overflow: hidden;
-    }
+    .produk-list .produk-image { display: none; }
     .produk-list .produk-info {
-      flex: 1; padding: 0 1rem; display: flex; flex-direction: column; justify-content: center; min-width: 0;
+      flex: 1; padding: 0 0.5rem; display: flex; flex-direction: column; justify-content: center; min-width: 0;
     }
     .produk-list .produk-name {
-      white-space: normal; overflow: visible; text-overflow: unset; font-size: 0.95rem; margin-bottom: 0.1rem; line-height: 1.3;
+      white-space: normal; overflow: visible; font-size: 0.95rem; margin-bottom: 0.1rem; line-height: 1.3;
     }
     .produk-list .produk-actions {
       border-top: none; background: transparent; padding: 0; gap: 0.4rem;
@@ -326,25 +324,33 @@
     .produk-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn { flex: 1; padding: 0.4rem; font-size: 0.78rem; font-weight: 700; }
 
-    /* UPLOAD GAMBAR PRODUK */
+    /* KATEGORI GRID & LIST STYLING */
+    .kategori-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media(max-width: 768px) {
+      .kategori-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kategori-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
+    .kategori-list .kategori-card {
+      flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
+    }
+    .kategori-card {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s; cursor: pointer; position: relative;
+    }
+    .kategori-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: var(--shadow-md); }
+    .kategori-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #fff; flex-shrink: 0; overflow: hidden; }
+    .kategori-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .kategori-info { flex: 1; min-width: 0; }
+    .kategori-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kategori-count { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* UPLOAD GAMBAR PRODUK & KATEGORI */
     .image-upload-box {
       border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 1rem;
       text-align: center; cursor: pointer; background: var(--bg-subtle); transition: all 0.15s;
     }
     .image-upload-box:hover { border-color: var(--primary); }
     .image-preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm); margin-top: 0.5rem; display: none; }
-
-    /* KATEGORI GRID */
-    .kategori-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-    .kategori-card {
-      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s; cursor: pointer;
-    }
-    .kategori-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: var(--shadow-md); }
-    .kategori-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #fff; flex-shrink: 0; }
-    .kategori-info { flex: 1; min-width: 0; }
-    .kategori-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .kategori-count { font-size: 0.75rem; color: var(--text-muted); }
 
     /* MODAL */
     .modal-overlay {
@@ -553,14 +559,31 @@
         </div>
       </div>
 
-      <!-- TAB NAV (PRODUK & KATEGORI) -->
+      <!-- TAB NAV (Kategori di Kiri, Produk di Kanan) -->
       <div class="tab-nav" id="mainTabNav">
-        <button class="tab-btn active" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
-        <button class="tab-btn" data-tab="kategori"><i class="fas fa-tags"></i> Kategori</button>
+        <button class="tab-btn active" data-tab="kategori"><i class="fas fa-tags"></i> Kategori</button>
+        <button class="tab-btn" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
+      </div>
+
+      <!-- KONTEN TAB KATEGORI -->
+      <div id="tab-kategori" class="tab-content">
+        <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Semua Kategori</button>
+          <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
+            <div class="view-toggle">
+              <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
+              <button class="view-btn" id="btnKatListView" title="List View"><i class="fas fa-list"></i></button>
+            </div>
+            <button class="btn btn-primary" id="btnAddKategori"><i class="fas fa-plus"></i> Tambah Kategori Baru</button>
+          </div>
+        </div>
+        <div class="kategori-grid" id="kategoriGrid">
+          <div style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:2rem;">Memuat kategori...</div>
+        </div>
       </div>
 
       <!-- KONTEN TAB PRODUK -->
-      <div id="tab-produk" class="tab-content">
+      <div id="tab-produk" class="tab-content" style="display:none;">
         <div class="produk-toolbar">
           <div class="produk-search">
             <i class="fas fa-search"></i>
@@ -586,17 +609,6 @@
           <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
             <i class="fas fa-spinner fa-spin" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i> Memuat produk...
           </div>
-        </div>
-      </div>
-
-      <!-- KONTEN TAB KATEGORI -->
-      <div id="tab-kategori" class="tab-content" style="display:none;">
-        <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
-          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Semua Kategori</button>
-          <button class="btn btn-primary" id="btnAddKategori"><i class="fas fa-plus"></i> Tambah Kategori Baru</button>
-        </div>
-        <div class="kategori-grid" id="kategoriGrid">
-          <div style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:2rem;">Memuat kategori...</div>
         </div>
       </div>
 
@@ -666,7 +678,7 @@
         <div class="image-upload-box" onclick="document.getElementById('produkImageFile').click()">
           <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; color: var(--primary);"></i>
           <div style="font-size: 0.8rem; margin-top: 0.25rem;">Klik untuk pilih foto produk</div>
-          <input type="file" id="produkImageFile" accept="image/*" style="display:none;" onchange="previewImage(this)">
+          <input type="file" id="produkImageFile" accept="image/*" style="display:none;" onchange="previewImage(this, 'produkImagePreview', 'produkImageUrl')">
           <img id="produkImagePreview" class="image-preview-img" alt="Preview">
         </div>
         <input type="hidden" id="produkImageUrl">
@@ -691,6 +703,16 @@
       <div class="form-group">
         <label class="form-label">Nama Kategori</label>
         <input type="text" class="form-input" id="kategoriName" placeholder="Contoh: Aksesoris / Perdana">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto / Gambar Kategori (Opsional)</label>
+        <div class="image-upload-box" onclick="document.getElementById('katImageFile').click()">
+          <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; color: var(--primary);"></i>
+          <div style="font-size: 0.8rem; margin-top: 0.25rem;">Klik untuk pilih foto kategori</div>
+          <input type="file" id="katImageFile" accept="image/*" style="display:none;" onchange="previewImage(this, 'katImagePreview', 'katImageUrl')">
+          <img id="katImagePreview" class="image-preview-img" alt="Preview">
+        </div>
+        <input type="hidden" id="katImageUrl">
       </div>
     </div>
     <div class="modal-footer">
@@ -736,6 +758,7 @@
   let productsList = [];
   let categoriesList = [];
   let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
+  let currentKatViewMode = localStorage.getItem("webpos_kat_view") || "grid";
   let selectedCategoryFilter = "";
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -824,18 +847,12 @@
         document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
         btn.classList.add("active");
         document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
-        if (btn.dataset.tab === "produk") {
-          selectedCategoryFilter = "";
-          document.getElementById("filterKategori").value = "";
-          document.getElementById("pageMainTitle").textContent = "Produk";
-          document.getElementById("btnBackToAllCat").style.display = "none";
-          renderProducts();
-        }
       };
     });
   }
 
   function setupViewToggle() {
+    // Produk View Toggle
     const btnGrid = document.getElementById("btnGridView");
     const btnList = document.getElementById("btnListView");
 
@@ -861,6 +878,34 @@
       btnList.classList.add("active");
       btnGrid.classList.remove("active");
       renderProducts();
+    };
+
+    // Kategori View Toggle
+    const btnKatGrid = document.getElementById("btnKatGridView");
+    const btnKatList = document.getElementById("btnKatListView");
+
+    if (currentKatViewMode === "list") {
+      btnKatList.classList.add("active");
+      btnKatGrid.classList.remove("active");
+    } else {
+      btnKatGrid.classList.add("active");
+      btnKatList.classList.remove("active");
+    }
+
+    btnKatGrid.onclick = () => {
+      currentKatViewMode = "grid";
+      localStorage.setItem("webpos_kat_view", "grid");
+      btnKatGrid.classList.add("active");
+      btnKatList.classList.remove("active");
+      renderCategoriesGrid();
+    };
+
+    btnKatList.onclick = () => {
+      currentKatViewMode = "list";
+      localStorage.setItem("webpos_kat_view", "list");
+      btnKatList.classList.add("active");
+      btnKatGrid.classList.remove("active");
+      renderCategoriesGrid();
     };
   }
 
@@ -898,7 +943,6 @@
     document.getElementById("pageMainTitle").textContent = "Kategori: " + catName;
     document.getElementById("btnBackToAllCat").style.display = "inline-flex";
 
-    // Pindah otomatis ke tab produk untuk menampilkan list produk dalam kategori tersebut
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector('.tab-btn[data-tab="produk"]').classList.add("active");
     document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
@@ -922,22 +966,47 @@
       return;
     }
 
-    grid.innerHTML = categoriesList.map(c => {
-      const count = productsList.filter(p => p.categoryId === c.id).length;
-      return `
-        <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')">
-          <div class="kategori-icon" style="background:var(--primary);"><i class="fas fa-tags"></i></div>
-          <div class="kategori-info">
-            <div class="kategori-name">${c.name}</div>
-            <div class="kategori-count">${count} produk terdaftar</div>
+    if (currentKatViewMode === "list") {
+      grid.className = "kategori-list";
+      grid.innerHTML = categoriesList.map(c => {
+        const count = productsList.filter(p => p.categoryId === c.id).length;
+        const iconTag = c.imageUrl ? `<img src="${c.imageUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;">` : `<i class="fas fa-tags"></i>`;
+
+        return `
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')" style="padding:0.75rem 1rem;">
+            <div class="kategori-icon" style="background:var(--primary); width:40px; height:40px;">${iconTag}</div>
+            <div class="kategori-info">
+              <div class="kategori-name">${c.name}</div>
+              <div class="kategori-count">${count} produk terdaftar</div>
+            </div>
+            <div style="display:flex; gap:0.35rem;" onclick="event.stopPropagation()">
+              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}', '${c.name}', '${c.imageUrl || ''}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+            </div>
           </div>
-          <div style="display:flex; gap:0.35rem;" onclick="event.stopPropagation()">
-            <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}', '${c.name}')"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+        `;
+      }).join("");
+    } else {
+      grid.className = "kategori-grid";
+      grid.innerHTML = categoriesList.map(c => {
+        const count = productsList.filter(p => p.categoryId === c.id).length;
+        const iconTag = c.imageUrl ? `<img src="${c.imageUrl}" alt="${c.name}">` : `<i class="fas fa-tags"></i>`;
+
+        return `
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')" style="flex-direction:column; align-items:flex-start; text-align:left;">
+            <div class="kategori-icon" style="background:var(--primary); width:100%; height:100px; border-radius:var(--radius-md); overflow:hidden; margin-bottom:0.5rem;">${iconTag}</div>
+            <div class="kategori-info" style="width:100%;">
+              <div class="kategori-name" style="font-size:1.05rem; margin-bottom:0.2rem;">${c.name}</div>
+              <div class="kategori-count">${count} produk terdaftar</div>
+            </div>
+            <div style="display:flex; gap:0.35rem; margin-top:0.75rem; width:100%; justify-content:flex-end;" onclick="event.stopPropagation()">
+              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}', '${c.name}', '${c.imageUrl || ''}')"><i class="fas fa-edit"></i> Edit</button>
+              <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+            </div>
           </div>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
+    }
   }
 
   async function loadProducts() {
@@ -995,11 +1064,9 @@
       grid.innerHTML = filtered.map(p => {
         const cat = categoriesList.find(c => c.id === p.categoryId);
         const catName = cat ? cat.name : "Umum";
-        const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:6px; margin-right:0.75rem;">` : `<i class="fas fa-box" style="font-size:1.5rem; color:var(--text-muted); margin-right:1rem;"></i>`;
 
         return `
           <div class="produk-card">
-            ${imgTag}
             <div class="produk-info">
               <div class="produk-name">${p.name}</div>
               <div class="produk-code">${catName} • Stok: ${p.stock || 0}</div>
@@ -1072,10 +1139,22 @@
     document.getElementById("produkModal").classList.remove("active");
   }
 
-  function openKategoriModal(id = "", name = "") {
+  function openKategoriModal(id = "", name = "", imageUrl = "") {
     document.getElementById("kategoriId").value = id;
     document.getElementById("kategoriName").value = name;
     document.getElementById("kategoriModalTitle").textContent = id ? "Edit Kategori" : "Tambah Kategori Baru";
+    
+    document.getElementById("katImageUrl").value = imageUrl;
+    const preview = document.getElementById("katImagePreview");
+    if (imageUrl) {
+      preview.src = imageUrl;
+      preview.style.display = "block";
+    } else {
+      preview.src = "";
+      preview.style.display = "none";
+    }
+    document.getElementById("katImageFile").value = "";
+
     document.getElementById("kategoriModal").classList.add("active");
   }
 
@@ -1083,14 +1162,14 @@
     document.getElementById("kategoriModal").classList.remove("active");
   }
 
-  window.previewImage = function(input) {
+  window.previewImage = function(input, previewId, hiddenId) {
     if (input.files && input.files[0]) {
       const reader = new FileReader();
       reader.onload = function(e) {
-        const preview = document.getElementById("produkImagePreview");
+        const preview = document.getElementById(previewId);
         preview.src = e.target.result;
         preview.style.display = "block";
-        document.getElementById("produkImageUrl").value = e.target.result;
+        document.getElementById(hiddenId).value = e.target.result;
       }
       reader.readAsDataURL(input.files[0]);
     }
@@ -1144,23 +1223,26 @@
   async function saveKategori() {
     const id = document.getElementById("kategoriId").value;
     const name = document.getElementById("kategoriName").value.trim();
+    let imageUrl = document.getElementById("katImageUrl").value;
+
     if (!name) {
       toast("Nama kategori wajib diisi!", "error");
       return;
     }
 
     try {
+      const katData = {
+        name,
+        imageUrl: imageUrl.startsWith("data:") ? imageUrl : (imageUrl || ""),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
       if (id) {
-        await db.collection("categories").doc(id).update({
-          name,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await db.collection("categories").doc(id).update(katData);
         toast("Kategori berhasil diperbarui", "success");
       } else {
-        await db.collection("categories").add({
-          name,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        katData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection("categories").add(katData);
         toast("Kategori berhasil ditambahkan", "success");
       }
       closeKategoriModal();
@@ -1187,8 +1269,8 @@
     }
   };
 
-  window.editKat = function(id, name) {
-    openKategoriModal(id, name);
+  window.editKat = function(id, name, imageUrl) {
+    openKategoriModal(id, name, imageUrl);
   };
 
   window.deleteKat = async function(id) {
