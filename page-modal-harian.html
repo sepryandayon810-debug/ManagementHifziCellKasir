@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Modal Harian</title>
+  <title>WebPOS - Modal & Alokasi Harian</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -200,7 +200,7 @@
       cursor: pointer;
     }
 
-    .page-content { padding: 1.5rem; flex: 1; max-width: 860px; }
+    .page-content { padding: 1.5rem; flex: 1; max-width: 920px; }
 
     .form-group { margin-bottom: 1.25rem; }
     .form-label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.4rem; }
@@ -290,6 +290,15 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
 
+    /* TABEL RINGKASAN */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    .data-table th {
+      padding: 0.85rem 1rem; background: var(--bg-subtle); color: var(--text-muted);
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 3000;
       display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
@@ -326,7 +335,7 @@
     }
   </style>
 
-  <!-- Firebase SDK Compat -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -371,7 +380,7 @@
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
           <li class="nav-item nav-dropdown open" id="dropdownKas">
-            <div class="nav-link nav-dropdown-toggle">
+            <div class="nav-link nav-dropdown-toggle" data-menu="kas">
               <div style="display:flex; align-items:center; gap:0.75rem;">
                 <i class="fas fa-wallet"></i><span>Kas Management</span>
               </div>
@@ -429,7 +438,7 @@
     <header class="main-header">
       <div class="header-left">
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
-        <h1 class="header-title">Modal Awal Kasir</h1>
+        <h1 class="header-title">Modal & Alokasi Harian</h1>
       </div>
       <div class="header-actions">
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
@@ -437,14 +446,14 @@
     </header>
 
     <div class="page-content">
+      <!-- FORM INPUT MODAL -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i class="fas fa-coins" style="color:var(--primary);"></i> Saldo Awal Laci Kasir</h3>
+          <h3 class="card-title"><i class="fas fa-coins" style="color:var(--primary);"></i> Form Pengisian Modal Laci</h3>
           <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.65rem; border-radius:999px;" id="currentDateBadge">Hari Ini</span>
         </div>
 
         <div class="card-body">
-          <!-- TARGET KASIR -->
           <div class="form-group" id="groupTargetKasir">
             <label class="form-label"><i class="fas fa-user-tag" style="color:var(--primary);"></i> Alokasikan Modal Untuk Kasir / Staf:</label>
             <select class="form-select" id="selectTargetKasir">
@@ -452,7 +461,6 @@
             </select>
           </div>
 
-          <!-- PILIHAN CARA INPUT -->
           <div class="input-mode-tabs">
             <button type="button" class="mode-tab-btn active" id="tabModeManual" onclick="switchInputMode('manual')">
               <i class="fas fa-keyboard"></i> Input Manual Langsung
@@ -462,13 +470,11 @@
             </button>
           </div>
 
-          <!-- DISPLAY TOTAL MODAL -->
           <div class="modal-input-display">
             <span class="modal-label-text">Total Modal Awal (Ketik Angka di Bawah)</span>
             <input type="text" class="modal-amount-input" id="totalModalInput" value="Rp 0" placeholder="Rp 0" autocomplete="off">
           </div>
 
-          <!-- SECTION 1: MANUAL -->
           <div id="sectionManual">
             <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-align:center; margin-bottom:0.6rem; text-transform:uppercase;">
               Pilihan Cepat Nominal:
@@ -484,49 +490,22 @@
             </div>
           </div>
 
-          <!-- SECTION 2: PECAHAN -->
           <div id="sectionPecahan" style="display:none;">
             <div style="font-size:0.82rem; font-weight:700; color:var(--text-sub); margin-bottom:0.75rem;">
               Masukkan jumlah lembar/koin uang fisik di laci:
             </div>
-
             <div class="denom-grid">
-              <div class="denom-item">
-                <span class="denom-label">Rp 100.000</span>
-                <input type="number" class="denom-input" data-nominal="100000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 50.000</span>
-                <input type="number" class="denom-input" data-nominal="50000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 20.000</span>
-                <input type="number" class="denom-input" data-nominal="20000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 10.000</span>
-                <input type="number" class="denom-input" data-nominal="10000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 5.000</span>
-                <input type="number" class="denom-input" data-nominal="5000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 2.000</span>
-                <input type="number" class="denom-input" data-nominal="2000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 1.000</span>
-                <input type="number" class="denom-input" data-nominal="1000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 500</span>
-                <input type="number" class="denom-input" data-nominal="500" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
+              <div class="denom-item"><span class="denom-label">Rp 100.000</span><input type="number" class="denom-input" data-nominal="100000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 50.000</span><input type="number" class="denom-input" data-nominal="50000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 20.000</span><input type="number" class="denom-input" data-nominal="20000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 10.000</span><input type="number" class="denom-input" data-nominal="10000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 5.000</span><input type="number" class="denom-input" data-nominal="5000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 2.000</span><input type="number" class="denom-input" data-nominal="2000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 1.000</span><input type="number" class="denom-input" data-nominal="1000" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
+              <div class="denom-item"><span class="denom-label">Rp 500</span><input type="number" class="denom-input" data-nominal="500" min="0" placeholder="0" oninput="calcFromDenominations()"></div>
             </div>
           </div>
 
-          <!-- TOMBOL AKSI -->
           <div class="action-row">
             <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">Batal / Kembali</button>
             <button type="button" class="btn btn-primary" id="btnSaveModal">
@@ -535,6 +514,32 @@
           </div>
         </div>
       </div>
+
+      <!-- ⭐ TABEL RINGKASAN ALOKASI MODAL BERJENJANG (BARU) ⭐ -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-chart-pie" style="color:var(--success);"></i> Ringkasan Alokasi Modal Staf Hari Ini</h3>
+          <span style="font-size:0.8rem; font-weight:800; color:var(--success);" id="totalGlobalModalSummary">Total: Rp 0</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama Staf</th>
+                  <th>Role</th>
+                  <th>Dialokasikan Oleh</th>
+                  <th style="text-align:right">Jumlah Modal (Rp)</th>
+                </tr>
+              </thead>
+              <tbody id="summaryTableBody">
+                <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat ringkasan...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -574,24 +579,18 @@
     setTimeout(() => el.remove(), 3500);
   }
 
-  // SINKRONISASI LOGO BRAND DARI SETTINGS/STORE
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
-
     const cached = localStorage.getItem("webpos_store_name");
     if (cached) logoEl.textContent = cached;
-
     try {
       const doc = await db.collection("settings").doc("store").get();
       if (doc.exists && doc.data().name) {
-        const storeName = doc.data().name;
-        logoEl.textContent = storeName;
-        localStorage.setItem("webpos_store_name", storeName);
+        logoEl.textContent = doc.data().name;
+        localStorage.setItem("webpos_store_name", doc.data().name);
       }
-    } catch(e) {
-      console.error("Gagal sync brand:", e);
-    }
+    } catch(e) {}
   }
 
   let rawModalAmount = 0;
@@ -632,6 +631,7 @@
 
     await setupTargetKasirDropdown(user);
     loadExistingModal();
+    loadModalSummary(todayStr);
 
     const inputDisplay = document.getElementById("totalModalInput");
     inputDisplay.addEventListener("input", (e) => {
@@ -671,12 +671,18 @@
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
     });
+
+    document.getElementById("btnThemeToggle").onclick = () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+      localStorage.setItem("webpos_theme", isDark ? "dark" : "light");
+    };
   }
 
   async function setupTargetKasirDropdown(loginUser) {
     const select = document.getElementById("selectTargetKasir");
 
-    // Jika yang login adalah Kasir, kunci pilihan ke akun kasir itu sendiri
+    // Jika Kasir, hanya bisa input untuk dirinya sendiri
     if (currentUserRole === "kasir") {
       const myName = document.getElementById("userName").textContent;
       select.innerHTML = `<option value="${loginUser.uid}">${myName} (Akun Anda Sendiri)</option>`;
@@ -684,21 +690,25 @@
       return;
     }
 
-    // Jika Owner / Developer / Admin: Muat semua akun aktif (termasuk Kasir dan Admin)
     try {
       const snap = await db.collection("users").where("status", "==", "active").get();
       select.innerHTML = "";
 
       snap.forEach(doc => {
         const u = { id: doc.id, ...doc.data() };
+        const role = (u.role || "kasir").toLowerCase();
+
+        // Jika login sebagai Admin, batasi dropdown hanya untuk role 'kasir'
+        if (currentUserRole === "admin" && role !== "kasir") return;
+
         const opt = document.createElement("option");
         opt.value = u.id;
-        opt.textContent = `${u.name || u.username} (${(u.role || 'kasir').toUpperCase()})`;
+        opt.textContent = `${u.name || u.username} (${role.toUpperCase()})`;
         if (u.id === loginUser.uid) opt.selected = true;
         select.appendChild(opt);
       });
     } catch (err) {
-      console.error("Gagal load daftar staf:", err);
+      console.error(err);
       select.innerHTML = `<option value="${loginUser.uid}">Akun Anda Sendiri</option>`;
     }
   }
@@ -717,7 +727,63 @@
       }
       updateModalDisplay();
     } catch (e) {
-      console.error("Gagal load modal:", e);
+      console.error(e);
+    }
+  }
+
+  // ⭐ LOAD TABEL RINGKASAN BERJENJANG ⭐
+  async function loadModalSummary(todayStr) {
+    const tbody = document.getElementById("summaryTableBody");
+    const summaryTotalEl = document.getElementById("totalGlobalModalSummary");
+
+    try {
+      const modalSnap = await db.collection("modal").where("date", "==", todayStr).get();
+      const usersSnap = await db.collection("users").get();
+      
+      const usersMap = {};
+      usersSnap.forEach(doc => {
+        usersMap[doc.id] = doc.data();
+      });
+
+      let rowsHtml = "";
+      let grandTotal = 0;
+      const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
+      const isAdmin = currentUserRole === "admin";
+
+      modalSnap.forEach(doc => {
+        const m = doc.data();
+        const targetUser = usersMap[m.userId] || {};
+        const targetRole = (targetUser.role || "kasir").toLowerCase();
+
+        // ATURAN BERJENJANG:
+        // - Admin hanya melihat staf ber-role 'kasir'
+        // - Kasir hanya melihat miliknya sendiri
+        if (isAdmin && targetRole !== "kasir") return;
+        if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return;
+
+        grandTotal += m.amount || 0;
+
+        rowsHtml += `
+          <tr>
+            <td><strong>${m.userName || targetUser.name || '-'}</strong></td>
+            <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${targetRole.toUpperCase()}</span></td>
+            <td style="color:var(--text-muted);">${m.allocatedByName || 'Mandiri / Sistem'}</td>
+            <td style="text-align:right; font-weight:800; color:var(--success);">${formatRupiah(m.amount)}</td>
+          </tr>
+        `;
+      });
+
+      if (!rowsHtml) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Belum ada alokasi modal tercatat hari ini.</td></tr>`;
+      } else {
+        tbody.innerHTML = rowsHtml;
+      }
+
+      summaryTotalEl.textContent = `Total: ${formatRupiah(grandTotal)}`;
+
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger)">Gagal memuat ringkasan data.</td></tr>`;
     }
   }
 
@@ -816,7 +882,7 @@
       }, 1200);
 
     } catch (err) {
-      console.error("Gagal simpan modal:", err);
+      console.error(err);
       toast("Gagal menyimpan modal: " + err.message, "error");
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
