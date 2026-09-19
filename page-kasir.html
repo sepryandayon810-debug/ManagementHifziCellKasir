@@ -119,7 +119,7 @@ body{
 .logo-text{font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,#059669,#84cc16);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .sidebar.collapsed .logo-text{opacity:0;width:0;overflow:hidden}
 
-.menu-toggle{position:absolute;right:-14px;top:24px;width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1001;font-size:.75rem;box-shadow:0 2px 8px rgba(5,150,105,0.4)}
+.menu-toggle{display:none!important}
 .menu-toggle:hover{background:var(--primary-dark)}
 .sidebar.collapsed .menu-toggle{transform:rotate(180deg)}
 
@@ -2024,6 +2024,84 @@ html,body{overflow-x:hidden;max-width:100vw}
 }
 [data-theme="dark"] .receipt-toggle label { color:var(--text-secondary) !important; }
 [data-theme="dark"] .products-grid.list-view .product-card { background:transparent !important; }
+
+/* =========================================================
+   PATCH LANJUTAN - HEADER MOBILE & MODAL PEMBAYARAN
+   ========================================================= */
+/* Dashboard tidak menampilkan tombol panah collapse kecil. */
+.menu-toggle { display:none !important; }
+
+/* Modal pembayaran memakai permukaan netral dashboard, bukan hijau kasir. */
+#paymentModal .modal {
+  background:var(--bg-card) !important;
+  border-color:var(--border-color) !important;
+}
+#paymentModal .modal-header {
+  background:var(--bg-card) !important;
+  border-bottom-color:var(--border-color) !important;
+}
+#paymentModal .payment-method {
+  background:var(--bg-secondary) !important;
+  border-color:var(--border-color) !important;
+  color:var(--text-primary);
+}
+#paymentModal .payment-method.active {
+  background:color-mix(in srgb,var(--primary) 12%,var(--bg-card)) !important;
+  border-color:var(--primary) !important;
+}
+#paymentModal .payment-method[data-method="hutang"].active {
+  background:color-mix(in srgb,var(--warning) 12%,var(--bg-card)) !important;
+  border-color:var(--warning) !important;
+}
+#paymentModal .payment-method i,
+#paymentModal .payment-method.active i {
+  color:var(--primary) !important;
+}
+#paymentModal .payment-method[data-method="hutang"] i,
+#paymentModal .payment-method[data-method="hutang"].active i {
+  color:var(--warning) !important;
+}
+#paymentModal .amount-display {
+  background:var(--bg-secondary) !important;
+  border:1px solid var(--border-color) !important;
+}
+#paymentModal #paymentInput {
+  color:var(--primary) !important;
+}
+#paymentModal #paymentChange {
+  color:var(--success) !important;
+}
+#paymentModal .amount-display.is-shortage {
+  background:color-mix(in srgb,var(--danger) 10%,var(--bg-secondary)) !important;
+  border-color:var(--danger) !important;
+}
+#paymentModal .amount-display.is-shortage #paymentChange {
+  color:var(--danger) !important;
+}
+#paymentModal .numpad-btn {
+  background:var(--bg-secondary) !important;
+  color:var(--text-primary) !important;
+  border-color:var(--border-color) !important;
+}
+#paymentModal .numpad-btn:hover {
+  background:color-mix(in srgb,var(--primary) 12%,var(--bg-secondary)) !important;
+}
+#paymentModal .numpad-btn.action {
+  background:var(--primary) !important;
+  border-color:var(--primary) !important;
+  color:#fff !important;
+}
+#paymentModal .quick-amount[data-amount="exact"] {
+  background:var(--primary) !important;
+  border-color:var(--primary) !important;
+  color:#fff !important;
+}
+#paymentModal .btn-mobile-confirm,
+#paymentModal .modal-footer .btn-success {
+  background:var(--primary) !important;
+  border-color:var(--primary) !important;
+  color:#fff !important;
+}
 </style>
 </head>
 <body>
@@ -3513,6 +3591,7 @@ function renderCart() {
       // Reset displays
       document.getElementById('paymentInput').textContent = 'Rp 0';
       document.getElementById('paymentChange').textContent = 'Rp 0';
+      updatePaymentDisplay();
     }
 
     document.getElementById('btnBayar').addEventListener('click', () => {
@@ -3636,8 +3715,20 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
 function updatePaymentDisplay() {
   const total = calculateTotal();
   document.getElementById('paymentInput').textContent = formatRupiah(paymentAmount);
-  const change = paymentAmount - total;
-  document.getElementById('paymentChange').textContent = formatRupiah(change > 0 ? change : 0);
+  const difference = paymentAmount - total;
+  const changeDisplay = document.getElementById('paymentChange');
+  const changeBox = changeDisplay.closest('.amount-display');
+  const changeLabel = changeBox ? changeBox.querySelector('.amount-label') : null;
+
+  if (difference < 0) {
+    if (changeLabel) changeLabel.textContent = 'Kurang Bayar';
+    changeDisplay.textContent = formatRupiah(Math.abs(difference));
+    if (changeBox) changeBox.classList.add('is-shortage');
+  } else {
+    if (changeLabel) changeLabel.textContent = 'Kembalian';
+    changeDisplay.textContent = formatRupiah(difference);
+    if (changeBox) changeBox.classList.remove('is-shortage');
+  }
 }
 
         function updatePiutangDisplay() {
@@ -3664,6 +3755,10 @@ async function processPayment() {
         }
         if (paymentMethod === 'hutang') {
           showToast('Piutang tidak bisa saat offline. Gunakan Tunai/Transfer.', 'error');
+          return;
+        }
+        if (paymentAmount < total) {
+          showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Masukkan nominal penuh sebelum menyimpan offline.`, 'error');
           return;
         }
         try {
@@ -3727,6 +3822,10 @@ async function processPayment() {
         /* ⭐ TAMBAHKAN INI */
         const piutangPayment = parseInt(document.getElementById('piutangPayment').value.replace(/\D/g, '')) || 0;
         const remainingDebt = total - piutangPayment;
+        if (piutangPayment > total) {
+          showToast('Jumlah pembayaran tidak boleh melebihi total transaksi', 'error');
+          return;
+        }
         /* ⭐ END TAMBAHAN */
 
         try {
@@ -3885,7 +3984,7 @@ async function processPayment() {
       /* ============ END TAMBAHAN MODE PIUTANG ============ */
 
       if (paymentAmount < total) {
-        showToast('Jumlah bayar kurang dari total', 'error');
+        showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
         return;
       }
 
