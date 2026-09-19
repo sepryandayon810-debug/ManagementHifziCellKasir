@@ -226,8 +226,8 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* TAB NAV KATEGORI / PRODUK */
-    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
+    /* TAB NAV KATEGORI / PRODUK (Kategori di Kiri, Produk di Kanan) */
+    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
     .tab-btn {
       padding: 0.6rem 1.25rem; border: none; background: transparent;
       color: var(--text-muted); font-weight: 700; cursor: pointer; border-radius: var(--radius-md); transition: all 0.15s; font-size: 0.88rem;
@@ -278,7 +278,7 @@
       .produk-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* FORMAT LIST PRODUK */
+    /* FORMAT LIST PRODUK (Tanpa Gambar, Teks Penuh ke Samping) */
     .produk-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
     .produk-list .produk-card {
       flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
@@ -324,7 +324,7 @@
     .produk-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn { flex: 1; padding: 0.4rem; font-size: 0.78rem; font-weight: 700; }
 
-    /* UPLOAD GAMBAR PRODUK */
+    /* UPLOAD GAMBAR */
     .image-upload-box {
       border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 1rem;
       text-align: center; cursor: pointer; background: var(--bg-subtle); transition: all 0.15s;
@@ -847,9 +847,6 @@
         document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
         btn.classList.add("active");
         document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
-        if (btn.dataset.tab === "kategori") {
-          resetCategoryFilter();
-        }
       };
     });
   }
@@ -958,7 +955,6 @@
     document.getElementById("pageMainTitle").textContent = "Kategori";
     document.getElementById("btnBackToAllCat").style.display = "none";
     
-    // Pindah kembali ke tab kategori
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector('.tab-btn[data-tab="kategori"]').classList.add("active");
     document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
@@ -1252,6 +1248,18 @@
 
       if (id) {
         await db.collection("categories").doc(id).update(katData);
+        
+        // Sinkronisasi otomatis gambar ke produk di kategori ini jika produk tidak punya gambar sendiri
+        const prodSnap = await db.collection("products").where("categoryId", "==", id).get();
+        const batch = db.batch();
+        prodSnap.forEach(docSnap => {
+          const pData = docSnap.data();
+          if (!pData.imageUrl) {
+            batch.update(docSnap.ref, { imageUrl: katData.imageUrl });
+          }
+        });
+        await batch.commit();
+
         toast("Kategori berhasil diperbarui", "success");
       } else {
         katData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
