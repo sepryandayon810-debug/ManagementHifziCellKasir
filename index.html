@@ -791,7 +791,7 @@
           <div class="kas-item">
             <div class="kas-item-info">
               <div class="kas-item-icon income"><i class="fas fa-plus-circle"></i></div>
-              <span class="kas-item-label">Top Up Digital</span>
+              <span class="kas-item-label">Top Up + Admin (Fisik)</span>
             </div>
             <span class="kas-item-value income" id="kasTopUp">+ Rp 0</span>
           </div>
@@ -799,7 +799,7 @@
           <div class="kas-item">
             <div class="kas-item-info">
               <div class="kas-item-icon expense"><i class="fas fa-minus-circle"></i></div>
-              <span class="kas-item-label">Tarik Tunai</span>
+              <span class="kas-item-label">Tarik Tunai (Fisik Keluar)</span>
             </div>
             <span class="kas-item-value expense" id="kasTarik">- Rp 0</span>
           </div>
@@ -819,7 +819,7 @@
         </div>
 
         <div class="formula-display">
-          Rumus: Modal Awal + Uang Masuk - Kas Keluar + Penjualan Tunai + Top Up - Tarik Tunai - Piutang
+          Rumus fisik: Modal Awal + Uang Masuk - Kas Keluar + Penjualan + (Top Up + Admin) - (Tarik - Admin) - Sisa Piutang
         </div>
       </div>
 
@@ -1130,6 +1130,7 @@
     try {
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
+      let topupAdminFee = 0, tarikAdminFee = 0;
 
       const usersSnap = await db.collection("users").get();
       const usersMap = {};
@@ -1162,9 +1163,9 @@
         if (t.status !== "cancelled" && t.status !== "voided") {
           switch (t.type) {
             case "penjualan": penjualan += t.total || 0; laba += t.profit || 0; trxCount++; break;
-            case "topup": topup += t.amount || 0; laba += t.adminFee || 0; trxCount++; break;
-            case "tarik": tarik += t.amount || 0; laba += t.adminFee || 0; trxCount++; break;
-            case "kas_masuk": kasMasuk += t.amount || 0; break;
+            case "topup": topup += t.amount || 0; topupAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
+            case "tarik": tarik += t.amount || 0; tarikAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
+            case "kas_masuk": if (t.category !== "penjualan_hutang") kasMasuk += t.amount || 0; break;
             case "kas_keluar": kasKeluar += t.amount || 0; break;
           }
         }
@@ -1184,7 +1185,10 @@
         }
       });
 
-      const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topup - tarik - piutang;
+      // Mutasi fisik: admin top up tinggal di laci; admin tarik mengurangi uang yang diberikan.
+      const topupKasFisik = topup + topupAdminFee;
+      const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
+      const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik - piutang;
 
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
@@ -1196,8 +1200,8 @@
       document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(kasMasuk);
       document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(kasKeluar);
       document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(penjualan);
-      document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topup);
-      document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarik);
+      document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
+      document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
       document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
