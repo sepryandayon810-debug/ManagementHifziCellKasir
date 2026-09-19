@@ -235,7 +235,7 @@
     .tab-btn:hover { background: var(--bg-subtle); color: var(--text-main); }
     .tab-btn.active { background: var(--primary); color: #fff; }
 
-    /* SUMMARY MODAL CARD */
+    /* SUMMARY MODAL CARD (GLOBAL DI ATAS) */
     .modal-summary-card {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem; margin-bottom: 1.25rem;
@@ -253,7 +253,7 @@
     .modal-summary-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
     .modal-summary-value { font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
 
-    .produk-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .produk-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
     .produk-search { flex: 1; min-width: 220px; position: relative; }
     .produk-search i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
     .produk-search input {
@@ -262,13 +262,18 @@
     }
     .produk-search input:focus { border-color: var(--primary); background: var(--bg-surface); }
 
-    .produk-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .produk-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     .filter-select {
       padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius-md);
       background: var(--bg-subtle); color: var(--text-main); font-size: 0.88rem; outline: none; cursor: pointer;
     }
 
+    .view-toggle { display: flex; background: var(--bg-subtle); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 2px; gap: 2px; }
+    .view-btn { padding: 0.5rem 0.75rem; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
+    .view-btn.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+
     .produk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
+    .produk-list { display: flex; flexDirection: column; gap: 0.75rem; }
     .produk-card {
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
       overflow: hidden; transition: all 0.2s; position: relative; display: flex; flex-direction: column;
@@ -302,15 +307,13 @@
     .kategori-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
     .kategori-card {
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: all 0.2s;
+      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s;
     }
     .kategori-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: var(--shadow-md); }
     .kategori-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #fff; flex-shrink: 0; }
     .kategori-info { flex: 1; min-width: 0; }
     .kategori-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .kategori-count { font-size: 0.75rem; color: var(--text-muted); }
-    .add-kategori-card { border-style: dashed; background: var(--bg-subtle); justify-content: center; flex-direction: column; text-align: center; }
-    .add-kategori-card i { font-size: 1.5rem; color: var(--primary); margin-bottom: 0.25rem; }
 
     /* MODAL */
     .modal-overlay {
@@ -494,6 +497,31 @@
     </header>
 
     <div class="page-content">
+      <!-- KARTU RINGKASAN TOTAL ALL BARANG (TAMPIL GLOBAL DI ATAS APAPUN TAB-NYA) -->
+      <div class="modal-summary-card">
+        <div class="modal-summary-item">
+          <i class="fas fa-coins"></i>
+          <div>
+            <div class="modal-summary-label">Total Modal</div>
+            <div class="modal-summary-value" id="totalModalValue">Rp 0</div>
+          </div>
+        </div>
+        <div class="modal-summary-item">
+          <i class="fas fa-boxes"></i>
+          <div>
+            <div class="modal-summary-label">Total Stok</div>
+            <div class="modal-summary-value" id="totalStokValue">0 item</div>
+          </div>
+        </div>
+        <div class="modal-summary-item">
+          <i class="fas fa-tags"></i>
+          <div>
+            <div class="modal-summary-label">Jumlah Produk</div>
+            <div class="modal-summary-value" id="totalProdukValue">0</div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB NAV (PRODUK & KATEGORI) -->
       <div class="tab-nav">
         <button class="tab-btn active" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
@@ -502,31 +530,6 @@
 
       <!-- KONTEN TAB PRODUK -->
       <div id="tab-produk" class="tab-content">
-        <!-- KARTU RINGKASAN TOTAL ALL BARANG -->
-        <div class="modal-summary-card">
-          <div class="modal-summary-item">
-            <i class="fas fa-coins"></i>
-            <div>
-              <div class="modal-summary-label">Total Modal</div>
-              <div class="modal-summary-value" id="totalModalValue">Rp 0</div>
-            </div>
-          </div>
-          <div class="modal-summary-item">
-            <i class="fas fa-boxes"></i>
-            <div>
-              <div class="modal-summary-label">Total Stok</div>
-              <div class="modal-summary-value" id="totalStokValue">0 item</div>
-            </div>
-          </div>
-          <div class="modal-summary-item">
-            <i class="fas fa-tags"></i>
-            <div>
-              <div class="modal-summary-label">Jumlah Produk</div>
-              <div class="modal-summary-value" id="totalProdukValue">0</div>
-            </div>
-          </div>
-        </div>
-
         <div class="produk-toolbar">
           <div class="produk-search">
             <i class="fas fa-search"></i>
@@ -539,11 +542,15 @@
               <option value="active">Aktif</option>
               <option value="inactive">Nonaktif</option>
             </select>
+            <div class="view-toggle">
+              <button class="view-btn active" id="btnGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
+              <button class="view-btn" id="btnListView" title="List View"><i class="fas fa-list"></i></button>
+            </div>
           </div>
           <button class="btn btn-primary" id="btnAddProduk"><i class="fas fa-plus"></i> Tambah Produk</button>
         </div>
 
-        <!-- GRID PRODUK -->
+        <!-- GRID/LIST PRODUK -->
         <div class="produk-grid" id="produkGrid">
           <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
             <i class="fas fa-spinner fa-spin" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i> Memuat produk...
@@ -596,23 +603,23 @@
         </div>
         <div class="form-group">
           <label class="form-label">Stok</label>
-          <input type="number" class="form-input" id="produkStock" placeholder="0" value="0">
+          <input type="number" class="form-input" id="produkStock" placeholder="" value="">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Harga Beli (Modal)</label>
-          <input type="number" class="form-input" id="produkCost" placeholder="0">
+          <input type="number" class="form-input" id="produkCost" placeholder="">
         </div>
         <div class="form-group">
           <label class="form-label">Harga Jual (Umum)</label>
-          <input type="number" class="form-input" id="produkPrice" placeholder="0">
+          <input type="number" class="form-input" id="produkPrice" placeholder="">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Harga Reseller ⭐</label>
-          <input type="number" class="form-input" id="produkResellerPrice" placeholder="0">
+          <input type="number" class="form-input" id="produkResellerPrice" placeholder="">
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
@@ -686,6 +693,7 @@
 
   let productsList = [];
   let categoriesList = [];
+  let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
 
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
@@ -701,6 +709,7 @@
     syncStoreBrandName();
     setupSidebarEvents();
     setupTabs();
+    setupViewToggle();
     await loadCategories();
     loadProducts();
 
@@ -778,6 +787,35 @@
     });
   }
 
+  function setupViewToggle() {
+    const btnGrid = document.getElementById("btnGridView");
+    const btnList = document.getElementById("btnListView");
+
+    if (currentViewMode === "list") {
+      btnList.classList.add("active");
+      btnGrid.classList.remove("active");
+    } else {
+      btnGrid.classList.add("active");
+      btnList.classList.remove("active");
+    }
+
+    btnGrid.onclick = () => {
+      currentViewMode = "grid";
+      localStorage.setItem("webpos_product_view", "grid");
+      btnGrid.classList.add("active");
+      btnList.classList.remove("active");
+      renderProducts();
+    };
+
+    btnList.onclick = () => {
+      currentViewMode = "list";
+      localStorage.setItem("webpos_product_view", "list");
+      btnList.classList.add("active");
+      btnGrid.classList.remove("active");
+      renderProducts();
+    };
+  }
+
   async function loadCategories() {
     try {
       const snap = await db.collection("categories").get();
@@ -822,7 +860,10 @@
             <div class="kategori-name">${c.name}</div>
             <div class="kategori-count">${count} produk terdaftar</div>
           </div>
-          <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+          <div style="display:flex; gap:0.35rem;">
+            <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}', '${c.name}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+          </div>
         </div>
       `;
     }).join("");
@@ -878,31 +919,53 @@
       return;
     }
 
-    grid.innerHTML = filtered.map(p => {
-      const cat = categoriesList.find(c => c.id === p.categoryId);
-      const catName = cat ? cat.name : "Umum";
-      const resellerText = p.resellerPrice ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>` : '';
+    if (currentViewMode === "list") {
+      grid.className = "produk-list";
+      grid.innerHTML = filtered.map(p => {
+        const cat = categoriesList.find(c => c.id === p.categoryId);
+        const catName = cat ? cat.name : "Umum";
+        return `
+          <div class="produk-card" style="flex-direction:row; align-items:center; padding:0.75rem 1rem;">
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:0.92rem; color:var(--text-main);">${p.name}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${catName} • Stok: ${p.stock || 0}</div>
+            </div>
+            <div style="font-weight:800; color:var(--primary); margin-right:1rem;">${formatRupiah(p.sellingPrice)}</div>
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    } else {
+      grid.className = "produk-grid";
+      grid.innerHTML = filtered.map(p => {
+        const cat = categoriesList.find(c => c.id === p.categoryId);
+        const catName = cat ? cat.name : "Umum";
+        const resellerText = p.resellerPrice ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>` : '';
 
-      return `
-        <div class="produk-card">
-          <div class="produk-image">
-            <i class="fas fa-box"></i>
-            <span class="produk-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'Aktif' : 'Nonaktif'}</span>
-            <span class="produk-stock-badge">Stok: ${p.stock || 0}</span>
+        return `
+          <div class="produk-card">
+            <div class="produk-image">
+              <i class="fas fa-box"></i>
+              <span class="produk-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'Aktif' : 'Nonaktif'}</span>
+              <span class="produk-stock-badge">Stok: ${p.stock || 0}</span>
+            </div>
+            <div class="produk-info">
+              <div class="produk-name">${p.name}</div>
+              <div class="produk-code">${catName} • ${p.code || 'SKU-001'}</div>
+              <div class="produk-price">Jual: ${formatRupiah(p.sellingPrice)}</div>
+              ${resellerText}
+            </div>
+            <div class="produk-actions">
+              <button class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
+              <button class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i></button>
+            </div>
           </div>
-          <div class="produk-info">
-            <div class="produk-name">${p.name}</div>
-            <div class="produk-code">${catName} • ${p.code || 'SKU-001'}</div>
-            <div class="produk-price">Jual: ${formatRupiah(p.sellingPrice)}</div>
-            ${resellerText}
-          </div>
-          <div class="produk-actions">
-            <button class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
-            <button class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i></button>
-          </div>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
+    }
   }
 
   function openProductModal(prod = null) {
@@ -910,10 +973,10 @@
     document.getElementById("modalTitle").textContent = prod ? "Edit Produk" : "Tambah Produk Baru";
     document.getElementById("produkName").value = prod ? prod.name : "";
     document.getElementById("produkKategori").value = prod ? (prod.categoryId || "") : "";
-    document.getElementById("produkCost").value = prod ? prod.costPrice : "";
-    document.getElementById("produkPrice").value = prod ? prod.sellingPrice : "";
-    document.getElementById("produkResellerPrice").value = prod ? (prod.resellerPrice || "") : "";
-    document.getElementById("produkStock").value = prod ? prod.stock : 0;
+    document.getElementById("produkCost").value = prod && prod.costPrice !== undefined ? prod.costPrice : "";
+    document.getElementById("produkPrice").value = prod && prod.sellingPrice !== undefined ? prod.sellingPrice : "";
+    document.getElementById("produkResellerPrice").value = prod && prod.resellerPrice !== undefined ? prod.resellerPrice : "";
+    document.getElementById("produkStock").value = prod && prod.stock !== undefined ? prod.stock : "";
     document.getElementById("produkStatus").value = prod ? (prod.status || "active") : "active";
     document.getElementById("produkModal").classList.add("active");
   }
@@ -922,9 +985,10 @@
     document.getElementById("produkModal").classList.remove("active");
   }
 
-  function openKategoriModal() {
-    document.getElementById("kategoriId").value = "";
-    document.getElementById("kategoriName").value = "";
+  function openKategoriModal(id = "", name = "") {
+    document.getElementById("kategoriId").value = id;
+    document.getElementById("kategoriName").value = name;
+    document.getElementById("kategoriModalTitle").textContent = id ? "Edit Kategori" : "Tambah Kategori Baru";
     document.getElementById("kategoriModal").classList.add("active");
   }
 
@@ -976,6 +1040,7 @@
   }
 
   async function saveKategori() {
+    const id = document.getElementById("kategoriId").value;
     const name = document.getElementById("kategoriName").value.trim();
     if (!name) {
       toast("Nama kategori wajib diisi!", "error");
@@ -983,11 +1048,19 @@
     }
 
     try {
-      await db.collection("categories").add({
-        name,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      toast("Kategori berhasil ditambahkan", "success");
+      if (id) {
+        await db.collection("categories").doc(id).update({
+          name,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast("Kategori berhasil diperbarui", "success");
+      } else {
+        await db.collection("categories").add({
+          name,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast("Kategori berhasil ditambahkan", "success");
+      }
       closeKategoriModal();
       loadCategories();
     } catch(err) {
@@ -1009,6 +1082,10 @@
     } catch(err) {
       toast("Gagal menghapus: " + err.message, "error");
     }
+  };
+
+  window.editKat = function(id, name) {
+    openKategoriModal(id, name);
   };
 
   window.deleteKat = async function(id) {
