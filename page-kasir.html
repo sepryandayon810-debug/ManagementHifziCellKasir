@@ -43,6 +43,7 @@
 [data-theme-color="red"]{--primary:#ef4444;--primary-dark:#dc2626;--secondary:#f97316}
 [data-theme-color="pink"]{--primary:#ec4899;--primary-dark:#db2777;--secondary:#8b5cf6}
 [data-theme-color="teal"]{--primary:#14b8a6;--primary-dark:#0d9488;--secondary:#06b6d4}
+[data-theme-color="sunset"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#ec4899}
 
 /* ===== BASE ===== */
 :root{
@@ -77,6 +78,17 @@
 [data-theme="dark"][data-theme-color="indigo"] body{
   background:#090d16 !important;
   color:#f8fafc !important;
+}
+[data-theme-color="sunset"]{
+  --primary:#f97316;--primary-dark:#ea580c;--secondary:#ec4899;
+  --bg-primary:#fff7ed;--bg-secondary:#ffedd5;--bg-card:#ffffff;
+  --text-primary:#431407;--text-secondary:#7c2d12;--text-muted:#c2410c;
+  --border-color:#fed7aa;
+}
+[data-theme="dark"][data-theme-color="sunset"]{
+  --bg-primary:#090d16;--bg-secondary:#1e293b;--bg-card:#111827;
+  --text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#94a3b8;
+  --border-color:#2e384d;
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1906,6 +1918,17 @@ html,body{overflow-x:hidden;max-width:100vw}
   [data-theme-color] .nav-section-title{color:var(--primary)}
   [data-theme-color] .search-input{background:var(--bg-secondary);border-color:var(--border-color);color:var(--text-primary)}
   [data-theme-color] .btn-back-layer{background:var(--bg-secondary)}
+  [data-theme-color] .form-input,
+  [data-theme-color] .form-select,
+  [data-theme-color] .form-textarea{background:var(--bg-secondary) !important;border-color:var(--border-color);color:var(--text-primary) !important}
+  [data-theme-color] .form-select option{background:var(--bg-card);color:var(--text-primary)}
+  [data-theme="dark"] select,
+  [data-theme="dark"] select option{background:#111827 !important;color:#f8fafc !important}
+  [data-theme="dark"] input,
+  [data-theme="dark"] textarea{color:#f8fafc !important}
+  [data-theme="dark"][data-theme-color="sunset"] .nav-link.active,
+  [data-theme="dark"][data-theme-color="sunset"] .logo-icon{background:linear-gradient(135deg,#f97316,#ec4899) !important}
+  [data-theme="dark"][data-theme-color="sunset"] .logo-text{background-image:linear-gradient(135deg,#f97316,#ec4899) !important}
   @media(max-width:640px){.reseller-toolbar{margin:.5rem 0 .7rem}}
 </style>
 </head>
@@ -2980,7 +3003,7 @@ async function loadUangGlobal() {
     function updateResellerModeUI(){var normal=document.getElementById('btnNormalMode'),reseller=document.getElementById('btnResellerMode');if(!normal||!reseller)return;normal.classList.toggle('active',!resellerMode);reseller.classList.toggle('active',resellerMode);normal.setAttribute('aria-pressed',resellerMode?'false':'true');reseller.setAttribute('aria-pressed',resellerMode?'true':'false');}
     function setResellerMode(nextMode){if(nextMode&&!products.some(function(p){return getResellerPrice(p)!==null;})){showToast('Belum ada harga reseller','warning');return;}if(cart.length){showToast('Kosongkan keranjang dulu','warning');return;}resellerMode=!!nextMode;updateResellerModeUI();renderProducts();}
     function toggleResellerMode(){setResellerMode(!resellerMode);}
-    function applyKasirSettings(data){if(!data||typeof data!=='object')return;var storeName=data.storeName||data.name||data.brandName||data.webName,theme=data.theme||data.appearanceTheme,color=data.themeColor||data.color||data.primaryColor||data.colorTheme;if(storeName){document.querySelectorAll('.logo-text').forEach(function(e){e.textContent=storeName;});document.title=storeName+' - Kasir';try{localStorage.setItem('webpos_store_name',storeName);}catch(e){}}if(theme==='light'||theme==='dark'){document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('webpos_theme',theme);}catch(e){}var icon=document.querySelector('#btnTheme i');if(icon)icon.className=theme==='dark'?'fas fa-sun':'fas fa-moon';}var colors=['indigo','blue','green','orange','purple','red','pink','teal'];if(colors.indexOf(color)>=0){document.documentElement.setAttribute('data-theme-color',color);try{localStorage.setItem('webpos_theme_color',color);}catch(e){}}if(data.receiptHeader&&typeof data.receiptHeader==='object'){try{localStorage.setItem('receiptHeader',JSON.stringify(data.receiptHeader));}catch(e){}}}
+    function applyKasirSettings(data){if(!data||typeof data!=='object')return;var storeName=data.storeName||data.name||data.brandName||data.webName,theme=data.theme||data.appearanceTheme||data.themeMode||data.mode,color=data.themeColor||data.color||data.primaryColor||data.colorTheme||data.palette||data.colorName;if(theme!=='light'&&theme!=='dark'){var darkValue=data.darkMode??data.isDarkMode;if(typeof darkValue==='boolean')theme=darkValue?'dark':'light';}if(storeName){document.querySelectorAll('.logo-text').forEach(function(e){e.textContent=storeName;});document.title=storeName+' - Kasir';try{localStorage.setItem('webpos_store_name',storeName);}catch(e){}}if(theme==='light'||theme==='dark'){document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('webpos_theme',theme);}catch(e){}var icon=document.querySelector('#btnTheme i');if(icon)icon.className=theme==='dark'?'fas fa-sun':'fas fa-moon';}var colors=['indigo','blue','green','orange','purple','red','pink','teal','sunset'];if(colors.indexOf(color)>=0){document.documentElement.setAttribute('data-theme-color',color);try{localStorage.setItem('webpos_theme_color',color);}catch(e){}}if(data.receiptHeader&&typeof data.receiptHeader==='object'){try{localStorage.setItem('receiptHeader',JSON.stringify(data.receiptHeader));}catch(e){}}}
     async function syncKasirSettings(){
       try{applyKasirSettings({storeName:localStorage.getItem('webpos_store_name'),theme:localStorage.getItem('webpos_theme'),themeColor:localStorage.getItem('webpos_theme_color')});}catch(e){}
       try{
