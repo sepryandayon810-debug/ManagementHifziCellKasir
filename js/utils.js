@@ -1,4 +1,4 @@
-// Utilitas Global & Manajemen UI
+// Utilitas Global & Manajemen UI WebPOS
 const Utils = {
   formatRupiah: function(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
