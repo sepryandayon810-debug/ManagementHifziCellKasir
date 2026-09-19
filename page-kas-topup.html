@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Top Up Kas</title>
 
-  <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL (Selaras dengan Index & Produk terbaru) -->
+  <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
@@ -22,13 +22,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat (Firestore & Auth & Storage) -->
+  <!-- Firebase Compat (Firestore & Auth) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
-  <!-- Firebase Config & Utils -->
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
@@ -64,7 +63,6 @@
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
       
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
@@ -194,7 +192,7 @@
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
     }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
     .user-avatar {
       width: 38px; height: 38px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
@@ -536,7 +534,23 @@
         }
       }
 
+      // Sync store brand name from Firestore settings/store
+      async function syncStoreBrandName() {
+        const logoEl = document.querySelector(".logo-text");
+        if (!logoEl) return;
+        const cached = localStorage.getItem("webpos_store_name");
+        if (cached) logoEl.textContent = cached;
+        try {
+          const doc = await db.collection("settings").doc("store").get();
+          if (doc.exists && doc.data().name) {
+            logoEl.textContent = doc.data().name;
+            localStorage.setItem("webpos_store_name", doc.data().name);
+          }
+        } catch(e) {}
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
+        syncStoreBrandName();
         auth.onAuthStateChanged(async (user) => {
           if (!user) {
             window.location.href = 'login.html';
