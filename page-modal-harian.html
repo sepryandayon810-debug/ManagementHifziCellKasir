@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Modal Harian</title>
+  <title>WebPOS - Manajemen Pengguna</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,6 +55,7 @@
       --text-sub: #cbd5e1;
       --primary-light: rgba(79, 70, 229, 0.15);
       --success-light: rgba(5, 150, 105, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
       --danger-light: rgba(220, 38, 38, 0.15);
     }
 
@@ -174,7 +175,7 @@
     }
     .user-info { flex: 1; overflow: hidden; }
     .sidebar.collapsed .user-info { display: none; }
-    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
     /* MAIN CONTENT */
@@ -194,6 +195,8 @@
     }
     .header-left { display: flex; align-items: center; gap: 0.75rem; }
     .header-title { font-size: 1.25rem; font-weight: 700; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+
     .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
       background: var(--bg-subtle); border: 1px solid var(--border);
@@ -201,95 +204,70 @@
       cursor: pointer;
     }
 
-    .page-content { padding: 1.5rem; flex: 1; max-width: 860px; }
+    .page-content { padding: 1.5rem; flex: 1; }
 
-    .form-group { margin-bottom: 1.25rem; }
-    .form-label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.4rem; }
-    .form-select {
-      width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
-      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
-      font-size: 0.9rem; font-family: inherit; outline: none; font-weight: 600;
+    .tab-bar {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
     }
-    .form-select:focus { border-color: var(--primary); background: #fff; }
-
-    .input-mode-tabs {
-      display: flex; background: var(--bg-subtle); padding: 4px;
-      border-radius: var(--radius-md); margin-bottom: 1.25rem; border: 1px solid var(--border);
+    .tab-item {
+      padding: 0.65rem 1.25rem; border: none; background: transparent;
+      font-size: 0.88rem; font-weight: 700; color: var(--text-muted);
+      cursor: pointer; position: relative; display: flex; align-items: center; gap: 0.5rem;
     }
-    .mode-tab-btn {
-      flex: 1; padding: 0.6rem; font-size: 0.85rem; font-weight: 700;
-      border: none; background: transparent; color: var(--text-muted);
-      cursor: pointer; border-radius: var(--radius-sm); transition: all 0.15s;
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    .tab-item.active { color: var(--primary); }
+    .tab-item.active::after {
+      content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+      height: 2px; background: var(--primary);
     }
-    .mode-tab-btn.active {
-      background: #fff; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    .counter-badge {
+      background: var(--primary); color: #fff;
+      font-size: 0.7rem; padding: 2px 7px; border-radius: 999px;
     }
+    .counter-badge.warn { background: var(--warning); }
 
     .card {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
-      margin-bottom: 1.5rem;
     }
-    .card-header {
-      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
+    .table-container { overflow-x: auto; }
+    .data-table {
+      width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;
     }
-    .card-title { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
-    .card-body { padding: 1.5rem; }
+    .data-table th {
+      padding: 0.85rem 1.25rem; background: var(--bg-subtle);
+      color: var(--text-muted); font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    .data-table tbody tr:hover { background: var(--bg-subtle); }
 
-    .modal-input-display {
-      background: var(--primary-light);
-      border: 2px solid var(--primary);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem;
-      text-align: center;
-      margin-bottom: 1.5rem;
+    .badge {
+      padding: 0.25rem 0.65rem; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; display: inline-block;
     }
-    .modal-label-text { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; }
-    .modal-amount-input {
-      font-size: 2.3rem; font-weight: 800; color: var(--primary);
-      background: transparent; border: none; outline: none; text-align: center; width: 100%;
-      font-family: inherit; margin-top: 0.25rem;
-    }
+    .badge-active { background: var(--success-light); color: var(--success); }
+    .badge-pending { background: var(--warning-light); color: var(--warning); }
+    .badge-rejected { background: var(--danger-light); color: var(--danger); }
 
-    .quick-chips-grid {
-      display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;
+    .role-tag {
+      font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px;
+      background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border);
     }
-    .chip-btn {
-      padding: 0.55rem 1.1rem; border-radius: 999px; border: 1px solid var(--border);
-      background: var(--bg-subtle); color: var(--text-main); font-size: 0.85rem; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; font-family: inherit;
-    }
-    .chip-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+    .role-developer { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+    .role-owner { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
-    .denom-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 0.75rem; margin-bottom: 1.5rem;
+    .btn-action-group { display: flex; gap: 0.4rem; }
+    .btn-action {
+      padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.78rem;
+      font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
     }
-    .denom-item {
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--bg-subtle); padding: 0.75rem 0.85rem; border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-    }
-    .denom-label { font-size: 0.82rem; font-weight: 700; }
-    .denom-input {
-      width: 75px; padding: 0.45rem; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); text-align: center; font-size: 0.88rem; font-weight: 700;
-      outline: none; background: #fff;
-    }
-    .denom-input:focus { border-color: var(--primary); }
-
-    .action-row { display: flex; gap: 0.75rem; }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.8rem 1.25rem; border-radius: var(--radius-md); font-family: inherit;
-      font-size: 0.9rem; font-weight: 700; cursor: pointer; border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-    .btn-primary { background: var(--primary); color: #fff; flex: 1; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
+    .btn-approve { background: var(--success); color: #fff; }
+    .btn-reject { background: var(--danger-light); color: var(--danger); }
+    .btn-delete { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-delete:hover { color: var(--danger); }
 
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 3000;
@@ -327,7 +305,7 @@
     }
   </style>
 
-  <!-- Firebase SDK Compat -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -340,7 +318,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -371,7 +349,7 @@
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
-          <li class="nav-item nav-dropdown open" id="dropdownKas">
+          <li class="nav-item nav-dropdown" id="dropdownKas">
             <div class="nav-link nav-dropdown-toggle" data-menu="kas">
               <div style="display:flex; align-items:center; gap:0.75rem;">
                 <i class="fas fa-wallet"></i><span>Kas Management</span>
@@ -380,7 +358,7 @@
             </div>
             <ul class="nav-submenu">
               <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
-              <li><a href="page-modal-harian.html" class="nav-link active"><span>Modal Harian</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
               <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
               <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
               <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
@@ -406,7 +384,7 @@
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
-          <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link active" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
           <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
@@ -425,128 +403,62 @@
     </div>
   </aside>
 
-  <!-- MAIN AREA -->
+  <!-- MAIN -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
-        <h1 class="header-title">Modal Awal Kasir</h1>
+        <h1 class="header-title">Manajemen Staf & Pengguna</h1>
       </div>
       <div class="header-actions">
-        <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon-box" id="btnRefresh" title="Segarkan Data"><i class="fas fa-rotate"></i></button>
       </div>
     </header>
 
     <div class="page-content">
+      <div class="tab-bar">
+        <button class="tab-item active" data-tab="active">
+          <i class="fas fa-circle-check" style="color:var(--success)"></i> Pengguna Aktif
+          <span class="counter-badge" id="countActive">0</span>
+        </button>
+        <button class="tab-item" data-tab="pending">
+          <i class="fas fa-clock" style="color:var(--warning)"></i> Menunggu Persetujuan
+          <span class="counter-badge warn" id="countPending">0</span>
+        </button>
+      </div>
+
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title"><i class="fas fa-coins" style="color:var(--primary);"></i> Saldo Awal Laci Kasir</h3>
-          <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.65rem; border-radius:999px;" id="currentDateBadge">Hari Ini</span>
-        </div>
-
-        <div class="card-body">
-          <!-- TARGET KASIR YANG DIBERIKAN MODAL -->
-          <div class="form-group" id="groupTargetKasir">
-            <label class="form-label"><i class="fas fa-user-tag" style="color:var(--primary);"></i> Alokasikan Modal Untuk Kasir / Staf:</label>
-            <select class="form-select" id="selectTargetKasir">
-              <option value="">Memuat daftar akun...</option>
-            </select>
-          </div>
-
-          <!-- PILIHAN CARA INPUT: MANUAL vs HITUNG PECAHAN -->
-          <div class="input-mode-tabs">
-            <button type="button" class="mode-tab-btn active" id="tabModeManual" onclick="switchInputMode('manual')">
-              <i class="fas fa-keyboard"></i> Input Manual Langsung
-            </button>
-            <button type="button" class="mode-tab-btn" id="tabModePecahan" onclick="switchInputMode('pecahan')">
-              <i class="fas fa-money-bill-wave"></i> Hitung Lembaran / Koin
-            </button>
-          </div>
-
-          <!-- DISPLAY TOTAL MODAL -->
-          <div class="modal-input-display">
-            <span class="modal-label-text">Total Modal Awal (Ketik Angka di Bawah)</span>
-            <input type="text" class="modal-amount-input" id="totalModalInput" value="Rp 0" placeholder="Rp 0" autocomplete="off">
-          </div>
-
-          <!-- SECTION 1: INPUT MANUAL DENGAN QUICK CHIPS -->
-          <div id="sectionManual">
-            <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-align:center; margin-bottom:0.6rem; text-transform:uppercase;">
-              Pilihan Cepat Nominal:
-            </div>
-            <div class="quick-chips-grid">
-              <button type="button" class="chip-btn" onclick="setManualAmount(50000)">+ 50.000</button>
-              <button type="button" class="chip-btn" onclick="setManualAmount(100000)">+ 100.000</button>
-              <button type="button" class="chip-btn" onclick="setManualAmount(200000)">+ 200.000</button>
-              <button type="button" class="chip-btn" onclick="setManualAmount(300000)">+ 300.000</button>
-              <button type="button" class="chip-btn" onclick="setManualAmount(500000)">+ 500.000</button>
-              <button type="button" class="chip-btn" onclick="setManualAmount(1000000)">+ 1.000.000</button>
-              <button type="button" class="chip-btn" onclick="clearModalAmount()" style="color:var(--danger); border-color:var(--danger-light);">Reset (0)</button>
-            </div>
-          </div>
-
-          <!-- SECTION 2: HITUNG PECAHAN LEMBARAN UANG -->
-          <div id="sectionPecahan" style="display:none;">
-            <div style="font-size:0.82rem; font-weight:700; color:var(--text-sub); margin-bottom:0.75rem;">
-              Masukkan jumlah lembar/koin uang fisik di laci:
-            </div>
-
-            <div class="denom-grid">
-              <div class="denom-item">
-                <span class="denom-label">Rp 100.000</span>
-                <input type="number" class="denom-input" data-nominal="100000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 50.000</span>
-                <input type="number" class="denom-input" data-nominal="50000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 20.000</span>
-                <input type="number" class="denom-input" data-nominal="20000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 10.000</span>
-                <input type="number" class="denom-input" data-nominal="10000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 5.000</span>
-                <input type="number" class="denom-input" data-nominal="5000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 2.000</span>
-                <input type="number" class="denom-input" data-nominal="2000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 1.000</span>
-                <input type="number" class="denom-input" data-nominal="1000" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-              <div class="denom-item">
-                <span class="denom-label">Rp 500</span>
-                <input type="number" class="denom-input" data-nominal="500" min="0" placeholder="0" oninput="calcFromDenominations()">
-              </div>
-            </div>
-          </div>
-
-          <!-- TOMBOL AKSI -->
-          <div class="action-row">
-            <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">Batal / Kembali</button>
-            <button type="button" class="btn btn-primary" id="btnSaveModal">
-              <i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift
-            </button>
-          </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nama / User</th>
+                <th>Email</th>
+                <th>Role Akses</th>
+                <th>Status</th>
+                <th style="text-align:right">Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr>
+                <td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted)">
+                  <i class="fas fa-spinner fa-spin"></i> Memuat data pengguna...
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </main>
 </div>
 
-<!-- BOTTOM DOCK MOBILE -->
 <nav class="mobile-bar">
   <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
   <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
   <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
   <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
-  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+  <a href="page-pengguna.html" class="mobile-bar-item active"><i class="fas fa-users"></i><span>Pengguna</span></a>
 </nav>
 
 <div class="toast-box" id="toastContainer"></div>
@@ -555,16 +467,9 @@
 (function() {
   "use strict";
 
-  function formatRupiah(num) {
-    return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
-  function getTodayString() {
-    const d = new Date();
-    return d.getFullYear() + "-" +
-      String(d.getMonth() + 1).padStart(2, "0") + "-" +
-      String(d.getDate()).padStart(2, "0");
-  }
+  let allUsers = [];
+  let currentActiveTab = "active";
+  let currentUserRole = "kasir";
 
   function toast(msg, type = "success") {
     const box = document.getElementById("toastContainer");
@@ -595,17 +500,12 @@
     }
   }
 
-  let rawModalAmount = 0;
-  let currentUser = null;
-  let currentUserRole = "kasir";
-
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
       if (!user) {
         window.location.href = "login.html";
         return;
       }
-      currentUser = user;
       initPage(user);
     });
   });
@@ -615,38 +515,36 @@
     setupSidebarEvents();
 
     try {
-      const uDoc = await db.collection("users").doc(user.uid).get();
-      if (uDoc.exists) {
-        const u = uDoc.data();
+      const userDoc = await db.collection("users").doc(user.uid).get();
+      if (userDoc.exists) {
+        const u = userDoc.data();
         currentUserRole = (u.role || "kasir").toLowerCase();
-        const dName = u.name || user.email.split("@")[0];
-        document.getElementById("userName").textContent = dName;
+        
+        document.getElementById("userName").textContent = u.name || user.email.split("@")[0];
         document.getElementById("userRole").textContent = currentUserRole.toUpperCase();
         if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
+
+        if (currentUserRole !== "developer" && currentUserRole !== "owner") {
+          alert("Akses Ditolak: Halaman ini hanya dapat diakses oleh Developer dan Owner!");
+          window.location.href = "index.html";
+          return;
+        }
       }
-    } catch (e) {
-      console.error(e);
+    } catch(err) {
+      console.error(err);
     }
 
-    const todayStr = getTodayString();
-    document.getElementById("currentDateBadge").textContent = todayStr;
+    loadUsers();
+    document.getElementById("btnRefresh").onclick = loadUsers;
 
-    await setupTargetKasirDropdown(user);
-    loadExistingModal();
-
-    const inputDisplay = document.getElementById("totalModalInput");
-    inputDisplay.addEventListener("input", (e) => {
-      const val = e.target.value.replace(/\D/g, "");
-      rawModalAmount = parseInt(val) || 0;
-      inputDisplay.value = rawModalAmount > 0 ? formatRupiah(rawModalAmount) : "";
+    document.querySelectorAll(".tab-item").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll(".tab-item").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentActiveTab = btn.dataset.tab;
+        renderTable();
+      };
     });
-
-    inputDisplay.addEventListener("blur", () => {
-      updateModalDisplay();
-    });
-
-    document.getElementById("selectTargetKasir").onchange = loadExistingModal;
-    document.getElementById("btnSaveModal").onclick = saveModalHarian;
   }
 
   function setupSidebarEvents() {
@@ -672,161 +570,142 @@
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
     });
-
-    document.getElementById("btnThemeToggle").onclick = () => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
-      localStorage.setItem("webpos_theme", isDark ? "light" : "dark");
-    };
   }
 
-  async function setupTargetKasirDropdown(loginUser) {
-    const select = document.getElementById("selectTargetKasir");
-
-    if (currentUserRole === "kasir") {
-      const myName = document.getElementById("userName").textContent;
-      select.innerHTML = `<option value="${loginUser.uid}">${myName} (Akun Anda Sendiri)</option>`;
-      select.disabled = true;
-      return;
-    }
+  async function loadUsers() {
+    const tbody = document.getElementById("userTableBody");
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
 
     try {
-      const snap = await db.collection("users").where("status", "==", "active").get();
-      select.innerHTML = "";
-
+      const snap = await db.collection("users").get();
+      allUsers = [];
       snap.forEach(doc => {
-        const u = { id: doc.id, ...doc.data() };
-        const opt = document.createElement("option");
-        opt.value = u.id;
-        opt.textContent = `${u.name || u.username} (${(u.role || 'kasir').toUpperCase()})`;
-        if (u.id === loginUser.uid) opt.selected = true;
-        select.appendChild(opt);
+        allUsers.push({ id: doc.id, ...doc.data() });
       });
-    } catch (err) {
-      console.error("Gagal load daftar staf:", err);
-      select.innerHTML = `<option value="${loginUser.uid}">Akun Anda Sendiri</option>`;
+
+      const activeCount = allUsers.filter(u => u.status === "active").length;
+      const pendingCount = allUsers.filter(u => u.status === "pending").length;
+      document.getElementById("countActive").textContent = activeCount;
+      document.getElementById("countPending").textContent = pendingCount;
+
+      renderTable();
+    } catch(err) {
+      console.error(err);
+      toast("Gagal memuat pengguna: " + err.message, "error");
     }
   }
 
-  async function loadExistingModal() {
-    const todayStr = getTodayString();
-    const targetUid = document.getElementById("selectTargetKasir").value;
-    if (!targetUid) return;
+  function renderTable() {
+    const tbody = document.getElementById("userTableBody");
+    const filtered = allUsers.filter(u => u.status === currentActiveTab);
 
-    try {
-      const modalDoc = await db.collection("modal").doc(`${todayStr}_${targetUid}`).get();
-      if (modalDoc.exists && modalDoc.data().amount) {
-        rawModalAmount = modalDoc.data().amount;
-      } else {
-        rawModalAmount = 0;
-      }
-      updateModalDisplay();
-    } catch (e) {
-      console.error("Gagal load modal:", e);
-    }
-  }
-
-  window.switchInputMode = function(mode) {
-    const btnManual = document.getElementById("tabModeManual");
-    const btnPecahan = document.getElementById("tabModePecahan");
-    const secManual = document.getElementById("sectionManual");
-    const secPecahan = document.getElementById("sectionPecahan");
-
-    if (mode === "manual") {
-      btnManual.classList.add("active");
-      btnPecahan.classList.remove("active");
-      secManual.style.display = "block";
-      secPecahan.style.display = "none";
-      document.getElementById("totalModalInput").focus();
-    } else {
-      btnPecahan.classList.add("active");
-      btnManual.classList.remove("active");
-      secManual.style.display = "none";
-      secPecahan.style.display = "block";
-    }
-  };
-
-  window.setManualAmount = function(addAmount) {
-    rawModalAmount += addAmount;
-    updateModalDisplay();
-  };
-
-  window.clearModalAmount = function() {
-    rawModalAmount = 0;
-    document.querySelectorAll(".denom-input").forEach(inp => inp.value = "");
-    updateModalDisplay();
-  };
-
-  window.calcFromDenominations = function() {
-    let total = 0;
-    document.querySelectorAll(".denom-input").forEach(inp => {
-      const nominal = parseInt(inp.dataset.nominal) || 0;
-      const count = parseInt(inp.value) || 0;
-      total += nominal * count;
-    });
-
-    rawModalAmount = total;
-    updateModalDisplay();
-  };
-
-  function updateModalDisplay() {
-    document.getElementById("totalModalInput").value = formatRupiah(rawModalAmount);
-  }
-
-  async function saveModalHarian() {
-    if (rawModalAmount <= 0) {
-      toast("Masukkan nominal modal awal yang valid (lebih dari 0)!", "error");
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-user-slash" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block"></i>Tidak ada pengguna pada daftar ini.</td></tr>`;
       return;
     }
 
-    const todayStr = getTodayString();
-    const select = document.getElementById("selectTargetKasir");
-    const targetUid = select.value;
-    const targetUserName = select.options[select.selectedIndex].text.split(" (")[0];
+    tbody.innerHTML = filtered.map(u => {
+      const role = (u.role || "kasir").toLowerCase();
+      const status = u.status || "pending";
+      const isDevOrOwner = role === "developer" || role === "owner";
 
-    const btn = document.getElementById("btnSaveModal");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700; color:var(--text-main);">${u.name || '-'}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">@${u.username || '-'}</div>
+          </td>
+          <td>${u.email || '-'}</td>
+          <td>
+            <span class="role-tag role-${role}">${role.toUpperCase()}</span>
+          </td>
+          <td>
+            <span class="badge badge-${status}">${status}</span>
+          </td>
+          <td style="text-align:right">
+            <div class="btn-action-group" style="justify-content:flex-end">
+              ${status === 'pending' ? `
+                <button class="btn-action btn-approve" onclick="window.approveUser('${u.id}', '${u.name}')">
+                  <i class="fas fa-check"></i> Setujui
+                </button>
+                <button class="btn-action btn-reject" onclick="window.rejectUser('${u.id}')">
+                  <i class="fas fa-xmark"></i> Tolak
+                </button>
+              ` : `
+                ${!isDevOrOwner || currentUserRole === 'developer' ? `
+                  <button class="btn-action btn-delete" onclick="window.changeRolePrompt('${u.id}', '${role}')" title="Ubah Role">
+                    <i class="fas fa-user-pen"></i> Role
+                  </button>
+                  <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${u.id}')" title="Hapus User">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : '<span style="font-size:0.75rem; color:var(--text-muted)">Akses Terkunci</span>'}
+              `}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  window.approveUser = async function(userId, userName) {
+    if (!confirm(`Setujui pengajuan akun untuk ${userName}?`)) return;
+    try {
+      await db.collection("users").doc(userId).update({
+        status: "active",
+        approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      toast(`Akun ${userName} berhasil disetujui!`, "success");
+      loadUsers();
+    } catch(e) {
+      toast("Gagal approve: " + e.message, "error");
+    }
+  };
+
+  window.rejectUser = async function(userId) {
+    if (!confirm("Tolak pengajuan akun ini? Pengguna tidak akan bisa login.")) return;
+    try {
+      await db.collection("users").doc(userId).update({
+        status: "rejected"
+      });
+      toast("Pengajuan akun ditolak", "success");
+      loadUsers();
+    } catch(e) {
+      toast("Gagal: " + e.message, "error");
+    }
+  };
+
+  window.changeRolePrompt = async function(userId, currentRole) {
+    const newRole = prompt("Pilih Role Baru (kasir / admin / owner / developer):", currentRole);
+    if (!newRole || newRole === currentRole) return;
+
+    const validRoles = ["kasir", "admin", "owner", "developer"];
+    if (!validRoles.includes(newRole.toLowerCase())) {
+      alert("Role tidak valid! Gunakan salah satu dari: kasir, admin, owner, developer");
+      return;
+    }
 
     try {
-      const docId = `${todayStr}_${targetUid}`;
-      const senderName = document.getElementById("userName").textContent;
-
-      await db.collection("modal").doc(docId).set({
-        id: docId,
-        date: todayStr,
-        userId: targetUid,
-        userName: targetUserName,
-        allocatedBy: currentUser.uid,
-        allocatedByName: senderName,
-        amount: rawModalAmount,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      await db.collection("users").doc(userId).update({
+        role: newRole.toLowerCase()
       });
-
-      await db.collection("shifts").doc(docId).set({
-        id: "shift_" + Date.now(),
-        userId: targetUid,
-        userName: targetUserName,
-        date: todayStr,
-        status: "open",
-        modalAwal: rawModalAmount,
-        openTime: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      localStorage.removeItem("fromDashboard");
-      toast(`Modal ${formatRupiah(rawModalAmount)} berhasil disimpan untuk ${targetUserName}!`, "success");
-
-      setTimeout(() => {
-        window.location.href = "index.html";
-      }, 1200);
-
-    } catch (err) {
-      console.error("Gagal simpan modal:", err);
-      toast("Gagal menyimpan modal: " + err.message, "error");
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
+      toast("Role berhasil diperbarui menjadi " + newRole.toUpperCase(), "success");
+      loadUsers();
+    } catch(e) {
+      toast("Gagal ubah role: " + e.message, "error");
     }
-  }
+  };
+
+  window.deleteUserRecord = async function(userId) {
+    if (!confirm("Hapus data pengguna ini dari sistem database?")) return;
+    try {
+      await db.collection("users").doc(userId).delete();
+      toast("Data pengguna dihapus", "success");
+      loadUsers();
+    } catch(e) {
+      toast("Gagal menghapus: " + e.message, "error");
+    }
+  };
 
 })();
 </script>
