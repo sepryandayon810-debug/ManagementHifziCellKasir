@@ -226,7 +226,7 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* TAB NAV KATEGORI / PRODUK (Kategori di Kiri, Produk di Kanan) */
+    /* TAB NAV KATEGORI / PRODUK */
     .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
     .tab-btn {
       padding: 0.6rem 1.25rem; border: none; background: transparent;
@@ -278,7 +278,7 @@
       .produk-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ⭐ FORMAT LIST PRODUK (Tanpa Gambar, Rapi ke Bawah) */
+    /* FORMAT LIST PRODUK */
     .produk-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
     .produk-list .produk-card {
       flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
@@ -324,7 +324,15 @@
     .produk-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn { flex: 1; padding: 0.4rem; font-size: 0.78rem; font-weight: 700; }
 
-    /* KATEGORI GRID & LIST STYLING */
+    /* UPLOAD GAMBAR PRODUK */
+    .image-upload-box {
+      border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 1rem;
+      text-align: center; cursor: pointer; background: var(--bg-subtle); transition: all 0.15s;
+    }
+    .image-upload-box:hover { border-color: var(--primary); }
+    .image-preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm); margin-top: 0.5rem; display: none; }
+
+    /* KATEGORI GRID & LIST */
     .kategori-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     @media(max-width: 768px) {
       .kategori-grid { grid-template-columns: repeat(2, 1fr); }
@@ -343,14 +351,6 @@
     .kategori-info { flex: 1; min-width: 0; }
     .kategori-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .kategori-count { font-size: 0.75rem; color: var(--text-muted); }
-
-    /* UPLOAD GAMBAR PRODUK & KATEGORI */
-    .image-upload-box {
-      border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 1rem;
-      text-align: center; cursor: pointer; background: var(--bg-subtle); transition: all 0.15s;
-    }
-    .image-upload-box:hover { border-color: var(--primary); }
-    .image-preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm); margin-top: 0.5rem; display: none; }
 
     /* MODAL */
     .modal-overlay {
@@ -674,7 +674,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Foto Produk (Opsional)</label>
+        <label class="form-label">Foto Produk (Opsional - Jika kosong ikuti Kategori)</label>
         <div class="image-upload-box" onclick="document.getElementById('produkImageFile').click()">
           <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; color: var(--primary);"></i>
           <div style="font-size: 0.8rem; margin-top: 0.25rem;">Klik untuk pilih foto produk</div>
@@ -705,7 +705,7 @@
         <input type="text" class="form-input" id="kategoriName" placeholder="Contoh: Aksesoris / Perdana">
       </div>
       <div class="form-group">
-        <label class="form-label">Foto / Gambar Kategori (Opsional)</label>
+        <label class="form-label">Foto / Gambar Kategori</label>
         <div class="image-upload-box" onclick="document.getElementById('katImageFile').click()">
           <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; color: var(--primary);"></i>
           <div style="font-size: 0.8rem; margin-top: 0.25rem;">Klik untuk pilih foto kategori</div>
@@ -852,7 +852,6 @@
   }
 
   function setupViewToggle() {
-    // Produk View Toggle
     const btnGrid = document.getElementById("btnGridView");
     const btnList = document.getElementById("btnListView");
 
@@ -880,7 +879,6 @@
       renderProducts();
     };
 
-    // Kategori View Toggle
     const btnKatGrid = document.getElementById("btnKatGridView");
     const btnKatList = document.getElementById("btnKatListView");
 
@@ -1085,7 +1083,13 @@
         const cat = categoriesList.find(c => c.id === p.categoryId);
         const catName = cat ? cat.name : "Umum";
         const resellerText = p.resellerPrice ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>` : '';
-        const imgEl = p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}">` : `<i class="fas fa-box"></i>`;
+        
+        // ⭐ Logika Gambar: Jika foto produk kosong, ambil dari gambar kategorinya
+        let displayImgUrl = p.imageUrl;
+        if (!displayImgUrl && cat && cat.imageUrl) {
+          displayImgUrl = cat.imageUrl;
+        }
+        const imgEl = displayImgUrl ? `<img src="${displayImgUrl}" alt="${p.name}">` : `<i class="fas fa-box"></i>`;
 
         return `
           <div class="produk-card">
