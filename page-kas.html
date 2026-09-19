@@ -182,7 +182,7 @@
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
     }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
     .user-avatar {
       width: 38px; height: 38px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
@@ -643,34 +643,16 @@
 
             if (data.type === 'topup' || data.type === 'kas_masuk') {
               kasMasuk += data.total || data.amount || 0;
-            } else if (data.type === 'penjualan') {
-              kasMasuk += data.total || 0;
-            } else if (data.type === 'tarik') {
-              // TARIK TUNAI: Uang keluar dari laci sebesar nominal tarik (amount), 
-              // sedangkan adminFee masuk ke kas masuk / pendapatan kas
-              kasKeluar += data.amount || 0;
-              if (data.adminFee > 0) {
-                kasMasuk += data.adminFee;
-              }
-            } else if (data.type === 'kas_keluar') {
+            } else if (data.type === 'tarik' || data.type === 'kas_keluar') {
               kasKeluar += data.total || data.amount || 0;
             }
 
             historyList.push({ id: doc.id, ...data });
           });
 
-          // Ambil modal harian
-          const modalDoc = await db.collection("modal").where("date", "==", today).get();
-          let totalModal = 0;
-          modalDoc.forEach(mDoc => {
-            totalModal += mDoc.data().amount || 0;
-          });
-
-          const kasDitangan = totalModal + kasMasuk - kasKeluar;
-
           document.getElementById('kasMasuk').textContent = Utils.formatRupiah(kasMasuk);
           document.getElementById('kasKeluar').textContent = Utils.formatRupiah(kasKeluar);
-          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasDitangan);
+          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasMasuk - kasKeluar);
 
           const tbody = document.getElementById('kasHistory');
           if (historyList.length === 0) {
@@ -682,7 +664,7 @@
               </tr>
             `;
           } else {
-            historyList.sort((a, b) => (b.timestamp?.toMillis?.() || b.timestamp || Date.now()) - (a.timestamp?.toMillis?.() || a.timestamp || Date.now()));
+            historyList.sort((a, b) => (b.timestamp?.toMillis?.() || Date.now()) - (a.timestamp?.toMillis?.() || Date.now()));
             tbody.innerHTML = historyList.map(t => {
               const isIncome = ['topup', 'kas_masuk', 'penjualan'].includes(t.type);
               const typeLabels = {
@@ -694,16 +676,8 @@
               };
 
               let timeStr = '-';
-              if (t.timestamp) {
-                const timeVal = typeof t.timestamp === 'object' && t.timestamp.toDate ? t.timestamp.toDate() : new Date(t.timestamp);
-                timeStr = timeVal.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-              }
-
-              let displayAmount = t.total || t.amount || 0;
-              let noteText = t.note || '-';
-              if (t.type === 'tarik' && t.adminFee > 0) {
-                noteText += ` (Tarik: ${Utils.formatRupiah(t.amount)} + Admin: ${Utils.formatRupiah(t.adminFee)})`;
-                displayAmount = t.amount;
+              if (t.timestamp && t.timestamp.toDate) {
+                timeStr = t.timestamp.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
               }
 
               return `
@@ -715,9 +689,9 @@
                       ${typeLabels[t.type] || t.type}
                     </span>
                   </td>
-                  <td>${noteText}</td>
+                  <td>${t.note || '-'}</td>
                   <td style="color: ${isIncome ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
-                    ${isIncome ? '+' : '-'} ${Utils.formatRupiah(displayAmount)}
+                    ${isIncome ? '+' : '-'} ${Utils.formatRupiah(t.total || t.amount || 0)}
                   </td>
                   <td>${t.userName || '-'}</td>
                 </tr>
