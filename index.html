@@ -41,6 +41,7 @@
       
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
       
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
@@ -58,6 +59,7 @@
       --primary-light: rgba(79, 70, 229, 0.15);
       --success-light: rgba(5, 150, 105, 0.15);
       --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -379,6 +381,48 @@
       cursor: pointer;
     }
 
+    /* CUSTOM DIALOG POPUP / ALERT MODAL (NEW DESIGN) */
+    .custom-modal-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95);
+      transition: transform 0.2s ease;
+    }
+    .custom-modal-backdrop.open .custom-dialog-card { transform: scale(1); }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.success { background: var(--success-light); color: var(--success); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--primary); color: #fff; }
+    .dialog-btn-primary:hover { background: var(--primary-hover); }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
     /* MOBILE BAR */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -508,6 +552,7 @@
       </div>
     </nav>
 
+    <!-- PROFIL USERNAME AKTIF -->
     <div class="sidebar-footer">
       <div class="user-profile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
@@ -675,7 +720,7 @@
         </div>
       </div>
 
-      <!-- CONTENT GRID: PINTASAN & INFO -->
+      <!-- CONTENT GRID -->
       <div class="content-grid">
         <div class="card">
           <div class="card-header">
@@ -738,6 +783,21 @@
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
+<!-- ⭐ CUSTOM POPUP DIALOG (PENGGANTI BROWSER ALERT) ⭐ -->
+<div class="custom-modal-backdrop" id="customAlertModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap warning" id="dialogIcon">
+      <i class="fas fa-coins"></i>
+    </div>
+    <h3 class="dialog-title" id="dialogTitle">Perhatian</h3>
+    <p class="dialog-message" id="dialogMessage">Pesan informasi modal</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" id="dialogBtnCancel" style="display:none;" onclick="closeCustomAlert()">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="dialogBtnConfirm" onclick="closeCustomAlert()">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function() {
   "use strict";
@@ -755,6 +815,43 @@
 
   let isShiftOpen = false;
 
+  // FUNGSI CUSTOM ALERT POPUP MODERN
+  window.showCustomAlert = function({ title, message, iconType = "warning", confirmText = "OK", onConfirm = null, showCancel = false }) {
+    const backdrop = document.getElementById("customAlertModal");
+    const iconWrap = document.getElementById("dialogIcon");
+    const titleEl = document.getElementById("dialogTitle");
+    const msgEl = document.getElementById("dialogMessage");
+    const btnConfirm = document.getElementById("dialogBtnConfirm");
+    const btnCancel = document.getElementById("dialogBtnCancel");
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    btnConfirm.textContent = confirmText;
+
+    iconWrap.className = `dialog-icon-wrap ${iconType}`;
+    if (iconType === "warning") {
+      iconWrap.innerHTML = '<i class="fas fa-coins"></i>';
+    } else if (iconType === "danger") {
+      iconWrap.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+    } else {
+      iconWrap.innerHTML = '<i class="fas fa-circle-check"></i>';
+    }
+
+    btnCancel.style.display = showCancel ? "block" : "none";
+
+    btnConfirm.onclick = () => {
+      closeCustomAlert();
+      if (typeof onConfirm === "function") onConfirm();
+    };
+
+    backdrop.classList.add("open");
+  };
+
+  window.closeCustomAlert = function() {
+    const backdrop = document.getElementById("customAlertModal");
+    if (backdrop) backdrop.classList.remove("open");
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged((user) => {
       if (!user) {
@@ -768,7 +865,6 @@
   function initDashboard(user) {
     setupSidebarEvents();
 
-    // AMBIL DATA USER PROFILE DARI CLOUD FIRESTORE
     db.collection("users").doc(user.uid).get().then(doc => {
       let displayName = user.email.split("@")[0];
       let displayRole = "Owner";
@@ -797,11 +893,20 @@
     listenShiftStatus(user);
 
     document.getElementById("btnToggleShift").onclick = () => toggleShift(user);
+    
     document.getElementById("btnLogout").onclick = () => {
-      if (confirm("Keluar dari sistem?")) {
-        auth.signOut().then(() => window.location.href = "login.html");
-      }
+      showCustomAlert({
+        title: "Konfirmasi Keluar",
+        message: "Apakah Anda yakin ingin keluar dari sistem WebPOS?",
+        iconType: "danger",
+        confirmText: "Ya, Keluar",
+        showCancel: true,
+        onConfirm: () => {
+          auth.signOut().then(() => window.location.href = "login.html");
+        }
+      });
     };
+
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
@@ -861,13 +966,11 @@
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
 
-      // Ambil data modal awal hari ini dari Firestore
       const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
       if (modalDoc.exists) {
         modalAwal = modalDoc.data().amount || 0;
       }
 
-      // Ambil transaksi hari ini dari Firestore
       const transSnapshot = await db.collection("transactions")
         .where("date", "==", today)
         .get();
@@ -901,7 +1004,6 @@
         }
       });
 
-      // Ambil piutang aktif hari ini dari Firestore
       const debtsSnapshot = await db.collection("debts")
         .where("type", "==", "piutang")
         .where("status", "==", "active")
@@ -966,31 +1068,39 @@
     }
   }
 
-  // LOGIKA PERSIS SESUAI KODE LAMA
+  // LOGIKA SHIFT MENGGUNAKAN CUSTOM POPUP ALERT
   async function toggleShift(user) {
     const today = getTodayString();
 
     if (isShiftOpen) {
-      // Jika shift sedang buka, arahkan ke penutupan shift
       window.location.href = "page-kas-shift.html";
     } else {
       try {
-        // Cek apakah modal awal hari ini sudah diisi di collection 'modal'
         const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
-        // JIKA MODAL BELUM DIISI, LEMPAR KE MODAL HARIAN
+        // JIKA MODAL BELUM DIISI -> TAMPILKAN CUSTOM POPUP MODAL
         if (!modalData || !modalData.amount) {
-          alert("Silakan set modal awal terlebih dahulu.");
-          localStorage.setItem("fromDashboard", "true");
-          window.location.href = "page-modal-harian.html";
+          showCustomAlert({
+            title: "Modal Awal Belum Diisi",
+            message: "Silakan tentukan saldo modal awal laci terlebih dahulu untuk membuka shift kasir.",
+            iconType: "warning",
+            confirmText: "Set Modal Sekarang",
+            onConfirm: () => {
+              localStorage.setItem("fromDashboard", "true");
+              window.location.href = "page-modal-harian.html";
+            }
+          });
           return;
         }
 
-        // Cek apakah sudah ada shift terbuka
         const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
         if (shiftDoc.exists && shiftDoc.data().status === "open") {
-          alert("Shift sudah terbuka.");
+          showCustomAlert({
+            title: "Informasi",
+            message: "Shift kasir hari ini sudah dalam status terbuka.",
+            iconType: "success"
+          });
           return;
         }
 
@@ -1005,12 +1115,20 @@
           modalAwal: modalData.amount
         });
 
-        alert("Shift berhasil dibuka!");
+        showCustomAlert({
+          title: "Shift Berhasil Dibuka",
+          message: "Selamat bertugas! Shift kasir telah aktif dan siap digunakan.",
+          iconType: "success"
+        });
         loadDashboardStats(user);
 
       } catch (err) {
         console.error("Error opening shift:", err);
-        alert("Gagal membuka shift: " + err.message);
+        showCustomAlert({
+          title: "Terjadi Kesalahan",
+          message: "Gagal membuka shift: " + err.message,
+          iconType: "danger"
+        });
       }
     }
   }
