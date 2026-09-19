@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Top Up Kas</title>
 
-  <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL (Selaras dengan Index & Produk terbaru) -->
+  <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
@@ -22,11 +22,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat (Firestore & Auth & Storage) -->
+  <!-- Firebase Compat (Firestore & Auth) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
@@ -62,7 +63,6 @@
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
       
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
@@ -484,7 +484,7 @@
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p class="loading-text">Loading...</p>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -638,7 +638,7 @@
           });
         });
 
-        // Save Topup menggunakan Cloud Firestore (db.collection)
+        // Save Topup menggunakan Cloud Firestore dengan Error Logging
         const saveBtn = document.getElementById('btnSimpanTopup');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -661,7 +661,7 @@
                 amount: amount,
                 adminFee: adminFeeValue,
                 total: total,
-                profit: adminFeeValue, // Admin fee masuk ke laba
+                profit: adminFeeValue,
                 note: document.getElementById('topupNote').value || '',
                 userId: user.uid,
                 userName: userName,
@@ -679,6 +679,7 @@
 
             } catch (error) {
               Utils.hideLoading();
+              console.error("FIRESTORE SAVE ERROR:", error);
               Utils.showToast('Gagal menyimpan top up: ' + error.message, 'error');
             }
           });
