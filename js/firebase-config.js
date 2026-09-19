@@ -1,4 +1,4 @@
-// Konfigurasi Firebase WebPOS Hifzi Cell
+// Konfigurasi Firebase WebPOS (Firestore)
 const firebaseConfig = {
   apiKey: "AIzaSyCKU4LAF4sEaIMvsvNDTf_kU-7JmprsdMM",
   authDomain: "managementhifzicell.firebaseapp.com",
@@ -12,6 +12,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-const database = firebase.database();
+// Layanan Firebase
 const auth = firebase.auth();
+const db = firebase.firestore();
 const storage = firebase.storage();
