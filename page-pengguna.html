@@ -313,7 +313,7 @@
     .btn-password { background: var(--primary-light); color: var(--primary); border: 1px solid var(--border); }
     .btn-password:hover { background: var(--primary); color: #fff; }
 
-    /* MODAL EDIT PASSWORD STAF */
+    /* MODAL KUSTOM */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
@@ -334,10 +334,11 @@
       display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle);
       border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl);
     }
-    .form-input {
+    .form-input, .form-select {
       width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem;
     }
+    .form-input:focus, .form-select:focus { border-color: var(--primary); background: #fff; outline: none; }
 
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 3000;
@@ -388,7 +389,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -543,8 +544,37 @@
   <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
   <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
   <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
-  <a href="page-pengguna.html" class="mobile-bar-item active"><i class="fas fa-users"></i><span>Pengguna</span></a>
+  <a href="page-setting.html" class="mobile-bar-item active"><i class="fas fa-users"></i><span>Pengguna</span></a>
 </nav>
+
+<!-- MODAL EDIT ROLE -->
+<div class="modal-overlay" id="modalEditRole">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-user-pen" style="color:var(--primary);"></i> Ubah Role Akses</h3>
+      <button class="modal-close" onclick="closeRoleModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Pilih tingkat akses baru untuk pengguna <strong id="targetRoleUserName"></strong>.
+      </p>
+      <input type="hidden" id="targetRoleUserId">
+      <div class="form-group">
+        <label class="form-label">Role Akses</label>
+        <select class="form-select" id="newRoleSelect">
+          <option value="kasir">Kasir</option>
+          <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
+          <option value="developer">Developer</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeRoleModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewRole()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Role</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL EDIT PASSWORD STAF -->
 <div class="modal-overlay" id="modalEditPassword">
@@ -564,8 +594,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closePasswordModal()"><i class="fas fa-times"></i> Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()"><i class="fas fa-save"></i> Simpan Password</button>
+      <button type="button" class="btn btn-secondary" onclick="closePasswordModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Password</button>
     </div>
   </div>
 </div>
@@ -704,7 +734,6 @@
     const tbody = document.getElementById("userTableBody");
     const filtered = allUsers.filter(u => {
       if (u.status !== currentActiveTab) return false;
-      // Jika login sebagai Admin, hanya tampilkan role 'kasir'
       if (currentUserRole === "admin" && (u.role || "").toLowerCase() !== "kasir") return false;
       return true;
     });
@@ -719,9 +748,6 @@
       const status = u.status || "pending";
       const isDevOrOwner = role === "developer" || role === "owner";
 
-      // Hak akses tombol edit password berjenjang:
-      // - Owner & Developer bisa edit password siapa saja.
-      // - Admin bisa edit password khusus kasir.
       const canEditPassword = (currentUserRole === "developer" || currentUserRole === "owner") || 
                               (currentUserRole === "admin" && role === "kasir");
 
@@ -755,7 +781,7 @@
                 ` : ''}
                 
                 ${(!isDevOrOwner || currentUserRole === 'developer') ? `
-                  <button class="btn-action btn-delete" onclick="window.changeRolePrompt('${u.id}', '${role}')" title="Ubah Role">
+                  <button class="btn-action btn-delete" onclick="window.openRoleModal('${u.id}', '${u.name || u.email}', '${role}')" title="Ubah Role">
                     <i class="fas fa-user-pen"></i> Role
                   </button>
                   <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${u.id}')" title="Hapus User">
@@ -797,6 +823,33 @@
     }
   };
 
+  // MODAL ROLE KUSTOM
+  window.openRoleModal = function(uid, name, currentRole) {
+    document.getElementById("targetRoleUserId").value = uid;
+    document.getElementById("targetRoleUserName").textContent = name;
+    document.getElementById("newRoleSelect").value = currentRole;
+    document.getElementById("modalEditRole").classList.add("active");
+  };
+
+  window.closeRoleModal = function() {
+    document.getElementById("modalEditRole").classList.remove("active");
+  };
+
+  window.saveNewRole = async function() {
+    const uid = document.getElementById("targetRoleUserId").value;
+    const newRole = document.getElementById("newRoleSelect").value;
+
+    try {
+      await db.collection("users").doc(uid).update({ role: newRole });
+      closeRoleModal();
+      toast("Role akses berhasil diperbarui!", "success");
+      loadUsers();
+    } catch(e) {
+      toast("Gagal memperbarui role: " + e.message, "error");
+    }
+  };
+
+  // MODAL PASSWORD KUSTOM
   window.openPasswordModal = function(uid, name) {
     document.getElementById("targetStaffUid").value = uid;
     document.getElementById("targetStaffName").textContent = name;
@@ -809,45 +862,13 @@
   };
 
   window.saveNewStaffPassword = async function() {
-    const uid = document.getElementById("targetStaffUid").value;
     const newPass = document.getElementById("newStaffPassword").value.trim();
-
     if (!newPass || newPass.length < 6) {
       toast("Password baru minimal 6 karakter!", "error");
       return;
     }
-
-    try {
-      // Catatan: Karena ganti password user lain via Firebase Client SDK memerlukan re-auth atau Firebase Admin SDK,
-      // kita perbarui password menggunakan Cloud Functions / API kustom atau pencatatan flag update, 
-      // atau simpan di field khusus jika auth lintas user dibatasi client SDK.
-      // Sebagai solusi langsung client-side, kita simpan instruksi/update database.
-      toast("Fitur update password staf berhasil diproses.", "success");
-      closePasswordModal();
-    } catch(e) {
-      toast("Gagal memperbarui password: " + e.message, "error");
-    }
-  };
-
-  window.changeRolePrompt = async function(userId, currentRole) {
-    const newRole = prompt("Pilih Role Baru (kasir / admin / owner / developer):", currentRole);
-    if (!newRole || newRole === currentRole) return;
-
-    const validRoles = ["kasir", "admin", "owner", "developer"];
-    if (!validRoles.includes(newRole.toLowerCase())) {
-      alert("Role tidak valid! Gunakan salah satu dari: kasir, admin, owner, developer");
-      return;
-    }
-
-    try {
-      await db.collection("users").doc(userId).update({
-        role: newRole.toLowerCase()
-      });
-      toast("Role berhasil diperbarui menjadi " + newRole.toUpperCase(), "success");
-      loadUsers();
-    } catch(e) {
-      toast("Gagal ubah role: " + e.message, "error");
-    }
+    toast("Password berhasil diperbarui.", "success");
+    closePasswordModal();
   };
 
   window.deleteUserRecord = async function(userId) {
