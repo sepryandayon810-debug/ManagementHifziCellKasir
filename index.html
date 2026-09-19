@@ -169,7 +169,6 @@
     .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
-    /* FOOTER USER PROFILE */
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
@@ -186,7 +185,6 @@
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
-    /* MAIN CONTENT */
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -195,7 +193,7 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER DIPERBAIKI (JARAK AMAN & FLEKSIBEL) */
+    /* HEADER DIPERBAIKI (JARAK AMAN & TIDAK TUMPANG TINDIH) */
     .main-header {
       height: var(--header-h); 
       background: var(--bg-surface);
@@ -211,7 +209,7 @@
     .header-left { 
       display: flex; 
       align-items: center; 
-      gap: 0.85rem; /* Jarak pas antara tombol menu dan judul */
+      gap: 0.85rem; 
       min-width: 0;
     }
     .header-title { 
@@ -450,6 +448,28 @@
     .dialog-btn-primary:hover { background: var(--primary-hover); }
     .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
+    /* MODAL TRANSFER SHIFT */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: var(--bg-surface); border-radius: var(--radius-xl);
+      width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+    }
+    .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 1.25rem; }
+    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .form-select {
+      width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem;
+    }
+
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -484,7 +504,6 @@
 <body>
 
 <div class="app-container">
-  <!-- OVERLAY MOBILE -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
   <!-- SIDEBAR LENGKAP -->
@@ -576,7 +595,6 @@
       </div>
     </nav>
 
-    <!-- PROFIL USERNAME AKTIF -->
     <div class="sidebar-footer">
       <div class="user-profile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
@@ -588,7 +606,7 @@
     </div>
   </aside>
 
-  <!-- MAIN WRAPPER -->
+  <!-- MAIN -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
@@ -627,7 +645,7 @@
             <i class="fas fa-store-slash" id="shiftToggleIcon"></i>
           </div>
           <div class="shift-toggle-info">
-            <div class="shift-toggle-label" id="shiftRoleLabel">Operasional Kasir</div>
+            <div class="shift-toggle-label">Operasional Kasir</div>
             <div class="shift-toggle-value" id="shiftToggleText">Buka Shift Kerja</div>
           </div>
           <div class="shift-toggle-switch">
@@ -746,7 +764,7 @@
         </div>
       </div>
 
-      <!-- ⭐ TABEL LAPORAN KINERJA & KAS PER STAF (BERJENJANG) ⭐ -->
+      <!-- TABEL LAPORAN KINERJA & KAS PER STAF -->
       <div class="card" id="cardReportStaff" style="display:none;">
         <div class="card-header">
           <h3 class="card-title"><i class="fas fa-users-viewfinder" style="color:var(--primary);"></i> Laporan Kinerja & Kas Per Staf Hari Ini</h3>
@@ -804,6 +822,10 @@
                 <i class="fas fa-arrow-up" style="color:var(--danger);"></i>
                 <span>Kas Keluar</span>
               </a>
+              <button class="quick-action-btn" id="btnTransferShift" style="background: rgba(99, 102, 241, 0.1); border-color: var(--primary); color: var(--primary);">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Serahkan Shift</span>
+              </button>
             </div>
           </div>
         </div>
@@ -835,12 +857,35 @@
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
+<!-- MODAL TRANSFER SHIFT -->
+<div class="modal-overlay" id="modalTransfer">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-exchange-alt" style="color:var(--primary);"></i> Serahkan / Transfer Shift</h3>
+      <button class="modal-close" onclick="closeTransferModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+        Transfer shift aktif beserta modal ke rekan sesama role (<strong id="transferRoleName"></strong>).
+      </p>
+      <div class="form-group">
+        <label class="form-label">Pilih Penerima</label>
+        <select class="form-select" id="transferTargetUser">
+          <option value="">Memuat daftar...</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeTransferModal()">Batal</button>
+      <button type="button" class="btn btn-primary" id="btnConfirmTransfer" onclick="executeTransfer()">Konfirmasi Transfer</button>
+    </div>
+  </div>
+</div>
+
 <!-- CUSTOM POPUP DIALOG -->
 <div class="custom-modal-backdrop" id="customAlertModal">
   <div class="custom-dialog-card">
-    <div class="dialog-icon-wrap warning" id="dialogIcon">
-      <i class="fas fa-coins"></i>
-    </div>
+    <div class="dialog-icon-wrap warning" id="dialogIcon"><i class="fas fa-coins"></i></div>
     <h3 class="dialog-title" id="dialogTitle">Perhatian</h3>
     <p class="dialog-message" id="dialogMessage">Pesan informasi modal</p>
     <div class="dialog-btn-group">
@@ -867,6 +912,7 @@
 
   let isShiftOpen = false;
   let currentUserRole = "kasir";
+  let availableTransferUsers = [];
 
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
@@ -958,6 +1004,18 @@
     listenShiftStatus(user);
 
     document.getElementById("btnToggleShift").onclick = () => toggleShift(user);
+    
+    // Setup Tombol Transfer Shift
+    document.getElementById("btnTransferShift").onclick = async () => {
+      if (!isShiftOpen) {
+        showCustomAlert({ title: "Informasi", message: "Tidak ada shift aktif untuk ditransfer.", iconType: "warning" });
+        return;
+      }
+      await loadAvailableTransferUsers(user);
+      document.getElementById("transferRoleName").textContent = currentUserRole.toUpperCase();
+      document.getElementById("modalTransfer").classList.add("active");
+    };
+
     document.getElementById("btnLogout").onclick = () => {
       showCustomAlert({
         title: "Konfirmasi Keluar",
@@ -1022,13 +1080,9 @@
         const targetUser = usersMap[m.userId] || {};
         const targetRole = (targetUser.role || "kasir").toLowerCase();
 
-        if (isBoss) {
-          modalAwal += m.amount || 0;
-        } else if (isAdmin && targetRole === "kasir") {
-          modalAwal += m.amount || 0;
-        } else if (!isBoss && !isAdmin && m.userId === user.uid) {
-          modalAwal += m.amount || 0;
-        }
+        if (isBoss) modalAwal += m.amount || 0;
+        else if (isAdmin && targetRole === "kasir") modalAwal += m.amount || 0;
+        else if (!isBoss && !isAdmin && m.userId === user.uid) modalAwal += m.amount || 0;
       });
 
       const transSnapshot = await db.collection("transactions").where("date", "==", today).get();
@@ -1044,27 +1098,11 @@
 
         if (t.status !== "cancelled" && t.status !== "voided") {
           switch (t.type) {
-            case "penjualan":
-              penjualan += t.total || 0;
-              laba += t.profit || 0;
-              trxCount++;
-              break;
-            case "topup":
-              topup += t.amount || 0;
-              laba += t.adminFee || 0;
-              trxCount++;
-              break;
-            case "tarik":
-              tarik += t.amount || 0;
-              laba += t.adminFee || 0;
-              trxCount++;
-              break;
-            case "kas_masuk":
-              kasMasuk += t.amount || 0;
-              break;
-            case "kas_keluar":
-              kasKeluar += t.amount || 0;
-              break;
+            case "penjualan": penjualan += t.total || 0; laba += t.profit || 0; trxCount++; break;
+            case "topup": topup += t.amount || 0; laba += t.adminFee || 0; trxCount++; break;
+            case "tarik": tarik += t.amount || 0; laba += t.adminFee || 0; trxCount++; break;
+            case "kas_masuk": kasMasuk += t.amount || 0; break;
+            case "kas_keluar": kasKeluar += t.amount || 0; break;
           }
         }
       });
@@ -1250,6 +1288,104 @@
       }
     }
   }
+
+  // ⭐ FITUR TRANSFER SHIFT BERJENJANG (Sesama Role) ⭐
+  async function loadAvailableTransferUsers(currentUser) {
+    const today = getTodayString();
+    const select = document.getElementById("transferTargetUser");
+    select.innerHTML = '<option value="">Pilih rekan sesama role...</option>';
+
+    try {
+      const usersSnap = await db.collection("users").where("status", "==", "active").get();
+      availableTransferUsers = [];
+
+      usersSnap.forEach(doc => {
+        const u = { uid: doc.id, ...doc.data() };
+        const uRole = (u.role || "kasir").toLowerCase();
+
+        // Hanya tampilkan user dengan role yang PERSIS SAMA dan bukan diri sendiri
+        if (u.uid === currentUser.uid) return;
+        if (uRole !== currentUserRole) return;
+
+        availableTransferUsers.push(u);
+        const opt = document.createElement("option");
+        opt.value = u.uid;
+        opt.textContent = `${u.name || u.username} (${uRole.toUpperCase()})`;
+        select.appendChild(opt);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  window.closeTransferModal = function() {
+    document.getElementById("modalTransfer").classList.remove("active");
+  };
+
+  window.executeTransfer = async function() {
+    const targetUid = document.getElementById("transferTargetUser").value;
+    if (!targetUid) {
+      toast("Pilih rekan penerima shift terlebih dahulu!", "error");
+      return;
+    }
+
+    const targetUser = availableTransferUsers.find(u => u.uid === targetUid);
+    const today = getTodayString();
+
+    try {
+      const currentModalDoc = await db.collection("modal").doc(`${today}_${currentUser.uid}`).get();
+      const currentModalAmount = currentModalDoc.exists ? (currentModalDoc.data().amount || 0) : 0;
+
+      // Pindahkan data modal ke target user
+      await db.collection("modal").doc(`${today}_${targetUid}`).set({
+        id: `${today}_${targetUid}`,
+        date: today,
+        userId: targetUid,
+        userName: targetUser.name || targetUser.username,
+        amount: currentModalAmount,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // Pindahkan status shift aktif ke target user
+      await db.collection("shifts").doc(`${today}_${targetUid}`).set({
+        id: "shift_" + Date.now(),
+        userId: targetUid,
+        userName: targetUser.name || targetUser.username,
+        date: today,
+        status: "open",
+        modalAwal: currentModalAmount,
+        openTime: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Tutup shift user lama
+      await db.collection("shifts").doc(`${today}_${currentUser.uid}`).update({
+        status: "closed",
+        closedReason: `Ditransfer ke ${targetUser.name || targetUser.username}`
+      });
+
+      closeTransferModal();
+      showCustomAlert({
+        title: "Shift Berhasil Ditransfer",
+        message: `Shift Anda berhasil diserahkan kepada ${targetUser.name || targetUser.username}.`,
+        iconType: "success",
+        onConfirm: () => window.location.reload()
+      });
+
+    } catch (err) {
+      console.error(err);
+      toast("Gagal transfer shift: " + err.message, "error");
+    }
+  };
+
+  function toast(msg, type = "success") {
+    const box = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    el.className = `toast-pill ${type}`;
+    el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'circle-exclamation'}"></i><span>${msg}</span>`;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
 })();
 </script>
 </body>
