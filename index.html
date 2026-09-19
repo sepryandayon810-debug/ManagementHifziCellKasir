@@ -169,7 +169,6 @@
     .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
-    /* FOOTER USER PROFILE */
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
@@ -186,7 +185,6 @@
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
-    /* MAIN CONTENT */
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -195,7 +193,6 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER */
     .main-header {
       height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
@@ -226,7 +223,6 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* SHIFT MASTER TOGGLE */
     .shift-master-toggle {
       background: var(--bg-surface);
       border: 1.5px solid var(--border);
@@ -267,7 +263,6 @@
     }
     .shift-master-toggle.active .shift-toggle-knob { transform: translateX(22px); }
 
-    /* STATS GRID */
     .stats-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem; margin-bottom: 1.5rem;
@@ -293,7 +288,6 @@
     .stat-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
     .stat-value { font-size: 1.35rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
 
-    /* KAS CALCULATION */
     .kas-calculation {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
@@ -340,7 +334,6 @@
       text-align: center; font-family: monospace; border: 1px solid var(--border);
     }
 
-    /* CONTENT GRID */
     .content-grid {
       display: grid; grid-template-columns: 2fr 1.2fr;
       gap: 1.25rem;
@@ -350,6 +343,7 @@
     .card {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+      margin-bottom: 1.25rem;
     }
     .card-header {
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
@@ -375,12 +369,14 @@
     .quick-action-btn i { font-size: 1.4rem; color: var(--primary); transition: color 0.2s; }
     .quick-action-btn:hover i { color: #fff; }
 
-    .btn-icon-box {
-      width: 38px; height: 38px; border-radius: var(--radius-md);
-      background: var(--bg-subtle); border: 1px solid var(--border);
-      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+    /* TABEL LAPORAN KINERJA PER STAF */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    .data-table th {
+      padding: 0.85rem 1rem; background: var(--bg-subtle); color: var(--text-muted);
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border);
     }
+    .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
 
     /* CUSTOM DIALOG POPUP */
     .custom-modal-backdrop {
@@ -399,13 +395,9 @@
       padding: 1.75rem 1.5rem;
       text-align: center;
       box-shadow: var(--shadow-lg);
-      transform: scale(0.95);
-      transition: transform 0.2s ease;
     }
-    .custom-modal-backdrop.open .custom-dialog-card { transform: scale(1); }
     .dialog-icon-wrap {
-      width: 60px; height: 60px;
-      border-radius: 50%;
+      width: 60px; height: 60px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 1.6rem; margin-bottom: 1rem;
     }
@@ -424,7 +416,6 @@
     .dialog-btn-primary:hover { background: var(--primary-hover); }
     .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
-    /* MOBILE BAR */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -448,23 +439,20 @@
     }
   </style>
 
-  <!-- Firebase Compat Lengkap -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/auth.js"></script>
   <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
 <div class="app-container">
-  <!-- OVERLAY MOBILE -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -528,32 +516,16 @@
       </div>
 
       <div class="nav-section">
-        <div class="nav-section-title">Integrasi</div>
-        <ul class="nav-menu">
-          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
-          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
-        </ul>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-title">Penggajian</div>
-        <ul class="nav-menu">
-          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
-        </ul>
-      </div>
-
-      <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
-          <li class="nav-item"><a href="page-setting.html" class="nav-link active" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
         </ul>
       </div>
     </nav>
 
-    <!-- PROFIL USERNAME AKTIF -->
     <div class="sidebar-footer">
       <div class="user-profile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
@@ -565,7 +537,7 @@
     </div>
   </aside>
 
-  <!-- MAIN WRAPPER -->
+  <!-- MAIN -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
@@ -602,7 +574,7 @@
             <i class="fas fa-store-slash" id="shiftToggleIcon"></i>
           </div>
           <div class="shift-toggle-info">
-            <div class="shift-toggle-label" id="shiftRoleLabel">Operasional Kasir</div>
+            <div class="shift-toggle-label">Operasional Kasir</div>
             <div class="shift-toggle-value" id="shiftToggleText">Buka Shift Kerja</div>
           </div>
           <div class="shift-toggle-switch">
@@ -721,7 +693,33 @@
         </div>
       </div>
 
-      <!-- CONTENT GRID -->
+      <!-- ⭐ TABEL LAPORAN KINERJA & KAS PER STAF (BERJENJANG) ⭐ -->
+      <div class="card" id="cardReportStaff" style="display:none;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-users-viewfinder" style="color:var(--primary);"></i> Laporan Kinerja & Kas Per Staf Hari Ini</h3>
+          <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.65rem; border-radius:999px;" id="reportScopeBadge">Hierarki</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama Staf</th>
+                  <th>Role</th>
+                  <th>Modal Awal</th>
+                  <th>Penjualan</th>
+                  <th style="text-align:right">Total Transaksi</th>
+                </tr>
+              </thead>
+              <tbody id="staffReportTableBody">
+                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat laporan...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTENT GRID: PINTASAN & INFO -->
       <div class="content-grid">
         <div class="card">
           <div class="card-header">
@@ -817,27 +815,20 @@
   let isShiftOpen = false;
   let currentUserRole = "kasir";
 
-  // SINKRONISASI NAMA TOKO KE SIDEBAR OTOMATIS
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
-
     const cachedName = localStorage.getItem("webpos_store_name");
     if (cachedName) logoEl.textContent = cachedName;
-
     try {
       const doc = await db.collection("settings").doc("store").get();
       if (doc.exists && doc.data().name) {
-        const storeName = doc.data().name;
-        logoEl.textContent = storeName;
-        localStorage.setItem("webpos_store_name", storeName);
+        logoEl.textContent = doc.data().name;
+        localStorage.setItem("webpos_store_name", doc.data().name);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   }
 
-  // FUNGSI CUSTOM ALERT POPUP MODERN
   window.showCustomAlert = function({ title, message, iconType = "warning", confirmText = "OK", onConfirm = null, showCancel = false }) {
     const backdrop = document.getElementById("customAlertModal");
     const iconWrap = document.getElementById("dialogIcon");
@@ -851,31 +842,21 @@
     btnConfirm.textContent = confirmText;
 
     iconWrap.className = `dialog-icon-wrap ${iconType}`;
-    if (iconType === "warning") {
-      iconWrap.innerHTML = '<i class="fas fa-coins"></i>';
-    } else if (iconType === "danger") {
-      iconWrap.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
-    } else {
-      iconWrap.innerHTML = '<i class="fas fa-circle-check"></i>';
-    }
+    if (iconType === "warning") iconWrap.innerHTML = '<i class="fas fa-coins"></i>';
+    else if (iconType === "danger") iconWrap.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+    else iconWrap.innerHTML = '<i class="fas fa-circle-check"></i>';
 
     btnCancel.style.display = showCancel ? "block" : "none";
-
-    btnConfirm.onclick = () => {
-      closeCustomAlert();
-      if (typeof onConfirm === "function") onConfirm();
-    };
-
+    btnConfirm.onclick = () => { closeCustomAlert(); if (onConfirm) onConfirm(); };
     backdrop.classList.add("open");
   };
 
   window.closeCustomAlert = function() {
-    const backdrop = document.getElementById("customAlertModal");
-    if (backdrop) backdrop.classList.remove("open");
+    document.getElementById("customAlertModal").classList.remove("open");
   };
 
   document.addEventListener("DOMContentLoaded", () => {
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(user => {
       if (!user) {
         window.location.href = "login.html";
         return;
@@ -906,39 +887,32 @@
       document.getElementById("namaUserDisplay").textContent = displayName;
 
       const avatar = document.getElementById("userAvatar");
-      if (avatar) {
-        avatar.textContent = displayName.slice(0, 2).toUpperCase();
-      }
+      if (avatar) avatar.textContent = displayName.slice(0, 2).toUpperCase();
 
-      // Berikan label khusus pada dashboard Owner / Developer
       if (currentUserRole === "owner" || currentUserRole === "developer") {
-        const lblModal = document.getElementById("labelCardModal");
-        if (lblModal) lblModal.textContent = "Total Modal Toko";
-        const lblRincian = document.getElementById("labelRincianModal");
-        if (lblRincian) lblRincian.textContent = "Total Modal Seluruh Kasir";
+        document.getElementById("labelCardModal").textContent = "Total Modal Toko";
+        document.getElementById("labelRincianModal").textContent = "Total Modal Seluruh Staf";
+      } else if (currentUserRole === "admin") {
+        document.getElementById("labelCardModal").textContent = "Total Modal Kasir";
+        document.getElementById("labelRincianModal").textContent = "Total Modal Tim Kasir";
       }
 
     } catch (err) {
-      console.error("Gagal load profil:", err);
-      document.getElementById("userName").textContent = user.email.split("@")[0];
-      document.getElementById("userRole").textContent = "ADMIN";
+      console.error(err);
     }
 
     loadDashboardStats(user);
     listenShiftStatus(user);
 
     document.getElementById("btnToggleShift").onclick = () => toggleShift(user);
-    
     document.getElementById("btnLogout").onclick = () => {
       showCustomAlert({
         title: "Konfirmasi Keluar",
-        message: "Apakah Anda yakin ingin keluar dari sistem WebPOS?",
+        message: "Keluar dari sistem WebPOS?",
         iconType: "danger",
         confirmText: "Ya, Keluar",
         showCancel: true,
-        onConfirm: () => {
-          auth.signOut().then(() => window.location.href = "login.html");
-        }
+        onConfirm: () => auth.signOut().then(() => window.location.href = "login.html")
       });
     };
 
@@ -955,10 +929,7 @@
     const menuToggle = document.getElementById("menuToggle");
     const mobileMenuToggle = document.getElementById("mobileMenuToggle");
 
-    if (menuToggle) {
-      menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
-    }
-
+    if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
     if (mobileMenuToggle) {
       mobileMenuToggle.onclick = (e) => {
         e.stopPropagation();
@@ -966,69 +937,61 @@
         backdrop.classList.add("active");
       };
     }
-
     backdrop.onclick = () => {
       sidebar.classList.remove("mobile-open");
       backdrop.classList.remove("active");
     };
 
     document.querySelectorAll(".nav-dropdown").forEach(d => {
-      const toggle = d.querySelector(".nav-dropdown-toggle");
-      if (toggle) {
-        toggle.onclick = (e) => {
-          e.preventDefault();
-          d.classList.toggle("open");
-        };
-      }
+      const t = d.querySelector(".nav-dropdown-toggle");
+      if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
     });
-
-    const menuSearch = document.getElementById("menuSearch");
-    if (menuSearch) {
-      menuSearch.oninput = (e) => {
-        const term = e.target.value.toLowerCase().trim();
-        document.querySelectorAll(".sidebar-nav .nav-item").forEach(item => {
-          const txt = item.textContent.toLowerCase();
-          item.style.display = (!term || txt.includes(term)) ? "" : "none";
-        });
-      };
-    }
   }
 
-  // ⭐ STATISTIK KAS & TRANSAKSI (AKUMULASI TOTAL UNTUK OWNER / DEVELOPER) ⭐
+  // ⭐ KALKULASI STATISTIK DENGAN HIERARKI BERJENJANG ⭐
   async function loadDashboardStats(user) {
     const today = getTodayString();
     const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
+    const isAdmin = currentUserRole === "admin";
 
     try {
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
 
-      // 1. HITUNG MODAL:
-      // Jika Owner/Developer -> Jumlahkan seluruh modal yang dialokasikan hari ini
-      // Jika Kasir -> Hanya modal miliknya sendiri
-      if (isBoss) {
-        const modalSnap = await db.collection("modal")
-          .where("date", "==", today)
-          .get();
-        modalSnap.forEach(doc => {
-          modalAwal += doc.data().amount || 0;
-        });
-      } else {
-        const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-        if (modalDoc.exists) {
-          modalAwal = modalDoc.data().amount || 0;
+      // Ambil daftar user untuk filter role
+      const usersSnap = await db.collection("users").get();
+      const usersMap = {};
+      usersSnap.forEach(doc => {
+        usersMap[doc.id] = { id: doc.id, ...doc.data() };
+      });
+
+      // 1. HITUNG MODAL BERJENJANG
+      const modalSnap = await db.collection("modal").where("date", "==", today).get();
+      modalSnap.forEach(doc => {
+        const m = doc.data();
+        const targetUser = usersMap[m.userId] || {};
+        const targetRole = (targetUser.role || "kasir").toLowerCase();
+
+        if (isBoss) {
+          modalAwal += m.amount || 0; // Owner lihat semua
+        } else if (isAdmin && targetRole === "kasir") {
+          modalAwal += m.amount || 0; // Admin lihat kasir
+        } else if (!isBoss && !isAdmin && m.userId === user.uid) {
+          modalAwal += m.amount || 0; // Kasir lihat diri sendiri
         }
-      }
+      });
 
       // 2. HITUNG TRANSAKSI HARI INI
-      const transSnapshot = await db.collection("transactions")
-        .where("date", "==", today)
-        .get();
-
+      const transSnapshot = await db.collection("transactions").where("date", "==", today).get();
       transSnapshot.forEach(doc => {
         const t = doc.data();
-        // Kasir hanya menghitung transaksinya sendiri, Owner/Dev menghitung semua
-        if (!isBoss && t.userId && t.userId !== user.uid) return;
+        const tUser = usersMap[t.userId] || {};
+        const tRole = (tUser.role || "kasir").toLowerCase();
+
+        if (!isBoss) {
+          if (isAdmin && tRole !== "kasir" && t.userId !== user.uid) return;
+          if (!isAdmin && t.userId !== user.uid) return;
+        }
 
         if (t.status !== "cancelled" && t.status !== "voided") {
           switch (t.type) {
@@ -1058,23 +1021,23 @@
       });
 
       // 3. HITUNG PIUTANG AKTIF HARI INI
-      const debtsSnapshot = await db.collection("debts")
-        .where("type", "==", "piutang")
-        .where("status", "==", "active")
-        .get();
-
+      const debtsSnapshot = await db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get();
       debtsSnapshot.forEach(doc => {
         const d = doc.data();
         if (d.date === today) {
-          if (!isBoss && d.userId && d.userId !== user.uid) return;
+          const dUser = usersMap[d.userId] || {};
+          const dRole = (dUser.role || "kasir").toLowerCase();
+          if (!isBoss) {
+            if (isAdmin && dRole !== "kasir" && d.userId !== user.uid) return;
+            if (!isAdmin && d.userId !== user.uid) return;
+          }
           piutang += d.remaining || 0;
         }
       });
 
-      // 4. HITUNG KAS FISIK LACI
       const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topup - tarik - piutang;
 
-      // Render ke DOM
+      // Render Dashboard Stats
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
@@ -1090,9 +1053,78 @@
       document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
+      // 4. RENDER TABEL LAPORAN PER STAF (Hanya muncul untuk Owner, Dev, dan Admin)
+      if (isBoss || isAdmin) {
+        renderStaffReportTable(modalSnap, transSnapshot, usersMap, isBoss, isAdmin);
+      }
+
     } catch (err) {
       console.error("Gagal load stats:", err);
     }
+  }
+
+  // RENDER TABEL REKAPITULASI PER STAF
+  function renderStaffReportTable(modalSnap, transSnap, usersMap, isBoss, isAdmin) {
+    const cardReport = document.getElementById("cardReportStaff");
+    const tbody = document.getElementById("staffReportTableBody");
+    const badge = document.getElementById("reportScopeBadge");
+    cardReport.style.display = "block";
+    badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
+
+    const staffData = {};
+
+    // Rekap modal per user
+    modalSnap.forEach(doc => {
+      const m = doc.data();
+      const u = usersMap[m.userId] || {};
+      const role = (u.role || "kasir").toLowerCase();
+
+      if (isAdmin && role !== "kasir") return;
+
+      if (!staffData[m.userId]) {
+        staffData[m.userId] = { name: m.userName || u.name || 'Staf', role: role, modal: 0, penjualan: 0, count: 0 };
+      }
+      staffData[m.userId].modal += m.amount || 0;
+    });
+
+    // Rekap transaksi per user
+    transSnap.forEach(doc => {
+      const t = doc.data();
+      const u = usersMap[t.userId] || {};
+      const role = (u.role || "kasir").toLowerCase();
+
+      if (!staffData[t.userId]) {
+        if (isBoss || (isAdmin && role === "kasir")) {
+          staffData[t.userId] = { name: u.name || u.username || 'Staf', role: role, modal: 0, penjualan: 0, count: 0 };
+        } else {
+          return;
+        }
+      }
+
+      if (t.status !== "cancelled" && t.status !== "voided" && t.type === "penjualan") {
+        staffData[t.userId].penjualan += t.total || 0;
+        staffData[t.userId].count++;
+      }
+    });
+
+    const keys = Object.keys(staffData);
+    if (keys.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">Belum ada aktivitas staf hari ini.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = keys.map(uid => {
+      const s = staffData[uid];
+      return `
+        <tr>
+          <td><strong>${s.name}</strong></td>
+          <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${s.role.toUpperCase()}</span></td>
+          <td>${formatRupiah(s.modal)}</td>
+          <td style="color:var(--success); font-weight:700;">${formatRupiah(s.penjualan)}</td>
+          <td style="text-align:right">${s.count} Trx</td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function listenShiftStatus(user) {
@@ -1132,11 +1164,9 @@
       window.location.href = "page-kas-shift.html";
     } else {
       try {
-        // Cek apakah modal untuk user login ini sudah diinput
         const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
-        // JIKA MODAL BELUM DIISI -> TAMPILKAN CUSTOM POPUP MODAL
         if (!modalData || !modalData.amount) {
           showCustomAlert({
             title: "Modal Awal Belum Diisi",
@@ -1153,11 +1183,7 @@
 
         const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
         if (shiftDoc.exists && shiftDoc.data().status === "open") {
-          showCustomAlert({
-            title: "Informasi",
-            message: "Shift Anda hari ini sudah dalam status terbuka.",
-            iconType: "success"
-          });
+          showCustomAlert({ title: "Informasi", message: "Shift Anda hari ini sudah terbuka.", iconType: "success" });
           return;
         }
 
@@ -1172,20 +1198,12 @@
           modalAwal: modalData.amount
         });
 
-        showCustomAlert({
-          title: "Shift Berhasil Dibuka",
-          message: "Shift kasir telah aktif dan siap melayani transaksi.",
-          iconType: "success"
-        });
+        showCustomAlert({ title: "Shift Berhasil Dibuka", message: "Shift kasir aktif dan siap melayani transaksi.", iconType: "success" });
         loadDashboardStats(user);
 
       } catch (err) {
-        console.error("Error opening shift:", err);
-        showCustomAlert({
-          title: "Terjadi Kesalahan",
-          message: "Gagal membuka shift: " + err.message,
-          iconType: "danger"
-        });
+        console.error(err);
+        showCustomAlert({ title: "Terjadi Kesalahan", message: "Gagal membuka shift: " + err.message, iconType: "danger" });
       }
     }
   }
