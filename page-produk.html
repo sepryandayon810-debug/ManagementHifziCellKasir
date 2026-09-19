@@ -272,13 +272,13 @@
     .view-btn { padding: 0.5rem 0.75rem; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
     .view-btn.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-sm); }
 
-    /* ⭐ FORMAT GRID 3x3 */
+    /* GRID 3x3 */
     .produk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     @media(max-width: 768px) {
       .produk-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ⭐ FORMAT LIST TAMPIL VERTICAL KE BAWAH */
+    /* ⭐ FORMAT LIST VERTIKAL KE BAWAH (Teks Nama Tidak Terpotong) */
     .produk-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
     .produk-list .produk-card {
       flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
@@ -290,7 +290,7 @@
       flex: 1; padding: 0 1rem; display: flex; flex-direction: column; justify-content: center; min-width: 0;
     }
     .produk-list .produk-name {
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; margin-bottom: 0;
+      white-space: normal; overflow: visible; text-overflow: unset; font-size: 0.95rem; margin-bottom: 0.1rem; line-height: 1.3;
     }
     .produk-list .produk-actions {
       border-top: none; background: transparent; padding: 0; gap: 0.4rem;
@@ -318,7 +318,7 @@
     }
 
     .produk-info { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
-    .produk-name { font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 0.2rem; }
+    .produk-name { font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 0.2rem; word-break: break-word; }
     .produk-code { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; }
     .produk-price { font-weight: 800; color: var(--primary); font-size: 0.95rem; margin-top: 0.2rem; }
     .produk-reseller { font-weight: 700; color: var(--warning); font-size: 0.85rem; }
@@ -338,7 +338,7 @@
     .kategori-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
     .kategori-card {
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s;
+      padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s; cursor: pointer;
     }
     .kategori-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: var(--shadow-md); }
     .kategori-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #fff; flex-shrink: 0; }
@@ -520,7 +520,7 @@
     <header class="main-header">
       <div class="header-left">
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-        <h1 class="header-title">Produk</h1>
+        <h1 class="header-title" id="pageMainTitle">Produk</h1>
       </div>
       <div class="header-actions">
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
@@ -554,7 +554,7 @@
       </div>
 
       <!-- TAB NAV (PRODUK & KATEGORI) -->
-      <div class="tab-nav">
+      <div class="tab-nav" id="mainTabNav">
         <button class="tab-btn active" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
         <button class="tab-btn" data-tab="kategori"><i class="fas fa-tags"></i> Kategori</button>
       </div>
@@ -591,7 +591,8 @@
 
       <!-- KONTEN TAB KATEGORI -->
       <div id="tab-kategori" class="tab-content" style="display:none;">
-        <div style="margin-bottom: 1.25rem;">
+        <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Semua Kategori</button>
           <button class="btn btn-primary" id="btnAddKategori"><i class="fas fa-plus"></i> Tambah Kategori Baru</button>
         </div>
         <div class="kategori-grid" id="kategoriGrid">
@@ -735,6 +736,7 @@
   let productsList = [];
   let categoriesList = [];
   let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
+  let selectedCategoryFilter = "";
 
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
@@ -822,6 +824,13 @@
         document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
         btn.classList.add("active");
         document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
+        if (btn.dataset.tab === "produk") {
+          selectedCategoryFilter = "";
+          document.getElementById("filterKategori").value = "";
+          document.getElementById("pageMainTitle").textContent = "Produk";
+          document.getElementById("btnBackToAllCat").style.display = "none";
+          renderProducts();
+        }
       };
     });
   }
@@ -883,6 +892,29 @@
     }
   }
 
+  window.selectCategory = function(catId, catName) {
+    selectedCategoryFilter = catId;
+    document.getElementById("filterKategori").value = catId;
+    document.getElementById("pageMainTitle").textContent = "Kategori: " + catName;
+    document.getElementById("btnBackToAllCat").style.display = "inline-flex";
+
+    // Pindah otomatis ke tab produk untuk menampilkan list produk dalam kategori tersebut
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector('.tab-btn[data-tab="produk"]').classList.add("active");
+    document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+    document.getElementById("tab-produk").style.display = "block";
+
+    renderProducts();
+  };
+
+  window.resetCategoryFilter = function() {
+    selectedCategoryFilter = "";
+    document.getElementById("filterKategori").value = "";
+    document.getElementById("pageMainTitle").textContent = "Produk";
+    document.getElementById("btnBackToAllCat").style.display = "none";
+    renderProducts();
+  };
+
   function renderCategoriesGrid() {
     const grid = document.getElementById("kategoriGrid");
     if (categoriesList.length === 0) {
@@ -893,13 +925,13 @@
     grid.innerHTML = categoriesList.map(c => {
       const count = productsList.filter(p => p.categoryId === c.id).length;
       return `
-        <div class="kategori-card">
+        <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')">
           <div class="kategori-icon" style="background:var(--primary);"><i class="fas fa-tags"></i></div>
           <div class="kategori-info">
             <div class="kategori-name">${c.name}</div>
             <div class="kategori-count">${count} produk terdaftar</div>
           </div>
-          <div style="display:flex; gap:0.35rem;">
+          <div style="display:flex; gap:0.35rem;" onclick="event.stopPropagation()">
             <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}', '${c.name}')"><i class="fas fa-edit"></i></button>
             <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
           </div>
@@ -944,7 +976,7 @@
     const grid = document.getElementById("produkGrid");
     const search = document.getElementById("searchProduk").value.toLowerCase();
     const statusFilter = document.getElementById("filterStatus").value;
-    const katFilter = document.getElementById("filterKategori").value;
+    const katFilter = selectedCategoryFilter || document.getElementById("filterKategori").value;
 
     const filtered = productsList.filter(p => {
       const matchSearch = (p.name || "").toLowerCase().includes(search) || (p.code || "").toLowerCase().includes(search);
@@ -1015,7 +1047,7 @@
     document.getElementById("produkId").value = prod ? prod.id : "";
     document.getElementById("modalTitle").textContent = prod ? "Edit Produk" : "Tambah Produk Baru";
     document.getElementById("produkName").value = prod ? prod.name : "";
-    document.getElementById("produkKategori").value = prod ? (prod.categoryId || "") : "";
+    document.getElementById("produkKategori").value = prod ? (prod.categoryId || "") : (selectedCategoryFilter || "");
     document.getElementById("produkCost").value = prod && prod.costPrice !== undefined && prod.costPrice !== 0 ? prod.costPrice : "";
     document.getElementById("produkPrice").value = prod && prod.sellingPrice !== undefined && prod.sellingPrice !== 0 ? prod.sellingPrice : "";
     document.getElementById("produkResellerPrice").value = prod && prod.resellerPrice !== undefined && prod.resellerPrice !== 0 ? prod.resellerPrice : "";
