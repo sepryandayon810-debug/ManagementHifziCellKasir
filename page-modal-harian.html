@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <title>WebPOS - Modal Harian</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+    }
+
+    [data-theme="dark"] {
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.15);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container { display: flex; min-height: 100vh; position: relative; }
+
+    /* BACKDROP */
+    .sidebar-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+      z-index: 999; opacity: 0; visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-width); height: 100vh;
+      background: var(--bg-surface); border-right: 1px solid var(--border);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: transform 0.25s ease, width 0.25s ease;
+    }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mobile-open { transform: translateX(0); }
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: var(--header-h);
+    }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 1.15rem;
+    }
+    .logo-text {
+      font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sidebar.collapsed .logo-text { display: none; }
+
+    .menu-toggle {
+      width: 28px; height: 28px; background: var(--primary);
+      border: none; border-radius: 50%; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input {
+      width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none;
+    }
+    .sidebar.collapsed .sidebar-search { display: none; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0.35rem 0.75rem; margin-bottom: 0.2rem;
+    }
+    .sidebar.collapsed .nav-section-title { display: none; }
+
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
+      color: var(--text-sub); text-decoration: none;
+      font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+    }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
+
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
+    }
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
+
+    .sidebar-footer {
+      padding: 0.85rem 1rem; border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-width);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left 0.25s; min-width: 0;
+    }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+
+    /* HEADER */
+    .main-header {
+      height: var(--header-h); background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 90;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .header-title { font-size: 1.25rem; font-weight: 700; }
+    .btn-icon-box {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+
+    .page-content { padding: 1.5rem; flex: 1; max-width: 1000px; }
+
+    /* CARD CONTAINER */
+    .card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .card-header {
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .card-body { padding: 1.5rem; }
+
+    /* INPUT TOTAL MODAL */
+    .modal-input-display {
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-label-text { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; }
+    .modal-amount-input {
+      font-size: 2.2rem; font-weight: 800; color: var(--primary);
+      background: transparent; border: none; outline: none; text-align: center; width: 100%;
+      font-family: inherit; margin-top: 0.25rem;
+    }
+
+    /* QUICK CHIPS */
+    .quick-chips-grid {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;
+    }
+    .chip-btn {
+      padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .chip-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+
+    /* DENOMINATION CALCULATOR */
+    .denom-title {
+      font-size: 0.88rem; font-weight: 700; margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.5rem; color: var(--text-sub);
+    }
+    .denom-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .denom-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-subtle); padding: 0.65rem 0.85rem; border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+    .denom-label { font-size: 0.82rem; font-weight: 700; }
+    .denom-input {
+      width: 70px; padding: 0.4rem; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); text-align: center; font-size: 0.85rem; font-weight: 700;
+      outline: none; background: #fff;
+    }
+    .denom-input:focus { border-color: var(--primary); }
+
+    /* ACTION BUTTONS */
+    .action-row { display: flex; gap: 0.75rem; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.75rem 1.25rem; border-radius: var(--radius-md); font-family: inherit;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer; border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; flex: 1; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
+    .btn-secondary:hover { background: var(--border); }
+
+    /* TOAST */
+    .toast-box {
+      position: fixed; top: 1rem; right: 1rem; z-index: 3000;
+      display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
+    }
+    .toast-pill {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
+      background: var(--bg-surface); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md); border-left: 4px solid var(--primary);
+      font-size: 0.85rem; font-weight: 600;
+    }
+    .toast-pill.success { border-left-color: var(--success); }
+    .toast-pill.error { border-left-color: var(--danger); }
+
+    /* MOBILE BAR */
+    .mobile-bar {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
+      z-index: 99; padding: 0 0.5rem;
+    }
+    .mobile-bar-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600;
+    }
+    .mobile-bar-item.active { color: var(--primary); }
+    .mobile-bar-item i { font-size: 1.1rem; }
+
+    @media (max-width: 1024px) {
+      .mobile-bar { display: flex; }
+      .page-content { padding-bottom: calc(60px + 1.5rem); }
+      .d-md-none { display: flex !important; }
+    }
+    @media (min-width: 1025px) {
+      .d-md-none { display: none !important; }
+    }
+  </style>
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- SIDEBAR (PERSIS INDEX) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span class="logo-text">WebPOS</span>
+      </div>
+      <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
+    </div>
+
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Utama</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="index.html" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="page-kasir.html" class="nav-link"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+          <li class="nav-item"><a href="page-produk.html" class="nav-link"><i class="fas fa-box"></i><span>Produk</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Transaksi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-riwayat.html" class="nav-link"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+          <li class="nav-item nav-dropdown open" id="dropdownKas">
+            <div class="nav-link nav-dropdown-toggle">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <i class="fas fa-wallet"></i><span>Kas Management</span>
+              </div>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </div>
+            <ul class="nav-submenu">
+              <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link active"><span>Modal Harian</span></a></li>
+              <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+              <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+              <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+              <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+              <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+              <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a href="page-pembelian.html" class="nav-link"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+          <li class="nav-item"><a href="page-hutang.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Laporan</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-laporan.html" class="nav-link"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+          <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+          <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Sistem</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-backup.html" class="nav-link"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-reset.html" class="nav-link"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Memuat...</div>
+          <div class="user-role" id="userRole">-</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-left">
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        <h1 class="header-title">Set Modal Awal Harian</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- KARTU FORM MODAL -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-coins" style="color:var(--primary);"></i> Nominal Saldo Fisik Laci (Awal Shift)</h3>
+          <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.65rem; border-radius:999px;" id="currentDateBadge">Hari Ini</span>
+        </div>
+
+        <div class="card-body">
+          <div class="modal-input-display">
+            <span class="modal-label-text">Total Modal Awal yang Diinput</span>
+            <input type="text" class="modal-amount-input" id="totalModalInput" value="Rp 0" autocomplete="off">
+          </div>
+
+          <!-- PINTASAN NOMINAL CEPAT -->
+          <div class="quick-chips-grid">
+            <button type="button" class="chip-btn" onclick="setQuickAmount(50000)">Rp 50.000</button>
+            <button type="button" class="chip-btn" onclick="setQuickAmount(100000)">Rp 100.000</button>
+            <button type="button" class="chip-btn" onclick="setQuickAmount(200000)">Rp 200.000</button>
+            <button type="button" class="chip-btn" onclick="setQuickAmount(300000)">Rp 300.000</button>
+            <button type="button" class="chip-btn" onclick="setQuickAmount(500000)">Rp 500.000</button>
+            <button type="button" class="chip-btn" onclick="clearModalAmount()" style="color:var(--danger)">Reset (0)</button>
+          </div>
+
+          <!-- KALKULATOR PECAHAN LEMBAR UANG -->
+          <div class="denom-title">
+            <i class="fas fa-money-bill-wave" style="color:var(--success);"></i> Hitung Pecahan Uang Fisik (Opsional)
+          </div>
+
+          <div class="denom-grid">
+            <div class="denom-item">
+              <span class="denom-label">Rp 100.000</span>
+              <input type="number" class="denom-input" data-nominal="100000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+            <div class="denom-item">
+              <span class="denom-label">Rp 50.000</span>
+              <input type="number" class="denom-input" data-nominal="50000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+            <div class="denom-item">
+              <span class="denom-label">Rp 20.000</span>
+              <input type="number" class="denom-input" data-nominal="20000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+            <div class="denom-item">
+              <span class="denom-label">Rp 10.000</span>
+              <input type="number" class="denom-input" data-nominal="10000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+            <div class="denom-item">
+              <span class="denom-label">Rp 5.000</span>
+              <input type="number" class="denom-input" data-nominal="5000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+            <div class="denom-item">
+              <span class="denom-label">Rp 2.000 / Koin</span>
+              <input type="number" class="denom-input" data-nominal="2000" min="0" placeholder="0" oninput="calcDenominations()">
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">Batal / Kembali</button>
+            <button type="button" class="btn btn-primary" id="btnSaveModal">
+              <i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MOBILE DOCK -->
+<nav class="mobile-bar">
+  <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+  <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
+  <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+</nav>
+
+<div class="toast-box" id="toastContainer"></div>
+
+<script>
+(function() {
+  "use strict";
+
+  function formatRupiah(num) {
+    return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function getTodayString() {
+    const d = new Date();
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
+  function toast(msg, type = "success") {
+    const box = document.getElementById("toastContainer");
+    const el = document.createElement("div");
+    el.className = `toast-pill ${type}`;
+    el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'circle-exclamation'}"></i><span>${msg}</span>`;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  let rawModalAmount = 0;
+  let currentUser = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+      currentUser = user;
+      initPage(user);
+    });
+  });
+
+  async function initPage(user) {
+    setupSidebarEvents();
+
+    // Load profil pengguna
+    try {
+      const uDoc = await db.collection("users").doc(user.uid).get();
+      if (uDoc.exists) {
+        const u = uDoc.data();
+        const dName = u.name || user.email.split("@")[0];
+        document.getElementById("userName").textContent = dName;
+        document.getElementById("userRole").textContent = (u.role || "Admin").toUpperCase();
+        if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Set tanggal hari ini
+    const todayStr = getTodayString();
+    document.getElementById("currentDateBadge").textContent = todayStr;
+
+    // Cek apakah modal hari ini sudah pernah diisi sebelumnya
+    try {
+      const modalDoc = await db.collection("modal").doc(`${todayStr}_${user.uid}`).get();
+      if (modalDoc.exists && modalDoc.data().amount) {
+        rawModalAmount = modalDoc.data().amount;
+        updateModalDisplay();
+      }
+    } catch (e) {
+      console.error("Gagal load modal lama:", e);
+    }
+
+    // Event input manual langsung pada input text
+    const inputDisplay = document.getElementById("totalModalInput");
+    inputDisplay.addEventListener("input", (e) => {
+      const num = parseInt(e.target.value.replace(/\D/g, "")) || 0;
+      rawModalAmount = num;
+      inputDisplay.value = formatRupiah(num);
+    });
+
+    document.getElementById("btnSaveModal").onclick = saveModalHarian;
+  }
+
+  function setupSidebarEvents() {
+    const sidebar = document.getElementById("sidebar");
+    const backdrop = document.getElementById("sidebarBackdrop");
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+
+    if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
+    if (mobileMenuToggle) {
+      mobileMenuToggle.onclick = (e) => {
+        e.stopPropagation();
+        sidebar.classList.add("mobile-open");
+        backdrop.classList.add("active");
+      };
+    }
+    backdrop.onclick = () => {
+      sidebar.classList.remove("mobile-open");
+      backdrop.classList.remove("active");
+    };
+
+    document.querySelectorAll(".nav-dropdown").forEach(d => {
+      const t = d.querySelector(".nav-dropdown-toggle");
+      if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    });
+
+    document.getElementById("btnThemeToggle").onclick = () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+      localStorage.setItem("webpos_theme", isDark ? "light" : "dark");
+    };
+  }
+
+  // HITUNG OTOMATIS DARI PECAHAN
+  window.calcDenominations = function() {
+    let total = 0;
+    document.querySelectorAll(".denom-input").forEach(inp => {
+      const nom = parseInt(inp.dataset.nominal) || 0;
+      const count = parseInt(inp.value) || 0;
+      total += nom * count;
+    });
+
+    if (total > 0) {
+      rawModalAmount = total;
+      updateModalDisplay();
+    }
+  };
+
+  window.setQuickAmount = function(amount) {
+    rawModalAmount = amount;
+    // Kosongkan input pecahan agar tidak membingungkan
+    document.querySelectorAll(".denom-input").forEach(inp => inp.value = "");
+    updateModalDisplay();
+  };
+
+  window.clearModalAmount = function() {
+    rawModalAmount = 0;
+    document.querySelectorAll(".denom-input").forEach(inp => inp.value = "");
+    updateModalDisplay();
+  };
+
+  function updateModalDisplay() {
+    document.getElementById("totalModalInput").value = formatRupiah(rawModalAmount);
+  }
+
+  // SIMPAN MODAL KE FIRESTORE
+  async function saveModalHarian() {
+    if (rawModalAmount <= 0) {
+      toast("Masukkan nominal modal awal yang valid (lebih dari 0)!", "error");
+      return;
+    }
+
+    const todayStr = getTodayString();
+    const btn = document.getElementById("btnSaveModal");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+    try {
+      const docId = `${todayStr}_${currentUser.uid}`;
+      const kasirName = document.getElementById("userName").textContent;
+
+      // 1. Simpan ke koleksi modal
+      await db.collection("modal").doc(docId).set({
+        id: docId,
+        date: todayStr,
+        userId: currentUser.uid,
+        userName: kasirName,
+        amount: rawModalAmount,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // 2. Jika diarahkan dari dashboard (fromDashboard flag aktif), langsung buka shift kerja
+      const isFromDash = localStorage.getItem("fromDashboard") === "true";
+
+      if (isFromDash) {
+        localStorage.removeItem("fromDashboard");
+
+        // Buka shift di collection 'shifts'
+        await db.collection("shifts").doc(docId).set({
+          userId: currentUser.uid,
+          userName: kasirName,
+          date: todayStr,
+          status: "open",
+          modalAwal: rawModalAmount,
+          openTime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        toast("Modal disimpan & Shift kerja berhasil dibuka!", "success");
+      } else {
+        toast("Modal awal berhasil diperbarui", "success");
+      }
+
+      // Kembali ke Dashboard Utama
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 1200);
+
+    } catch (err) {
+      console.error("Gagal simpan modal:", err);
+      toast("Gagal menyimpan modal: " + err.message, "error");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
+    }
+  }
+
+})();
+</script>
+</body>
+</html>
