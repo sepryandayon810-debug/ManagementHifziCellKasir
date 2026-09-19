@@ -71,7 +71,6 @@
 
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
-    /* BACKDROP */
     .sidebar-backdrop {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
@@ -80,7 +79,6 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -110,6 +108,7 @@
       font-size: 1.25rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
@@ -188,7 +187,6 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER */
     .main-header {
       height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
@@ -208,7 +206,6 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* TABS */
     .tab-bar {
       display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
       border-bottom: 1px solid var(--border);
@@ -229,7 +226,6 @@
     }
     .counter-badge.warn { background: var(--warning); }
 
-    /* CARD & TABEL */
     .card {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
@@ -248,7 +244,6 @@
     }
     .data-table tbody tr:hover { background: var(--bg-subtle); }
 
-    /* STATUS BADGES */
     .badge {
       padding: 0.25rem 0.65rem; border-radius: 999px;
       font-size: 0.72rem; font-weight: 700; text-transform: uppercase; display: inline-block;
@@ -264,7 +259,6 @@
     .role-developer { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
     .role-owner { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
-    /* ACTION BUTTONS */
     .btn-action-group { display: flex; gap: 0.4rem; }
     .btn-action {
       padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.78rem;
@@ -275,7 +269,6 @@
     .btn-delete { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
     .btn-delete:hover { color: var(--danger); }
 
-    /* TOAST */
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 3000;
       display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
@@ -289,7 +282,6 @@
     .toast-pill.success { border-left-color: var(--success); }
     .toast-pill.error { border-left-color: var(--danger); }
 
-    /* MOBILE DOCK */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -319,6 +311,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
@@ -423,7 +416,6 @@
     </header>
 
     <div class="page-content">
-      <!-- TAB NAVIGATION STATUS -->
       <div class="tab-bar">
         <button class="tab-item active" data-tab="active">
           <i class="fas fa-circle-check" style="color:var(--success)"></i> Pengguna Aktif
@@ -435,7 +427,6 @@
         </button>
       </div>
 
-      <!-- TABEL DAFTAR PENGGUNA -->
       <div class="card">
         <div class="table-container">
           <table class="data-table">
@@ -462,7 +453,6 @@
   </main>
 </div>
 
-<!-- BOTTOM DOCK MOBILE -->
 <nav class="mobile-bar">
   <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
   <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
@@ -490,6 +480,26 @@
     setTimeout(() => el.remove(), 3500);
   }
 
+  // SINKRONISASI LOGO BRAND DARI SETTINGS/STORE
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    if (!logoEl) return;
+
+    const cached = localStorage.getItem("webpos_store_name");
+    if (cached) logoEl.textContent = cached;
+
+    try {
+      const doc = await db.collection("settings").doc("store").get();
+      if (doc.exists && doc.data().name) {
+        const storeName = doc.data().name;
+        logoEl.textContent = storeName;
+        localStorage.setItem("webpos_store_name", storeName);
+      }
+    } catch(e) {
+      console.error("Gagal sync brand:", e);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
       if (!user) {
@@ -501,9 +511,9 @@
   });
 
   async function initPage(user) {
+    syncStoreBrandName();
     setupSidebarEvents();
 
-    // Verifikasi role pengguna yang login (Hanya Developer & Owner yang boleh mengakses)
     try {
       const userDoc = await db.collection("users").doc(user.uid).get();
       if (userDoc.exists) {
@@ -525,10 +535,8 @@
     }
 
     loadUsers();
-
     document.getElementById("btnRefresh").onclick = loadUsers;
 
-    // Tab switcher
     document.querySelectorAll(".tab-item").forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll(".tab-item").forEach(b => b.classList.remove("active"));
@@ -564,7 +572,6 @@
     });
   }
 
-  // AMBIL SELURUH USER DARI CLOUD FIRESTORE
   async function loadUsers() {
     const tbody = document.getElementById("userTableBody");
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
@@ -576,7 +583,6 @@
         allUsers.push({ id: doc.id, ...doc.data() });
       });
 
-      // Update badge angka tab
       const activeCount = allUsers.filter(u => u.status === "active").length;
       const pendingCount = allUsers.filter(u => u.status === "pending").length;
       document.getElementById("countActive").textContent = activeCount;
@@ -642,7 +648,6 @@
     }).join("");
   }
 
-  // TINDAKAN APPROVAL: SETUJUI
   window.approveUser = async function(userId, userName) {
     if (!confirm(`Setujui pengajuan akun untuk ${userName}?`)) return;
     try {
@@ -657,7 +662,6 @@
     }
   };
 
-  // TINDAKAN TOLAK
   window.rejectUser = async function(userId) {
     if (!confirm("Tolak pengajuan akun ini? Pengguna tidak akan bisa login.")) return;
     try {
@@ -671,7 +675,6 @@
     }
   };
 
-  // UBAH ROLE PENGGUNA
   window.changeRolePrompt = async function(userId, currentRole) {
     const newRole = prompt("Pilih Role Baru (kasir / admin / owner / developer):", currentRole);
     if (!newRole || newRole === currentRole) return;
@@ -693,7 +696,6 @@
     }
   };
 
-  // HAPUS PENGGUNA
   window.deleteUserRecord = async function(userId) {
     if (!confirm("Hapus data pengguna ini dari sistem database?")) return;
     try {
