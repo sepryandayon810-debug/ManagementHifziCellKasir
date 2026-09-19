@@ -22,11 +22,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat (Database & Auth & Storage) -->
+  <!-- Firebase Compat (Firestore & Auth & Storage) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 
   <style>
     :root {
@@ -302,12 +304,6 @@
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
-
-  <!-- Scripts -->
-  <script src="js/firebase-config.js?v=2"></script>
-  <script src="js/utils.js?v=3"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
@@ -475,20 +471,19 @@
         </div>
       </div>
     </main>
-  </div>
 
-  <!-- MOBILE BAR -->
-  <nav class="mobile-nav">
-    <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
-    <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
-    <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
-    <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
-    <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
-  </nav>
+    <nav class="mobile-nav">
+      <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+      <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+      <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
+      <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+      <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+    </nav>
+  </div>
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+    <p class="loading-text">Loading...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -512,24 +507,31 @@
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        auth.onAuthStateChanged((user) => {
-          if (!user && !Utils.getStorage('webpos_session')) {
+        auth.onAuthStateChanged(async (user) => {
+          if (!user) {
             window.location.href = 'login.html';
             return;
           }
-          if (user) {
-            Auth.loadUserData(user.uid);
-          }
-          initTopup(user);
+
+          let userData = { name: user.email, role: 'kasir' };
+          try {
+            const doc = await db.collection("users").doc(user.uid).get();
+            if (doc.exists) {
+              userData = doc.data();
+            }
+          } catch(e) {}
+
+          const dName = userData.name || userData.username || user.email.split('@')[0];
+          document.getElementById('userName').textContent = dName;
+          document.getElementById('userRole').textContent = (userData.role || 'Kasir').toUpperCase();
+          const avatar = document.getElementById('userAvatar');
+          if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
+
+          initTopup(user, dName);
         });
       });
 
-      function initTopup(user) {
-        const uNameEl = document.getElementById('userName');
-        const uRoleEl = document.getElementById('userRole');
-        if (uNameEl) uNameEl.textContent = user?.name || user?.email || 'User';
-        if (uRoleEl) uRoleEl.textContent = user?.role ? user.role.toUpperCase() : 'KASIR';
-
+      function initTopup(user, userName) {
         let amount = 0;
         let adminFee = 0;
 
@@ -559,7 +561,7 @@
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
             sidebar.classList.add('mobile-open');
-            backdrop.classList.add('active');
+            if (backdrop) backdrop.classList.add('active');
           };
         }
         if (backdrop) {
@@ -574,7 +576,7 @@
             if (link.classList.contains('nav-dropdown-toggle')) return;
             if (window.innerWidth <= 1024) {
               sidebar.classList.remove('mobile-open');
-              backdrop.classList.remove('active');
+              if (backdrop) backdrop.classList.remove('active');
             }
           });
         });
@@ -594,7 +596,9 @@
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
-            Utils.confirm('Yakin ingin logout?', () => Auth.logout());
+            Utils.confirm('Yakin ingin logout?', () => {
+              auth.signOut().then(() => window.location.href = 'login.html');
+            });
           });
         }
 
@@ -633,7 +637,7 @@
           });
         });
 
-        // Save Topup
+        // Save Topup menggunakan Cloud Firestore (db.collection)
         const saveBtn = document.getElementById('btnSimpanTopup');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -650,17 +654,18 @@
               const today = Utils.getTodayString();
               const transactionId = Utils.generateId('TOP');
 
-              await database.ref(`transactions/${today}/${transactionId}`).set({
+              await db.collection("transactions").add({
                 id: transactionId,
                 type: 'topup',
                 amount: amount,
                 adminFee: adminFeeValue,
                 total: total,
-                profit: adminFeeValue,
+                profit: adminFeeValue, // Admin fee masuk ke laba
                 note: document.getElementById('topupNote').value || '',
-                cashierId: user.uid,
-                cashierName: user.name || user.email,
-                timestamp: Date.now(),
+                userId: user.uid,
+                userName: userName,
+                date: today,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'completed'
               });
 
