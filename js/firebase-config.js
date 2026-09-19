@@ -12,7 +12,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-// Layanan Firebase
+// Layanan Firebase Global
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
