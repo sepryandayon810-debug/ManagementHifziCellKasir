@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Manajemen Produk & Kategori</title>
+  <title>WebPOS - Produk</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,8 @@
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
-      --sidebar-w: 260px;
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
       --header-h: 68px;
     }
 
@@ -60,64 +61,131 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
 
-    .app-layout { display: flex; min-height: 100vh; }
+    .app-container { display: flex; min-height: 100vh; }
 
-    /* SIDEBAR */
+    /* SIDEBAR LENGKAP */
     .sidebar {
-      width: var(--sidebar-w);
-      background: var(--bg-surface);
-      border-right: 1px solid var(--border);
-      position: fixed; top: 0; bottom: 0; left: 0;
-      display: flex; flex-direction: column;
-      z-index: 100; transition: transform 0.25s ease;
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-width); height: 100vh;
+      background: var(--bg-surface); border-right: 1px solid var(--border);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: all 0.25s ease;
     }
-    .brand {
-      height: var(--header-h); padding: 0 1.5rem;
-      display: flex; align-items: center; gap: 0.75rem;
-      border-bottom: 1px solid var(--border);
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mobile-open { transform: translateX(0); }
     }
-    .brand-logo {
-      width: 38px; height: 38px;
+
+    .sidebar-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: var(--header-h);
+    }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
-      border-radius: var(--radius-md);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.1rem;
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 1.15rem;
     }
-    .brand-name { font-size: 1.2rem; font-weight: 800; }
-    .nav-container { flex: 1; overflow-y: auto; padding: 1.25rem 1rem; }
-    .nav-group-title {
-      font-size: 0.68rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--text-muted); padding: 0.5rem 0.75rem;
+    .logo-text {
+      font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .nav-item { margin-bottom: 4px; }
+    .sidebar.collapsed .logo-text { display: none; }
+
+    .menu-toggle {
+      width: 28px; height: 28px; background: var(--primary);
+      border: none; border-radius: 50%; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input {
+      width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none;
+    }
+    .sidebar.collapsed .sidebar-search { display: none; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0.35rem 0.75rem; margin-bottom: 0.2rem;
+    }
+    .sidebar.collapsed .nav-section-title { display: none; }
+
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
     .nav-link {
       display: flex; align-items: center; gap: 0.85rem;
-      padding: 0.65rem 0.85rem; border-radius: var(--radius-md);
+      padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
       color: var(--text-sub); text-decoration: none;
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+      cursor: pointer;
     }
-    .nav-link i { font-size: 1rem; width: 20px; text-align: center; }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
     .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
 
-    /* MAIN WRAPPER */
-    .main-wrapper {
-      flex: 1; margin-left: var(--sidebar-w);
-      display: flex; flex-direction: column; min-width: 0;
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
     }
-    .top-header {
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
+
+    .sidebar-footer {
+      padding: 0.85rem 1rem; border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.8rem;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-width);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left 0.25s; min-width: 0;
+    }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+
+    /* HEADER */
+    .main-header {
       height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 90;
     }
-    .page-title { font-size: 1.25rem; font-weight: 700; }
-    .header-tools { display: flex; align-items: center; gap: 0.5rem; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .header-title { font-size: 1.25rem; font-weight: 700; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
 
     /* BUTTONS */
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
       padding: 0.55rem 1rem; border-radius: var(--radius-md);
       font-size: 0.85rem; font-weight: 600; font-family: inherit;
       border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
@@ -129,14 +197,15 @@
     .btn-icon-box {
       width: 38px; height: 38px; padding: 0; border-radius: var(--radius-md);
       background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
     .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.75rem; border-radius: var(--radius-sm); }
     .btn-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
     .btn-danger:hover { background: var(--danger); color: #fff; }
 
-    .page-body { padding: 1.5rem; flex: 1; }
+    .page-content { padding: 1.5rem; flex: 1; }
 
-    /* METRICS */
+    /* SUMMARY METRICS */
     .metric-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem; margin-bottom: 1.5rem;
@@ -236,7 +305,7 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
-      padding: 1rem; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s;
+      padding: 1rem; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.2s;
     }
     .modal-backdrop.open { opacity: 1; visibility: visible; }
     .modal-panel {
@@ -278,7 +347,6 @@
     }
     .reseller-info-text { font-size: 0.72rem; color: var(--accent-reseller); font-weight: 600; }
 
-    /* COLOR PICKER */
     .color-options { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem; }
     .color-dot {
       width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
@@ -292,7 +360,7 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.2s;
+      z-index: 3000; opacity: 0; visibility: hidden; transition: all 0.2s;
     }
     .loading-veil.active { opacity: 1; visibility: visible; }
     .spinner-box {
@@ -302,7 +370,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .toast-box {
-      position: fixed; top: 1rem; right: 1rem; z-index: 3000;
+      position: fixed; top: 1rem; right: 1rem; z-index: 4000;
       display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
     }
     .toast-pill {
@@ -316,7 +384,7 @@
     .toast-pill.error { border-left-color: var(--danger); }
     .toast-pill.warning { border-left-color: var(--warning); }
 
-    /* MOBILE BOTTOM DOCK */
+    /* MOBILE NAV */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -331,69 +399,155 @@
     .mobile-bar-item i { font-size: 1.1rem; }
 
     @media (max-width: 1024px) {
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.active { transform: translateX(0); }
-      .main-wrapper { margin-left: 0; }
       .mobile-bar { display: flex; }
-      .page-body { padding-bottom: calc(60px + 1.5rem); }
+      .page-content { padding-bottom: calc(60px + 1.5rem); }
+      .d-md-none { display: flex !important; }
       .btn-mobile-hide span { display: none; }
+    }
+    @media (min-width: 1025px) {
+      .d-md-none { display: none !important; }
     }
   </style>
 
-  <!-- Firebase Compat Core -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
-  <!-- Configuration Scripts -->
   <script src="js/firebase-config.js?v=2"></script>
   <script src="js/utils.js?v=3"></script>
   <script src="js/auth.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
-<div class="app-layout">
-  <!-- SIDEBAR -->
+<div class="app-container">
+  <!-- SIDEBAR LENGKAP DENGAN SUBMENU & DROPDOWN -->
   <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-logo"><i class="fas fa-cash-register"></i></div>
-      <span class="brand-name">WebPOS</span>
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span class="logo-text">WebPOS</span>
+      </div>
+      <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
     </div>
-    <div class="nav-container">
-      <div class="nav-group-title">Utama</div>
-      <div class="nav-item"><a href="index.html" class="nav-link"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a></div>
-      <div class="nav-item"><a href="page-kasir.html" class="nav-link"><i class="fas fa-calculator"></i><span>Kasir POS</span></a></div>
-      <div class="nav-item"><a href="page-produk.html" class="nav-link active"><i class="fas fa-boxes-stacked"></i><span>Produk & Stok</span></a></div>
 
-      <div class="nav-group-title">Transaksi</div>
-      <div class="nav-item"><a href="page-riwayat.html" class="nav-link"><i class="fas fa-receipt"></i><span>Riwayat</span></a></div>
-      <div class="nav-item"><a href="page-pembelian.html" class="nav-link"><i class="fas fa-truck-ramp-box"></i><span>Restock</span></a></div>
-      <div class="nav-item"><a href="page-hutang.html" class="nav-link"><i class="fas fa-hand-holding-dollar"></i><span>Buku Hutang</span></a></div>
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+      </div>
+    </div>
 
-      <div class="nav-group-title">Kas & Toko</div>
-      <div class="nav-item"><a href="page-kas.html" class="nav-link"><i class="fas fa-vault"></i><span>Kas Harian</span></a></div>
-      <div class="nav-item"><a href="page-closing.html" class="nav-link"><i class="fas fa-lock"></i><span>Closing Shift</span></a></div>
+    <nav class="sidebar-nav">
+      <!-- UTAMA -->
+      <div class="nav-section">
+        <div class="nav-section-title">Utama</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-cash-register"></i><span>Kasir</span></a></li>
+          <li class="nav-item"><a href="page-produk.html" class="nav-link active" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
+        </ul>
+      </div>
+
+      <!-- TRANSAKSI -->
+      <div class="nav-section">
+        <div class="nav-section-title">Transaksi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+          <li class="nav-item nav-dropdown" id="dropdownKas">
+            <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <i class="fas fa-wallet"></i><span>Kas Management</span>
+              </div>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </div>
+            <ul class="nav-submenu">
+              <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+              <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+              <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+              <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+              <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+              <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+              <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+          <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+        </ul>
+      </div>
+
+      <!-- LAPORAN -->
+      <div class="nav-section">
+        <div class="nav-section-title">Laporan</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+          <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+          <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+        </ul>
+      </div>
+
+      <!-- INTEGRASI -->
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <!-- PENGGAJIAN -->
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <!-- SISTEM -->
+      <div class="nav-section">
+        <div class="nav-section-title">Sistem</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+          <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Kasir</div>
+          <div class="user-role" id="userRole">Admin</div>
+        </div>
+      </div>
     </div>
   </aside>
 
   <!-- MAIN AREA -->
-  <div class="main-wrapper">
-    <header class="top-header">
-      <div style="display:flex; align-items:center; gap:0.75rem;">
-        <button class="btn btn-icon-box" id="btnToggleSidebar" style="display:none;"><i class="fas fa-bars"></i></button>
-        <h1 class="page-title">Katalog Produk</h1>
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-left">
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        <h1 class="header-title">Produk & Stok</h1>
       </div>
-      <div class="header-tools">
-        <button class="btn btn-icon-box" id="btnThemeToggle" title="Dark Mode"><i class="fas fa-moon"></i></button>
+      <div class="header-actions">
+        <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
         <button class="btn btn-secondary btn-mobile-hide" id="btnImportOpen"><i class="fas fa-file-import"></i><span>Import</span></button>
         <button class="btn btn-secondary btn-mobile-hide" id="btnExportCSV"><i class="fas fa-file-export"></i><span>Export</span></button>
-        <button class="btn btn-primary" id="btnOpenAddModal"><i class="fas fa-plus"></i><span>Tambah</span></button>
+        <button class="btn btn-primary" id="btnOpenAddModal"><i class="fas fa-plus"></i><span>Tambah Produk</span></button>
       </div>
     </header>
 
-    <main class="page-body">
+    <div class="page-content">
       <!-- SUMMARY METRICS -->
       <section class="metric-grid">
         <div class="metric-card">
@@ -449,23 +603,24 @@
       <!-- TAB 2: KATEGORI -->
       <div id="tab-categories" style="display:none;">
         <div class="toolbar-box" style="justify-content: flex-end;">
-          <button class="btn btn-primary" id="btnOpenAddCat"><i class="fas fa-plus"></i> Tambah Kategori</button>
+          <button class="btn btn-primary" id="btnOpenAddCat"><i class="fas fa-plus"></i> Tambah Kategori Baru</button>
         </div>
         <div class="products-grid" id="categoryContainer"></div>
       </div>
-    </main>
-  </div>
+    </div>
+  </main>
 </div>
 
-<!-- MOBILE BOTTOM DOCK -->
+<!-- MOBILE DOCK -->
 <nav class="mobile-bar">
-  <a href="index.html" class="mobile-bar-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
-  <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
-  <a href="page-produk.html" class="mobile-bar-item active"><i class="fas fa-boxes-stacked"></i><span>Produk</span></a>
-  <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-receipt"></i><span>Riwayat</span></a>
+  <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-cash-register"></i><span>Kasir</span></a>
+  <a href="page-produk.html" class="mobile-bar-item active"><i class="fas fa-box"></i><span>Produk</span></a>
+  <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
-<!-- MODAL TAMBAH/EDIT PRODUK -->
+<!-- MODAL PRODUK -->
 <div class="modal-backdrop" id="modalProduct">
   <div class="modal-panel">
     <div class="modal-head">
@@ -553,7 +708,7 @@
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-secondary" onclick="closeModal('modalProduct')">Batal</button>
-      <button type="button" class="btn btn-primary" id="btnSaveProduct"><i class="fas fa-save"></i> Simpan</button>
+      <button type="button" class="btn btn-primary" id="btnSaveProduct"><i class="fas fa-save"></i> Simpan Data</button>
     </div>
   </div>
 </div>
@@ -601,13 +756,13 @@
       <div class="image-dropzone" id="importDropzone" style="padding:2rem;">
         <i class="fas fa-file-excel" style="font-size:2.5rem; color:var(--success);"></i>
         <p style="font-weight:700; margin-top:0.5rem;">Pilih File CSV / XLSX</p>
-        <p style="font-size:0.75rem; color:var(--text-muted);">Mendukung harga normal & reseller</p>
+        <p style="font-size:0.75rem; color:var(--text-muted);">Mendukung kolom Modal, Harga Jual, dan Harga Reseller</p>
         <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls" style="display:none;">
       </div>
       <div id="importPreviewSummary" style="display:none; margin-top:1rem; padding:0.75rem; background:var(--bg-subtle); border-radius:var(--radius-md); font-size:0.85rem;"></div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-secondary" id="btnDownloadTemplate"><i class="fas fa-download"></i> Unduh Template</button>
+      <button type="button" class="btn btn-secondary" id="btnDownloadTemplate"><i class="fas fa-download"></i> Template CSV</button>
       <button type="button" class="btn btn-primary" id="btnExecuteImport" disabled><i class="fas fa-upload"></i> Proses Import</button>
     </div>
   </div>
@@ -635,12 +790,24 @@
   function init() {
     firebase.auth().onAuthStateChanged(user => {
       if (!user) { window.location.href = "login.html"; return; }
+      
+      // Ambil profile info
+      db.ref("users/" + user.uid).once("value").then(snap => {
+        const u = snap.val() || {};
+        document.getElementById("userName").textContent = u.name || user.email || "Kasir";
+        document.getElementById("userRole").textContent = u.role || "Admin";
+        if (u.name) {
+          const initials = u.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+          document.getElementById("userAvatar").textContent = initials;
+        }
+      });
+
+      setupSidebarAndNav();
       setupListeners();
       loadData();
     });
   }
 
-  // TOAST & LOADING SYSTEM
   function toast(msg, type = "info") {
     const box = document.getElementById("toastContainer");
     const el = document.createElement("div");
@@ -658,7 +825,52 @@
     document.getElementById("loadingVeil").classList.remove("active");
   }
 
-  // LOAD REALTIME DATA
+  // SETUP SIDEBAR FULL FUNCTION
+  function setupSidebarAndNav() {
+    const sidebar = document.getElementById("sidebar");
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+
+    if (menuToggle) {
+      menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
+    }
+    if (mobileMenuToggle) {
+      mobileMenuToggle.onclick = (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle("mobile-open");
+      };
+    }
+
+    document.addEventListener("click", (e) => {
+      if (window.innerWidth <= 1024 && !sidebar.contains(e.target) && e.target !== mobileMenuToggle) {
+        sidebar.classList.remove("mobile-open");
+      }
+    });
+
+    // Dropdown Kas Management
+    document.querySelectorAll(".nav-dropdown").forEach(dropdown => {
+      const toggle = dropdown.querySelector(".nav-dropdown-toggle");
+      if (toggle) {
+        toggle.onclick = (e) => {
+          e.preventDefault();
+          dropdown.classList.toggle("open");
+        };
+      }
+    });
+
+    // Filter menu search di sidebar
+    const menuSearch = document.getElementById("menuSearch");
+    if (menuSearch) {
+      menuSearch.oninput = (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        document.querySelectorAll(".sidebar-nav .nav-item").forEach(item => {
+          const text = item.textContent.toLowerCase();
+          item.style.display = (!term || text.includes(term)) ? "" : "none";
+        });
+      };
+    }
+  }
+
   async function loadData() {
     try {
       showLoading("Memuat data...");
@@ -678,7 +890,7 @@
     } catch(e) {
       console.error(e);
       hideLoading();
-      toast("Gagal memuat data dari server", "error");
+      toast("Gagal memuat data dari database", "error");
     }
   }
 
@@ -687,16 +899,15 @@
     const retail = parseInt(document.getElementById("prodPrice").value) || 0;
     const reseller = parseInt(document.getElementById("prodResellerPrice").value) || retail;
     document.getElementById("marginDisplayInfo").textContent = 
-      `Laba Normal: Rp ${(retail - cost).toLocaleString('id-ID')} | Laba Reseller: Rp ${(reseller - cost).toLocaleString('id-ID')}`;
+      `Margin Retail: Rp ${(retail - cost).toLocaleString('id-ID')} | Margin Reseller: Rp ${(reseller - cost).toLocaleString('id-ID')}`;
   };
 
-  // RENDER PRODUCTS
   function renderProducts() {
     const container = document.getElementById("productContainer");
     if (filteredProducts.length === 0) {
       container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
         <i class="fas fa-box-open" style="font-size:2.5rem; opacity:0.3; margin-bottom:0.5rem;"></i>
-        <p>Tidak ada produk yang cocok dengan kriteria.</p>
+        <p>Tidak ada produk yang cocok dengan filter.</p>
       </div>`;
       return;
     }
@@ -737,7 +948,6 @@
     }).join('');
   }
 
-  // RENDER CATEGORIES
   function renderCategories() {
     const container = document.getElementById("categoryContainer");
     container.innerHTML = categories.map(c => {
@@ -775,7 +985,6 @@
     document.getElementById("totalItemVal").textContent = `${products.length} item`;
   }
 
-  // SAVE PRODUCT
   async function saveProduct() {
     const id = document.getElementById("prodId").value;
     const name = document.getElementById("prodName").value.trim();
@@ -786,11 +995,11 @@
 
     if (isNaN(resellerPrice) || resellerPrice <= 0) resellerPrice = sellingPrice;
     if (!name || !categoryId || sellingPrice <= 0) {
-      toast("Lengkapi nama, kategori, dan harga!", "warning");
+      toast("Nama, kategori, dan harga jual wajib diisi!", "warning");
       return;
     }
 
-    showLoading("Menyimpan produk...");
+    showLoading("Menyimpan data...");
 
     let imageUrl = null;
     const previewEl = document.getElementById("imgPreview");
@@ -819,24 +1028,23 @@
     try {
       if (id) {
         await db.ref(`products/${id}`).update(payload);
-        toast("Produk diperbarui", "success");
+        toast("Produk berhasil diupdate", "success");
       } else {
         const ref = db.ref("products").push();
         payload.id = ref.key;
         payload.createdAt = firebase.database.ServerValue.TIMESTAMP;
         await ref.set(payload);
-        toast("Produk ditambahkan", "success");
+        toast("Produk berhasil ditambahkan", "success");
       }
       closeModal('modalProduct');
       await loadData();
     } catch(e) {
-      toast("Gagal menyimpan ke server", "error");
+      toast("Gagal simpan ke database", "error");
     } finally {
       hideLoading();
     }
   }
 
-  // MODAL EDIT PRODUCT
   window.openEditProductModal = function(id) {
     const p = products.find(x => x.id === id);
     if (!p) return;
@@ -868,18 +1076,17 @@
     if (!confirm("Hapus produk ini permanen?")) return;
     showLoading("Menghapus...");
     db.ref(`products/${id}`).remove().then(() => {
-      toast("Produk terhapus", "success");
+      toast("Produk dihapus", "success");
       loadData();
     }).catch(() => { hideLoading(); toast("Gagal menghapus", "error"); });
   };
 
-  // CATEGORY ACTIONS
   async function saveCategory() {
     const id = document.getElementById("catId").value;
     const name = document.getElementById("catName").value.trim();
     if (!name) { toast("Nama kategori wajib diisi", "warning"); return; }
 
-    showLoading("Menyimpan kategori...");
+    showLoading("Menyimpan...");
     const payload = { name, color: selectedCategoryColor, updatedAt: firebase.database.ServerValue.TIMESTAMP };
 
     try {
@@ -914,7 +1121,7 @@
   };
 
   window.deleteCategory = function(id) {
-    if (!confirm("Hapus kategori ini? Produk terkait akan menjadi Uncategorized.")) return;
+    if (!confirm("Hapus kategori ini?")) return;
     showLoading();
     db.ref(`categories/${id}`).remove().then(() => {
       toast("Kategori terhapus", "success");
@@ -922,7 +1129,6 @@
     }).catch(() => { hideLoading(); toast("Gagal hapus", "error"); });
   };
 
-  // IMPORT FILE ENGINE
   function handleImportFile(file) {
     const ext = file.name.split(".").pop().toLowerCase();
     const reader = new FileReader();
@@ -945,7 +1151,6 @@
           rows = XLSX.utils.sheet_to_json(sheet);
         }
 
-        // Validate rows
         const valid = [];
         rows.forEach(r => {
           const name = r["nama produk"] || r["nama"] || r["name"];
@@ -967,7 +1172,7 @@
         summary.innerHTML = `<strong>${valid.length} produk siap diimport.</strong> Klik proses di bawah.`;
         document.getElementById("btnExecuteImport").disabled = valid.length === 0;
       } catch(err) {
-        toast("File rusak atau tidak kompatibel", "error");
+        toast("File rusak atau format tidak sesuai", "error");
       }
     };
 
@@ -1000,7 +1205,6 @@
     }
   }
 
-  // MODAL UTILITIES
   function openModal(id) { document.getElementById(id).classList.add("open"); }
   window.closeModal = function(id) { document.getElementById(id).classList.remove("open"); };
 
@@ -1053,7 +1257,6 @@
     };
     document.getElementById("btnSaveCategory").onclick = saveCategory;
 
-    // Color picker
     document.querySelectorAll(".color-dot").forEach(dot => {
       dot.onclick = () => {
         document.querySelectorAll(".color-dot").forEach(d => d.classList.remove("active"));
@@ -1062,7 +1265,6 @@
       };
     });
 
-    // Image Upload Dropzone
     const dropzone = document.getElementById("imgDropzone");
     const fileInp = document.getElementById("prodImageInput");
     dropzone.onclick = () => fileInp.click();
@@ -1087,7 +1289,6 @@
       document.getElementById("prodImageInput").value = "";
     };
 
-    // Import Listeners
     document.getElementById("btnImportOpen").onclick = () => openModal('modalImport');
     const impDrop = document.getElementById("importDropzone");
     const impFile = document.getElementById("importFileInput");
@@ -1096,7 +1297,7 @@
     document.getElementById("btnExecuteImport").onclick = executeImport;
 
     document.getElementById("btnDownloadTemplate").onclick = () => {
-      const csv = "Nama Produk,Kategori,Harga Beli,Harga Jual,Harga Reseller,Stok,Kode\nKabel Data Type C,Aksesoris,12000,25000,20000,50,KBL01\n";
+      const csv = "Nama Produk,Harga Beli,Harga Jual,Harga Reseller,Stok,Kode\nKabel Data Type C,12000,25000,20000,50,KBL01\n";
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -1104,7 +1305,6 @@
       link.click();
     };
 
-    // Export CSV
     document.getElementById("btnExportCSV").onclick = () => {
       if (!products.length) { toast("Tidak ada produk", "warning"); return; }
       let csv = "ID,Kode,Nama Produk,Kategori,Modal,Harga Normal,Harga Reseller,Stok\n";
@@ -1120,12 +1320,10 @@
       toast("File diexport", "success");
     };
 
-    // Search & Filter
     document.getElementById("searchBox").oninput = applyFilter;
     document.getElementById("catFilter").onchange = applyFilter;
     document.getElementById("sortFilter").onchange = applyFilter;
 
-    // Tabs
     document.querySelectorAll(".tab-item").forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll(".tab-item").forEach(b => b.classList.remove("active"));
@@ -1136,16 +1334,11 @@
       };
     });
 
-    // Theme Toggle
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
       localStorage.setItem("webpos_theme", isDark ? "light" : "dark");
     };
-
-    const btnToggle = document.getElementById("btnToggleSidebar");
-    if (window.innerWidth <= 1024) btnToggle.style.display = "flex";
-    btnToggle.onclick = () => document.getElementById("sidebar").classList.toggle("active");
   }
 
   document.addEventListener("DOMContentLoaded", init);
