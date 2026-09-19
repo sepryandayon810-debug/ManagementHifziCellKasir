@@ -37,6 +37,7 @@
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
+      --radius-xl: 20px;
       
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
@@ -408,11 +409,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
 <div class="app-container">
-  <!-- OVERLAY UNTUK KLIK LUAR SIDEBAR MOBILE -->
+  <!-- OVERLAY MOBILE -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
   <!-- SIDEBAR LENGKAP -->
@@ -504,7 +508,6 @@
       </div>
     </nav>
 
-    <!-- PROFIL USERNAME AKTIF -->
     <div class="sidebar-footer">
       <div class="user-profile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
@@ -752,46 +755,6 @@
 
   let isShiftOpen = false;
 
-  // INTERNAL ROLE GUARD (Langsung aktif tanpa butuh file js tambahan)
-  function applyRolePermissions(role) {
-    const r = (role || 'kasir').toLowerCase();
-
-    // Developer & Owner: Semua akses terbuka
-    if (r === 'developer' || r === 'owner') return;
-
-    const hideItem = (selector) => {
-      const el = document.querySelector(selector);
-      if (el) {
-        const p = el.closest('.nav-item') || el;
-        p.style.display = 'none';
-      }
-    };
-
-    if (r === 'admin') {
-      hideItem('[data-menu="penggajian"]');
-      hideItem('[data-menu="reset"]');
-      hideItem('[data-menu="pengguna"]');
-      hideItem('[data-menu="setting"]');
-    } else if (r === 'kasir') {
-      hideItem('[data-menu="pembelian"]');
-      hideItem('[data-menu="laporan"]');
-      hideItem('[data-menu="laporan-stok"]');
-      hideItem('[data-menu="laporan-terlaris"]');
-      hideItem('[data-menu="telegram"]');
-      hideItem('[data-menu="penggajian"]');
-      hideItem('[data-menu="pengguna"]');
-      hideItem('[data-menu="setting"]');
-      hideItem('[data-menu="backup"]');
-      hideItem('[data-menu="reset"]');
-
-      // Sembunyikan laba & modal awal di dashboard kasir
-      const totalLaba = document.getElementById("totalLaba");
-      if (totalLaba) totalLaba.closest('.stat-card').style.display = 'none';
-      const modalAwal = document.getElementById("modalAwal");
-      if (modalAwal) modalAwal.closest('.stat-card').style.display = 'none';
-    }
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged((user) => {
       if (!user) {
@@ -824,10 +787,6 @@
       if (avatar) {
         avatar.textContent = displayName.slice(0, 2).toUpperCase();
       }
-
-      // Terapkan filter hak akses menu
-      applyRolePermissions(displayRole);
-
     }).catch(err => {
       console.error("Gagal load profil:", err);
       document.getElementById("userName").textContent = user.email.split("@")[0];
@@ -850,7 +809,6 @@
     };
   }
 
-  // SIDEBAR & AUTO-CLOSE OUTSIDE CLICK
   function setupSidebarEvents() {
     const sidebar = document.getElementById("sidebar");
     const backdrop = document.getElementById("sidebarBackdrop");
@@ -869,13 +827,11 @@
       };
     }
 
-    // TUTUP SIDEBAR SAAT KLIK AREA GELAP / AREA LAIN
     backdrop.onclick = () => {
       sidebar.classList.remove("mobile-open");
       backdrop.classList.remove("active");
     };
 
-    // Submenu dropdown
     document.querySelectorAll(".nav-dropdown").forEach(d => {
       const toggle = d.querySelector(".nav-dropdown-toggle");
       if (toggle) {
@@ -886,7 +842,6 @@
       }
     });
 
-    // Filter menu search
     const menuSearch = document.getElementById("menuSearch");
     if (menuSearch) {
       menuSearch.oninput = (e) => {
@@ -899,7 +854,6 @@
     }
   }
 
-  // STATISTIK KAS & TRANSAKSI (FIRESTORE)
   async function loadDashboardStats(user) {
     const today = getTodayString();
 
@@ -907,10 +861,10 @@
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
 
-      // Ambil data shift & modal hari ini dari Firestore
-      const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
-      if (shiftDoc.exists) {
-        modalAwal = shiftDoc.data().modalAwal || 0;
+      // Ambil data modal awal hari ini dari Firestore
+      const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+      if (modalDoc.exists) {
+        modalAwal = modalDoc.data().amount || 0;
       }
 
       // Ambil transaksi hari ini dari Firestore
@@ -955,15 +909,13 @@
 
       debtsSnapshot.forEach(doc => {
         const d = doc.data();
-        if (d.date === today && d.kasRecorded !== false) {
+        if (d.date === today) {
           piutang += d.remaining || 0;
         }
       });
 
-      // Hitung Kas Fisik Laci
       const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topup - tarik - piutang;
 
-      // Render ke DOM
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
@@ -984,7 +936,6 @@
     }
   }
 
-  // REALTIME STATUS SHIFT (FIRESTORE)
   function listenShiftStatus(user) {
     const today = getTodayString();
     db.collection("shifts").doc(`${today}_${user.uid}`).onSnapshot(doc => {
@@ -1015,28 +966,51 @@
     }
   }
 
+  // LOGIKA PERSIS SESUAI KODE LAMA
   async function toggleShift(user) {
     const today = getTodayString();
 
     if (isShiftOpen) {
+      // Jika shift sedang buka, arahkan ke penutupan shift
       window.location.href = "page-kas-shift.html";
     } else {
-      const modalStr = prompt("Masukkan Modal Awal untuk Buka Shift (Rp):", "100000");
-      if (!modalStr) return;
-
-      const modalAwal = parseInt(modalStr.replace(/\D/g, "")) || 0;
       try {
+        // Cek apakah modal awal hari ini sudah diisi di collection 'modal'
+        const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+        const modalData = modalDoc.exists ? modalDoc.data() : null;
+
+        // JIKA MODAL BELUM DIISI, LEMPAR KE MODAL HARIAN
+        if (!modalData || !modalData.amount) {
+          alert("Silakan set modal awal terlebih dahulu.");
+          localStorage.setItem("fromDashboard", "true");
+          window.location.href = "page-modal-harian.html";
+          return;
+        }
+
+        // Cek apakah sudah ada shift terbuka
+        const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
+        if (shiftDoc.exists && shiftDoc.data().status === "open") {
+          alert("Shift sudah terbuka.");
+          return;
+        }
+
+        const shiftId = "shift_" + Date.now();
         await db.collection("shifts").doc(`${today}_${user.uid}`).set({
+          id: shiftId,
+          status: "open",
+          openTime: Date.now(),
+          openedAt: firebase.firestore.FieldValue.serverTimestamp(),
           userId: user.uid,
           userName: document.getElementById("userName").textContent,
-          date: today,
-          status: "open",
-          modalAwal: modalAwal,
-          openTime: firebase.firestore.FieldValue.serverTimestamp()
+          modalAwal: modalData.amount
         });
+
+        alert("Shift berhasil dibuka!");
         loadDashboardStats(user);
-      } catch(e) {
-        alert("Gagal membuka shift: " + e.message);
+
+      } catch (err) {
+        console.error("Error opening shift:", err);
+        alert("Gagal membuka shift: " + err.message);
       }
     }
   }
