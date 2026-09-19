@@ -114,6 +114,7 @@
       font-size: 1.25rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
@@ -381,7 +382,7 @@
       cursor: pointer;
     }
 
-    /* CUSTOM DIALOG POPUP / ALERT MODAL (NEW DESIGN) */
+    /* CUSTOM DIALOG POPUP */
     .custom-modal-backdrop {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
@@ -545,7 +546,7 @@
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
-          <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link active" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
         </ul>
@@ -601,7 +602,7 @@
             <i class="fas fa-store-slash" id="shiftToggleIcon"></i>
           </div>
           <div class="shift-toggle-info">
-            <div class="shift-toggle-label">Operasional Kasir</div>
+            <div class="shift-toggle-label" id="shiftRoleLabel">Operasional Kasir</div>
             <div class="shift-toggle-value" id="shiftToggleText">Buka Shift Kerja</div>
           </div>
           <div class="shift-toggle-switch">
@@ -615,7 +616,7 @@
         <div class="stat-card">
           <div class="stat-icon purple"><i class="fas fa-coins"></i></div>
           <div class="stat-content">
-            <div class="stat-label">Modal Awal</div>
+            <div class="stat-label" id="labelCardModal">Modal Awal</div>
             <div class="stat-value" id="modalAwal">Rp 0</div>
           </div>
         </div>
@@ -656,7 +657,7 @@
           <div class="kas-item">
             <div class="kas-item-info">
               <div class="kas-item-icon neutral"><i class="fas fa-wallet"></i></div>
-              <span class="kas-item-label">Modal Awal</span>
+              <span class="kas-item-label" id="labelRincianModal">Modal Awal</span>
             </div>
             <span class="kas-item-value" id="kasModalAwal">Rp 0</span>
           </div>
@@ -783,7 +784,7 @@
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
-<!-- ⭐ CUSTOM POPUP DIALOG (PENGGANTI BROWSER ALERT) ⭐ -->
+<!-- CUSTOM POPUP DIALOG -->
 <div class="custom-modal-backdrop" id="customAlertModal">
   <div class="custom-dialog-card">
     <div class="dialog-icon-wrap warning" id="dialogIcon">
@@ -814,6 +815,27 @@
   }
 
   let isShiftOpen = false;
+  let currentUserRole = "kasir";
+
+  // SINKRONISASI NAMA TOKO KE SIDEBAR OTOMATIS
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    if (!logoEl) return;
+
+    const cachedName = localStorage.getItem("webpos_store_name");
+    if (cachedName) logoEl.textContent = cachedName;
+
+    try {
+      const doc = await db.collection("settings").doc("store").get();
+      if (doc.exists && doc.data().name) {
+        const storeName = doc.data().name;
+        logoEl.textContent = storeName;
+        localStorage.setItem("webpos_store_name", storeName);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   // FUNGSI CUSTOM ALERT POPUP MODERN
   window.showCustomAlert = function({ title, message, iconType = "warning", confirmText = "OK", onConfirm = null, showCancel = false }) {
@@ -862,10 +884,12 @@
     });
   });
 
-  function initDashboard(user) {
+  async function initDashboard(user) {
+    syncStoreBrandName();
     setupSidebarEvents();
 
-    db.collection("users").doc(user.uid).get().then(doc => {
+    try {
+      const doc = await db.collection("users").doc(user.uid).get();
       let displayName = user.email.split("@")[0];
       let displayRole = "Owner";
 
@@ -875,6 +899,8 @@
         displayRole = u.role || displayRole;
       }
 
+      currentUserRole = displayRole.toLowerCase();
+
       document.getElementById("userName").textContent = displayName;
       document.getElementById("userRole").textContent = displayRole.toUpperCase();
       document.getElementById("namaUserDisplay").textContent = displayName;
@@ -883,11 +909,20 @@
       if (avatar) {
         avatar.textContent = displayName.slice(0, 2).toUpperCase();
       }
-    }).catch(err => {
+
+      // Berikan label khusus pada dashboard Owner / Developer
+      if (currentUserRole === "owner" || currentUserRole === "developer") {
+        const lblModal = document.getElementById("labelCardModal");
+        if (lblModal) lblModal.textContent = "Total Modal Toko";
+        const lblRincian = document.getElementById("labelRincianModal");
+        if (lblRincian) lblRincian.textContent = "Total Modal Seluruh Kasir";
+      }
+
+    } catch (err) {
       console.error("Gagal load profil:", err);
       document.getElementById("userName").textContent = user.email.split("@")[0];
       document.getElementById("userRole").textContent = "ADMIN";
-    });
+    }
 
     loadDashboardStats(user);
     listenShiftStatus(user);
@@ -959,24 +994,42 @@
     }
   }
 
+  // ⭐ STATISTIK KAS & TRANSAKSI (AKUMULASI TOTAL UNTUK OWNER / DEVELOPER) ⭐
   async function loadDashboardStats(user) {
     const today = getTodayString();
+    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
 
     try {
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
 
-      const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-      if (modalDoc.exists) {
-        modalAwal = modalDoc.data().amount || 0;
+      // 1. HITUNG MODAL:
+      // Jika Owner/Developer -> Jumlahkan seluruh modal yang dialokasikan hari ini
+      // Jika Kasir -> Hanya modal miliknya sendiri
+      if (isBoss) {
+        const modalSnap = await db.collection("modal")
+          .where("date", "==", today)
+          .get();
+        modalSnap.forEach(doc => {
+          modalAwal += doc.data().amount || 0;
+        });
+      } else {
+        const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+        if (modalDoc.exists) {
+          modalAwal = modalDoc.data().amount || 0;
+        }
       }
 
+      // 2. HITUNG TRANSAKSI HARI INI
       const transSnapshot = await db.collection("transactions")
         .where("date", "==", today)
         .get();
 
       transSnapshot.forEach(doc => {
         const t = doc.data();
+        // Kasir hanya menghitung transaksinya sendiri, Owner/Dev menghitung semua
+        if (!isBoss && t.userId && t.userId !== user.uid) return;
+
         if (t.status !== "cancelled" && t.status !== "voided") {
           switch (t.type) {
             case "penjualan":
@@ -1004,6 +1057,7 @@
         }
       });
 
+      // 3. HITUNG PIUTANG AKTIF HARI INI
       const debtsSnapshot = await db.collection("debts")
         .where("type", "==", "piutang")
         .where("status", "==", "active")
@@ -1012,12 +1066,15 @@
       debtsSnapshot.forEach(doc => {
         const d = doc.data();
         if (d.date === today) {
+          if (!isBoss && d.userId && d.userId !== user.uid) return;
           piutang += d.remaining || 0;
         }
       });
 
+      // 4. HITUNG KAS FISIK LACI
       const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topup - tarik - piutang;
 
+      // Render ke DOM
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
@@ -1033,7 +1090,7 @@
       document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
-    } catch(err) {
+    } catch (err) {
       console.error("Gagal load stats:", err);
     }
   }
@@ -1068,7 +1125,6 @@
     }
   }
 
-  // LOGIKA SHIFT MENGGUNAKAN CUSTOM POPUP ALERT
   async function toggleShift(user) {
     const today = getTodayString();
 
@@ -1076,6 +1132,7 @@
       window.location.href = "page-kas-shift.html";
     } else {
       try {
+        // Cek apakah modal untuk user login ini sudah diinput
         const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
@@ -1083,7 +1140,7 @@
         if (!modalData || !modalData.amount) {
           showCustomAlert({
             title: "Modal Awal Belum Diisi",
-            message: "Silakan tentukan saldo modal awal laci terlebih dahulu untuk membuka shift kasir.",
+            message: "Silakan alokasikan saldo modal awal laci terlebih dahulu sebelum membuka shift.",
             iconType: "warning",
             confirmText: "Set Modal Sekarang",
             onConfirm: () => {
@@ -1098,7 +1155,7 @@
         if (shiftDoc.exists && shiftDoc.data().status === "open") {
           showCustomAlert({
             title: "Informasi",
-            message: "Shift kasir hari ini sudah dalam status terbuka.",
+            message: "Shift Anda hari ini sudah dalam status terbuka.",
             iconType: "success"
           });
           return;
@@ -1117,7 +1174,7 @@
 
         showCustomAlert({
           title: "Shift Berhasil Dibuka",
-          message: "Selamat bertugas! Shift kasir telah aktif dan siap digunakan.",
+          message: "Shift kasir telah aktif dan siap melayani transaksi.",
           iconType: "success"
         });
         loadDashboardStats(user);
