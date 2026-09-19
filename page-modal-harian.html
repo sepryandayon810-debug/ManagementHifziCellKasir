@@ -6,6 +6,16 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Modal & Alokasi Harian</title>
 
+  <!-- SCRIPT GLOBAL UNTUK MENJALANKAN TEMA TERSIMPAN -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +27,7 @@
       --primary-hover: #4338ca;
       --primary-light: #eef2ff;
       --accent: #0284c7;
+      --accent-light: #e0f2fe;
       --success: #059669;
       --success-light: #ecfdf5;
       --warning: #d97706;
@@ -36,14 +47,21 @@
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
+      --radius-xl: 20px;
       
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
       
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
     }
+
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
 
     [data-theme="dark"] {
       --bg-base: #090d16;
@@ -53,9 +71,10 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
-      --primary-light: rgba(79, 70, 229, 0.15);
+      --primary-light: rgba(79, 70, 229, 0.2);
       --success-light: rgba(5, 150, 105, 0.15);
       --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,6 +89,7 @@
 
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
+    /* BACKDROP MOBILE */
     .sidebar-backdrop {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
@@ -78,6 +98,7 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
+    /* SIDEBAR */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -177,6 +198,7 @@
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
+    /* MAIN CONTENT */
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -185,19 +207,46 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
+    /* HEADER AMAN & TIDAK TUMPANG TINDIH */
     .main-header {
-      height: var(--header-h); background: var(--bg-surface);
+      height: var(--header-h); 
+      background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 1.5rem; position: sticky; top: 0; z-index: 90;
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      padding: 0 1.25rem; 
+      position: sticky; 
+      top: 0; 
+      z-index: 90;
     }
-    .header-left { display: flex; align-items: center; gap: 0.75rem; }
-    .header-title { font-size: 1.25rem; font-weight: 700; }
+    .header-left { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.85rem; 
+      min-width: 0;
+    }
+    .header-title { 
+      font-size: 1.2rem; 
+      font-weight: 700; 
+      color: var(--text-main);
+      margin: 0;
+      white-space: nowrap;
+    }
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
     .btn-icon-box {
-      width: 38px; height: 38px; border-radius: var(--radius-md);
-      background: var(--bg-subtle); border: 1px solid var(--border);
-      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      width: 38px; 
+      height: 38px; 
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle); 
+      border: 1px solid var(--border);
+      color: var(--text-sub); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .page-content { padding: 1.5rem; flex: 1; max-width: 920px; }
@@ -412,6 +461,21 @@
       </div>
 
       <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
@@ -437,7 +501,7 @@
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
-        <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
         <h1 class="header-title">Modal & Alokasi Harian</h1>
       </div>
       <div class="header-actions">
@@ -515,7 +579,7 @@
         </div>
       </div>
 
-      <!-- ⭐ TABEL RINGKASAN ALOKASI MODAL BERJENJANG (BARU) ⭐ -->
+      <!-- TABEL RINGKASAN ALOKASI MODAL BERJENJANG -->
       <div class="card">
         <div class="card-header">
           <h3 class="card-title"><i class="fas fa-chart-pie" style="color:var(--success);"></i> Ringkasan Alokasi Modal Staf Hari Ini</h3>
@@ -646,6 +710,14 @@
 
     document.getElementById("selectTargetKasir").onchange = loadExistingModal;
     document.getElementById("btnSaveModal").onclick = saveModalHarian;
+
+    // Tombol toggle dark mode di header
+    document.getElementById("btnThemeToggle").onclick = () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    };
   }
 
   function setupSidebarEvents() {
@@ -671,18 +743,11 @@
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
     });
-
-    document.getElementById("btnThemeToggle").onclick = () => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
-      localStorage.setItem("webpos_theme", isDark ? "dark" : "light");
-    };
   }
 
   async function setupTargetKasirDropdown(loginUser) {
     const select = document.getElementById("selectTargetKasir");
 
-    // Jika Kasir, hanya bisa input untuk dirinya sendiri
     if (currentUserRole === "kasir") {
       const myName = document.getElementById("userName").textContent;
       select.innerHTML = `<option value="${loginUser.uid}">${myName} (Akun Anda Sendiri)</option>`;
@@ -698,7 +763,6 @@
         const u = { id: doc.id, ...doc.data() };
         const role = (u.role || "kasir").toLowerCase();
 
-        // Jika login sebagai Admin, batasi dropdown hanya untuk role 'kasir'
         if (currentUserRole === "admin" && role !== "kasir") return;
 
         const opt = document.createElement("option");
@@ -731,7 +795,6 @@
     }
   }
 
-  // ⭐ LOAD TABEL RINGKASAN BERJENJANG ⭐
   async function loadModalSummary(todayStr) {
     const tbody = document.getElementById("summaryTableBody");
     const summaryTotalEl = document.getElementById("totalGlobalModalSummary");
@@ -747,7 +810,6 @@
 
       let rowsHtml = "";
       let grandTotal = 0;
-      const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
       const isAdmin = currentUserRole === "admin";
 
       modalSnap.forEach(doc => {
@@ -755,9 +817,6 @@
         const targetUser = usersMap[m.userId] || {};
         const targetRole = (targetUser.role || "kasir").toLowerCase();
 
-        // ATURAN BERJENJANG:
-        // - Admin hanya melihat staf ber-role 'kasir'
-        // - Kasir hanya melihat miliknya sendiri
         if (isAdmin && targetRole !== "kasir") return;
         if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return;
 
