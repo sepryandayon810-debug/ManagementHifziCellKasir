@@ -70,7 +70,6 @@
 
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
-    /* BACKDROP */
     .sidebar-backdrop {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
@@ -79,7 +78,6 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -109,6 +107,7 @@
       font-size: 1.25rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
@@ -187,7 +186,6 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER */
     .main-header {
       height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
@@ -205,7 +203,6 @@
 
     .page-content { padding: 1.5rem; flex: 1; max-width: 860px; }
 
-    /* FORM PILIH TARGET KASIR */
     .form-group { margin-bottom: 1.25rem; }
     .form-label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.4rem; }
     .form-select {
@@ -215,7 +212,6 @@
     }
     .form-select:focus { border-color: var(--primary); background: #fff; }
 
-    /* TAB PILIHAN METODE */
     .input-mode-tabs {
       display: flex; background: var(--bg-subtle); padding: 4px;
       border-radius: var(--radius-md); margin-bottom: 1.25rem; border: 1px solid var(--border);
@@ -230,7 +226,6 @@
       background: #fff; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    /* CARD CONTAINER */
     .card {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
@@ -243,7 +238,6 @@
     .card-title { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
     .card-body { padding: 1.5rem; }
 
-    /* DISPLAY JUMLAH MODAL */
     .modal-input-display {
       background: var(--primary-light);
       border: 2px solid var(--primary);
@@ -259,7 +253,6 @@
       font-family: inherit; margin-top: 0.25rem;
     }
 
-    /* QUICK CHIPS */
     .quick-chips-grid {
       display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;
     }
@@ -270,7 +263,6 @@
     }
     .chip-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
 
-    /* KALKULATOR PECAHAN LEMBAR */
     .denom-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 0.75rem; margin-bottom: 1.5rem;
@@ -288,7 +280,6 @@
     }
     .denom-input:focus { border-color: var(--primary); }
 
-    /* ACTION BUTTONS */
     .action-row { display: flex; gap: 0.75rem; }
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
@@ -300,7 +291,6 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
 
-    /* TOAST */
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 3000;
       display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
@@ -314,7 +304,6 @@
     .toast-pill.success { border-left-color: var(--success); }
     .toast-pill.error { border-left-color: var(--danger); }
 
-    /* MOBILE DOCK */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -344,13 +333,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR UTUH -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -455,7 +445,7 @@
         </div>
 
         <div class="card-body">
-          <!-- ⭐ TARGET KASIR YANG DIBERIKAN MODAL ⭐ -->
+          <!-- TARGET KASIR YANG DIBERIKAN MODAL -->
           <div class="form-group" id="groupTargetKasir">
             <label class="form-label"><i class="fas fa-user-tag" style="color:var(--primary);"></i> Alokasikan Modal Untuk Kasir / Staf:</label>
             <select class="form-select" id="selectTargetKasir">
@@ -473,7 +463,7 @@
             </button>
           </div>
 
-          <!-- DISPLAY TOTAL MODAL (BISA DIKETIK LANGSUNG) -->
+          <!-- DISPLAY TOTAL MODAL -->
           <div class="modal-input-display">
             <span class="modal-label-text">Total Modal Awal (Ketik Angka di Bawah)</span>
             <input type="text" class="modal-amount-input" id="totalModalInput" value="Rp 0" placeholder="Rp 0" autocomplete="off">
@@ -585,6 +575,26 @@
     setTimeout(() => el.remove(), 3500);
   }
 
+  // SINKRONISASI LOGO BRAND DARI SETTINGS/STORE
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    if (!logoEl) return;
+
+    const cached = localStorage.getItem("webpos_store_name");
+    if (cached) logoEl.textContent = cached;
+
+    try {
+      const doc = await db.collection("settings").doc("store").get();
+      if (doc.exists && doc.data().name) {
+        const storeName = doc.data().name;
+        logoEl.textContent = storeName;
+        localStorage.setItem("webpos_store_name", storeName);
+      }
+    } catch(e) {
+      console.error("Gagal sync brand:", e);
+    }
+  }
+
   let rawModalAmount = 0;
   let currentUser = null;
   let currentUserRole = "kasir";
@@ -601,9 +611,9 @@
   });
 
   async function initPage(user) {
+    syncStoreBrandName();
     setupSidebarEvents();
 
-    // 1. Ambil data user login dari Firestore
     try {
       const uDoc = await db.collection("users").doc(user.uid).get();
       if (uDoc.exists) {
@@ -621,13 +631,9 @@
     const todayStr = getTodayString();
     document.getElementById("currentDateBadge").textContent = todayStr;
 
-    // 2. Siapkan Dropdown Kasir Target
     await setupTargetKasirDropdown(user);
-
-    // 3. Muat modal kasir terpilih
     loadExistingModal();
 
-    // 4. Listener input manual
     const inputDisplay = document.getElementById("totalModalInput");
     inputDisplay.addEventListener("input", (e) => {
       const val = e.target.value.replace(/\D/g, "");
@@ -669,16 +675,14 @@
 
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
       localStorage.setItem("webpos_theme", isDark ? "light" : "dark");
     };
   }
 
-  // ISI DROPDOWN TARGET KASIR
   async function setupTargetKasirDropdown(loginUser) {
     const select = document.getElementById("selectTargetKasir");
 
-    // Jika yang login adalah Kasir, kunci pilihan ke akun kasir itu sendiri
     if (currentUserRole === "kasir") {
       const myName = document.getElementById("userName").textContent;
       select.innerHTML = `<option value="${loginUser.uid}">${myName} (Akun Anda Sendiri)</option>`;
@@ -686,7 +690,6 @@
       return;
     }
 
-    // Jika Owner / Developer / Admin: Muat semua akun aktif dari Firestore
     try {
       const snap = await db.collection("users").where("status", "==", "active").get();
       select.innerHTML = "";
@@ -705,7 +708,6 @@
     }
   }
 
-  // AMBIL MODAL KASIR TERPILIH DARI FIRESTORE
   async function loadExistingModal() {
     const todayStr = getTodayString();
     const targetUid = document.getElementById("selectTargetKasir").value;
@@ -724,7 +726,6 @@
     }
   }
 
-  // BERALIH MODE INPUT
   window.switchInputMode = function(mode) {
     const btnManual = document.getElementById("tabModeManual");
     const btnPecahan = document.getElementById("tabModePecahan");
@@ -745,7 +746,6 @@
     }
   };
 
-  // FUNGSI INPUT MANUAL CEPAT (CHIPS)
   window.setManualAmount = function(addAmount) {
     rawModalAmount += addAmount;
     updateModalDisplay();
@@ -757,7 +757,6 @@
     updateModalDisplay();
   };
 
-  // HITUNG PECAHAN
   window.calcFromDenominations = function() {
     let total = 0;
     document.querySelectorAll(".denom-input").forEach(inp => {
@@ -774,7 +773,6 @@
     document.getElementById("totalModalInput").value = formatRupiah(rawModalAmount);
   }
 
-  // SIMPAN ALOKASI MODAL KE FIRESTORE
   async function saveModalHarian() {
     if (rawModalAmount <= 0) {
       toast("Masukkan nominal modal awal yang valid (lebih dari 0)!", "error");
@@ -794,7 +792,6 @@
       const docId = `${todayStr}_${targetUid}`;
       const senderName = document.getElementById("userName").textContent;
 
-      // 1. Simpan dokumen modal dengan id spesifik kasir target
       await db.collection("modal").doc(docId).set({
         id: docId,
         date: todayStr,
@@ -806,7 +803,6 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // 2. Buka status shift untuk kasir target tersebut
       await db.collection("shifts").doc(docId).set({
         id: "shift_" + Date.now(),
         userId: targetUid,
