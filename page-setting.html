@@ -17,7 +17,6 @@
       --primary-hover: #4338ca;
       --primary-light: #eef2ff;
       --accent: #0284c7;
-      --accent-light: #e0f2fe;
       --success: #059669;
       --success-light: #ecfdf5;
       --warning: #d97706;
@@ -39,14 +38,17 @@
       --radius-lg: 16px;
       --radius-xl: 20px;
       
-      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
-      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-      
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
     }
+
+    /* PALET WARNA GLOBAL TEMA */
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
 
     [data-theme="dark"] {
       --bg-base: #090d16;
@@ -56,10 +58,7 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
-      --primary-light: rgba(79, 70, 229, 0.15);
-      --success-light: rgba(5, 150, 105, 0.15);
-      --danger-light: rgba(220, 38, 38, 0.15);
-      --warning-light: rgba(217, 119, 6, 0.15);
+      --primary-light: rgba(79, 70, 229, 0.2);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -74,7 +73,6 @@
 
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
-    /* BACKDROP MOBILE */
     .sidebar-backdrop {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
@@ -83,7 +81,6 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -183,7 +180,6 @@
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
-    /* MAIN CONTENT */
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -192,7 +188,6 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER */
     .main-header {
       height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
@@ -212,7 +207,6 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* TABS */
     .settings-tabs-wrapper {
       width: 100%; overflow-x: auto; overflow-y: hidden;
       -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 1.5rem;
@@ -272,6 +266,24 @@
     .setting-info { flex: 1; }
     .setting-label { font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.15rem; }
     .setting-desc { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* PILIHAN WARNA TEMA (GRID) */
+    .theme-options-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 0.75rem; margin-top: 0.75rem;
+    }
+    .theme-color-card {
+      background: var(--bg-subtle); border: 2px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.75rem; text-align: center;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .theme-color-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .theme-color-card.active { border-color: var(--primary); background: var(--primary-light); }
+    .color-circle {
+      width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 0.4rem auto;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .theme-color-name { font-size: 0.75rem; font-weight: 700; color: var(--text-main); }
 
     .toggle-switch { position: relative; width: 48px; height: 26px; display: inline-block; flex-shrink: 0; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -363,6 +375,16 @@
     }
   </style>
 
+  <!-- SKRIP GLOBAL PENERAPAN TEMA (DAPAT DI-LOAD DI SEMUA HALAMAN) -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
   <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -440,14 +462,6 @@
       </div>
 
       <div class="nav-section">
-        <div class="nav-section-title">Integrasi</div>
-        <ul class="nav-menu">
-          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
-          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
-        </ul>
-      </div>
-
-      <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
@@ -473,7 +487,7 @@
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
-        <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
         <h1 class="header-title">Pengaturan Sistem</h1>
       </div>
       <div class="header-actions">
@@ -592,23 +606,51 @@
         </div>
       </div>
 
-      <!-- TAB 4: TAMPILAN -->
+      <!-- TAB 4: TAMPILAN (DIPERBARUI DENGAN PILIHAN TEMA WARNA GLOBAL) -->
       <div class="tab-panel" id="tab-tampilan">
         <div class="settings-grid">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-palette" style="color:var(--primary);"></i> Preferensi Tampilan</h3>
+              <h3 class="card-title"><i class="fas fa-palette" style="color:var(--primary);"></i> Preferensi Tampilan & Tema</h3>
             </div>
             <div class="card-body">
-              <div class="setting-item">
+              <!-- Dark Mode Toggle -->
+              <div class="setting-item" style="margin-bottom: 1.5rem;">
                 <div class="setting-info">
                   <div class="setting-label">Tema Gelap (Dark Mode)</div>
-                  <div class="setting-desc">Mengubah kontras warna untuk penggunaan malam hari</div>
+                  <div class="setting-desc">Mengubah kontras warna untuk kenyamanan malam hari</div>
                 </div>
                 <label class="toggle-switch">
                   <input type="checkbox" id="darkModeToggle">
                   <span class="toggle-slider"></span>
                 </label>
+              </div>
+
+              <!-- Pilihan Warna Global -->
+              <div class="form-group">
+                <label class="form-label">Pilih Warna Utama Sistem</label>
+                <div class="theme-options-grid" id="themeColorGrid">
+                  <div class="theme-color-card" data-color="indigo">
+                    <div class="color-circle" style="background:#4f46e5;"></div>
+                    <div class="theme-color-name">Indigo</div>
+                  </div>
+                  <div class="theme-color-card" data-color="green">
+                    <div class="color-circle" style="background:#059669;"></div>
+                    <div class="theme-color-name">Mint Green</div>
+                  </div>
+                  <div class="theme-color-card" data-color="blue">
+                    <div class="color-circle" style="background:#2563eb;"></div>
+                    <div class="color-color-name" style="font-size:0.75rem; font-weight:700;">Ocean Blue</div>
+                  </div>
+                  <div class="theme-color-card" data-color="orange">
+                    <div class="color-circle" style="background:#ea580c;"></div>
+                    <div class="theme-color-name">Sunset</div>
+                  </div>
+                  <div class="theme-color-card" data-color="purple">
+                    <div class="color-circle" style="background:#7c3aed;"></div>
+                    <div class="theme-color-name">Purple</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -686,24 +728,18 @@
     setTimeout(() => el.remove(), 3500);
   }
 
-  // SINKRONISASI LOGO BRAND DARI SETTINGS/STORE
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
-
     const cached = localStorage.getItem("webpos_store_name");
     if (cached) logoEl.textContent = cached;
-
     try {
       const doc = await db.collection("settings").doc("store").get();
       if (doc.exists && doc.data().name) {
-        const storeName = doc.data().name;
-        logoEl.textContent = storeName;
-        localStorage.setItem("webpos_store_name", storeName);
+        logoEl.textContent = doc.data().name;
+        localStorage.setItem("webpos_store_name", doc.data().name);
       }
-    } catch(e) {
-      console.error("Gagal sync brand:", e);
-    }
+    } catch(e) {}
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -721,8 +757,8 @@
     syncStoreBrandName();
     setupSidebarEvents();
     setupTabSwitching();
+    setupThemePreferences();
 
-    // Load data profil akun
     try {
       const uDoc = await db.collection("users").doc(user.uid).get();
       if (uDoc.exists) {
@@ -742,23 +778,6 @@
 
     loadStoreSettings();
 
-    // Setup Tema
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    document.getElementById("darkModeToggle").checked = isDark;
-    document.getElementById("darkModeToggle").onchange = (e) => {
-      const dark = e.target.checked;
-      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-      localStorage.setItem("webpos_theme", dark ? "dark" : "light");
-    };
-
-    document.getElementById("btnThemeToggle").onclick = () => {
-      const curDark = document.documentElement.getAttribute("data-theme") === "dark";
-      const nextDark = !curDark;
-      document.documentElement.setAttribute("data-theme", nextDark ? "dark" : "light");
-      localStorage.setItem("webpos_theme", nextDark ? "dark" : "light");
-      document.getElementById("darkModeToggle").checked = nextDark;
-    };
-
     document.getElementById("btnSaveStore").onclick = saveStoreSettings;
     document.getElementById("btnSaveProfile").onclick = saveProfileName;
     document.getElementById("btnLogout").onclick = () => {
@@ -773,6 +792,49 @@
     document.getElementById("btnConfirmChangePassword").onclick = handlePasswordChange;
 
     setupPrinterSection();
+  }
+
+  // ⭐ PENGATURAN TEMA & WARNA GLOBAL ⭐
+  function setupThemePreferences() {
+    const darkModeToggle = document.getElementById("darkModeToggle");
+    const currentTheme = localStorage.getItem("webpos_theme") || "light";
+    const currentColor = localStorage.getItem("webpos_theme_color") || "indigo";
+
+    // Set nilai awal toggle dan card warna
+    darkModeToggle.checked = (currentTheme === "dark");
+    document.querySelectorAll(".theme-color-card").forEach(card => {
+      if (card.dataset.color === currentColor) card.classList.add("active");
+      
+      card.onclick = () => {
+        document.querySelectorAll(".theme-color-card").forEach(c => c.classList.remove("active"));
+        card.classList.add("active");
+        const colorKey = card.dataset.color;
+        
+        document.documentElement.setAttribute("data-theme-color", colorKey);
+        localStorage.setItem("webpos_theme_color", colorKey);
+        toast(`Tema warna ${card.querySelector('.theme-color-name').textContent} diterapkan!`, "success");
+      };
+    });
+
+    // Event listener Dark Mode
+    darkModeToggle.onchange = (e) => {
+      const isDark = e.target.checked;
+      const themeName = isDark ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", themeName);
+      localStorage.setItem("webpos_theme", themeName);
+    };
+
+    // Tombol header dark mode toggle
+    const btnHeaderDark = document.getElementById("btnThemeToggle");
+    if (btnHeaderDark) {
+      btnHeaderDark.onclick = () => {
+        const currentMode = document.documentElement.getAttribute("data-theme") === "dark";
+        const nextMode = !currentMode;
+        document.documentElement.setAttribute("data-theme", nextMode ? "dark" : "light");
+        localStorage.setItem("webpos_theme", nextMode ? "dark" : "light");
+        darkModeToggle.checked = nextMode;
+      };
+    }
   }
 
   function setupSidebarEvents() {
@@ -853,9 +915,7 @@
       localStorage.setItem("webpos_store_address", address);
       localStorage.setItem("webpos_store_phone", phone);
 
-      // Perbarui logo di halaman ini seketika
       syncStoreBrandName();
-
       toast("Pengaturan toko berhasil disimpan", "success");
     } catch(err) {
       toast("Gagal menyimpan: " + err.message, "error");
