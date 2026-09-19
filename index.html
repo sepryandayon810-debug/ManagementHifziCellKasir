@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Dashboard</title>
 
-  <!-- SCRIPT GLOBAL UNTUK MENJALANKAN TEMA TERSIMPAN -->
+  <!-- SKRIP PENERAPAN TEMA GLOBAL (DAPAT DIBACA LANGSUNG SAAT HALAMAN DIMUAT) -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
@@ -58,6 +58,12 @@
       --header-h: 68px;
     }
 
+    /* KUSTOMISASI PALET WARNA UTAMA */
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+
     [data-theme="dark"] {
       --bg-base: #090d16;
       --bg-surface: #111827;
@@ -66,7 +72,7 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
-      --primary-light: rgba(79, 70, 229, 0.15);
+      --primary-light: rgba(79, 70, 229, 0.2);
       --success-light: rgba(5, 150, 105, 0.15);
       --danger-light: rgba(220, 38, 38, 0.15);
       --warning-light: rgba(217, 119, 6, 0.15);
@@ -203,7 +209,7 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER DIPERBAIKI (TIDAK TUMPANG TINDIH) */
+    /* HEADER AMAN & TIDAK TUMPANG TINDIH */
     .main-header {
       height: var(--header-h); 
       background: var(--bg-surface);
@@ -1085,8 +1091,9 @@
 
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
-      localStorage.setItem("webpos_theme", isDark ? "dark" : "light");
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
     };
   }
 
