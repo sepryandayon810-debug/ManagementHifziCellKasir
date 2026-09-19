@@ -169,6 +169,7 @@
     .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
+    /* FOOTER USER PROFILE */
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
@@ -185,6 +186,7 @@
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
+    /* MAIN CONTENT */
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -193,15 +195,47 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
+    /* HEADER DIPERBAIKI (JARAK AMAN & FLEKSIBEL) */
     .main-header {
-      height: var(--header-h); background: var(--bg-surface);
+      height: var(--header-h); 
+      background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 1.5rem; position: sticky; top: 0; z-index: 90;
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      padding: 0 1.25rem; 
+      position: sticky; 
+      top: 0; 
+      z-index: 90;
     }
-    .header-left { display: flex; align-items: center; gap: 0.75rem; }
-    .header-title { font-size: 1.25rem; font-weight: 700; }
+    .header-left { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.85rem; /* Jarak pas antara tombol menu dan judul */
+      min-width: 0;
+    }
+    .header-title { 
+      font-size: 1.2rem; 
+      font-weight: 700; 
+      color: var(--text-main);
+      margin: 0;
+      white-space: nowrap;
+    }
     .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn-icon-box {
+      width: 38px; 
+      height: 38px; 
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle); 
+      border: 1px solid var(--border);
+      color: var(--text-sub); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
 
     .header-stats { display: flex; align-items: center; gap: 1.75rem; }
     .header-stats .stat-item { display: flex; flex-direction: column; }
@@ -450,9 +484,10 @@
 <body>
 
 <div class="app-container">
+  <!-- OVERLAY MOBILE -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -516,6 +551,21 @@
       </div>
 
       <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
@@ -526,6 +576,7 @@
       </div>
     </nav>
 
+    <!-- PROFIL USERNAME AKTIF -->
     <div class="sidebar-footer">
       <div class="user-profile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
@@ -537,11 +588,13 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
+  <!-- MAIN WRAPPER -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
-        <button class="btn-icon-box d-md-none" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu">
+          <i class="fas fa-bars"></i>
+        </button>
         <h1 class="header-title">Dashboard</h1>
       </div>
 
@@ -574,7 +627,7 @@
             <i class="fas fa-store-slash" id="shiftToggleIcon"></i>
           </div>
           <div class="shift-toggle-info">
-            <div class="shift-toggle-label">Operasional Kasir</div>
+            <div class="shift-toggle-label" id="shiftRoleLabel">Operasional Kasir</div>
             <div class="shift-toggle-value" id="shiftToggleText">Buka Shift Kerja</div>
           </div>
           <div class="shift-toggle-switch">
@@ -948,7 +1001,6 @@
     });
   }
 
-  // ⭐ KALKULASI STATISTIK DENGAN HIERARKI BERJENJANG ⭐
   async function loadDashboardStats(user) {
     const today = getTodayString();
     const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
@@ -958,14 +1010,12 @@
       let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
 
-      // Ambil daftar user untuk filter role
       const usersSnap = await db.collection("users").get();
       const usersMap = {};
       usersSnap.forEach(doc => {
         usersMap[doc.id] = { id: doc.id, ...doc.data() };
       });
 
-      // 1. HITUNG MODAL BERJENJANG
       const modalSnap = await db.collection("modal").where("date", "==", today).get();
       modalSnap.forEach(doc => {
         const m = doc.data();
@@ -973,15 +1023,14 @@
         const targetRole = (targetUser.role || "kasir").toLowerCase();
 
         if (isBoss) {
-          modalAwal += m.amount || 0; // Owner lihat semua
+          modalAwal += m.amount || 0;
         } else if (isAdmin && targetRole === "kasir") {
-          modalAwal += m.amount || 0; // Admin lihat kasir
+          modalAwal += m.amount || 0;
         } else if (!isBoss && !isAdmin && m.userId === user.uid) {
-          modalAwal += m.amount || 0; // Kasir lihat diri sendiri
+          modalAwal += m.amount || 0;
         }
       });
 
-      // 2. HITUNG TRANSAKSI HARI INI
       const transSnapshot = await db.collection("transactions").where("date", "==", today).get();
       transSnapshot.forEach(doc => {
         const t = doc.data();
@@ -1020,7 +1069,6 @@
         }
       });
 
-      // 3. HITUNG PIUTANG AKTIF HARI INI
       const debtsSnapshot = await db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get();
       debtsSnapshot.forEach(doc => {
         const d = doc.data();
@@ -1037,7 +1085,6 @@
 
       const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topup - tarik - piutang;
 
-      // Render Dashboard Stats
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
@@ -1053,17 +1100,15 @@
       document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
-      // 4. RENDER TABEL LAPORAN PER STAF (Hanya muncul untuk Owner, Dev, dan Admin)
       if (isBoss || isAdmin) {
         renderStaffReportTable(modalSnap, transSnapshot, usersMap, isBoss, isAdmin);
       }
 
     } catch (err) {
-      console.error("Gagal load stats:", err);
+      console.error(err);
     }
   }
 
-  // RENDER TABEL REKAPITULASI PER STAF
   function renderStaffReportTable(modalSnap, transSnap, usersMap, isBoss, isAdmin) {
     const cardReport = document.getElementById("cardReportStaff");
     const tbody = document.getElementById("staffReportTableBody");
@@ -1073,7 +1118,6 @@
 
     const staffData = {};
 
-    // Rekap modal per user
     modalSnap.forEach(doc => {
       const m = doc.data();
       const u = usersMap[m.userId] || {};
@@ -1087,7 +1131,6 @@
       staffData[m.userId].modal += m.amount || 0;
     });
 
-    // Rekap transaksi per user
     transSnap.forEach(doc => {
       const t = doc.data();
       const u = usersMap[t.userId] || {};
