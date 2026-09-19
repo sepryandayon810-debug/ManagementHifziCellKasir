@@ -448,7 +448,7 @@
     .dialog-btn-primary:hover { background: var(--primary-hover); }
     .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
-    /* MODAL TRANSFER SHIFT */
+    /* MODAL TRANSFER SHIFT & TOMBOL MODAL YANG DIPERCANTIK */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
@@ -464,7 +464,50 @@
     .modal-title { font-size: 1.1rem; font-weight: 700; }
     .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
     .modal-body { padding: 1.25rem; }
-    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; }
+    
+    .modal-footer {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      background: var(--bg-subtle);
+      border-bottom-left-radius: var(--radius-xl);
+      border-bottom-right-radius: var(--radius-xl);
+    }
+    .modal-footer .btn {
+      padding: 0.65rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .modal-footer .btn-secondary {
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      color: var(--text-main);
+    }
+    .modal-footer .btn-secondary:hover {
+      background: var(--bg-subtle);
+      border-color: var(--text-muted);
+    }
+    .modal-footer .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: 1.5px solid transparent;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .modal-footer .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
     .form-select {
       width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem;
@@ -876,8 +919,12 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closeTransferModal()">Batal</button>
-      <button type="button" class="btn btn-primary" id="btnConfirmTransfer" onclick="executeTransfer()">Konfirmasi Transfer</button>
+      <button type="button" class="btn btn-secondary" onclick="closeTransferModal()">
+        <i class="fas fa-times"></i> Batal
+      </button>
+      <button type="button" class="btn btn-primary" id="btnConfirmTransfer" onclick="executeTransfer()">
+        <i class="fas fa-check"></i> Konfirmasi Transfer
+      </button>
     </div>
   </div>
 </div>
@@ -1030,7 +1077,7 @@
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
-      localStorage.setItem("webpos_theme", isDark ? "light" : "dark");
+      localStorage.setItem("webpos_theme", isDark ? "dark" : "light");
     };
   }
 
@@ -1289,7 +1336,6 @@
     }
   }
 
-  // ⭐ FITUR TRANSFER SHIFT BERJENJANG (Sesama Role) ⭐
   async function loadAvailableTransferUsers(currentUser) {
     const today = getTodayString();
     const select = document.getElementById("transferTargetUser");
@@ -1303,7 +1349,6 @@
         const u = { uid: doc.id, ...doc.data() };
         const uRole = (u.role || "kasir").toLowerCase();
 
-        // Hanya tampilkan user dengan role yang PERSIS SAMA dan bukan diri sendiri
         if (u.uid === currentUser.uid) return;
         if (uRole !== currentUserRole) return;
 
@@ -1336,7 +1381,6 @@
       const currentModalDoc = await db.collection("modal").doc(`${today}_${currentUser.uid}`).get();
       const currentModalAmount = currentModalDoc.exists ? (currentModalDoc.data().amount || 0) : 0;
 
-      // Pindahkan data modal ke target user
       await db.collection("modal").doc(`${today}_${targetUid}`).set({
         id: `${today}_${targetUid}`,
         date: today,
@@ -1346,7 +1390,6 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      // Pindahkan status shift aktif ke target user
       await db.collection("shifts").doc(`${today}_${targetUid}`).set({
         id: "shift_" + Date.now(),
         userId: targetUid,
@@ -1357,7 +1400,6 @@
         openTime: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // Tutup shift user lama
       await db.collection("shifts").doc(`${today}_${currentUser.uid}`).update({
         status: "closed",
         closedReason: `Ditransfer ke ${targetUser.name || targetUser.username}`
