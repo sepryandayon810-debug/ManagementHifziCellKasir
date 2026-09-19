@@ -585,9 +585,12 @@
       <!-- KONTEN TAB PRODUK -->
       <div id="tab-produk" class="tab-content" style="display:none;">
         <div class="produk-toolbar">
-          <div class="produk-search">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchProduk" placeholder="Cari nama atau kode produk...">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btnBackToCatTab" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kategori</button>
+            <div class="produk-search" style="flex: 1; min-width: 200px;">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchProduk" placeholder="Cari nama atau kode produk...">
+            </div>
           </div>
           <div class="produk-filters">
             <select class="filter-select" id="filterKategori"><option value="">Semua Kategori</option></select>
@@ -939,7 +942,6 @@
     selectedCategoryFilter = catId;
     document.getElementById("filterKategori").value = catId;
     document.getElementById("pageMainTitle").textContent = "Kategori: " + catName;
-    document.getElementById("btnBackToAllCat").style.display = "inline-flex";
 
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector('.tab-btn[data-tab="produk"]').classList.add("active");
@@ -953,7 +955,6 @@
     selectedCategoryFilter = "";
     document.getElementById("filterKategori").value = "";
     document.getElementById("pageMainTitle").textContent = "Kategori";
-    document.getElementById("btnBackToAllCat").style.display = "none";
     
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector('.tab-btn[data-tab="kategori"]').classList.add("active");
@@ -1249,18 +1250,15 @@
       if (id) {
         await db.collection("categories").doc(id).update(katData);
         
-        // Sinkronisasi otomatis gambar ke produk di kategori ini jika produk tidak punya gambar sendiri
+        // ⭐ Sinkronisasi otomatis MENIMPA gambar ke SEMUA produk di kategori ini
         const prodSnap = await db.collection("products").where("categoryId", "==", id).get();
         const batch = db.batch();
         prodSnap.forEach(docSnap => {
-          const pData = docSnap.data();
-          if (!pData.imageUrl) {
-            batch.update(docSnap.ref, { imageUrl: katData.imageUrl });
-          }
+          batch.update(docSnap.ref, { imageUrl: katData.imageUrl });
         });
         await batch.commit();
 
-        toast("Kategori berhasil diperbarui", "success");
+        toast("Kategori & produk terkait berhasil diperbarui", "success");
       } else {
         katData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection("categories").add(katData);
