@@ -20,6 +20,7 @@
       --text-muted: #64748b;
       --success: #059669;
       --danger: #dc2626;
+      --warning: #d97706;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -89,6 +90,7 @@
     }
     .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--success); }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: var(--warning); }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -113,6 +115,7 @@
 
   <div class="alert-box alert-error" id="errorBox"></div>
   <div class="alert-box alert-success" id="successBox"></div>
+  <div class="alert-box alert-warning" id="warningBox"></div>
 
   <!-- FORM LOGIN -->
   <form id="formLogin">
@@ -160,14 +163,14 @@
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Role Akses</label>
+      <label class="form-label">Pengajuan Role</label>
       <div class="input-wrap">
         <i class="fas fa-shield-halved"></i>
         <select class="form-control" id="regRole">
-          <option value="developer">Developer (Full Akses Sistem)</option>
-          <option value="owner" selected>Owner (Pemilik Toko)</option>
-          <option value="admin">Admin (Operasional & Restock)</option>
-          <option value="kasir">Kasir (Transaksi Penjualan)</option>
+          <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
+          <option value="admin">Admin (Operasional & Stok)</option>
+          <option value="owner">Owner (Pemilik Toko)</option>
+          <option value="developer">Developer (Full Akses)</option>
         </select>
       </div>
     </div>
@@ -179,7 +182,7 @@
       </div>
     </div>
     <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background:#059669;">
-      <span>Buat Akun Sekarang</span>
+      <span>Ajukan Pendaftaran Akun</span>
       <i class="fas fa-user-plus"></i>
     </button>
   </form>
@@ -188,10 +191,16 @@
 <script>
   const errBox = document.getElementById("errorBox");
   const succBox = document.getElementById("successBox");
+  const warnBox = document.getElementById("warningBox");
 
-  function switchMode(mode) {
+  function clearAlerts() {
     errBox.style.display = "none";
     succBox.style.display = "none";
+    warnBox.style.display = "none";
+  }
+
+  function switchMode(mode) {
+    clearAlerts();
 
     if (mode === 'login') {
       document.getElementById("tabLoginBtn").classList.add("active");
@@ -204,25 +213,25 @@
       document.getElementById("tabLoginBtn").classList.remove("active");
       document.getElementById("formLogin").style.display = "none";
       document.getElementById("formRegister").style.display = "block";
-      document.getElementById("brandDesc").textContent = "Daftarkan akun kasir, admin, atau owner";
+      document.getElementById("brandDesc").textContent = "Pendaftaran staf/kasir memerlukan persetujuan Owner";
     }
   }
 
-  // LOGIN
+  // 1. PROSES LOGIN (DENGAN PENGECEKAN STATUS APPROVAL)
   document.getElementById("formLogin").onsubmit = async (e) => {
     e.preventDefault();
     const identifier = document.getElementById("loginIdentifier").value.trim();
     const pass = document.getElementById("loginPassword").value;
     const btn = document.getElementById("btnSubmitLogin");
 
-    errBox.style.display = "none";
-    succBox.style.display = "none";
+    clearAlerts();
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
 
     try {
       let targetEmail = identifier;
 
+      // Jika input adalah username, cari email padanannya di Firestore
       if (!identifier.includes("@")) {
         const usernameQuery = await db.collection("users")
           .where("username", "==", identifier.toLowerCase())
@@ -230,12 +239,35 @@
           .get();
 
         if (usernameQuery.empty) {
-          throw new Error("Username tidak terdaftar.");
+          throw new Error("Username tidak terdaftar di database.");
         }
         targetEmail = usernameQuery.docs[0].data().email;
       }
 
-      await auth.signInWithEmailAndPassword(targetEmail, pass);
+      // Login ke Firebase Auth
+      const userCred = await auth.signInWithEmailAndPassword(targetEmail, pass);
+
+      // Verifikasi status akun di Firestore
+      const userDoc = await db.collection("users").doc(userCred.user.uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+
+        // JIKA STATUS MASIH PENDING, KELUARKAN KEMBALI
+        if (userData.status === "pending") {
+          await auth.signOut();
+          warnBox.textContent = "Akun Anda sedang menunggu persetujuan (approval) dari Owner. Hubungi Owner untuk aktivasi akun.";
+          warnBox.style.display = "block";
+          btn.disabled = false;
+          btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
+          return;
+        }
+
+        if (userData.status === "inactive" || userData.status === "rejected") {
+          await auth.signOut();
+          throw new Error("Akun Anda telah dinonaktifkan atau ditolak.");
+        }
+      }
+
       window.location.href = "index.html";
 
     } catch (err) {
@@ -246,52 +278,76 @@
     }
   };
 
-  // REGISTER
+  // 2. PROSES DAFTAR (AKUN PERTAMA AUTO-DEVELOPER/OWNER, SISANYA PENDING)
   document.getElementById("formRegister").onsubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById("regName").value.trim();
     const username = document.getElementById("regUsername").value.trim().toLowerCase().replace(/\s+/g, '');
     const email = document.getElementById("regEmail").value.trim();
-    const role = document.getElementById("regRole").value;
+    const requestedRole = document.getElementById("regRole").value;
     const pass = document.getElementById("regPassword").value;
     const btn = document.getElementById("btnSubmitRegister");
 
-    errBox.style.display = "none";
-    succBox.style.display = "none";
+    clearAlerts();
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan akun...';
 
     try {
+      // Periksa apakah username sudah dipakai
       const checkUsername = await db.collection("users")
         .where("username", "==", username)
         .limit(1)
         .get();
 
       if (!checkUsername.empty) {
-        throw new Error("Username sudah digunakan.");
+        throw new Error("Username sudah digunakan. Silakan pilih username lain.");
       }
 
+      // Periksa apakah ini akun pendaftar pertama kali di database
+      const allUsersSnap = await db.collection("users").limit(1).get();
+      const isFirstAccount = allUsersSnap.empty;
+
+      let finalStatus = "pending";
+      let finalRole = requestedRole;
+
+      // Akun pertama otomatis menjadi Developer / Owner aktif tanpa approval
+      if (isFirstAccount) {
+        finalStatus = "active";
+        finalRole = "developer";
+      }
+
+      // Buat akun Auth
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
 
+      // Simpan data lengkap ke Firestore
       await db.collection("users").doc(cred.user.uid).set({
         name: name,
         username: username,
         email: email,
-        role: role,
-        status: "active",
+        role: finalRole,
+        status: finalStatus,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      succBox.textContent = `Pendaftaran akun ${role.toUpperCase()} berhasil! Mengalihkan...`;
-      succBox.style.display = "block";
-
-      setTimeout(() => {
-        window.location.href = "index.html";
-      }, 1200);
+      if (isFirstAccount) {
+        succBox.textContent = "Selamat! Anda terdaftar sebagai Pemilik Utama (Developer). Mengalihkan...";
+        succBox.style.display = "block";
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1200);
+      } else {
+        // Jika akun staf, langsung sign out agar tidak masuk sebelum di-approve
+        await auth.signOut();
+        warnBox.textContent = `Pendaftaran berhasil diajukan! Akun @${username} menunggu persetujuan (approval) dari Owner sebelum dapat digunakan.`;
+        warnBox.style.display = "block";
+        btn.disabled = false;
+        btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
+        document.getElementById("formRegister").reset();
+      }
 
     } catch (err) {
       btn.disabled = false;
-      btn.innerHTML = '<span>Buat Akun Sekarang</span> <i class="fas fa-user-plus"></i>';
+      btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
       errBox.textContent = "Gagal mendaftar: " + err.message;
       errBox.style.display = "block";
     }
