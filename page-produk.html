@@ -203,7 +203,7 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER AMAN & TIDAK TUMPANG TINDIH */
+    /* HEADER DIPERBAIKI (TIDAK TUMPANG TINDIH) */
     .main-header {
       height: var(--header-h); 
       background: var(--bg-surface);
@@ -223,43 +223,25 @@
       min-width: 0;
     }
     .header-title { 
-      font-size: 1.2rem; 
+      font-size: 1.15rem; 
       font-weight: 700; 
       color: var(--text-main);
       margin: 0;
       white-space: nowrap;
     }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
     .btn-icon-box {
-      width: 38px; 
-      height: 38px; 
-      border-radius: var(--radius-md);
-      background: var(--bg-subtle); 
-      border: 1px solid var(--border);
-      color: var(--text-sub); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
     }
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* KOMPONEN PRODUK LAINNYA */
-    .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-    .tab-item {
-      padding: 0.65rem 1.25rem; border: none; background: transparent;
-      font-size: 0.88rem; font-weight: 700; color: var(--text-muted); cursor: pointer; position: relative;
-    }
-    .tab-item.active { color: var(--primary); }
-    .tab-item.active::after {
-      content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--primary);
-    }
-
     .produk-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    .produk-search { flex: 1; min-width: 250px; position: relative; }
+    .produk-search { flex: 1; min-width: 220px; position: relative; }
     .produk-search i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
     .produk-search input {
       width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1.5px solid var(--border);
@@ -280,7 +262,6 @@
     }
     .produk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
     .produk-image { aspect-ratio: 1; background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; position: relative; }
-    .produk-image img { width: 100%; height: 100%; object-fit: cover; }
     .produk-image i { font-size: 2.5rem; color: var(--text-muted); }
     
     .produk-status {
@@ -297,8 +278,9 @@
 
     .produk-info { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
     .produk-name { font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 0.2rem; }
-    .produk-code { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; }
-    .produk-price { font-weight: 800; color: var(--primary); font-size: 1.05rem; margin-top: auto; }
+    .produk-code { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .produk-price { font-weight: 800; color: var(--primary); font-size: 0.95rem; margin-top: 0.2rem; }
+    .produk-reseller { font-weight: 700; color: var(--warning); font-size: 0.85rem; }
 
     .produk-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn { flex: 1; padding: 0.4rem; font-size: 0.78rem; font-weight: 700; }
@@ -477,7 +459,7 @@
     <header class="main-header">
       <div class="header-left">
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-        <h1 class="header-title">Manajemen Produk</h1>
+        <h1 class="header-title">Produk</h1>
       </div>
       <div class="header-actions">
         <button class="btn btn-primary btn-sm" id="btnAddProduk"><i class="fas fa-plus"></i> Tambah Produk</button>
@@ -535,18 +517,30 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" id="produkKategori">
+            <option value="">Pilih Kategori</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stok</label>
+          <input type="number" class="form-input" id="produkStock" placeholder="0" value="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label class="form-label">Harga Beli (Modal)</label>
           <input type="number" class="form-input" id="produkCost" placeholder="0">
         </div>
         <div class="form-group">
-          <label class="form-label">Harga Jual</label>
+          <label class="form-label">Harga Jual (Umum)</label>
           <input type="number" class="form-input" id="produkPrice" placeholder="0">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Stok</label>
-          <input type="number" class="form-input" id="produkStock" placeholder="0" value="0">
+          <label class="form-label">Harga Reseller ⭐</label>
+          <input type="number" class="form-input" id="produkResellerPrice" placeholder="0">
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
@@ -598,6 +592,7 @@
   }
 
   let productsList = [];
+  let categoriesList = [];
 
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
@@ -612,6 +607,7 @@
   async function initProdukPage() {
     syncStoreBrandName();
     setupSidebarEvents();
+    await loadCategories();
     loadProducts();
 
     document.getElementById("btnAddProduk").onclick = () => openModal();
@@ -621,8 +617,8 @@
 
     document.getElementById("searchProduk").oninput = renderProducts;
     document.getElementById("filterStatus").onchange = renderProducts;
+    document.getElementById("filterKategori").onchange = renderProducts;
 
-    // Tombol tema gelap di header
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       const nextTheme = isDark ? "light" : "dark";
@@ -630,7 +626,6 @@
       localStorage.setItem("webpos_theme", nextTheme);
     };
 
-    // Load info user di sidebar
     try {
       const currentUser = auth.currentUser;
       if (currentUser) {
@@ -671,6 +666,32 @@
     });
   }
 
+  async function loadCategories() {
+    try {
+      const snap = await db.collection("categories").get();
+      categoriesList = [];
+      snap.forEach(doc => {
+        categoriesList.push({ id: doc.id, ...doc.data() });
+      });
+
+      const filterKat = document.getElementById("filterKategori");
+      const produkKat = document.getElementById("produkKategori");
+
+      let html = '<option value="">Semua Kategori</option>';
+      let modalHtml = '<option value="">Pilih Kategori</option>';
+
+      categoriesList.forEach(c => {
+        html += `<option value="${c.id}">${c.name}</option>`;
+        modalHtml += `<option value="${c.id}">${c.name}</option>`;
+      });
+
+      filterKat.innerHTML = html;
+      produkKat.innerHTML = modalHtml;
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
   async function loadProducts() {
     try {
       const snap = await db.collection("products").get();
@@ -689,11 +710,13 @@
     const grid = document.getElementById("produkGrid");
     const search = document.getElementById("searchProduk").value.toLowerCase();
     const statusFilter = document.getElementById("filterStatus").value;
+    const katFilter = document.getElementById("filterKategori").value;
 
     const filtered = productsList.filter(p => {
       const matchSearch = (p.name || "").toLowerCase().includes(search) || (p.code || "").toLowerCase().includes(search);
       const matchStatus = !statusFilter || p.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchKat = !katFilter || p.categoryId === katFilter;
+      return matchSearch && matchStatus && matchKat;
     });
 
     if (filtered.length === 0) {
@@ -701,32 +724,41 @@
       return;
     }
 
-    grid.innerHTML = filtered.map(p => `
-      <div class="produk-card">
-        <div class="produk-image">
-          <i class="fas fa-box"></i>
-          <span class="produk-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'Aktif' : 'Nonaktif'}</span>
-          <span class="produk-stock-badge">Stok: ${p.stock || 0}</span>
+    grid.innerHTML = filtered.map(p => {
+      const cat = categoriesList.find(c => c.id === p.categoryId);
+      const catName = cat ? cat.name : "Umum";
+      const resellerText = p.resellerPrice ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>` : '';
+
+      return `
+        <div class="produk-card">
+          <div class="produk-image">
+            <i class="fas fa-box"></i>
+            <span class="produk-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'Aktif' : 'Nonaktif'}</span>
+            <span class="produk-stock-badge">Stok: ${p.stock || 0}</span>
+          </div>
+          <div class="produk-info">
+            <div class="produk-name">${p.name}</div>
+            <div class="produk-code">${catName} • ${p.code || 'SKU-001'}</div>
+            <div class="produk-price">Jual: ${formatRupiah(p.sellingPrice)}</div>
+            ${resellerText}
+          </div>
+          <div class="produk-actions">
+            <button class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i></button>
+          </div>
         </div>
-        <div class="produk-info">
-          <div class="produk-name">${p.name}</div>
-          <div class="produk-code">${p.code || 'SKU-001'}</div>
-          <div class="produk-price">${formatRupiah(p.sellingPrice)}</div>
-        </div>
-        <div class="produk-actions">
-          <button class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
-          <button class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
   }
 
   function openModal(prod = null) {
     document.getElementById("produkId").value = prod ? prod.id : "";
     document.getElementById("modalTitle").textContent = prod ? "Edit Produk" : "Tambah Produk Baru";
     document.getElementById("produkName").value = prod ? prod.name : "";
+    document.getElementById("produkKategori").value = prod ? (prod.categoryId || "") : "";
     document.getElementById("produkCost").value = prod ? prod.costPrice : "";
     document.getElementById("produkPrice").value = prod ? prod.sellingPrice : "";
+    document.getElementById("produkResellerPrice").value = prod ? (prod.resellerPrice || "") : "";
     document.getElementById("produkStock").value = prod ? prod.stock : 0;
     document.getElementById("produkStatus").value = prod ? (prod.status || "active") : "active";
     document.getElementById("produkModal").classList.add("active");
@@ -739,8 +771,10 @@
   async function saveProduct() {
     const id = document.getElementById("produkId").value;
     const name = document.getElementById("produkName").value.trim();
+    const categoryId = document.getElementById("produkKategori").value;
     const costPrice = parseInt(document.getElementById("produkCost").value) || 0;
     const sellingPrice = parseInt(document.getElementById("produkPrice").value) || 0;
+    const resellerPrice = parseInt(document.getElementById("produkResellerPrice").value) || 0;
     const stock = parseInt(document.getElementById("produkStock").value) || 0;
     const status = document.getElementById("produkStatus").value;
 
@@ -750,7 +784,17 @@
     }
 
     try {
-      const data = { name, costPrice, sellingPrice, stock, status, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      const data = { 
+        name, 
+        categoryId, 
+        costPrice, 
+        sellingPrice, 
+        resellerPrice, 
+        stock, 
+        status, 
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+      };
+
       if (id) {
         await db.collection("products").doc(id).update(data);
         toast("Produk berhasil diperbarui", "success");
