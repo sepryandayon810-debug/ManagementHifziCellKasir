@@ -494,7 +494,7 @@
                 </p>
               </div>
 
-              <!-- Summary Card (Hanya Menjumlahkan Total Tagihan) -->
+              <!-- Summary Card (Total Tagihan yang diterima dari pelanggan) -->
               <div class="card" style="background: var(--bg-subtle); margin-bottom: 1.25rem; box-shadow: none; border: 1px solid var(--border);">
                 <div class="card-body" style="padding: 1rem;">
                   <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
@@ -502,7 +502,7 @@
                     <span id="summaryTarik" style="font-weight: 600;">Rp 0</span>
                   </div>
                   <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
-                    <span style="color: var(--text-muted);">Biaya Admin</span>
+                    <span style="color: var(--text-muted);">Biaya Admin (Masuk Laba)</span>
                     <span id="summaryAdminFee" style="font-weight: 600;">Rp 0</span>
                   </div>
                   <div style="display: flex; justify-content: space-between; padding-top: 0.5rem; border-top: 1px dashed var(--border); font-size: 0.95rem;">
@@ -734,7 +734,7 @@
           });
         });
 
-        // Save Tarik Tunai ke Cloud Firestore
+        // Save Tarik Tunai ke Cloud Firestore (Menggunakan Date.now() untuk timestamp)
         const saveBtn = document.getElementById('btnSimpanTarik');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -756,7 +756,7 @@
               const today = Utils.getTodayString();
               const transactionId = 'TRK_' + Date.now();
 
-              // Arus kas laci hanya dikurangi oleh 'amount' (nominal tarik), sedangkan adminFee masuk ke profit/laba
+              // Arus kas laci hanya dikurangi oleh 'amount' (nominal tarik), sedangkan adminFeeValue masuk ke profit/laba
               await db.collection("transactions").add({
                 id: transactionId,
                 type: 'tarik',
@@ -768,7 +768,7 @@
                 userId: user.uid,
                 userName: userName,
                 date: today,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                timestamp: Date.now(), // ⭐ Aman dari error unsupported field value
                 status: 'completed'
               });
 
