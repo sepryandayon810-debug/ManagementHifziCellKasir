@@ -22,7 +22,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Inline CSS -->
   <style>
     :root {
       --primary: #4f46e5;
@@ -223,7 +222,7 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* KAS COMPONENTS */
+    /* REDESIGNED KAS STATS & CARDS */
     .kas-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -233,30 +232,42 @@
     .kas-stat {
       background: var(--bg-surface);
       border-radius: var(--radius-xl);
-      padding: 1.5rem;
+      padding: 1.25rem 1.5rem;
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
-      text-align: center;
-      transition: all .25s;
-      position: relative;
-      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all .25s ease;
     }
-    .kas-stat::after {
-      content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 4px;
-      border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+    .kas-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--primary); }
+    .kas-stat-icon {
+      width: 50px; height: 50px; border-radius: var(--radius-lg);
+      display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;
     }
-    .kas-stat:nth-child(1)::after { background: var(--primary); }
-    .kas-stat:nth-child(2)::after { background: var(--success); }
-    .kas-stat:nth-child(3)::after { background: var(--danger); }
-    .kas-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .kas-stat-value { font-size: 1.75rem; font-weight: 800; margin-bottom: .25rem; line-height: 1.2; }
+    .kas-stat-icon.primary { background: var(--primary-light); color: var(--primary); }
+    .kas-stat-icon.success { background: var(--success-light); color: var(--success); }
+    .kas-stat-icon.danger { background: var(--danger-light); color: var(--danger); }
+    
+    .kas-stat-info { flex: 1; min-width: 0; }
+    .kas-stat-value { font-size: 1.45rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
     .kas-stat-value.success { color: var(--success); }
     .kas-stat-value.danger { color: var(--danger); }
     .kas-stat-value.primary { color: var(--primary); }
-    .kas-stat-label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+    .kas-stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
 
-    .kas-actions { display: flex; gap: .75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    .kas-actions .btn { flex: 1 1 auto; min-width: 0; }
+    /* REDESIGNED QUICK ACTIONS */
+    .kas-actions { display: flex; gap: 0.85rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+    .kas-action-btn {
+      flex: 1; min-width: 140px; display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      padding: 0.85rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; border: none; text-decoration: none; color: #fff; transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .kas-action-btn.success { background: var(--success); }
+    .kas-action-btn.danger { background: var(--danger); }
+    .kas-action-btn.primary { background: var(--primary); }
+    .kas-action-btn:hover { filter: brightness(0.92); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
     .card {
       background: var(--bg-surface); border-radius: var(--radius-2xl);
@@ -269,15 +280,15 @@
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: .5rem; }
 
     .table-container { overflow-x: auto; }
-    .table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    .table th, .table td { padding: .875rem 1rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    .table th { font-weight: 700; font-size: .75rem; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+    .table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .table th, .table td { padding: 0.95rem 1.25rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .table th { font-weight: 700; font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); letter-spacing: 0.05em; }
     .table tbody tr:hover { background: var(--bg-subtle); }
 
     .transaction-type-badge {
-      display: inline-flex; align-items: center; gap: .35rem;
-      padding: .3rem .75rem; border-radius: 50px;
-      font-size: .75rem; font-weight: 600; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: 0.35rem 0.85rem; border-radius: 50px;
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap;
     }
     .transaction-type-badge.income { background: var(--success-light); color: var(--success); }
     .transaction-type-badge.expense { background: var(--danger-light); color: var(--danger); }
@@ -428,31 +439,40 @@
       </header>
 
       <div class="page-content">
-        <!-- Kas Stats -->
+        <!-- Kas Stats (Redesigned with Icons) -->
         <div class="kas-stats">
           <div class="kas-stat">
-            <div class="kas-stat-value primary" id="kasDitangan">Rp 0</div>
-            <div class="kas-stat-label">Kas di Tangan</div>
+            <div class="kas-stat-icon primary"><i class="fas fa-wallet"></i></div>
+            <div class="kas-stat-info">
+              <div class="kas-stat-label">Kas di Tangan</div>
+              <div class="kas-stat-value primary" id="kasDitangan">Rp 0</div>
+            </div>
           </div>
           <div class="kas-stat">
-            <div class="kas-stat-value success" id="kasMasuk">Rp 0</div>
-            <div class="kas-stat-label">Kas Masuk</div>
+            <div class="kas-stat-icon success"><i class="fas fa-arrow-up"></i></div>
+            <div class="kas-stat-info">
+              <div class="kas-stat-label">Kas Masuk</div>
+              <div class="kas-stat-value success" id="kasMasuk">Rp 0</div>
+            </div>
           </div>
           <div class="kas-stat">
-            <div class="kas-stat-value danger" id="kasKeluar">Rp 0</div>
-            <div class="kas-stat-label">Kas Keluar</div>
+            <div class="kas-stat-icon danger"><i class="fas fa-arrow-down"></i></div>
+            <div class="kas-stat-info">
+              <div class="kas-stat-label">Kas Keluar</div>
+              <div class="kas-stat-value danger" id="kasKeluar">Rp 0</div>
+            </div>
           </div>
         </div>
 
-        <!-- Quick Actions -->
+        <!-- Quick Actions (Modernized Buttons) -->
         <div class="kas-actions">
-          <button class="btn btn-success" onclick="goToTopup()">
+          <button class="kas-action-btn success" onclick="goToTopup()">
             <i class="fas fa-arrow-up"></i> Top Up
           </button>
-          <a href="page-kas-tarik.html" class="btn btn-danger">
+          <a href="page-kas-tarik.html" class="kas-action-btn danger">
             <i class="fas fa-arrow-down"></i> Tarik Tunai
           </a>
-          <a href="page-modal-harian.html" class="btn btn-primary">
+          <a href="page-modal-harian.html" class="kas-action-btn primary">
             <i class="fas fa-coins"></i> Set Modal
           </a>
         </div>
@@ -460,7 +480,7 @@
         <!-- Recent Transactions -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-history"></i> Riwayat Kas Hari Ini</h3>
+            <h3 class="card-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Kas Hari Ini</h3>
           </div>
           <div class="card-body" style="padding: 0;">
             <div class="table-container">
@@ -477,7 +497,7 @@
                 <tbody id="kasHistory">
                   <tr>
                     <td colspan="5" style="text-align: center; padding: 3rem;">
-                      <div style="color: var(--text-muted);">Memuat data kas...</div>
+                      <div style="color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat data kas...</div>
                     </td>
                   </tr>
                 </tbody>
@@ -508,7 +528,6 @@
     (function() {
       "use strict";
 
-      // Sinkronisasi Nama Toko
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
         if (!logoEl) return;
@@ -573,7 +592,7 @@
         if (backdrop) {
           backdrop.onclick = () => {
             sidebar.classList.remove('mobile-open');
-            backdrop.classList.remove('active');
+            if (backdrop) backdrop.classList.remove('active');
           };
         }
 
