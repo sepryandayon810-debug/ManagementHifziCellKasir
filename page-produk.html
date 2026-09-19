@@ -227,7 +227,7 @@
     .page-content { padding: 1.5rem; flex: 1; }
 
     /* TAB NAV KATEGORI / PRODUK */
-    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
     .tab-btn {
       padding: 0.6rem 1.25rem; border: none; background: transparent;
       color: var(--text-muted); font-weight: 700; cursor: pointer; border-radius: var(--radius-md); transition: all 0.15s; font-size: 0.88rem;
@@ -526,7 +526,7 @@
     <header class="main-header">
       <div class="header-left">
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-        <h1 class="header-title" id="pageMainTitle">Produk</h1>
+        <h1 class="header-title" id="pageMainTitle">Kategori</h1>
       </div>
       <div class="header-actions">
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
@@ -568,7 +568,7 @@
       <!-- KONTEN TAB KATEGORI -->
       <div id="tab-kategori" class="tab-content">
         <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Semua Kategori</button>
+          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Daftar Kategori</button>
           <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
             <div class="view-toggle">
               <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
@@ -847,6 +847,9 @@
         document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
         btn.classList.add("active");
         document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
+        if (btn.dataset.tab === "kategori") {
+          resetCategoryFilter();
+        }
       };
     });
   }
@@ -952,9 +955,16 @@
   window.resetCategoryFilter = function() {
     selectedCategoryFilter = "";
     document.getElementById("filterKategori").value = "";
-    document.getElementById("pageMainTitle").textContent = "Produk";
+    document.getElementById("pageMainTitle").textContent = "Kategori";
     document.getElementById("btnBackToAllCat").style.display = "none";
-    renderProducts();
+    
+    // Pindah kembali ke tab kategori
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector('.tab-btn[data-tab="kategori"]').classList.add("active");
+    document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+    document.getElementById("tab-kategori").style.display = "block";
+
+    renderCategoriesGrid();
   };
 
   function renderCategoriesGrid() {
@@ -1084,7 +1094,6 @@
         const catName = cat ? cat.name : "Umum";
         const resellerText = p.resellerPrice ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>` : '';
         
-        // ⭐ Logika Gambar: Jika foto produk kosong, ambil dari gambar kategorinya
         let displayImgUrl = p.imageUrl;
         if (!displayImgUrl && cat && cat.imageUrl) {
           displayImgUrl = cat.imageUrl;
