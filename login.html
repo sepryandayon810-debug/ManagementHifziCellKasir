@@ -60,7 +60,6 @@
     .brand-title { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
     .brand-desc { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
 
-    /* TAB SWITCH */
     .tab-switch {
       display: flex;
       background: var(--bg);
@@ -134,7 +133,7 @@
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--success); }
   </style>
 
-  <!-- Firebase v9 Compat SDKs Lengkap Termasuk Firestore & Storage -->
+  <!-- SDK Firebase Compat Lengkap -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -147,10 +146,9 @@
   <div class="brand-header">
     <div class="logo-badge"><i class="fas fa-cash-register"></i></div>
     <h1 class="brand-title">WebPOS Hifzi Cell</h1>
-    <p class="brand-desc" id="brandDesc">Masuk untuk mengakses sistem kasir</p>
+    <p class="brand-desc" id="brandDesc">Masuk menggunakan Username atau Email</p>
   </div>
 
-  <!-- SWITCHER TAB MASUK / DAFTAR -->
   <div class="tab-switch">
     <button type="button" class="tab-btn active" id="tabLoginBtn" onclick="switchMode('login')">Masuk</button>
     <button type="button" class="tab-btn" id="tabRegisterBtn" onclick="switchMode('register')">Daftar Baru</button>
@@ -159,13 +157,13 @@
   <div class="alert-box alert-error" id="errorBox"></div>
   <div class="alert-box alert-success" id="successBox"></div>
 
-  <!-- FORM MASUK -->
+  <!-- FORM LOGIN (BISA USERNAME ATAU EMAIL) -->
   <form id="formLogin">
     <div class="form-group">
-      <label class="form-label">Email Pengguna</label>
+      <label class="form-label">Username atau Email</label>
       <div class="input-wrap">
-        <i class="fas fa-envelope"></i>
-        <input type="email" class="form-control" id="loginEmail" placeholder="nama@toko.com" required>
+        <i class="fas fa-user-tag"></i>
+        <input type="text" class="form-control" id="loginIdentifier" placeholder="Contoh: sepry atau nama@toko.com" required>
       </div>
     </div>
     <div class="form-group">
@@ -181,17 +179,24 @@
     </button>
   </form>
 
-  <!-- FORM DAFTAR AKUN BARU -->
+  <!-- FORM PENDAFTARAN -->
   <form id="formRegister" style="display:none;">
     <div class="form-group">
-      <label class="form-label">Nama Lengkap / Nama Kasir</label>
+      <label class="form-label">Nama Lengkap</label>
       <div class="input-wrap">
-        <i class="fas fa-user"></i>
-        <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepry" required>
+        <i class="fas fa-id-card"></i>
+        <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepryanda Yon" required>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Email</label>
+      <label class="form-label">Username (Untuk Login Cepat)</label>
+      <div class="input-wrap">
+        <i class="fas fa-at"></i>
+        <input type="text" class="form-control" id="regUsername" placeholder="Contoh: sepry (tanpa spasi)" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Aktif</label>
       <div class="input-wrap">
         <i class="fas fa-envelope"></i>
         <input type="email" class="form-control" id="regEmail" placeholder="admin@toko.com" required>
@@ -224,7 +229,7 @@
       document.getElementById("tabRegisterBtn").classList.remove("active");
       document.getElementById("formLogin").style.display = "block";
       document.getElementById("formRegister").style.display = "none";
-      document.getElementById("brandDesc").textContent = "Masuk untuk mengakses sistem kasir";
+      document.getElementById("brandDesc").textContent = "Masuk menggunakan Username atau Email";
     } else {
       document.getElementById("tabRegisterBtn").classList.add("active");
       document.getElementById("tabLoginBtn").classList.remove("active");
@@ -234,10 +239,10 @@
     }
   }
 
-  // 1. PROSES MASUK (LOGIN)
+  // 1. LOGIN BY USERNAME ATAU EMAIL
   document.getElementById("formLogin").onsubmit = async (e) => {
     e.preventDefault();
-    const email = document.getElementById("loginEmail").value.trim();
+    const identifier = document.getElementById("loginIdentifier").value.trim();
     const pass = document.getElementById("loginPassword").value;
     const btn = document.getElementById("btnSubmitLogin");
 
@@ -247,20 +252,38 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
 
     try {
-      await auth.signInWithEmailAndPassword(email, pass);
+      let targetEmail = identifier;
+
+      // Jika input bukan format email, cari email berdasarkan username di Firestore
+      if (!identifier.includes("@")) {
+        const usernameQuery = await db.collection("users")
+          .where("username", "==", identifier.toLowerCase())
+          .limit(1)
+          .get();
+
+        if (usernameQuery.empty) {
+          throw new Error("Username tidak ditemukan di database.");
+        }
+        targetEmail = usernameQuery.docs[0].data().email;
+      }
+
+      // Login ke Firebase Auth menggunakan email hasil resolusi
+      await auth.signInWithEmailAndPassword(targetEmail, pass);
       window.location.href = "index.html";
+
     } catch (err) {
       btn.disabled = false;
       btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
-      errBox.textContent = "Gagal masuk: " + (err.code === 'auth/user-not-found' ? 'Akun belum terdaftar. Silakan klik tab Daftar Baru.' : err.message);
+      errBox.textContent = "Gagal masuk: " + (err.code === 'auth/wrong-password' ? 'Password salah.' : err.message);
       errBox.style.display = "block";
     }
   };
 
-  // 2. PROSES DAFTAR AKUN BARU (REGISTER KE FIRESTORE)
+  // 2. REGISTER DENGAN USERNAME & EMAIL KE FIRESTORE
   document.getElementById("formRegister").onsubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById("regName").value.trim();
+    const username = document.getElementById("regUsername").value.trim().toLowerCase().replace(/\s+/g, '');
     const email = document.getElementById("regEmail").value.trim();
     const pass = document.getElementById("regPassword").value;
     const btn = document.getElementById("btnSubmitRegister");
@@ -268,27 +291,38 @@
     errBox.style.display = "none";
     succBox.style.display = "none";
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan akun...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan...';
 
     try {
-      // Buat User di Firebase Auth
+      // Cek apakah username sudah dipakai orang lain
+      const checkUsername = await db.collection("users")
+        .where("username", "==", username)
+        .limit(1)
+        .get();
+
+      if (!checkUsername.empty) {
+        throw new Error("Username sudah digunakan. Silakan pilih username lain.");
+      }
+
+      // Buat akun di Firebase Auth
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
 
-      // Simpan Profil ke Firestore: Collection 'users'
+      // Simpan data lengkap profil ke Firestore
       await db.collection("users").doc(cred.user.uid).set({
         name: name,
+        username: username,
         email: email,
         role: "owner",
         status: "active",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      succBox.textContent = "Pendaftaran berhasil! Mengalihkan ke halaman utama...";
+      succBox.textContent = `Pendaftaran berhasil! Akun @${username} siap digunakan. Mengalihkan...`;
       succBox.style.display = "block";
 
       setTimeout(() => {
         window.location.href = "index.html";
-      }, 1500);
+      }, 1200);
 
     } catch (err) {
       btn.disabled = false;
