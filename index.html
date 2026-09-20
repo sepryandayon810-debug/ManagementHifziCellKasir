@@ -807,9 +807,9 @@
           <div class="kas-item">
             <div class="kas-item-info">
               <div class="kas-item-icon warning"><i class="fas fa-hand-holding-usd"></i></div>
-              <span class="kas-item-label">Piutang Pelanggan</span>
+              <span class="kas-item-label">Piutang Aktif (Informasi)</span>
             </div>
-            <span class="kas-item-value expense" id="kasPiutang">- Rp 0</span>
+            <span class="kas-item-value" id="kasPiutang">Rp 0</span>
           </div>
         </div>
 
@@ -819,7 +819,7 @@
         </div>
 
         <div class="formula-display">
-          Rumus fisik: Modal Awal + Uang Masuk - Kas Keluar + Penjualan + (Top Up + Admin) - (Tarik - Admin) - Sisa Piutang
+          Rumus fisik: Modal Awal + Uang Masuk - Kas Keluar + Penjualan + (Top Up + Admin) - (Tarik - Admin)
         </div>
       </div>
 
@@ -1176,7 +1176,11 @@
               break;
             case "topup": topup += t.amount || 0; topupAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
             case "tarik": tarik += t.amount || 0; tarikAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
-            case "kas_masuk": if (t.category !== "penjualan_hutang") kasMasuk += t.amount || 0; break;
+            case "kas_masuk":
+              if (t.category !== "penjualan_hutang" && t.category !== "penerimaan_piutang_penjualan") {
+                kasMasuk += t.amount || 0;
+              }
+              break;
             case "kas_keluar": kasKeluar += t.amount || 0; break;
           }
         }
@@ -1213,7 +1217,7 @@
       document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(cashPenjualan);
       document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
       document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
-      document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
+      document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
       if (isBoss || isAdmin) {
