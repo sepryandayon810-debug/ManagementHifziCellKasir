@@ -74,7 +74,10 @@
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
     .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; position: sticky; top: 0; z-index: 90; }
     .header-left { display: flex; align-items: center; gap: 0.85rem; }
-    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
     .page-content { padding: 1.5rem; flex: 1; }
     .kas-card { max-width: 500px; margin: 0 auto; }
     .card { background: var(--bg-surface); border-radius: var(--radius-2xl); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
@@ -82,6 +85,7 @@
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
     .card-body { padding: 1.5rem; }
     .amount-display { font-size: 2.75rem; font-weight: 800; color: var(--danger); text-align: center; padding: 1.75rem; background: var(--danger-light); border-radius: var(--radius-xl); margin-bottom: 1.25rem; border: 2px solid rgba(220, 38, 38, 0.2); }
+    [data-theme="dark"] .amount-display { background: rgba(220, 38, 38, 0.15); color: #f87171; }
     .quick-amounts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.25rem; }
     .quick-amount { padding: 0.45rem 1rem; background: var(--bg-subtle); border: 1.5px solid var(--border); border-radius: 999px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-main); }
     .quick-amount:hover { background: var(--danger); color: white; border-color: var(--danger); }
@@ -113,7 +117,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
@@ -143,19 +146,21 @@
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
-            <li class="nav-item"><a href="index.html" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
-            <li class="nav-item"><a href="page-kasir.html" class="nav-link"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
-            <li class="nav-item"><a href="page-produk.html" class="nav-link"><i class="fas fa-box"></i><span>Produk</span></a></li>
+            <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+            <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+            <li class="nav-item"><a href="page-produk.html" class="nav-link" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
           </ul>
         </div>
 
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
-            <li class="nav-item"><a href="page-riwayat.html" class="nav-link"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
-            <li class="nav-item nav-dropdown open">
-              <div class="nav-link nav-dropdown-toggle active">
-                <div style="display:flex; align-items:center; gap:0.75rem;"><i class="fas fa-wallet"></i><span>Kas Management</span></div>
+            <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+            <li class="nav-item nav-dropdown open" id="dropdownKas">
+              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <i class="fas fa-wallet"></i><span>Kas Management</span>
+                </div>
                 <i class="fas fa-chevron-down dropdown-arrow"></i>
               </div>
               <ul class="nav-submenu">
@@ -169,8 +174,8 @@
                 <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
               </ul>
             </li>
-            <li class="nav-item"><a href="page-pembelian.html" class="nav-link"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
-            <li class="nav-item"><a href="page-hutang.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+            <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+            <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
           </ul>
         </div>
       </nav>
