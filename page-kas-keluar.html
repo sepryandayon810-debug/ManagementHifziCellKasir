@@ -29,7 +29,7 @@
       --text-main: #0f172a; --text-muted: #64748b; --text-sub: #475569;
       --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px;
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
+      --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 70px;
     }
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
     [data-theme="dark"] {
@@ -49,7 +49,7 @@
     .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); }
     .logo-container { display: flex; align-items: center; gap: 0.65rem; }
     .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
-    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .sidebar.collapsed .logo-text { display: none; }
     .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
@@ -125,11 +125,48 @@
     .btn-danger { background: var(--danger); color: white; box-shadow: var(--shadow-sm); }
     .btn-danger:hover { filter: brightness(0.95); transform: translateY(-1px); }
 
-    /* MOBILE NAV */
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; }
-    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
-    .mobile-nav-item.active { color: var(--primary); }
-    @media (max-width: 1024px) { .mobile-nav { display: flex; } .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); } .d-md-none { display: flex !important; } }
+    /* MOBILE NAV SELARAS DENGAN INDEX */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--bottom-nav-height);
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      z-index: 999;
+      padding: 0.25rem 0.5rem;
+      align-items: center;
+      justify-content: space-around;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    }
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.7rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      padding: 0.25rem;
+    }
+    .mobile-nav-item i {
+      font-size: 1.15rem;
+    }
+    .mobile-nav-item.active,
+    .mobile-nav-item:hover {
+      color: var(--primary);
+    }
+    @media (max-width: 1024px) {
+      .mobile-nav { display: flex; }
+      .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
+      .d-md-none { display: flex !important; }
+    }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
@@ -180,7 +217,7 @@
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
             <li class="nav-item nav-dropdown open" id="dropdownKas">
-              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div class="nav-link nav-dropdown-toggle active" data-menu="kas">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
                   <i class="fas fa-wallet"></i><span>Kas Management</span>
                 </div>
@@ -358,7 +395,23 @@
         }
       }
 
+      async function syncStoreBrandName() {
+        const logoEl = document.querySelector(".logo-text");
+        if (!logoEl) return;
+        const cached = localStorage.getItem("webpos_store_name");
+        if (cached) logoEl.textContent = cached;
+        try {
+          const doc = await db.collection("settings").doc("store").get();
+          if (doc.exists && doc.data().name) {
+            logoEl.textContent = doc.data().name;
+            localStorage.setItem("webpos_store_name", doc.data().name);
+          }
+        } catch(e) {}
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
+        syncStoreBrandName();
+
         auth.onAuthStateChanged(async (user) => {
           if (!user) {
             window.location.href = 'login.html';
