@@ -1748,7 +1748,7 @@
             <label class="checkbox-group">
               <input type="checkbox" id="hutangAffectKas">
               <div>
-                <span class="checkbox-label">Catat ke Kas Keluar</span>
+                <span class="checkbox-label">Catat Arus Hutang/Piutang</span>
                 <span class="checkbox-sublabel">Otomatis mengurangi saldo kas saat menyimpan</span>
               </div>
             </label>
@@ -1769,7 +1769,7 @@
   <div class="modal-overlay" id="paymentModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">Bayar Hutang/Piutang</h3>
+        <h3 class="modal-title">Proses Arus Hutang/Piutang</h3>
         <button class="modal-close" id="btnClosePaymentModal">
           <i class="fas fa-times"></i>
         </button>
@@ -1819,8 +1819,8 @@
           <label class="checkbox-group" id="kasCheckboxLabel">
             <input type="checkbox" id="affectKas" checked>
             <div>
-              <span class="checkbox-label" id="kasLabelText">Catat ke Kas Masuk</span>
-              <span class="checkbox-sublabel" id="kasSubLabelText">Otomatis menambah saldo kas saat menerima pembayaran</span>
+              <span class="checkbox-label" id="kasLabelText">Catat Arus Hutang/Piutang</span>
+              <span class="checkbox-sublabel" id="kasSubLabelText">Arus kas dicatat dengan sumber Hutang/Piutang</span>
             </div>
           </label>
         </div>
@@ -2234,13 +2234,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const sublabel = kasBox.querySelector('.checkbox-sublabel');
           
           kasBox.style.display = 'block';
-          if (type === 'hutang') {
-            label.textContent = 'Catat ke Kas Masuk';
-            sublabel.textContent = 'Pinjaman tunai diterima dari pihak lain, otomatis menambah saldo kas';
-          } else {
-            label.textContent = 'Catat ke Kas Keluar';
-            sublabel.textContent = 'Pinjaman tunai diberikan ke pelanggan, otomatis mengurangi saldo kas';
-          }
+           label.textContent = 'Catat Arus Hutang/Piutang';
+           if (type === 'hutang') {
+             sublabel.textContent = 'Penerimaan pinjaman: menambah saldo kas dan dicatat sebagai arus hutang';
+           } else {
+             sublabel.textContent = 'Pemberian pinjaman: mengurangi saldo kas dan dicatat sebagai arus piutang';
+           }
         }
 
         document.getElementById('btnAddCustomer').addEventListener('click', () => {
@@ -2487,7 +2486,7 @@ customerData = await CustomerStorage.getAll();
           // GROUP BY NAMA
           const groupedByName = {};
 filteredItems.forEach(item => {
-  const key = item.name.toLowerCase().trim();
+   const key = item.type + ':' + item.name.toLowerCase().trim();
   if (!groupedByName[key]) {
     groupedByName[key] = {
       displayName: item.name,
@@ -2542,7 +2541,7 @@ filteredItems.forEach(item => {
                           ${group.items.length} transaksi
                         </span>
                         ${!isPaid ? `
-  <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName}')" title="Bayar Semua" style="width: 32px; height: 32px; min-width: 32px; margin-left: auto;">
+  <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName}', '${group.type}')" title="Proses Semua" style="width: 32px; height: 32px; min-width: 32px; margin-left: auto;">
     <i class="fas fa-check-double" style="font-size: 0.8rem;"></i>
   </button>
 ` : ''}
@@ -2685,12 +2684,19 @@ filteredItems.forEach(item => {
     // Hutang baru tanpa transaksi = pencatatan pinjaman tunai.
     // Tipe hutang berarti kita menerima pinjaman: uang masuk ke kas.
     // Tipe piutang berarti kita memberi pinjaman: uang keluar dari kas.
+    let cashTransaction = null;
     if (!id && affectKas) {
       if (type === 'hutang') {
-        await recordToKas('masuk', amount, `Pinjaman tunai - ${name}`, user, 'pinjaman_tunai');
+        cashTransaction = await recordToKas('masuk', amount, `Penerimaan pinjaman - ${name}`, user, 'penerimaan_pinjaman', hutangId);
       } else {
-        await recordToKas('keluar', amount, `Piutang tunai - ${name}`, user, 'piutang_tunai');
+        cashTransaction = await recordToKas('keluar', amount, `Pemberian pinjaman - ${name}`, user, 'pemberian_pinjaman', hutangId);
       }
+    }
+    if (cashTransaction && cashTransaction.id) {
+      await firestoreDb.ref('debts/' + hutangId).update({
+        cashTransactionId: cashTransaction.id,
+        cashSource: 'hutang_piutang'
+      });
     }
 
     Utils.showToast('Data berhasil disimpan', 'success');
@@ -2810,15 +2816,14 @@ renderCustomerList();
           const fromKasir = localStorage.getItem('fromKasir') === 'true';
           checkbox.checked = fromKasir;
           
-          if (item.type === 'hutang') {
-            // Bayar hutang = uang keluar dari kas (kita bayar utang)
-            labelText.textContent = 'Catat ke Kas Keluar';
-            subLabelText.textContent = 'Otomatis mencatat pengeluaran kas saat membayar hutang';
-          } else {
-            // Bayar piutang = uang masuk ke kas (kita terima pembayaran)
-            labelText.textContent = 'Catat ke Kas Masuk';
-            subLabelText.textContent = 'Otomatis mencatat pemasukan kas saat menerima pembayaran piutang';
-          }
+           labelText.textContent = 'Catat Arus Hutang/Piutang';
+           if (item.type === 'hutang') {
+             // Pelunasan hutang = uang keluar dari kas.
+             subLabelText.textContent = 'Pelunasan hutang: uang keluar dari kas';
+           } else {
+             // Penerimaan piutang = uang masuk ke kas.
+             subLabelText.textContent = 'Penerimaan piutang: uang masuk ke kas';
+           }
 
           if (fromKasir) {
             lunasCheckbox.checked = true;
@@ -2828,10 +2833,13 @@ renderCustomerList();
           document.getElementById('paymentModal').classList.add('active');
         };
 
-        window.openPaymentBatch = (groupName) => {
-  // Cari semua item aktif dengan nama ini
-  const items = Object.values(hutangData).filter(d => 
-    d.name === groupName && d.status === 'active'
+        window.openPaymentBatch = (groupName, groupType) => {
+  // Batch hanya boleh menggabungkan nama dan tipe yang sama.
+  const normalizedName = String(groupName || '').toLowerCase().trim();
+  const items = Object.values(hutangData).filter(d =>
+    String(d.name || '').toLowerCase().trim() === normalizedName &&
+    d.type === groupType &&
+    d.status === 'active'
   );
   
   if (items.length === 0) {
@@ -2871,13 +2879,12 @@ renderCustomerList();
   
   checkbox.checked = localStorage.getItem('fromKasir') === 'true';
   
-  if (type === 'hutang') {
-    labelText.textContent = 'Catat ke Kas Keluar';
-    subLabelText.textContent = 'Otomatis mencatat pengeluaran kas saat membayar semua hutang';
-  } else {
-    labelText.textContent = 'Catat ke Kas Masuk';
-    subLabelText.textContent = 'Otomatis mencatat pemasukan kas saat menerima pembayaran semua piutang';
-  }
+   labelText.textContent = 'Catat Arus Hutang/Piutang';
+   if (type === 'hutang') {
+     subLabelText.textContent = 'Pelunasan hutang: uang keluar dari kas';
+   } else {
+     subLabelText.textContent = 'Penerimaan piutang: uang masuk ke kas';
+   }
 
   if (localStorage.getItem('fromKasir') === 'true') {
     document.getElementById('affectKas').checked = true;
@@ -2984,9 +2991,9 @@ document.getElementById('hutangDueDate').value = dueDateVal;
         // Setiap pembayaran aktual harus menjadi mutasi kas tersendiri.
         if (affectKas) {
           if (type === 'hutang') {
-            await recordToKas('keluar', remaining, `Pembayaran hutang - ${item.name}`, user);
+            await recordToKas('keluar', remaining, `Pelunasan hutang - ${item.name}`, user, 'pelunasan_hutang', item.id);
           } else {
-            await recordToKas('masuk', remaining, `Pembayaran piutang - ${item.name}`, user);
+            await recordToKas('masuk', remaining, `Penerimaan piutang - ${item.name}`, user, 'penerimaan_piutang', item.id);
           }
         }
       }
@@ -3061,9 +3068,9 @@ document.getElementById('hutangDueDate').value = dueDateVal;
     // transaksi ini tidak menyebabkan double count.
     if (affectKas) {
       if (item.type === 'hutang') {
-        await recordToKas('keluar', paymentAmount, `Pembayaran hutang - ${item.name}`, user);
+        await recordToKas('keluar', paymentAmount, `Pelunasan hutang - ${item.name}`, user, 'pelunasan_hutang', item.id);
       } else {
-        await recordToKas('masuk', paymentAmount, `Pembayaran piutang - ${item.name}`, user);
+        await recordToKas('masuk', paymentAmount, `Penerimaan piutang - ${item.name}`, user, 'penerimaan_piutang', item.id);
       }
     }
                             
@@ -3087,7 +3094,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
   Utils.hideLoading();
 }
 
-        async function recordToKas(type, amount, description, user, category = 'pembayaran_hutang') {
+        async function recordToKas(type, amount, description, user, category = 'arus_hutang_piutang', relatedDebtId = null) {
           console.log('📝 Mencatat ke kas:', { type, amount, description });
           
           try {
@@ -3099,8 +3106,13 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             
             // Struktur data yang dibaca dashboard
             const transactionData = {
+              id: kasId,
               type: type === 'masuk' ? 'kas_masuk' : 'kas_keluar',
               category,
+              source: 'hutang_piutang',
+              flowType: category,
+              cashDirection: type === 'masuk' ? 'in' : 'out',
+              relatedDebtId: relatedDebtId || null,
               amount: parseInt(amount),
               note: description,
               date: today,
@@ -3117,7 +3129,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             await firestoreDb.ref('transactions/' + today + '/' + kasId).set(transactionData);
             console.log('✅ Berhasil tersimpan di transactions!');
             
-            return true;
+            return transactionData;
             
           } catch (error) {
             console.error('❌ Gagal:', error);
