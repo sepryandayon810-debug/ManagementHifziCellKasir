@@ -2236,10 +2236,10 @@ document.addEventListener('DOMContentLoaded', () => {
           kasBox.style.display = 'block';
           if (type === 'hutang') {
             label.textContent = 'Catat ke Kas Masuk';
-            sublabel.textContent = 'Otomatis menambah saldo kas saat mencatat hutang baru (uang diterima)';
+            sublabel.textContent = 'Pinjaman tunai diterima dari pihak lain, otomatis menambah saldo kas';
           } else {
             label.textContent = 'Catat ke Kas Keluar';
-            sublabel.textContent = 'Otomatis mengurangi saldo kas saat mencatat piutang baru (uang dikeluarkan)';
+            sublabel.textContent = 'Pinjaman tunai diberikan ke pelanggan, otomatis mengurangi saldo kas';
           }
         }
 
@@ -2682,26 +2682,15 @@ filteredItems.forEach(item => {
     
         await firestoreDb.ref('debts/' + hutangId).set(hutangPayload);
     
-    // ⭐ Otomatis catat penjualan saat piutang baru (supaya kas sistem tidak negatif)
-    if (!id && type === 'piutang' && affectKas) {
-      const transId = 'hutang_' + Date.now();
-      await firestoreDb.ref('transactions/' + today + '/' + transId).set({
-        type: 'penjualan',
-        paymentMethod: 'hutang',
-        source: 'hutang_page',
-        total: amount,
-        paymentAmount: 0,
-        remainingPiutang: amount,
-        profit: 0,
-        description: `Piutang - ${name}`,
-        customerName: name,
-        timestamp: Date.now(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        userId: user.uid,
-        userName: user.name || user.email,
-        status: 'completed',
-        debtId: hutangId
-      });
+    // Hutang baru tanpa transaksi = pencatatan pinjaman tunai.
+    // Tipe hutang berarti kita menerima pinjaman: uang masuk ke kas.
+    // Tipe piutang berarti kita memberi pinjaman: uang keluar dari kas.
+    if (!id && affectKas) {
+      if (type === 'hutang') {
+        await recordToKas('masuk', amount, `Pinjaman tunai - ${name}`, user, 'pinjaman_tunai');
+      } else {
+        await recordToKas('keluar', amount, `Piutang tunai - ${name}`, user, 'piutang_tunai');
+      }
     }
 
     Utils.showToast('Data berhasil disimpan', 'success');
@@ -3098,7 +3087,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
   Utils.hideLoading();
 }
 
-        async function recordToKas(type, amount, description, user) {
+        async function recordToKas(type, amount, description, user, category = 'pembayaran_hutang') {
           console.log('📝 Mencatat ke kas:', { type, amount, description });
           
           try {
@@ -3111,7 +3100,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             // Struktur data yang dibaca dashboard
             const transactionData = {
               type: type === 'masuk' ? 'kas_masuk' : 'kas_keluar',
-              category: 'pembayaran_hutang',
+              category,
               amount: parseInt(amount),
               note: description,
               date: today,
