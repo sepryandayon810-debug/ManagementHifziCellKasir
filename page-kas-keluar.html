@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Kas Keluar</title>
+  <title>WebPOS - Kas Masuk</title>
 
   <script>
     (function() {
@@ -41,6 +41,8 @@
     .app-container { display: flex; min-height: 100vh; position: relative; }
     .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+    
+    /* SIDEBAR */
     .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.25s ease, width 0.25s ease; }
     .sidebar.collapsed { width: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
@@ -72,15 +74,17 @@
     .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
     .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
-    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-dropdown.open .nav-submenu { max-height: 500px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
     .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
     .user-profile { display: flex; align-items: center; gap: 0.75rem; }
-    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; flex-shrink: 0; }
+    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
     .user-info { flex: 1; overflow: hidden; }
     .sidebar.collapsed .user-info { display: none; }
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN */
     .main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.25s; min-width: 0; }
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
@@ -91,20 +95,22 @@
     .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
     .page-content { padding: 1.5rem; flex: 1; }
+
+    /* KAS MASUK FORM */
     .kas-card { max-width: 500px; margin: 0 auto; }
     .card { background: var(--bg-surface); border-radius: var(--radius-2xl); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
     .card-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
     .card-body { padding: 1.5rem; }
-    .amount-display { font-size: 2.75rem; font-weight: 800; color: var(--danger); text-align: center; padding: 1.75rem; background: var(--danger-light); border-radius: var(--radius-xl); margin-bottom: 1.25rem; border: 2px solid rgba(220, 38, 38, 0.2); }
-    [data-theme="dark"] .amount-display { background: rgba(220, 38, 38, 0.15); color: #f87171; }
+    .amount-display { font-size: 2.75rem; font-weight: 800; color: var(--success); text-align: center; padding: 1.75rem; background: var(--success-light); border-radius: var(--radius-xl); margin-bottom: 1.25rem; border: 2px solid rgba(16, 185, 129, 0.2); }
+    [data-theme="dark"] .amount-display { background: rgba(5, 150, 105, 0.15); color: #34d399; }
     .quick-amounts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.25rem; }
     .quick-amount { padding: 0.45rem 1rem; background: var(--bg-subtle); border: 1.5px solid var(--border); border-radius: 999px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-main); }
-    .quick-amount:hover { background: var(--danger); color: white; border-color: var(--danger); }
+    .quick-amount:hover { background: var(--success); color: white; border-color: var(--success); }
     .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
     .numpad-btn { padding: 1.25rem; border: 1.5px solid var(--border); background: var(--bg-surface); border-radius: var(--radius-lg); font-size: 1.35rem; font-weight: 700; cursor: pointer; color: var(--text-main); }
     .numpad-btn:hover { background: var(--bg-subtle); }
-    .numpad-btn.action { background: var(--danger); color: white; border-color: var(--danger); }
+    .numpad-btn.action { background: var(--success); color: white; border-color: var(--success); }
     .form-group { margin-bottom: 1.25rem; }
     .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.5rem; }
     .form-input { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-subtle); color: var(--text-main); font-size: 0.95rem; outline: none; }
@@ -112,55 +118,15 @@
     .kas-info { background: var(--bg-subtle); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1.25rem; text-align: center; border: 1px solid var(--border); }
     .kas-info-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 700; }
     .kas-info-value { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
-    .kas-warning { background: var(--warning-light); border: 1px solid var(--warning); border-radius: var(--radius-lg); padding: 0.75rem; margin-bottom: 1.25rem; display: none; }
-    .kas-warning.active { display: block; }
-    .kas-warning-text { color: var(--warning); font-size: 0.85rem; text-align: center; font-weight: 600; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.95rem; font-weight: 700; cursor: pointer; border: none; width: 100%; }
-    .btn-danger { background: var(--danger); color: white; box-shadow: var(--shadow-sm); }
-    .btn-danger:hover { filter: brightness(0.95); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: white; box-shadow: var(--shadow-sm); }
+    .btn-success:hover { filter: brightness(0.95); transform: translateY(-1px); }
 
-    /* MOBILE NAV SELARAS DENGAN INDEX */
-    .mobile-nav {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 65px;
-      background: var(--bg-surface);
-      border-top: 1px solid var(--border);
-      z-index: 99;
-      padding: 0.25rem 0.5rem;
-      align-items: center;
-      justify-content: space-around;
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-    }
-    .mobile-nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.7rem;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      padding: 0.25rem;
-    }
-    .mobile-nav-item i {
-      font-size: 1.15rem;
-    }
-    .mobile-nav-item.active,
-    .mobile-nav-item:hover {
-      color: var(--primary);
-    }
-    @media (max-width: 1024px) {
-      .mobile-nav { display: flex; }
-      .page-content { padding-bottom: calc(65px + 1.5rem); }
-      .d-md-none { display: flex !important; }
-    }
+    /* MOBILE NAV */
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; }
+    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
+    .mobile-nav-item.active { color: var(--primary); }
+    @media (max-width: 1024px) { .mobile-nav { display: flex; } .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); } .d-md-none { display: flex !important; } }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
@@ -177,6 +143,7 @@
   <div class="app-container">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
+    <!-- SIDEBAR LENGKAP -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-container">
@@ -194,6 +161,7 @@
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -203,12 +171,13 @@
           </ul>
         </div>
 
+        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
             <li class="nav-item nav-dropdown open" id="dropdownKas">
-              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div class="nav-link nav-dropdown-toggle active" data-menu="kas">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
                   <i class="fas fa-wallet"></i><span>Kas Management</span>
                 </div>
@@ -217,8 +186,8 @@
               <ul class="nav-submenu">
                 <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
                 <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
-                <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
-                <li><a href="page-kas-keluar.html" class="nav-link active"><span>Kas Keluar</span></a></li>
+                <li><a href="page-kas-masuk.html" class="nav-link active"><span>Kas Masuk</span></a></li>
+                <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
                 <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
                 <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
                 <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
@@ -227,6 +196,44 @@
             </li>
             <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
             <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Laporan -->
+        <div class="nav-section">
+          <div class="nav-section-title">Laporan</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+            <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+            <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Integrasi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Integrasi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+            <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Penggajian -->
+        <div class="nav-section">
+          <div class="nav-section-title">Penggajian</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Sistem -->
+        <div class="nav-section">
+          <div class="nav-section-title">Sistem</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+            <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+            <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
       </nav>
@@ -246,7 +253,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Kas Keluar</h1>
+          <h1 class="header-title">Kas Masuk</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
@@ -257,18 +264,12 @@
         <div class="kas-card">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-arrow-up" style="color: var(--danger);"></i> Catat Kas Keluar</h3>
+              <h3 class="card-title"><i class="fas fa-arrow-down" style="color: var(--success);"></i> Catat Kas Masuk</h3>
             </div>
             <div class="card-body">
               <div class="kas-info">
                 <div class="kas-info-label">Total Kas Tersedia di Laci</div>
                 <div class="kas-info-value" id="kasSaatIni">Rp 0</div>
-              </div>
-
-              <div class="kas-warning" id="kasWarning">
-                <div class="kas-warning-text">
-                  <i class="fas fa-exclamation-triangle"></i> Perhatian: Kas tidak mencukupi!
-                </div>
               </div>
 
               <div class="amount-display" id="kasAmount">Rp 0</div>
@@ -302,11 +303,11 @@
 
               <div class="form-group">
                 <label class="form-label">Keterangan <span style="color: var(--danger);">*</span></label>
-                <input type="text" class="form-input" id="kasNote" placeholder="Contoh: Beli keperluan toko, bayar listrik..." required>
+                <input type="text" class="form-input" id="kasNote" placeholder="Contoh: Setoran modal tambahan, pendapatan lainnya..." required>
               </div>
 
-              <button class="btn btn-danger" id="btnSimpanKas">
-                <i class="fas fa-save"></i> Simpan Kas Keluar
+              <button class="btn btn-success" id="btnSimpanKas">
+                <i class="fas fa-save"></i> Simpan Kas Masuk
               </button>
             </div>
           </div>
@@ -368,7 +369,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initKasKeluar(user, dName);
+          initKasMasuk(user, dName);
         });
       });
 
@@ -406,9 +407,8 @@
         });
       }
 
-      async function initKasKeluar(user, userName) {
+      async function initKasMasuk(user, userName) {
         let amount = 0;
-        let currentKas = 0;
 
         async function loadCurrentKas() {
           try {
@@ -454,10 +454,9 @@
 
             const topupKasFisik = topup + topupAdmin;
             const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
-            currentKas = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
+            const currentKas = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
 
             document.getElementById('kasSaatIni').textContent = Utils.formatRupiah(currentKas);
-            checkKas();
           } catch (error) {
             console.error("Error loading kas tersedia:", error);
           }
@@ -465,19 +464,6 @@
 
         function updateDisplay() {
           document.getElementById('kasAmount').textContent = Utils.formatRupiah(amount);
-          checkKas();
-        }
-
-        function checkKas() {
-          const warningEl = document.getElementById('kasWarning');
-          const saveBtn = document.getElementById('btnSimpanKas');
-          if (amount > currentKas) {
-            warningEl.classList.add('active');
-            if (saveBtn) saveBtn.disabled = true;
-          } else {
-            warningEl.classList.remove('active');
-            if (saveBtn) saveBtn.disabled = false;
-          }
         }
 
         document.querySelectorAll('.numpad-btn').forEach(btn => {
@@ -513,11 +499,6 @@
               return;
             }
 
-            if (amount > currentKas) {
-              Utils.showToast('Kas tidak mencukupi untuk transaksi ini', 'error');
-              return;
-            }
-
             const note = document.getElementById('kasNote').value.trim();
             if (!note) {
               Utils.showToast('Keterangan wajib diisi', 'warning');
@@ -526,13 +507,13 @@
             }
 
             try {
-              Utils.showLoading('Menyimpan kas keluar...');
+              Utils.showLoading('Menyimpan kas masuk...');
               const today = Utils.getTodayString();
-              const transactionId = 'KOUT_' + Date.now();
+              const transactionId = 'KIN_' + Date.now();
 
               await db.collection("transactions").add({
                 id: transactionId,
-                type: 'kas_keluar',
+                type: 'kas_masuk',
                 amount: amount,
                 total: amount,
                 note: note,
@@ -544,7 +525,7 @@
               });
 
               Utils.hideLoading();
-              Utils.showToast('Kas keluar berhasil disimpan!', 'success');
+              Utils.showToast('Kas masuk berhasil disimpan!', 'success');
 
               setTimeout(() => { goBack(); }, 1200);
 
