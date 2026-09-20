@@ -2491,6 +2491,14 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
+    <div class="form-group" id="beliNormalPriceGroup" style="margin-bottom:0.75rem;">
+      <label class="form-label" style="font-size:0.8rem;">Harga Jual Umum (Opsional)</label>
+      <div style="display:flex;">
+        <span style="padding:0.625rem 0.75rem;background:var(--bg-secondary);border:1.5px solid var(--border-color);border-right:none;border-radius:0.75rem 0 0 0.75rem;color:var(--text-muted);font-size:0.875rem;">Rp</span>
+        <input type="number" class="form-input" id="beliNormalPrice" placeholder="Harga jual umum" min="0" style="border-radius:0 0.75rem 0.75rem 0;padding:0.625rem 0.875rem;font-size:0.875rem;">
+      </div>
+    </div>
+
     <!-- Qty & Harga Beli -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
       <div class="form-group" style="margin-bottom:0;">
@@ -3935,6 +3943,9 @@ async function processPayment() {
             createdAt: Date.now(),
             updatedAt: Date.now(),
             affectKas: piutangPayment > 0,   // kalau bayar separuh, masuk kas
+            // Penjualan kredit ini menjadi dasar perhitungan kas:
+            // total penjualan dikurangi sisa piutang.
+            kasRecorded: true,
             sourceTransactionId: transactionId
           });
 
@@ -4181,6 +4192,8 @@ function openKasKeluar() {
 }
     
 function openBayarHutang() {
+  // Tandai asal navigasi agar setelah pembayaran selesai kembali ke Kasir.
+  localStorage.setItem('fromKasir', 'true');
   window.location.href = 'page-hutang.html';
 }
 
@@ -4766,6 +4779,8 @@ function setBeliMode(mode) {
   document.getElementById('beliNewCategory').value = '';
   document.getElementById('beliSupplier').value = '';
   document.getElementById('beliResellerPrice').value = '';
+  document.getElementById('beliNormalPrice').value = '';
+  document.getElementById('beliNormalPriceGroup').style.display = mode === 'existing' ? 'block' : 'none';
   document.getElementById('beliQty').value = '';
   document.getElementById('beliHarga').value = '';
   document.getElementById('beliPembulatan').value = '0';
@@ -4818,6 +4833,7 @@ function addBeliItem() {
   const qty = parseInt(document.getElementById('beliQty').value) || 0;
   const hargaBeli = parseInt(document.getElementById('beliHarga').value) || 0;
   const resellerPrice = parseInt(document.getElementById('beliResellerPrice').value) || 0;
+  const normalPrice = parseInt(document.getElementById('beliNormalPrice').value) || 0;
   
   if (qty < 1 || hargaBeli < 1) {
     showToast('Qty dan harga beli harus lebih dari 0', 'error');
@@ -4829,6 +4845,7 @@ function addBeliItem() {
     supplier: supplier,
     qty: qty,
     hargaBeli: hargaBeli,
+    normalPrice: normalPrice,
     resellerPrice: resellerPrice,
     total: qty * hargaBeli,
     mode: beliMode
@@ -4855,6 +4872,7 @@ function addBeliItem() {
     }
     itemData.productName = newName;
     itemData.sellingPrice = newSellPrice;
+    itemData.normalPrice = newSellPrice;
     itemData.categoryId = document.getElementById('beliNewCategory').value || null;
     const selectedCategory = categories.find(c => c.id === itemData.categoryId);
     itemData.categoryName = selectedCategory ? (selectedCategory.name || selectedCategory.title || '') : '';
@@ -4869,6 +4887,7 @@ function addBeliItem() {
   document.getElementById('beliQty').value = '';
   document.getElementById('beliHarga').value = '';
   document.getElementById('beliResellerPrice').value = '';
+  document.getElementById('beliNormalPrice').value = '';
   if (beliMode === 'existing') {
     document.getElementById('beliSearch').value = '';
     document.getElementById('beliSelectedId').value = '';
@@ -4893,7 +4912,7 @@ function renderBeliItemsList() {
   container.innerHTML = beliItems.map((item, index) => `
     <div class="beli-item-row">
       <span class="bi-name">${item.productName}</span>
-      <span class="bi-info">${item.qty} x ${formatRupiah(item.hargaBeli)}${item.resellerPrice > 0 ? ` · Reseller ${formatRupiah(item.resellerPrice)}` : ''}</span>
+       <span class="bi-info">${item.qty} x ${formatRupiah(item.hargaBeli)}${item.normalPrice > 0 ? ` · Umum ${formatRupiah(item.normalPrice)}` : ''}${item.resellerPrice > 0 ? ` · Reseller ${formatRupiah(item.resellerPrice)}` : ''}</span>
       <button class="bi-remove" onclick="removeBeliItem(${index})" title="Hapus">
         <i class="fas fa-times"></i>
       </button>
@@ -4918,7 +4937,7 @@ if (beliSearchInput) {
     const filtered = products.filter(p => p.name.toLowerCase().includes(q));
     if (filtered.length > 0) {
       beliSearchList.innerHTML = filtered.map(p => `
-        <div class="beli-search-item" data-id="${p.id}" data-name="${p.name}" data-cost="${p.costPrice || 0}" data-reseller="${getResellerPrice(p) || 0}">
+        <div class="beli-search-item" data-id="${p.id}" data-name="${p.name}" data-cost="${p.costPrice || 0}" data-normal="${p.sellingPrice || 0}" data-reseller="${getResellerPrice(p) || 0}">
           <div class="bs-name">${p.name}</div>
           <div class="bs-info">Stok: ${p.stock || 0} | Beli: ${formatRupiah(p.costPrice || 0)}</div>
         </div>
@@ -4930,11 +4949,13 @@ if (beliSearchInput) {
             id: this.dataset.id,
             name: this.dataset.name,
             costPrice: parseInt(this.dataset.cost) || 0,
+            normalPrice: parseInt(this.dataset.normal) || 0,
             resellerPrice: parseInt(this.dataset.reseller) || 0
           };
           beliSearchInput.value = this.dataset.name;
           document.getElementById('beliSelectedId').value = this.dataset.id;
           document.getElementById('beliHarga').value = beliSelectedProduct.costPrice;
+          document.getElementById('beliNormalPrice').value = beliSelectedProduct.normalPrice || '';
           document.getElementById('beliResellerPrice').value = beliSelectedProduct.resellerPrice || '';
           beliSearchList.style.display = 'none';
           document.getElementById('beliQty').focus();
@@ -4996,6 +5017,7 @@ async function saveBeliBarang() {
             costPrice: item.hargaBeli,
             updatedAt: timestamp
           };
+          if (item.normalPrice > 0) existingUpdates.sellingPrice = item.normalPrice;
           if (item.resellerPrice > 0) existingUpdates.resellerPrice = item.resellerPrice;
           await prodRef.update(existingUpdates);
         }
@@ -5005,7 +5027,7 @@ async function saveBeliBarang() {
         await newRef.set({
           name: item.productName,
           costPrice: item.hargaBeli,
-          sellingPrice: item.sellingPrice,
+          sellingPrice: item.normalPrice || item.sellingPrice,
           resellerPrice: item.resellerPrice || 0,
           stock: item.qty,
           createdAt: timestamp,
@@ -5021,6 +5043,7 @@ async function saveBeliBarang() {
         productName: item.productName,
         qty: item.qty,
         harga: item.hargaBeli,
+        sellingPrice: item.normalPrice || item.sellingPrice || 0,
         resellerPrice: item.resellerPrice || 0,
         categoryId: item.categoryId || null,
         total: item.total,
