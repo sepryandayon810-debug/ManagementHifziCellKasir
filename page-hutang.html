@@ -44,7 +44,7 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
   <style>
@@ -1957,22 +1957,93 @@
       };
     }
 
-    if (typeof database === 'undefined') {
-      window.database = {
-        ref: (path) => ({
-          once: async () => ({ val: () => ({}) }),
-          set: async () => {},
-          update: async () => {},
-          push: () => ({ key: 'mock_' + Date.now() })
-        })
-      };
+    // ===== FIRESTORE COMPATIBILITY LAYER =====
+    // Adapter kompatibilitas untuk pola akses collection/document lama.
+    // Semua data sekarang disimpan dan dibaca dari Cloud Firestore.
+    function createFirestoreCompat() {
+      const firestore = firebase.firestore();
+
+      function makeRef(path) {
+        const clean = String(path)
+          .replace(/^\/+|\/+$|\/+/g, '/')
+          .replace(/^\//, '')
+          .replace(/\/$/, '');
+        const parts = clean ? clean.split('/') : [];
+        const collectionName = parts[0];
+        let target;
+
+        if (collectionName === 'transactions' && parts.length === 2) {
+          target = firestore.collection('transactions').where('date', '==', parts[1]);
+        } else if (collectionName === 'modal' && parts.length === 3) {
+          target = firestore.collection('modal').doc(parts[1] + '_' + parts[2]);
+        } else if ((collectionName === 'transactions' || collectionName === 'purchases') && parts.length >= 3) {
+          target = firestore.collection(collectionName).doc(parts[2]);
+        } else if (parts.length === 1) {
+          target = firestore.collection(collectionName);
+        } else {
+          // debts/id, customers/id, debt_payments/debtId/paymentId, dll.
+          target = firestore.collection(collectionName).doc(parts.slice(1).join('_'));
+        }
+
+        function withPathFields(data) {
+          const copy = Object.assign({}, data || {});
+          if ((collectionName === 'transactions' || collectionName === 'purchases') &&
+              parts[1] && parts.length >= 3 && !copy.date) {
+            copy.date = parts[1];
+          }
+          if (collectionName === 'modal' && parts.length === 3 && !copy.date) {
+            copy.date = parts[1];
+          }
+          return copy;
+        }
+
+        return {
+          once: async function() {
+            const snap = await target.get();
+            if (snap.docs) {
+              const values = {};
+              snap.docs.forEach(function(doc) {
+                values[doc.id] = Object.assign({ id: doc.id }, doc.data());
+              });
+              return { val: function() { return values; } };
+            }
+            return {
+              val: function() {
+                return snap.exists ? Object.assign({ id: snap.id }, snap.data()) : null;
+              }
+            };
+          },
+          set: function(data, options) {
+            return target.set(withPathFields(data), options || undefined);
+          },
+          update: function(data) {
+            return target.update(data);
+          },
+          remove: function() {
+            return target.delete();
+          },
+          push: function() {
+            const newDoc = firestore.collection(collectionName).doc();
+            return {
+              key: newDoc.id,
+              set: function(data) {
+                return newDoc.set(withPathFields(data));
+              }
+            };
+          }
+        };
+      }
+
+      return { ref: makeRef };
     }
 
-// Customer Storage - Firebase Only
+    const firestoreDb = createFirestoreCompat();
+
+// Customer Storage - Firestore Only
 const CustomerStorage = {
   getAll: async () => {
     try {
-      const snapshot = await database.ref('customers').once('value');
+      const snapshot = await firestoreDb.ref('customers').once('value');
       return snapshot.val() || {};
     } catch (e) {
       console.error('Error load customers:', e);
@@ -1987,12 +2058,12 @@ const CustomerStorage = {
       id,
       updatedAt: Date.now()
     };
-    await database.ref('customers/' + id).set(customerData);
+    await firestoreDb.ref('customers/' + id).set(customerData);
     return customerData;
   },
   
   delete: async (id) => {
-    await database.ref('customers/' + id).remove();
+    await firestoreDb.ref('customers/' + id).remove();
   }
 };
 
@@ -2302,7 +2373,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           try {
             // Load hutang data from Firebase
-            const hutangSnapshot = await database.ref('debts').once('value');
+            const hutangSnapshot = await firestoreDb.ref('debts').once('value');
             hutangData = hutangSnapshot.val() || {};
             
             // Load customer data dari Firebase
@@ -2599,12 +2670,12 @@ filteredItems.forEach(item => {
 
   console.log('📝 Save Hutang:', { name, affectKas, kasRecorded: affectKas === true });
     
-        await database.ref('debts/' + hutangId).set(hutangPayload);
+        await firestoreDb.ref('debts/' + hutangId).set(hutangPayload);
     
     // ⭐ Otomatis catat penjualan saat piutang baru (supaya kas sistem tidak negatif)
     if (!id && type === 'piutang' && affectKas) {
       const transId = 'hutang_' + Date.now();
-      await database.ref('transactions/' + today + '/' + transId).set({
+      await firestoreDb.ref('transactions/' + today + '/' + transId).set({
         type: 'penjualan',
         paymentMethod: 'hutang',
         source: 'hutang_page',
@@ -2615,7 +2686,7 @@ filteredItems.forEach(item => {
         description: `Piutang - ${name}`,
         customerName: name,
         timestamp: Date.now(),
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         userId: user.uid,
         userName: user.name || user.email,
         status: 'completed',
@@ -2826,7 +2897,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             Utils.showLoading();
             
             try {
-              await database.ref('debts/' + id).update({
+              await firestoreDb.ref('debts/' + id).update({
                 status: 'deleted',
                 deletedAt: Date.now()
               });
@@ -2847,7 +2918,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             Utils.showLoading();
             
             try {
-              await database.ref('debts/' + id).update({
+              await firestoreDb.ref('debts/' + id).update({
                 status: 'active',
                 remaining: hutangData[id].amount,
                 restoredAt: Date.now()
@@ -2882,7 +2953,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
         totalBayar += remaining;
         
         // Update debt jadi paid
-        await database.ref('debts/' + item.id).update({
+    await firestoreDb.ref('debts/' + item.id).update({
           remaining: 0,
           status: 'paid',
           paidAt: Date.now(),
@@ -2890,7 +2961,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
         });
         
         // Payment record
-        await database.ref('debt_payments/' + item.id + '/' + Date.now()).set({
+    await firestoreDb.ref('debt_payments/' + item.id + '/' + Date.now()).set({
           amount: remaining,
           note: note || `Bayar semua - ${item.name}`,
           affectKas,
@@ -2961,14 +3032,14 @@ document.getElementById('hutangDueDate').value = dueDateVal;
     const newRemaining = remaining - paymentAmount;
     const isFullyPaid = newRemaining <= 0;
     
-    await database.ref('debts/' + currentPaymentId).update({
+    await firestoreDb.ref('debts/' + currentPaymentId).update({
       remaining: newRemaining,
       status: isFullyPaid ? 'paid' : 'active',
       paidAt: isFullyPaid ? Date.now() : null,
       updatedAt: Date.now()
     });
     
-    await database.ref('debt_payments/' + currentPaymentId + '/' + Date.now()).set({
+    await firestoreDb.ref('debt_payments/' + currentPaymentId + '/' + Date.now()).set({
       amount: paymentAmount,
       note,
       affectKas,
@@ -3030,7 +3101,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
             console.log('📦 Data:', transactionData);
 
             // Simpan ke path yang dibaca dashboard
-            await database.ref('transactions/' + today + '/' + kasId).set(transactionData);
+            await firestoreDb.ref('transactions/' + today + '/' + kasId).set(transactionData);
             console.log('✅ Berhasil tersimpan di transactions!');
             
             return true;
@@ -3143,7 +3214,7 @@ document.getElementById('hutangDueDate').value = dueDateVal;
                 
                 const hutangId = 'debt_' + Date.now() + '_' + count;
                 
-                await database.ref('debts/' + hutangId).set({
+                await firestoreDb.ref('debts/' + hutangId).set({
                   id: hutangId,
                   name,
                   type: type === 'piutang' ? 'piutang' : 'hutang',
