@@ -64,7 +64,7 @@
       --sidebar-width:270px;
       --sidebar-collapsed:76px;
       --header-h:70px;
-      --bottom-nav-height:70px;
+      --bottom-nav-height:60px;
     }
     [data-theme-color="indigo"]{--primary:#4f46e5;--primary-hover:#4338ca;--primary-light:#eef2ff}
     [data-theme-color="green"]{--primary:#059669;--primary-hover:#047857;--primary-light:#ecfdf5}
@@ -314,6 +314,7 @@
       flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
       text-decoration:none;color:var(--text-muted);font-size:0.65rem;font-weight:600;
     }
+    .mobile-nav-item i{font-size:1.1rem}
     .mobile-nav-item.active{color:var(--primary)}
     @media(max-width:1024px){.mobile-nav{display:flex}}
     @media(max-width:1024px){
@@ -336,6 +337,15 @@
     .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
     .modal-body{padding:1.5rem}
     .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end;background:var(--bg-subtle)}
+    .form-group{margin-bottom:1rem}
+    .form-label{display:block;font-size:.8rem;font-weight:700;color:var(--text-sub);margin-bottom:.35rem}
+    .form-input,.form-select{
+      width:100%;padding:.7rem .85rem;border:1.5px solid var(--border);border-radius:var(--radius-md);
+      background:var(--bg-subtle);color:var(--text-main);font:inherit;font-size:.85rem;outline:none;
+    }
+    .form-input:focus,.form-select:focus{border-color:var(--primary);background:var(--bg-surface)}
+    .modal-hint{font-size:.75rem;color:var(--text-muted);line-height:1.45;margin-top:.4rem}
+    .btn-edit{color:var(--primary);border-color:var(--primary-light)}
 
     /* STRUK MODAL */
     .struk-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
@@ -569,6 +579,59 @@
     </div>
   </div>
 
+  <!-- EDIT TRANSACTION MODAL -->
+  <div class="modal-overlay" id="transactionEditModal" onclick="if(event.target===this) closeTransactionEditModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-pen-to-square" style="color:var(--primary);"></i> Edit Transaksi</h3>
+        <button class="btn-icon" onclick="closeTransactionEditModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="editTransactionInfo" class="modal-hint" style="margin-bottom:1rem;"></div>
+        <div class="form-group">
+          <label class="form-label" for="editNote">Keterangan / Catatan</label>
+          <input type="text" class="form-input" id="editNote" placeholder="Keterangan transaksi">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editPaymentMethod">Metode Pembayaran</label>
+          <select class="form-select" id="editPaymentMethod">
+            <option value="Tunai">Tunai</option>
+            <option value="Transfer">Transfer</option>
+            <option value="QRIS">QRIS</option>
+            <option value="Hutang">Hutang</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div class="form-group" id="editAmountGroup">
+          <label class="form-label" for="editAmount">Nominal</label>
+          <input type="number" class="form-input" id="editAmount" min="0" step="1">
+          <div class="modal-hint">Nominal transaksi kas dapat diubah di sini. Item penjualan diubah melalui halaman Kasir agar stok tetap akurat.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeTransactionEditModal()">Batal</button>
+        <button class="btn btn-primary" id="btnSaveTransactionEdit" onclick="saveTransactionEdit()"><i class="fas fa-save"></i> Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="deleteConfirmModal" onclick="if(event.target===this) closeDeleteConfirmModal()">
+    <div class="modal-content" style="max-width:430px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-triangle-exclamation" style="color:var(--danger);"></i> Hapus Transaksi?</h3>
+        <button class="btn-icon" onclick="closeDeleteConfirmModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteConfirmMessage" style="color:var(--text-sub);font-size:.88rem;line-height:1.55;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDeleteConfirmModal()">Batal</button>
+        <button class="btn btn-danger" onclick="confirmDeleteTransaction()"><i class="fas fa-trash"></i> Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
     <p style="margin-top:1rem;font-weight:600;color:#fff;">Memuat...</p>
@@ -594,6 +657,8 @@
       let currentPeriod = 'today';
       let currentSearch = '';
       let lastTransactionData = null;
+      let pendingDeleteId = null;
+      let editingTransactionId = null;
 
       const TYPE_LABELS = {
         penjualan: 'Penjualan',
@@ -895,6 +960,7 @@
               <td style="font-weight:700;color:var(--primary);">${Utils.formatRupiah(t.total || t.amount || 0)}</td>
               <td style="text-align:center">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk"><i class="fas fa-print"></i></button>
+                <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit"><i class="fas fa-pen"></i></button>
                 <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus"><i class="fas fa-trash"></i></button>
               </td>
             </tr>
@@ -998,20 +1064,175 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
         document.getElementById('strukModal').classList.remove('active');
       };
 
-      window.deleteTransaction = async function(id) {
-        if (!confirm('Yakin ingin menghapus transaksi ini?')) return;
-        try {
-          Utils.showLoading('Menghapus...');
-          const t = allTransactions.find(x => x.id === id);
-          if (t) {
-            await db.collection("transactions").doc(id).delete();
+      function getItemProductId(item) {
+        const nestedProduct = item && (item.product || item.productData);
+        return item && (
+          item.productId ||
+          item.productID ||
+          item.product_id ||
+          (nestedProduct && (nestedProduct.productId || nestedProduct.id)) ||
+          item.id
+        );
+      }
+
+      function getItemQuantity(item) {
+        return Number(item && (item.quantity ?? item.qty ?? item.count ?? 0)) || 0;
+      }
+
+      async function restoreStockForTransaction(transaction) {
+        if (transaction.type !== 'penjualan') return { restored: 0 };
+        if (!Array.isArray(transaction.items) || transaction.items.length === 0) {
+          throw new Error('Detail item penjualan tidak ditemukan. Transaksi tidak dihapus agar stok tidak salah.');
+        }
+
+        const quantitiesByProduct = new Map();
+        const unresolvedItems = [];
+        (transaction.items || []).forEach(item => {
+          const productId = getItemProductId(item);
+          const quantity = getItemQuantity(item);
+          if (!productId || quantity <= 0) {
+            unresolvedItems.push(item && (item.name || 'item tanpa nama'));
+            return;
           }
+          const key = String(productId);
+          quantitiesByProduct.set(key, (quantitiesByProduct.get(key) || 0) + quantity);
+        });
+
+        if (unresolvedItems.length > 0) {
+          throw new Error('ID produk tidak ditemukan untuk: ' + unresolvedItems.join(', ') + '. Transaksi tidak dihapus agar stok tidak salah.');
+        }
+        if (quantitiesByProduct.size === 0) return { restored: 0 };
+
+        const productRefs = [...quantitiesByProduct.keys()].map(productId =>
+          db.collection('products').doc(productId)
+        );
+
+        await db.runTransaction(async firestoreTransaction => {
+          const productSnapshots = [];
+          for (const productRef of productRefs) {
+            productSnapshots.push(await firestoreTransaction.get(productRef));
+          }
+
+          productSnapshots.forEach((productSnapshot, index) => {
+            if (!productSnapshot.exists) {
+              throw new Error('Produk dengan ID ' + productRefs[index].id + ' tidak ditemukan. Transaksi tidak dihapus.');
+            }
+
+            const productData = productSnapshot.data() || {};
+            const stockField = ['stock', 'stockQty', 'quantity', 'qty', 'stok']
+              .find(field => Object.prototype.hasOwnProperty.call(productData, field)) || 'stock';
+            const currentStock = Number(productData[stockField]) || 0;
+            const restoredQuantity = quantitiesByProduct.get(productRefs[index].id) || 0;
+            firestoreTransaction.update(productRefs[index], {
+              [stockField]: currentStock + restoredQuantity,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+        });
+
+        return { restored: quantitiesByProduct.size };
+      }
+
+      window.deleteTransaction = function(id) {
+        const transaction = allTransactions.find(item => item.id === id);
+        if (!transaction) return;
+
+        pendingDeleteId = id;
+        const message = transaction.type === 'penjualan'
+          ? 'Transaksi penjualan ini akan dihapus dan jumlah stok setiap item akan dikembalikan ke Produk. Proses tidak dilanjutkan jika ID produk tidak ditemukan.'
+          : 'Transaksi ini akan dihapus dari riwayat. Tindakan ini tidak dapat dibatalkan.';
+        document.getElementById('deleteConfirmMessage').textContent = message;
+        document.getElementById('deleteConfirmModal').classList.add('active');
+      };
+
+      window.closeDeleteConfirmModal = function() {
+        pendingDeleteId = null;
+        document.getElementById('deleteConfirmModal').classList.remove('active');
+      };
+
+      window.confirmDeleteTransaction = async function() {
+        const id = pendingDeleteId;
+        const transaction = allTransactions.find(item => item.id === id);
+        if (!id || !transaction) {
+          closeDeleteConfirmModal();
+          return;
+        }
+
+        closeDeleteConfirmModal();
+        try {
+          Utils.showLoading(transaction.type === 'penjualan' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
+          const stockResult = await restoreStockForTransaction(transaction);
+          await db.collection('transactions').doc(id).delete();
           Utils.hideLoading();
-          Utils.showToast('Transaksi berhasil dihapus', 'success');
+          Utils.showToast(
+            stockResult.restored
+              ? 'Transaksi dihapus dan stok berhasil dikembalikan'
+              : 'Transaksi berhasil dihapus',
+            'success'
+          );
           loadTransactions();
         } catch(e) {
           Utils.hideLoading();
-          Utils.showToast('Gagal menghapus transaksi', 'error');
+          Utils.showToast(e.message || 'Gagal menghapus transaksi', 'error');
+        }
+      };
+
+      window.editTransaction = function(id) {
+        const transaction = allTransactions.find(item => item.id === id);
+        if (!transaction) return;
+
+        editingTransactionId = id;
+        document.getElementById('editTransactionInfo').textContent =
+          'No. Input #' + String(transaction.inputSequence || 0).padStart(3, '0') +
+          ' • ' + (TYPE_LABELS[transaction.type] || transaction.type);
+        document.getElementById('editNote').value = transaction.note || '';
+        document.getElementById('editPaymentMethod').value = transaction.paymentMethod || 'Tunai';
+
+        const amountGroup = document.getElementById('editAmountGroup');
+        const amountInput = document.getElementById('editAmount');
+        const isProductSale = transaction.type === 'penjualan';
+        amountGroup.style.display = isProductSale ? 'none' : 'block';
+        amountInput.value = transaction.amount ?? transaction.total ?? 0;
+        document.getElementById('transactionEditModal').classList.add('active');
+      };
+
+      window.closeTransactionEditModal = function() {
+        editingTransactionId = null;
+        document.getElementById('transactionEditModal').classList.remove('active');
+      };
+
+      window.saveTransactionEdit = async function() {
+        const id = editingTransactionId;
+        const transaction = allTransactions.find(item => item.id === id);
+        if (!id || !transaction) return;
+
+        const saveButton = document.getElementById('btnSaveTransactionEdit');
+        saveButton.disabled = true;
+        try {
+          const updates = {
+            note: document.getElementById('editNote').value.trim(),
+            paymentMethod: document.getElementById('editPaymentMethod').value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          if (transaction.type !== 'penjualan') {
+            const amount = Number(document.getElementById('editAmount').value);
+            if (!Number.isFinite(amount) || amount < 0) {
+              Utils.showToast('Nominal transaksi tidak valid', 'error');
+              return;
+            }
+            if (Object.prototype.hasOwnProperty.call(transaction, 'amount')) updates.amount = amount;
+            else updates.total = amount;
+          }
+
+          await db.collection('transactions').doc(id).update(updates);
+          closeTransactionEditModal();
+          Utils.showToast('Transaksi berhasil diperbarui', 'success');
+          loadTransactions();
+        } catch(e) {
+          Utils.showToast(e.message || 'Gagal memperbarui transaksi', 'error');
+        } finally {
+          saveButton.disabled = false;
         }
       };
 
