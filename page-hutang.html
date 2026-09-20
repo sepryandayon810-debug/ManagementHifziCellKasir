@@ -41,10 +41,11 @@
   <!-- SheetJS for Excel Support -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
-  <!-- Firebase -->
+  <!-- Firebase SDK: Authentication + Cloud Firestore -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Dipakai oleh firebase-config.js untuk kompatibilitas upload gambar produk -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
   <style>
@@ -1946,6 +1947,15 @@
       };
     }
 
+    // utils.js di beberapa versi lama belum menyediakan formatter ini.
+    // Jangan biarkan error tersebut menghentikan handler Lunasi Sekaligus.
+    if (typeof Utils.formatNumberInput !== 'function') {
+      Utils.formatNumberInput = (val) => {
+        const digits = String(val ?? '').replace(/\D/g, '');
+        return digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
+      };
+    }
+
     if (typeof Auth === 'undefined') {
       window.Auth = {
         getCurrentUser: () => ({ uid: 'local_user', name: 'User', email: 'user@local.com' }),
@@ -2806,7 +2816,10 @@ renderCustomerList();
           const subLabelText = document.getElementById('kasSubLabelText');
           const checkbox = document.getElementById('affectKas');
           
-          checkbox.checked = false; // Default tidak dicentang
+          // Jika halaman dipanggil dari Kasir, pembayaran dianggap transaksi kas
+          // dan default-nya langsung dilunasi sekaligus.
+          const fromKasir = localStorage.getItem('fromKasir') === 'true';
+          checkbox.checked = fromKasir;
           
           if (item.type === 'hutang') {
             // Bayar hutang = uang keluar dari kas (kita bayar utang)
@@ -2816,6 +2829,11 @@ renderCustomerList();
             // Bayar piutang = uang masuk ke kas (kita terima pembayaran)
             labelText.textContent = 'Catat ke Kas Masuk';
             subLabelText.textContent = 'Otomatis mencatat pemasukan kas saat menerima pembayaran piutang';
+          }
+
+          if (fromKasir) {
+            lunasCheckbox.checked = true;
+            handleLunasToggle({ target: lunasCheckbox });
           }
           
           document.getElementById('paymentModal').classList.add('active');
@@ -2862,7 +2880,7 @@ renderCustomerList();
   const subLabelText = document.getElementById('kasSubLabelText');
   const checkbox = document.getElementById('affectKas');
   
-  checkbox.checked = false;
+  checkbox.checked = localStorage.getItem('fromKasir') === 'true';
   
   if (type === 'hutang') {
     labelText.textContent = 'Catat ke Kas Keluar';
@@ -2870,6 +2888,10 @@ renderCustomerList();
   } else {
     labelText.textContent = 'Catat ke Kas Masuk';
     subLabelText.textContent = 'Otomatis mencatat pemasukan kas saat menerima pembayaran semua piutang';
+  }
+
+  if (localStorage.getItem('fromKasir') === 'true') {
+    document.getElementById('affectKas').checked = true;
   }
   
   document.getElementById('paymentModal').classList.add('active');
@@ -2970,9 +2992,8 @@ document.getElementById('hutangDueDate').value = dueDateVal;
           timestamp: Date.now()
         });
         
-        // Record ke kas (sama logic dengan single)
-        const wasKasRecorded = item.kasRecorded !== false;
-        if (affectKas && !wasKasRecorded) {
+        // Setiap pembayaran aktual harus menjadi mutasi kas tersendiri.
+        if (affectKas) {
           if (type === 'hutang') {
             await recordToKas('keluar', remaining, `Pembayaran hutang - ${item.name}`, user);
           } else {
@@ -3008,17 +3029,15 @@ document.getElementById('hutangDueDate').value = dueDateVal;
   const item = hutangData[currentPaymentId];
   const remaining = item.remaining || item.amount || 0;
   
-  const paymentAmount = parseInt(document.getElementById('paymentAmount').value.replace(/\./g, '')) || 0;
+  const lunasSekaligus = document.getElementById('lunasSekaligus').checked;
+  const enteredPaymentAmount = parseInt(document.getElementById('paymentAmount').value.replace(/\./g, '')) || 0;
+  // Checkbox lunas adalah sumber kebenaran. Jangan bergantung pada isi input,
+  // karena input bisa belum terisi ketika tombol Bayar ditekan.
+  const paymentAmount = lunasSekaligus ? remaining : enteredPaymentAmount;
   
   if (paymentAmount <= 0) {
     Utils.showToast('Jumlah pembayaran harus lebih dari 0', 'error');
     return;
-  }
-
-  const lunasSekaligus = document.getElementById('lunasSekaligus').checked;
-  
-  if (lunasSekaligus && paymentAmount !== remaining) {
-     console.log('Lunasi sekaligus dipilih, jumlah:', paymentAmount);
   }
   
   if (paymentAmount > remaining) {
@@ -3048,9 +3067,10 @@ document.getElementById('hutangDueDate').value = dueDateVal;
       timestamp: Date.now()
     });
 
-    const wasKasRecorded = item.kasRecorded !== false;
-    
-    if (affectKas && !wasKasRecorded) {
+    // Setiap pembayaran aktual harus menjadi mutasi kas tersendiri.
+    // Saldo global menghitung penjualan kredit dari paymentAmount, sehingga
+    // transaksi ini tidak menyebabkan double count.
+    if (affectKas) {
       if (item.type === 'hutang') {
         await recordToKas('keluar', paymentAmount, `Pembayaran hutang - ${item.name}`, user);
       } else {
@@ -3083,11 +3103,15 @@ document.getElementById('hutangDueDate').value = dueDateVal;
           
           try {
             const kasId = 'kas_' + Date.now();
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.getFullYear() + '-' +
+              String(now.getMonth() + 1).padStart(2, '0') + '-' +
+              String(now.getDate()).padStart(2, '0');
             
             // Struktur data yang dibaca dashboard
             const transactionData = {
               type: type === 'masuk' ? 'kas_masuk' : 'kas_keluar',
+              category: 'pembayaran_hutang',
               amount: parseInt(amount),
               note: description,
               date: today,
