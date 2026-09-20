@@ -3043,7 +3043,11 @@ async function loadUangGlobal() {
       if (tx.status !== 'cancelled' && tx.status !== 'voided') {
         switch (tx.type) {
           case 'penjualan':
-            penjualan += tx.total || 0;
+            // Penjualan kredit tidak langsung menjadi uang kas.
+            // Yang masuk ke kas hanya pembayaran aktualnya.
+            penjualan += tx.paymentMethod === 'hutang'
+              ? (tx.paymentAmount || 0)
+              : (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
             break;
           case 'kas_masuk':
             if (tx.category !== 'penjualan_hutang') kasMasuk += tx.amount || 0;
@@ -3086,11 +3090,11 @@ async function loadUangGlobal() {
       Mutasi fisik laci:
       - Top Up: customer menyerahkan nominal + admin, jadi keduanya masuk fisik.
       - Tarik Tunai: customer menerima nominal - admin; admin tetap tinggal di laci.
-      - Piutang: penjualan dikurangi sisa piutang = bagian yang sudah dibayar.
+      - Penjualan kredit: hanya paymentAmount yang sudah diterima masuk kas.
     */
     const topupKasFisik = topup + topupAdminFee;
     const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
-    const uangGlobal = modalAwal + kasMasuk - kasKeluar + penjualan - totalPiutang + topupKasFisik - tarikKasFisik;
+    const uangGlobal = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
     
     document.getElementById('headerUangGlobal').textContent = formatRupiah(uangGlobal);
     localStorage.setItem('header_uang_global', formatRupiah(uangGlobal));
