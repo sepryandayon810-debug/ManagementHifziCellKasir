@@ -2409,7 +2409,7 @@ html,body{overflow-x:hidden;max-width:100vw}
             <i class="fas fa-arrow-up"></i> Kas Keluar
           </button>
           <button class="kas-btn kas-hutang" onclick="openBayarHutang()">
-            <i class="fas fa-hand-holding-usd"></i> Bayar Hutang
+            <i class="fas fa-hand-holding-usd"></i> Hutang/Piutang
           </button>
           <button class="kas-btn kas-beli" onclick="openModalBeli()">
     <i class="fas fa-cart-plus"></i> Beli Barang
@@ -3050,7 +3050,9 @@ async function loadUangGlobal() {
               : (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
             break;
           case 'kas_masuk':
-            if (tx.category !== 'penjualan_hutang') kasMasuk += tx.amount || 0;
+            if (tx.category !== 'penjualan_hutang' && tx.category !== 'penerimaan_piutang_penjualan') {
+              kasMasuk += tx.amount || 0;
+            }
             break;
           case 'kas_keluar':
             kasKeluar += tx.amount || 0;
@@ -3902,8 +3904,10 @@ async function processPayment() {
             note: localStorage.getItem('kasir_note') || '',
             timestamp: Date.now(),
             status: 'completed',
-            isHutang: true,
-            hutangName: piutangName
+             isHutang: true,
+             hutangName: piutangName,
+             source: 'kasir',
+             flowType: remainingDebt > 0 ? 'penjualan_kredit' : 'penjualan_lunas'
           };
 
                     const db = createFirestoreCompat();
@@ -3947,6 +3951,8 @@ async function processPayment() {
             createdAt: Date.now(),
             updatedAt: Date.now(),
             affectKas: piutangPayment > 0,   // kalau bayar separuh, masuk kas
+             source: 'kasir',
+             flowType: 'piutang_penjualan',
             // Penjualan kredit ini menjadi dasar perhitungan kas:
             // total penjualan dikurangi sisa piutang.
             kasRecorded: true,
@@ -3958,8 +3964,12 @@ async function processPayment() {
             const kasId = 'kas_' + Date.now();
             await db.ref(`transactions/${todayStr}/${kasId}`).set({
               id: kasId,
-              type: 'kas_masuk',
-              category: 'penjualan_hutang',
+               type: 'kas_masuk',
+               category: 'penerimaan_piutang_penjualan',
+               source: 'penjualan',
+               flowType: 'pembayaran_sebagian_piutang',
+               cashDirection: 'in',
+               relatedTransactionId: transactionId,
               amount: piutangPayment,
               note: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
               userId: user ? user.uid : 'unknown',
