@@ -1128,7 +1128,7 @@
     const isAdmin = currentUserRole === "admin";
 
     try {
-      let modalAwal = 0, penjualan = 0, kasMasuk = 0, kasKeluar = 0;
+      let modalAwal = 0, penjualan = 0, cashPenjualan = 0, kasMasuk = 0, kasKeluar = 0;
       let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
       let topupAdminFee = 0, tarikAdminFee = 0;
 
@@ -1165,6 +1165,10 @@
           switch (t.type) {
             case "penjualan":
               penjualan += t.total || 0;
+              // Penjualan kredit hanya menambah kas sebesar pembayaran aktual.
+              cashPenjualan += t.paymentMethod === "hutang"
+                ? (t.paymentAmount || 0)
+                : (typeof t.paymentAmount === "number" ? t.paymentAmount : (t.total || 0));
               laba += t.profit || 0;
               // Input hutang membuat transaksi sintetis agar kas dapat dihitung,
               // tetapi tidak boleh dihitung sebagai transaksi kasir kedua.
@@ -1195,7 +1199,7 @@
       // Mutasi fisik: admin top up tinggal di laci; admin tarik mengurangi uang yang diberikan.
       const topupKasFisik = topup + topupAdminFee;
       const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
-      const kasLaci = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik - piutang;
+      const kasLaci = modalAwal + kasMasuk - kasKeluar + cashPenjualan + topupKasFisik - tarikKasFisik;
 
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
@@ -1206,7 +1210,7 @@
       document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
       document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(kasMasuk);
       document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(kasKeluar);
-      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(penjualan);
+      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(cashPenjualan);
       document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
       document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
       document.getElementById("kasPiutang").textContent = "- " + formatRupiah(piutang);
