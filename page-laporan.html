@@ -297,7 +297,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Laporan Penjualan</h1>
+          <h1 class="header-title" id="mainHeaderTitle">Laporan Penjualan</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
@@ -350,7 +350,7 @@
           <div class="stat-card">
             <div class="stat-icon purple"><i class="fas fa-shopping-cart"></i></div>
             <div>
-              <div class="stat-label">Total Penjualan</div>
+              <div class="stat-label" id="labelStat1">Total Penjualan</div>
               <div class="stat-value" id="statPenjualan">Rp 0</div>
             </div>
           </div>
@@ -364,14 +364,14 @@
           <div class="stat-card">
             <div class="stat-icon orange"><i class="fas fa-chart-line"></i></div>
             <div>
-              <div class="stat-label">Rata-rata / Transaksi</div>
+              <div class="stat-label" id="labelStat3">Rata-rata / Transaksi</div>
               <div class="stat-value" id="statRataRata">Rp 0</div>
             </div>
           </div>
           <div class="stat-card">
             <div class="stat-icon blue"><i class="fas fa-coins"></i></div>
             <div>
-              <div class="stat-label">Total Laba Bersih</div>
+              <div class="stat-label" id="labelStat4">Total Laba Bersih</div>
               <div class="stat-value" id="statLaba">Rp 0</div>
             </div>
           </div>
@@ -539,21 +539,34 @@
         document.getElementById('dateFrom').value = today;
         document.getElementById('dateTo').value = today;
 
-        // Tab Switching Handler
+        // Tab Switching Handler yang Stabil
         document.querySelectorAll('.report-tab').forEach(tab => {
           tab.onclick = function() {
             document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             currentReport = this.dataset.report;
             
-            const titleEl = document.getElementById('chartCardTitle');
+            const titleEl = document.getElementById('mainHeaderTitle');
+            const chartTitleEl = document.getElementById('chartCardTitle');
+            
             if (currentReport === 'penjualan') {
-              titleEl.innerHTML = '<i class="fas fa-chart-area" style="color: var(--primary);"></i> Grafik Tren Penjualan';
+              titleEl.textContent = 'Laporan Penjualan';
+              chartTitleEl.innerHTML = '<i class="fas fa-chart-area" style="color: var(--primary);"></i> Grafik Tren Penjualan';
+              document.getElementById('labelStat1').textContent = 'Total Penjualan';
+              document.getElementById('labelStat3').textContent = 'Rata-rata / Transaksi';
+              document.getElementById('labelStat4').textContent = 'Total Laba Bersih';
             } else {
-              titleEl.innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Grafik Mutasi Kas';
+              titleEl.textContent = 'Laporan Kas & Mutasi';
+              chartTitleEl.innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Grafik Mutasi Kas Bersih';
+              document.getElementById('labelStat1').textContent = 'Total Mutasi Kas';
+              document.getElementById('labelStat3').textContent = 'Transaksi Masuk';
+              document.getElementById('labelStat4').textContent = 'Transaksi Keluar';
             }
 
             if (reportData.length > 0) {
+              calculateStats(reportData);
+              renderSummary(reportData);
+              renderTransactionList(reportData);
               renderChart(reportData);
             }
           };
@@ -637,6 +650,9 @@
         let totalPenjualan = 0;
         let totalLaba = 0;
         let transaksiCount = 0;
+        let totalKasMutasi = 0;
+        let countMasuk = 0;
+        let countKeluar = 0;
 
         transactions.forEach(t => {
           if (t.status !== 'cancelled' && t.status !== 'voided') {
@@ -644,19 +660,28 @@
               totalPenjualan += t.total || 0;
               totalLaba += t.profit || 0;
               transaksiCount++;
-            } else if (t.type === 'topup' || t.type === 'tarik') {
-              totalLaba += t.adminFee || 0;
-              transaksiCount++;
+            } else if (['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
+              const val = t.total || t.amount || 0;
+              totalKasMutasi += val;
+              if (['topup', 'kas_masuk'].includes(t.type)) countMasuk++;
+              else countKeluar++;
             }
           }
         });
 
         const rataRata = transaksiCount > 0 ? totalPenjualan / transaksiCount : 0;
 
-        document.getElementById('statPenjualan').textContent = Utils.formatRupiah(totalPenjualan);
-        document.getElementById('statTransaksi').textContent = transaksiCount.toLocaleString('id-ID');
-        document.getElementById('statRataRata').textContent = Utils.formatRupiah(rataRata);
-        document.getElementById('statLaba').textContent = Utils.formatRupiah(totalLaba);
+        if (currentReport === 'penjualan') {
+          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(totalPenjualan);
+          document.getElementById('statTransaksi').textContent = transaksiCount.toLocaleString('id-ID');
+          document.getElementById('statRataRata').textContent = Utils.formatRupiah(rataRata);
+          document.getElementById('statLaba').textContent = Utils.formatRupiah(totalLaba);
+        } else {
+          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(totalKasMutasi);
+          document.getElementById('statTransaksi').textContent = (countMasuk + countKeluar).toLocaleString('id-ID');
+          document.getElementById('statRataRata').textContent = countMasuk + ' Masuk';
+          document.getElementById('statLaba').textContent = countKeluar + ' Keluar';
+        }
       }
 
       function renderSummary(transactions) {
@@ -668,25 +693,40 @@
         });
 
         const tbody = document.getElementById('summaryTableBody');
-        tbody.innerHTML = `
-          <tr><td>Penjualan Produk</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.penjualan)}</td></tr>
-          <tr><td>Layanan Top Up</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
-          <tr><td>Layanan Tarik Tunai</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.tarik)}</td></tr>
-          <tr><td>Kas Masuk Lain</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.kas_masuk)}</td></tr>
-          <tr><td>Kas Keluar Lain</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.kas_keluar)}</td></tr>
-        `;
+        
+        if (currentReport === 'penjualan') {
+          tbody.innerHTML = `
+            <tr><td>Penjualan Produk (Tunai/Kredit)</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.penjualan)}</td></tr>
+          `;
+        } else {
+          tbody.innerHTML = `
+            <tr><td>Layanan Top Up</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
+            <tr><td>Layanan Tarik Tunai</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.tarik)}</td></tr>
+            <tr><td>Kas Masuk Lain</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.kas_masuk)}</td></tr>
+            <tr><td>Kas Keluar Lain</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.kas_keluar)}</td></tr>
+          `;
+        }
       }
 
       function renderTransactionList(transactions) {
         const list = document.getElementById('transactionList');
-        if (transactions.length === 0) {
-          list.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Tidak ada data transaksi</p></div>`;
+        
+        const filtered = transactions.filter(t => {
+          if (currentReport === 'penjualan') {
+            return t.type === 'penjualan';
+          } else {
+            return ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type);
+          }
+        });
+
+        if (filtered.length === 0) {
+          list.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Tidak ada data transaksi untuk kategori ini</p></div>`;
           return;
         }
 
-        transactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-        list.innerHTML = transactions.map(t => {
+        list.innerHTML = filtered.map(t => {
           const labels = { penjualan: 'Penjualan', topup: 'Top Up', tarik: 'Tarik Tunai', kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar' };
           const isIncome = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
           const amount = t.total || t.amount || 0;
@@ -719,10 +759,10 @@
             if (currentReport === 'penjualan' && t.type === 'penjualan') {
               const d = t.date || 'Lainnya';
               byDate[d] = (byDate[d] || 0) + (t.total || 0);
-            } else if (currentReport === 'kas') {
+            } else if (currentReport === 'kas' && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
               const d = t.date || 'Lainnya';
               const val = t.total || t.amount || 0;
-              const isInc = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
+              const isInc = ['topup', 'kas_masuk'].includes(t.type);
               byDate[d] = (byDate[d] || 0) + (isInc ? val : -val);
             }
           }
@@ -769,7 +809,11 @@
 
         let csv = 'ID,Tanggal,Tipe,Jumlah,Keterangan,Kasir\n';
         reportData.forEach(t => {
-          csv += `"${t.id}","${t.date || ''}","${t.type}",${t.total || t.amount || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+          if (currentReport === 'penjualan' && t.type === 'penjualan') {
+            csv += `"${t.id}","${t.date || ''}","${t.type}",${t.total || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+          } else if (currentReport === 'kas' && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
+            csv += `"${t.id}","${t.date || ''}","${t.type}",${t.amount || t.total || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+          }
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
