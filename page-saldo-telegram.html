@@ -119,10 +119,12 @@
 
     .filter-section { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
 
-    /* Perbaikan total agar input date tidak melebar dan aman diklik */
+    /* Fix presisi ukuran input tanggal agar tidak melebar */
     input[type="date"] {
       cursor: pointer;
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .table-container { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
@@ -143,7 +145,7 @@
 
     .form-group { margin-bottom: 0; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
-    .form-input, .form-select, .form-textarea { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; box-sizing: border-box; }
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); }
     .form-textarea { min-height: 120px; resize: vertical; }
 
@@ -361,7 +363,7 @@
           <div class="card-body">
             <!-- Filter Tanggal & Tools -->
             <div class="filter-section">
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom: 0.75rem;">
                 <label class="form-label">Filter Waktu</label>
                 <select class="form-select" id="filterPeriod" onchange="handlePeriodChange()">
                   <option value="all">Semua Waktu</option>
@@ -370,14 +372,14 @@
                   <option value="custom">Custom Tanggal</option>
                 </select>
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom: 0.75rem;">
                 <label class="form-label">Filter Tools</label>
                 <select class="form-select" id="filterTool" onchange="applyFilters()">
                   <option value="all">Semua Tools</option>
                 </select>
               </div>
-              <!-- Custom Tanggal (Aman dan tidak melebar) -->
-              <div class="form-group" id="customDateBox" style="display: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <!-- Custom Tanggal (Aman, proporsional, dan tidak melebar) -->
+              <div class="form-group" id="customDateBox" style="display: none; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                   <label class="form-label">Dari Tanggal</label>
                   <input type="date" class="form-input" id="filterStartDate" onchange="applyFilters()">
