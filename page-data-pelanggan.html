@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <title>WebPOS - Data Pelanggan</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== BASE (sama persis dengan template WebPOS Anda) ===== */
+    :root{--primary:#6366f1;--primary-dark:#4f46e5;--secondary:#ec4899;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#3b82f6}
+    [data-theme-color="blue"]{--primary:#3b82f6;--primary-dark:#2563eb;--secondary:#06b6d4}
+    [data-theme-color="green"]{--primary:#10b981;--primary-dark:#059669;--secondary:#84cc16}
+    [data-theme-color="orange"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#f59e0b}
+    [data-theme-color="purple"]{--primary:#8b5cf6;--primary-dark:#7c3aed;--secondary:#d946ef}
+    [data-theme-color="red"]{--primary:#ef4444;--primary-dark:#dc2626;--secondary:#f97316}
+    [data-theme-color="pink"]{--primary:#ec4899;--primary-dark:#db2777;--secondary:#8b5cf6}
+    [data-theme-color="teal"]{--primary:#14b8a6;--primary-dark:#0d9488;--secondary:#06b6d4}
+
+    :root{--bg-primary:#f8fafc;--bg-secondary:#f1f5f9;--bg-card:#fff;--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--border-color:#e2e8f0;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 6px rgba(0,0,0,0.1);--shadow-lg:0 10px 15px rgba(0,0,0,0.1);--radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;--radius-xl:1rem;--sidebar-width:280px;--sidebar-collapsed:76px;--header-height:70px;--bottom-nav-height:70px}
+    [data-theme="dark"]{--bg-primary:#0f172a;--bg-secondary:#1e293b;--bg-card:#1e293b;--text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#64748b;--border-color:#334155}
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    html{font-size:16px;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+    body{background:var(--bg-primary);color:var(--text-primary);line-height:1.6;min-height:100vh}
+    ::-webkit-scrollbar{width:8px}
+    ::-webkit-scrollbar-track{background:var(--bg-secondary)}
+    ::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:9999px}
+
+    /* Layout */
+    .app-container{display:flex;min-height:100vh}
+
+    /* Sidebar */
+    .sidebar{position:fixed;top:0;left:0;width:var(--sidebar-width);height:100vh;background:var(--bg-card);border-right:1px solid var(--border-color);z-index:1000;display:flex;flex-direction:column;transition:all .25s}
+    .sidebar.collapsed{width:var(--sidebar-collapsed)}
+    @media(max-width:1024px){.sidebar{transform:translateX(-100%)}.sidebar.mobile-open{transform:translateX(0)}}
+
+    .sidebar-header{padding:1.25rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:1rem;min-height:var(--header-height)}
+    .logo-container{display:flex;align-items:center;gap:.5rem}
+    .logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:.75rem;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.25rem;flex-shrink:0}
+    .logo-text{font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+    .sidebar.collapsed .logo-text{opacity:0;width:0;overflow:hidden}
+
+    .menu-toggle{position:absolute;right:-14px;top:24px;width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1001;font-size:.75rem}
+    .menu-toggle:hover{background:var(--primary-dark)}
+    .sidebar.collapsed .menu-toggle{transform:rotate(180deg)}
+
+    .sidebar-search{padding:1rem;border-bottom:1px solid var(--border-color)}
+    .search-input-wrapper{position:relative;display:flex;align-items:center}
+    .search-input-wrapper i{position:absolute;left:1rem;color:var(--text-muted);font-size:.875rem}
+    .search-input{width:100%;padding:.5rem 1rem .5rem 2.5rem;border:1px solid var(--border-color);border-radius:.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.875rem;outline:none}
+    .search-input:focus{border-color:var(--primary)}
+    .sidebar.collapsed .sidebar-search{display:none}
+
+    .sidebar-nav{flex:1;overflow-y:auto;padding:1rem}
+    .nav-section{margin-bottom:1.5rem}
+    .nav-section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.5rem 1rem;margin-bottom:.25rem}
+    .sidebar.collapsed .nav-section-title{display:none}
+
+    .nav-menu{list-style:none}
+    .nav-item{margin-bottom:2px}
+    .nav-link{display:flex;align-items:center;gap:1rem;padding:.625rem 1rem;border-radius:.75rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;font-weight:500;transition:all .15s;position:relative;cursor:pointer}
+    .nav-link::before{content:'';position:absolute;left:0;top:0;height:100%;width:3px;background:var(--primary);transform:scaleY(0);transition:transform .15s;border-radius:0 .25rem .25rem 0}
+    .nav-link:hover{background:rgba(99,102,241,.05);color:var(--primary)}
+    .nav-link.active{background:rgba(99,102,241,.1);color:var(--primary);font-weight:600}
+    .nav-link.active::before{transform:scaleY(1)}
+    .nav-link i{width:22px;text-align:center;font-size:1.05rem}
+    .nav-link span{white-space:nowrap}
+    .sidebar.collapsed .nav-link span{display:none}
+
+    .nav-dropdown{position:relative}
+    .nav-dropdown-toggle{justify-content:space-between}
+    .nav-dropdown-toggle .dropdown-arrow{transition:transform .2s;font-size:.75rem;margin-left:auto}
+    .nav-dropdown.open .nav-dropdown-toggle .dropdown-arrow{transform:rotate(180deg)}
+    .nav-submenu{list-style:none;padding-left:2.75rem;max-height:0;overflow:hidden;transition:max-height .25s}
+    .sidebar.collapsed .nav-submenu{display:none}
+    .nav-dropdown.open .nav-submenu{max-height:500px}
+    .nav-submenu .nav-link{padding:.5rem 1rem;font-size:.85rem}
+
+    .sidebar-footer{padding:1rem;border-top:1px solid var(--border-color);background:var(--bg-card)}
+    .user-profile{display:flex;align-items:center;gap:1rem;cursor:pointer}
+    .user-profile:hover{opacity:.8}
+    .user-avatar{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:.875rem;flex-shrink:0}
+    .user-info{flex:1;overflow:hidden}
+    .sidebar.collapsed .user-info{display:none}
+    .user-name{font-weight:600;font-size:.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .user-role{font-size:.75rem;color:var(--text-muted);text-transform:capitalize}
+
+    /* Main */
+    .main-content{flex:1;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
+    .sidebar.collapsed~.main-content{margin-left:var(--sidebar-collapsed)}
+    @media(max-width:1024px){.main-content{margin-left:0}.sidebar.collapsed~.main-content{margin-left:0}}
+
+    /* Header */
+    .main-header{height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:100}
+    .header-left{display:flex;align-items:center;gap:1rem}
+    .header-title{font-size:1.35rem;font-weight:700;color:var(--text-primary)}
+    .header-actions{display:flex;align-items:center;gap:.5rem}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:.75rem;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .15s;border:none;outline:none;white-space:nowrap}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn-primary{background:var(--primary);color:white}
+    .btn-primary:hover:not(:disabled){background:var(--primary-dark)}
+    .btn-danger{background:var(--danger);color:white}
+    .btn-danger:hover:not(:disabled){filter:brightness(0.9)}
+    .btn-outline{background:transparent;border:1.5px solid var(--border-color);color:var(--text-secondary)}
+    .btn-outline:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+    .btn-sm{padding:.4rem .875rem;font-size:.8rem}
+    .btn-icon{width:40px;height:40px;padding:0;border-radius:.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+    .btn-icon:hover{background:rgba(99,102,241,.05);color:var(--primary);border-color:var(--primary)}
+
+    /* Page */
+    .page-content{flex:1;padding:1.5rem;overflow-y:auto}
+    @media(max-width:768px){.page-content{padding:1rem;padding-bottom:calc(var(--bottom-nav-height) + 1rem)}}
+
+    /* Mobile Nav */
+    .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);background:var(--bg-card);border-top:1px solid var(--border-color);z-index:999;padding:0 1rem}
+    .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;color:var(--text-muted);text-decoration:none;font-size:.7rem;font-weight:500;transition:all .15s;padding:.5rem}
+    .mobile-nav-item i{font-size:1.25rem}
+    .mobile-nav-item.active,.mobile-nav-item:hover{color:var(--primary)}
+    @media(max-width:768px){.mobile-nav{display:flex}.page-content{padding-bottom:calc(var(--bottom-nav-height) + 1rem)}}
+
+    /* Modal */
+    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;opacity:0;visibility:hidden;transition:all .25s;padding:1rem}
+    .modal-overlay.active{opacity:1;visibility:visible}
+    .modal-content{background:var(--bg-card);border-radius:1.5rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:scale(.9) translateY(20px);transition:all .25s}
+    .modal-overlay.active .modal-content{transform:scale(1) translateY(0)}
+    .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between}
+    .modal-title{font-size:1.1rem;font-weight:700;color:var(--text-primary)}
+    .modal-close{width:36px;height:36px;border:none;border-radius:.75rem;background:var(--bg-secondary);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:1rem}
+    .modal-close:hover{background:var(--danger);color:white}
+    .modal-body{padding:1.5rem}
+    .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border-color);display:flex;gap:.75rem;justify-content:flex-end}
+    .form-group{margin-bottom:1.25rem}
+    .form-label{display:block;font-size:.875rem;font-weight:500;color:var(--text-secondary);margin-bottom:.5rem}
+    .form-input{width:100%;padding:.75rem 1rem;border:1.5px solid var(--border-color);border-radius:.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.95rem;transition:all .15s;font-family:inherit;outline:none}
+    .form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    .form-input::placeholder{color:var(--text-muted)}
+
+    /* Toast */
+    .toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;max-width:360px}
+    .toast{display:flex;align-items:center;gap:.75rem;padding:.875rem 1.25rem;background:var(--bg-card);border-radius:.75rem;box-shadow:var(--shadow-lg);border-left:4px solid;animation:slideIn .3s ease}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    .toast.success{border-left-color:var(--success)}
+    .toast.error{border-left-color:var(--danger)}
+    .toast.warning{border-left-color:var(--warning)}
+    .toast i{font-size:1.1rem}
+    .toast.success i{color:var(--success)}
+    .toast.error i{color:var(--danger)}
+    .toast.warning i{color:var(--warning)}
+
+    /* Loading */
+    .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(var(--bg-primary-rgb),.7);display:flex;align-items:center;justify-content:center;z-index:3000;opacity:0;visibility:hidden;transition:all .25s}
+    .loading-overlay.active{opacity:1;visibility:visible}
+    .spinner{width:44px;height:44px;border:4px solid var(--border-color);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Empty state */
+    .empty-state{text-align:center;padding:3rem 1.5rem}
+    .empty-state i{font-size:3rem;color:var(--text-muted);opacity:.5;margin-bottom:.75rem;display:block}
+    .empty-state-title{font-size:1.05rem;font-weight:600;color:var(--text-primary);margin-bottom:.35rem}
+    .empty-state-sub{font-size:.875rem;color:var(--text-muted)}
+
+    /* ===== PAGE-SPECIFIC ===== */
+    .page-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+    .search-box{flex:1;min-width:240px;position:relative}
+    .search-box i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}
+    .search-box input{width:100%;padding:.75rem 1rem .75rem 2.75rem;border:1.5px solid var(--border-color);border-radius:.75rem;background:var(--bg-card);color:var(--text-primary);font-size:.9rem;outline:none;transition:border-color .15s;font-family:inherit}
+    .search-box input:focus{border-color:var(--primary)}
+
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+    .stat-card{background:var(--bg-card);border-radius:1rem;border:1px solid var(--border-color);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem}
+    .stat-icon{width:48px;height:48px;border-radius:.75rem;display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:white;flex-shrink:0}
+    .stat-icon.blue{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+    .stat-icon.green{background:linear-gradient(135deg,#10b981,#059669)}
+    .stat-icon.orange{background:linear-gradient(135deg,#f59e0b,#d97706)}
+    .stat-value{font-size:1.5rem;font-weight:700;color:var(--text-primary)}
+    .stat-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+
+    .data-card{background:var(--bg-card);border-radius:1rem;border:1px solid var(--border-color);overflow:hidden}
+    .data-card-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .data-card-title{font-size:1rem;font-weight:700;color:var(--text-primary)}
+    .card-actions{display:flex;gap:.5rem}
+
+    .data-table{width:100%;border-collapse:collapse;font-size:.9rem}
+    .data-table th{padding:.75rem 1rem;text-align:left;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);background:var(--bg-secondary);border-bottom:1px solid var(--border-color)}
+    .data-table td{padding:.875rem 1rem;color:var(--text-primary);border-bottom:1px solid var(--border-color)}
+    .data-table tbody tr:hover{background:rgba(99,102,241,.04)}
+    .data-table tbody tr:last-child td{border-bottom:none}
+
+    .action-btns{display:flex;align-items:center;justify-content:flex-end;gap:.35rem}
+    .action-btn{width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;background:var(--bg-secondary);color:var(--text-muted);transition:all .15s}
+    .action-btn:hover.copy-btn{background:#dbeafe;color:#2563eb}
+    .action-btn:hover.edit-btn{background:#fef3c7;color:#d97706}
+    .action-btn:hover.del-btn{background:#fee2e2;color:#ef4444}
+    .action-btn.copied{background:#d1fae5;color:#059669}
+
+    .table-footer{padding:.625rem 1.25rem;border-top:1px solid var(--border-color);background:var(--bg-secondary);display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--text-muted)}
+
+    /* GAS settings badge */
+    .gas-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .65rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+    .gas-badge.connected{background:rgba(16,185,129,.1);color:var(--success)}
+    .gas-badge.disconnected{background:rgba(245,158,11,.1);color:var(--warning)}
+
+    /* Confirm dialog */
+    .confirm-text{color:var(--text-secondary);font-size:.95rem;line-height:1.6}
+    .confirm-name{font-weight:700;color:var(--text-primary)}
+    
+    /* ===== TELEGRAM BOT TOKEN SECTION ===== */
+    .telegram-section {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .telegram-section-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .telegram-section-title i {
+      color: #0088cc;
+    }
+    
+    .token-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    
+    .token-status.connected {
+      color: var(--success);
+    }
+    
+    .token-status.disconnected {
+      color: var(--text-muted);
+    }
+    
+    /* ===== TOGGLE DROPDOWN RESPONSIVE ===== */
+.dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  min-width: 200px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-menu.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.15s;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-secondary);
+  color: var(--primary);
+}
+
+.dropdown-item.text-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.5rem 0;
+}
+
+/* Responsive Classes */
+.desktop-only {
+  display: inline-flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: inline;
+  }
+  
+  .dropdown-toggle {
+    width: auto;
+    min-width: 40px;
+    justify-content: center;
+  }
+  
+  /* Di mobile, dropdown menu full width dengan margin */
+  .dropdown-menu {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    bottom: calc(var(--bottom-nav-height) + 1rem);
+    min-width: auto;
+    transform: translateY(20px);
+  }
+  
+  .dropdown-menu.active {
+    transform: translateY(0);
+  }
+}
+
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .desktop-only span {
+    display: none;
+  }
+  
+  .btn-sm.desktop-only {
+    padding: 0.4rem;
+  }
+}
+
+/* ===== TOGGLE COLLAPSE TABLE ===== */
+.btn-toggle-table {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-toggle-table.collapsed {
+  transform: rotate(180deg);
+}
+
+#tableContainer {              /* ✅ Ganti dari .data-card-body ke #tableContainer */
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 2000px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+#tableContainer.collapsed {    /* ✅ Target ID yang benar */
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+}
+
+/* Responsive: tombol toggle lebih besar di mobile */
+@media (max-width: 768px) {
+  .btn-toggle-table {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+}
+    
+/* Responsive: tombol toggle lebih besar di mobile */
+@media (max-width: 768px) {
+  .btn-toggle-table {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Fix Layout Sidebar & Header */
+@media (min-width: 1025px) {
+  /* Desktop: Sidebar default terbuka, tidak collapsed */
+  .sidebar {
+    transform: translateX(0) !important;
+    width: var(--sidebar-width) !important;
+  }
+  .sidebar .logo-text {
+    opacity: 1 !important;
+    width: auto !important;
+  }
+  .sidebar .nav-link span {
+    display: block !important;
+  }
+  .main-content {
+    margin-left: var(--sidebar-width) !important;
+  }
+}
+
+/* Saat sidebar collapsed di desktop */
+.sidebar.collapsed ~ .main-content {
+  margin-left: var(--sidebar-collapsed) !important;
+}
+
+/* Fix header title terpotong */
+.header-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100vw - 200px); /* Beri ruang untuk elemen lain */
+}
+
+/* Mobile: Pastikan sidebar full saat dibuka */
+@media (max-width: 1024px) {
+  .sidebar.mobile-open {
+    width: 280px !important;
+  }
+  .sidebar.mobile-open .logo-text,
+  .sidebar.mobile-open .nav-link span {
+    display: block !important;
+    opacity: 1 !important;
+  }
+}
+
+/* 2. CSS - Tambahkan di bagian paling bawah */
+#mobileMenuToggle {
+  display: none; /* Desktop: sembunyi */
+}
+
+@media (max-width: 768px) {
+  #mobileMenuToggle {
+    display: flex !important; /* Mobile: muncul */
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Biar judul "Dashboard" tidak jadi "D..." */
+  .header-title {
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+    /* ============================================
+   MOBILE SUPER COMPACT - Tambahan Drastis
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Font lebih kecil */
+  html { font-size: 13px !important; }
+  
+  /* Header lebih pendek */
+  :root {
+    --header-height: 50px;
+    --bottom-nav-height: 55px;
+  }
+  
+  .main-header {
+    height: 50px;
+    padding: 0 0.75rem;
+  }
+  
+  .header-title {
+    font-size: 0.95rem !important; /* Judul lebih kecil */
+    max-width: 150px; /* Batasi lebar judul */
+  }
+  
+  /* Tombol burger lebih kecil */
+  #mobileMenuToggle {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.9rem;
+  }
+  
+  /* Tombol action header lebih kecil */
+  .header-actions .btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+  
+  /* Content padding minimal */
+  .page-content {
+    padding: 0.625rem !important;
+    padding-bottom: calc(var(--bottom-nav-height) + 0.625rem) !important;
+  }
+  
+  /* Stats card jadi 2 kolom, lebih rapat */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .stat-card {
+    padding: 0.75rem !important;
+    gap: 0.5rem !important;
+    border-radius: 0.625rem;
+  }
+  
+  .stat-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+    border-radius: 0.5rem;
+  }
+  
+  .stat-value {
+    font-size: 1.1rem !important;
+  }
+  
+  .stat-label {
+    font-size: 0.6rem !important;
+  }
+  
+  /* Toolbar lebih compact */
+  .page-toolbar {
+    margin-bottom: 0.75rem !important;
+    gap: 0.5rem !important;
+  }
+  
+  .search-box input {
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem !important;
+    font-size: 0.85rem !important;
+    height: 38px;
+  }
+  
+  .btn-primary {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8rem !important;
+    height: 38px;
+  }
+  
+  /* Data card lebih rapat */
+  .data-card {
+    border-radius: 0.75rem;
+  }
+  
+  .data-card-header {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  .data-card-title {
+    font-size: 0.9rem !important;
+  }
+  
+  /* Bottom nav lebih kecil */
+  .mobile-nav {
+    height: 55px !important;
+    padding: 0 0.5rem !important;
+  }
+  
+  .mobile-nav-item {
+    font-size: 0.6rem !important;
+    gap: 0.15rem !important;
+    padding: 0.25rem !important;
+  }
+  
+  .mobile-nav-item i {
+    font-size: 1.1rem !important;
+  }
+}
+
+/* Layar sangat kecil (iPhone SE, dll) */
+@media (max-width: 380px) {
+  html { font-size: 12px !important; }
+  
+  .stats-grid {
+    grid-template-columns: 1fr !important; /* 1 kolom penuh */
+  }
+  
+  .header-title {
+    font-size: 0.85rem !important;
+  }
+}
+    
+  </style>
+</head>
+<body>
+<div class="app-container">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span class="logo-text">WebPOS</span>
+      </div>
+    </div>
+
+    <button class="menu-toggle" id="menuToggle" title="Toggle Sidebar">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <!-- Utama -->
+      <div class="nav-section">
+        <div class="nav-section-title">Utama</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="index.html" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="page-kasir.html" class="nav-link"><i class="fas fa-cash-register"></i><span>Kasir</span></a></li>
+          <li class="nav-item"><a href="page-produk.html" class="nav-link"><i class="fas fa-box"></i><span>Produk</span></a></li>
+        </ul>
+      </div>
+      <!-- Transaksi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Transaksi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-riwayat.html" class="nav-link"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+          <li class="nav-item nav-dropdown" data-dropdown>
+            <div class="nav-link nav-dropdown-toggle">
+              <div style="display:flex;align-items:center;gap:.75rem"><i class="fas fa-wallet"></i><span>Kas Management</span></div>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </div>
+            <ul class="nav-submenu">
+              <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+              <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+              <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+              <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+              <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+              <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+              <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item">
+  <a href="page-pembelian.html" class="nav-link" data-menu="pembelian">
+    <i class="fas fa-shopping-cart"></i>
+    <span>Pembelian / Restock</span>
+  </a>
+</li>
+          <li class="nav-item"><a href="page-hutang.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
+    <div class="nav-section-title">Laporan</div>
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a href="page-laporan.html" class="nav-link" data-menu="laporan">
+          <i class="fas fa-chart-bar"></i>
+          <span>Laporan Penjualan</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok">
+          <i class="fas fa-boxes"></i>
+          <span>Laporan Stok</span>
+        </a>
+      </li>
+      <!-- BARANG TERLARIS - Menu Standalone (BUKAN SUBMENU) -->
+      <li class="nav-item">
+        <a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris">
+          <i class="fas fa-crown"></i>
+          <span>Barang Terlaris</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+      
+      <!-- Integrasi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link active"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+      <!-- Sistem -->
+      <div class="nav-section">
+        <div class="nav-section-title">Sistem</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-backup.html" class="nav-link"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item">
+        <a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas">
+          <i class="fas fa-history"></i>
+          <span>Log Aktivitas</span>
+        </a>
+      </li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+          <li class="nav-item"><a href="page-reset.html" class="nav-link"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile" id="userProfile">
+        <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Administrator</div>
+          <div class="user-role" id="userRole">admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="header-left">
+       <button class="btn-icon" id="mobileMenuToggle">
+  <i class="fas fa-bars"></i>
+</button>
+          <h1 class="header-title">Data Pelanggan</h1>
+  </div>
+        
+      <div class="header-actions">
+        <button class="btn-icon" id="btnGasSettings" title="Pengaturan Koneksi Google Sheets">
+          <i class="fas fa-bolt" id="gasIcon"></i>
+        </button>
+        <button class="btn-icon" id="btnTheme" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </header>
+
+    <!-- Page -->
+    <div class="page-content">
+
+      <!-- Toolbar -->
+      <div class="page-toolbar">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Cari nama atau nomor...">
+        </div>
+        <button class="btn btn-primary" id="btnAdd">
+          <i class="fas fa-plus"></i> Tambah Pelanggan
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+          <div>
+            <div class="stat-label">Total Pelanggan</div>
+            <div class="stat-value" id="statTotal">0</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-shopping-cart"></i></div>
+          <div>
+            <div class="stat-label">Total Transaksi</div>
+            <div class="stat-value">0</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fas fa-coins"></i></div>
+          <div>
+            <div class="stat-label">Total Penjualan</div>
+            <div class="stat-value">Rp 0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="data-card">
+        <div class="data-card-header">
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <span class="data-card-title">Daftar Pelanggan</span>
+    <button class="btn-icon btn-toggle-table" id="btnToggleTable" title="Sembunyikan/Tampilkan Tabel">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+  </div>
+  <div class="card-actions">
+    <!-- Desktop: Tombol Langsung -->
+    <button class="btn btn-outline btn-sm desktop-only" id="btnRefresh" title="Muat ulang">
+  <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+</button>
+  <button class="btn btn-outline btn-sm desktop-only" id="btnCopyAll" style="display:none">
+    <i class="fas fa-copy"></i> <span>Salin Semua</span>
+  </button>
+  
+  <!-- Mobile: Dropdown Toggle -->
+  <div class="dropdown-wrapper">
+    <button class="btn btn-outline btn-sm dropdown-toggle" id="btnToggleActions" title="Aksi Lainnya">
+      <i class="fas fa-ellipsis-v"></i> <span class="mobile-only">Menu</span>
+    </button>
+    <div class="dropdown-menu" id="dropdownMenu">
+      <button class="dropdown-item" id="btnRefreshMobile">
+        <i class="fas fa-sync-alt"></i> Refresh Data
+      </button>
+      <button class="dropdown-item" id="btnCopyAllMobile" style="display:none">
+        <i class="fas fa-copy"></i> Salin Semua
+      </button>
+      <button class="dropdown-item" id="btnExportMobile">
+        <i class="fas fa-file-export"></i> Export Data
+      </button>
+      <div class="dropdown-divider"></div>
+      <button class="dropdown-item text-danger" id="btnClearSearchMobile">
+        <i class="fas fa-times-circle"></i> Reset Pencarian
+      </button>
+    </div>
+  </div>
+</div>
+        </div>
+        <div id="tableContainer">
+          <div class="empty-state">
+            <i class="fas fa-bolt"></i>
+            <div class="empty-state-title">Belum terhubung</div>
+            <div class="empty-state-sub">Klik ikon <b>⚡</b> di header untuk mengatur koneksi Google Sheets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-nav">
+    <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+    <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-cash-register"></i><span>Kasir</span></a>
+    <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
+    <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+    <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+  </nav>
+
+</div>
+
+<!-- ===== MODAL: Pengaturan Koneksi GAS & Telegram ===== -->
+<div class="modal-overlay" id="gasModal">
+  <div class="modal-content" style="max-width: 520px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-cog" style="color:var(--primary);margin-right:.5rem"></i>Pengaturan Integrasi</h3>
+      <button class="modal-close" id="closeGasModal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <!-- Google Sheets Section -->
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-bolt" style="color:var(--warning);margin-right:.3rem"></i>URL Google Apps Script Web App</label>
+        <input type="url" class="form-input" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+        <p style="font-size:.8rem;color:var(--text-muted);margin-top:.4rem">Deploy GAS sebagai Web App, lalu paste URL-nya di sini.</p>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Google Sheet ID</label>
+        <input type="text" class="form-input" id="gasSheetIdInput" placeholder="1cPolj_xpBztq6RU3XVi_CZm1j_Kqo-zQC-wsbIYrLXE">
+        <p style="font-size:.8rem;color:var(--text-muted);margin-top:.4rem">ID spreadsheet dari URL: docs.google.com/spreadsheets/d/<b>[ID ini]</b>/edit</p>
+      </div>
+      
+      <div id="gasTestResult" style="display:none;padding:.75rem 1rem;border-radius:.75rem;font-size:.875rem;margin-top:.5rem"></div>
+      
+      <!-- Telegram Bot Section -->
+      <div class="telegram-section">
+        <div class="telegram-section-title">
+          <i class="fab fa-telegram"></i>
+          Konfigurasi Telegram Bot
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Bot Token (dari @BotFather)</label>
+          <input type="password" class="form-input" id="botTokenInput" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxyz">
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:.4rem">
+            Token bot untuk integrasi dengan n8n. Dapatkan dari @BotFather di Telegram.
+          </p>
+          <div class="token-status disconnected" id="tokenStatus">
+            <i class="fas fa-circle-notch"></i>
+            <span>Belum dikonfigurasi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="closeGasModal2">Batal</button>
+      <button class="btn btn-primary" id="btnSaveGas"><i class="fas fa-save"></i> Simpan Semua</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: Tambah / Edit Pelanggan ===== -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="formModalTitle">Tambah Pelanggan</h3>
+      <button class="modal-close" onclick="closeFormModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editRow">
+      <div class="form-group">
+        <label class="form-label">Nama Pelanggan <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-input" id="fieldNama" placeholder="Nama lengkap">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nomor Telepon</label>
+        <input type="tel" class="form-input" id="fieldNomor" placeholder="08xxxxxxxxxx">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeFormModal()">Batal</button>
+      <button class="btn btn-primary" id="btnSaveForm"><i class="fas fa-save"></i> Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: Konfirmasi Hapus ===== -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-content" style="max-width:400px">
+    <div class="modal-header">
+      <h3 class="modal-title" style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i> Hapus Data</h3>
+      <button class="modal-close" onclick="closeDeleteModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text">Yakin ingin menghapus data pelanggan <span class="confirm-name" id="deleteTargetName"></span>? Tindakan ini tidak dapat dibatalkan.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
+      <button class="btn btn-danger" id="btnConfirmDelete"><i class="fas fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
+ <!-- Scripts -->
+  <script src="js/firebase-config.js?v=2"></script>
+  <script src="js/utils.js?v=3"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+
+  <script>
+  
+  /* =====================================================
+   THEME & COLOR RESTORATION - Langsung saat load
+   ===================================================== */
+  (function initTheme() {
+    if (localStorage.getItem('dark_mode') === 'true') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    const themeColor = localStorage.getItem('theme_color') || 
+                       localStorage.getItem('webpos_theme') || 
+                       localStorage.getItem('primaryColor') || 'indigo';
+    if (themeColor) {
+      document.documentElement.setAttribute('data-theme-color', themeColor);
+    }
+  })();
+
+  /* =====================================================
+     KONFIGURASI
+     ===================================================== */
+  const GAS_URL_KEY = 'gas_url';
+  const GAS_SHEET_ID_KEY = 'gas_sheet_id';
+
+  /* =====================================================
+     STATE
+     ===================================================== */
+  let allData = [];
+  let deleteRowTarget = null;
+  let currentBotToken = '';
+
+  /* =====================================================
+     UTILS
+     ===================================================== */
+  function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+  function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+
+  function showToast(msg, type = 'success') {
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-circle' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<i class="fas ${icons[type] || icons.success}"></i><span>${msg}</span>`;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(() => { el.remove(); }, 3000);
+  }
+
+  // Variable sementara (akan di-load dari Firebase saat init)
+let currentGasUrl = '';
+let currentSheetId = '';
+
+function getGasUrl() { return currentGasUrl; }
+function setGasUrl(url) { currentGasUrl = url; }
+function getSheetId() { return currentSheetId; }
+function setSheetId(id) { currentSheetId = id; }
+
+// Load config dari Firebase (path global: settings/gas_config)
+async function loadGasConfigFromFirebase() {
+  try {
+    const snapshot = await database.ref('settings/gas_config').once('value');
+    const config = snapshot.val();
+    
+    if (config && config.url && config.sheetId) {
+      currentGasUrl = config.url;
+      currentSheetId = config.sheetId;
+      console.log('✅ GAS Config loaded:', currentGasUrl);
+      return true;
+    } else {
+      console.log('⚠️ GAS Config belum diatur');
+      return false;
+    }
+  } catch(e) {
+    console.error('❌ Error load GAS config:', e);
+    return false;
+  }
+}
+
+// Load Bot Token dari Firebase
+async function loadBotTokenFromFirebase() {
+  try {
+    const snapshot = await database.ref('settings/telegram/botToken').once('value');
+    const token = snapshot.val();
+    
+    if (token) {
+      currentBotToken = token;
+      console.log('✅ Bot Token loaded');
+      updateTokenStatus(true);
+      return true;
+    } else {
+      console.log('⚠️ Bot Token belum diatur');
+      updateTokenStatus(false);
+      return false;
+    }
+  } catch(e) {
+    console.error('❌ Error load Bot Token:', e);
+    updateTokenStatus(false);
+    return false;
+  }
+}
+
+function updateTokenStatus(connected) {
+  const statusEl = document.getElementById('tokenStatus');
+  if (connected) {
+    statusEl.className = 'token-status connected';
+    statusEl.innerHTML = '<i class="fas fa-check-circle"></i><span>Bot Token tersimpan</span>';
+  } else {
+    statusEl.className = 'token-status disconnected';
+    statusEl.innerHTML = '<i class="fas fa-circle-notch"></i><span>Belum dikonfigurasi</span>';
+  }
+}
+    
+  /* =====================================================
+     GAS API
+     ===================================================== */
+  async function gasRequest(params) {
+    const url = getGasUrl();
+    const sheetId = getSheetId();
+    if (!url) throw new Error('URL belum dikonfigurasi');
+    if (!sheetId) throw new Error('Sheet ID belum dikonfigurasi');
+    const qs = new URLSearchParams({ sheetId, ...params }).toString();
+    const res = await fetch(`${url}?${qs}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Terjadi kesalahan');
+    return json;
+  }
+
+  async function apiGetData() {
+    const res = await gasRequest({ action: 'getData' });
+    return res.data || [];
+  }
+
+  async function apiAddData(nama, nomor) {
+    return await gasRequest({ action: 'addData', nama, nomor });
+  }
+
+  async function apiEditData(row, nama, nomor) {
+    return await gasRequest({ action: 'editData', row, nama, nomor });
+  }
+
+  async function apiDeleteData(row) {
+    return await gasRequest({ action: 'deleteData', row });
+  }
+
+  /* =====================================================
+     LOAD & RENDER
+     ===================================================== */
+  async function loadData() {
+    if (!getGasUrl()) return;
+    showLoading();
+    try {
+      allData = await apiGetData();
+      document.getElementById('statTotal').textContent = allData.length;
+      renderTable(allData);
+    } catch (e) {
+      showToast('Gagal memuat data: ' + e.message, 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function getFiltered() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) return allData;
+  const kw = q.split(/\s+/);
+  return allData.filter(r => {
+    const nama = (r.nama || '').toLowerCase();
+    const nomor = String(r.nomor || '').toLowerCase(); // ← Konversi ke String!
+    return kw.every(k => nama.includes(k) || nomor.includes(k));
+  });
+} 
+  
+  function renderTable(rows) {
+    const container = document.getElementById('tableContainer');
+    const copyAllBtn = document.getElementById('btnCopyAll');
+
+    if (!rows || rows.length === 0) {
+      copyAllBtn.style.display = 'none';
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-users"></i>
+          <div class="empty-state-title">Belum ada pelanggan</div>
+          <div class="empty-state-sub">Klik "Tambah Pelanggan" untuk menambah data pertama</div>
+        </div>`;
+      return;
+    }
+
+    copyAllBtn.style.display = '';
+    const tbody = rows.map((r, i) => `
+      <tr>
+        <td style="color:var(--text-muted);width:48px">${i + 1}</td>
+        <td><strong>${escHtml(r.nama)}</strong></td>
+        <td style="font-family:monospace">
+  ${escHtml(r.nomor)}
+  <button class="action-btn copy-btn" title="Copy Nomor" onclick="copyRow(${r.row})" style="margin-left:8px;vertical-align:middle;">
+    <i class="fas fa-copy"></i>
+  </button>
+</td>
+<td>
+  <div class="action-btns">
+    <button class="action-btn edit-btn" title="Edit" onclick="openEditModal(${r.row})"><i class="fas fa-edit"></i></button>
+    <button class="action-btn del-btn" title="Hapus" onclick="openDeleteModal(${r.row})"><i class="fas fa-trash"></i></button>
+  </div>
+</td>
+      </tr>`).join('');
+
+    container.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nama</th>
+              <th>Nomor</th>
+              <th style="text-align:right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span>${rows.length} pelanggan</span>
+        ${document.getElementById('searchInput').value ? `<button class="btn btn-outline btn-sm" onclick="copyFiltered()"><i class="fas fa-copy"></i> Salin ${rows.length} hasil</button>` : ''}
+      </div>`;
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* =====================================================
+     COPY
+     ===================================================== */
+  function copyRow(row) {
+  const r = allData.find(x => x.row === row);
+  if (!r) return;
+  navigator.clipboard.writeText(r.nomor) // ← Hanya nomor, tanpa nama
+    .then(() => showToast(`Nomor ${r.nomor} disalin`, 'success'))
+    .catch(() => showToast('Gagal menyalin', 'error'));
+}
+
+  function copyFiltered() {
+    const rows = getFiltered();
+    if (!rows.length) return;
+    navigator.clipboard.writeText(rows.map(r => `${r.nama}\t${r.nomor}`).join('\n'))
+      .then(() => showToast(`${rows.length} data disalin`, 'success'))
+      .catch(() => showToast('Gagal menyalin', 'error'));
+  }
+
+  /* =====================================================
+     MODALS
+     ===================================================== */
+  function openAddModal() {
+    document.getElementById('formModalTitle').textContent = 'Tambah Pelanggan';
+    document.getElementById('editRow').value = '';
+    document.getElementById('fieldNama').value = '';
+    document.getElementById('fieldNomor').value = '';
+    document.getElementById('formModal').classList.add('active');
+    setTimeout(() => document.getElementById('fieldNama').focus(), 100);
+  }
+
+  function openEditModal(row) {
+    const r = allData.find(x => x.row === row);
+    if (!r) return;
+    document.getElementById('formModalTitle').textContent = 'Edit Pelanggan';
+    document.getElementById('editRow').value = row;
+    document.getElementById('fieldNama').value = r.nama;
+    document.getElementById('fieldNomor').value = r.nomor;
+    document.getElementById('formModal').classList.add('active');
+  }
+
+  function closeFormModal() {
+    document.getElementById('formModal').classList.remove('active');
+  }
+
+  async function saveForm() {
+    const nama = document.getElementById('fieldNama').value.trim();
+    const nomor = document.getElementById('fieldNomor').value.trim();
+    const row = document.getElementById('editRow').value;
+    if (!nama) { showToast('Nama pelanggan harus diisi', 'warning'); return; }
+    
+    showLoading();
+    try {
+      if (row) {
+        await apiEditData(Number(row), nama, nomor);
+        showToast('Data berhasil diperbarui', 'success');
+      } else {
+        await apiAddData(nama, nomor);
+        showToast(`${nama} berhasil ditambahkan`, 'success');
+      }
+      closeFormModal();
+      await loadData();
+    } catch (e) {
+      showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function openDeleteModal(row) {
+    const r = allData.find(x => x.row === row);
+    if (!r) return;
+    deleteRowTarget = row;
+    document.getElementById('deleteTargetName').textContent = r.nama;
+    document.getElementById('deleteModal').classList.add('active');
+  }
+
+  function closeDeleteModal() {
+    deleteRowTarget = null;
+    document.getElementById('deleteModal').classList.remove('active');
+  }
+
+  async function confirmDelete() {
+    if (!deleteRowTarget) return;
+    showLoading();
+    try {
+      await apiDeleteData(deleteRowTarget);
+      showToast('Data berhasil dihapus', 'success');
+      closeDeleteModal();
+      await loadData();
+    } catch (e) {
+      showToast('Gagal menghapus: ' + e.message, 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function openGasModal() {
+    document.getElementById('gasUrlInput').value = getGasUrl();
+    document.getElementById('gasSheetIdInput').value = getSheetId();
+    document.getElementById('botTokenInput').value = currentBotToken;
+    document.getElementById('gasTestResult').style.display = 'none';
+    document.getElementById('gasModal').classList.add('active');
+    
+    // Update status token saat buka modal
+    if (currentBotToken) {
+      updateTokenStatus(true);
+    }
+  }
+
+  function closeGasModal() {
+    document.getElementById('gasModal').classList.remove('active');
+  }
+
+  async function saveGas() {
+  const url = document.getElementById('gasUrlInput').value.trim();
+  const sheetId = document.getElementById('gasSheetIdInput').value.trim();
+  const botToken = document.getElementById('botTokenInput').value.trim();
+  
+  if (!url || !sheetId) { 
+    showToast('URL dan Sheet ID wajib diisi', 'warning'); 
+    return; 
+  }
+  
+  showLoading();
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      showToast('Silakan login terlebih dahulu', 'error');
+      hideLoading();
+      return;
+    }
+    
+    // Simpan GAS Config ke Firebase
+    await database.ref('settings/gas_config').set({
+      url: url,
+      sheetId: sheetId,
+      updatedBy: user.uid,
+      updatedAt: Date.now()
+    });
+    
+    // Simpan Bot Token ke Firebase (jika diisi)
+    if (botToken) {
+      await database.ref('settings/telegram/botToken').set(botToken);
+      currentBotToken = botToken;
+    }
+    
+    // Update variable lokal
+    currentGasUrl = url;
+    currentSheetId = sheetId;
+    
+    showToast('Konfigurasi berhasil disimpan!', 'success');
+    closeGasModal();
+    loadData();
+    
+  } catch (e) {
+    showToast('Gagal menyimpan: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+    
+  function updateGasIcon(connected) {
+    const icon = document.getElementById('gasIcon');
+    if (connected) {
+      icon.style.color = 'var(--success)';
+    } else {
+      icon.style.color = 'var(--warning)';
+    }
+  }
+
+  /* =====================================================
+     EVENT LISTENERS
+     ===================================================== */
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Sidebar toggle - Desktop (collapse/expand)
+document.getElementById('menuToggle').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+// Sidebar toggle - Mobile (burger menu) - VERSI BARU
+const mobileToggle = document.getElementById('mobileMenuToggle');
+const sidebar = document.getElementById('sidebar');
+
+if (mobileToggle) {
+  mobileToggle.removeAttribute('style');
+  mobileToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sidebar.classList.toggle('mobile-open');
+  });
+}
+
+// Tutup sidebar saat klik link di mobile (KECUALI dropdown toggle & submenu)
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 1024) {
+      // Jangan tutup sidebar kalau klik dropdown toggle
+      if (link.classList.contains('nav-dropdown-toggle')) return;
+      // Jangan tutup sidebar kalau klik submenu (Kas Masuk, Kas Keluar, dll)
+      if (link.closest('.nav-submenu')) return;
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+});
+
+// Tutup sidebar saat klik overlay (area gelap di luar sidebar)
+document.addEventListener('click', (e) => {
+  if (window.innerWidth <= 1024 && 
+      sidebar.classList.contains('mobile-open') &&
+      !sidebar.contains(e.target) && 
+      !mobileToggle.contains(e.target)) {
+    sidebar.classList.remove('mobile-open');
+  }
+});
+
+    // Dropdowns
+    document.querySelectorAll('[data-dropdown]').forEach(dd => {
+      dd.querySelector('.nav-dropdown-toggle').addEventListener('click', e => {
+        e.preventDefault();
+        dd.classList.toggle('open');
+      });
+    });
+
+    // Menu search
+    document.getElementById('menuSearch').addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll('.nav-link span').forEach(span => {
+        const li = span.closest('.nav-item');
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    // Theme toggle
+    document.getElementById('btnTheme').addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('dark_mode', !isDark);
+    });
+
+    // Main buttons
+    document.getElementById('btnAdd').addEventListener('click', openAddModal);
+    document.getElementById('btnRefresh').addEventListener('click', loadData);
+    document.getElementById('btnCopyAll').addEventListener('click', copyFiltered);
+    document.getElementById('btnSaveForm').addEventListener('click', saveForm);
+    document.getElementById('btnConfirmDelete').addEventListener('click', confirmDelete);
+    document.getElementById('btnGasSettings').addEventListener('click', openGasModal);
+    document.getElementById('closeGasModal').addEventListener('click', closeGasModal);
+    document.getElementById('closeGasModal2').addEventListener('click', closeGasModal);
+    document.getElementById('btnSaveGas').addEventListener('click', saveGas);
+
+      // Logout
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      if (confirm('Yakin ingin logout?')) {
+        localStorage.removeItem('webpos_session');
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Close modal on backdrop
+    ['gasModal','formModal','deleteModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+      });
+    });
+
+    // Enter key in form
+    document.getElementById('fieldNama').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveForm();
+    });
+
+        // Toggle Collapse Table - LENGKAP dengan Auto Expand/Collapse
+    const btnToggleTable = document.getElementById('btnToggleTable');
+    const tableContainer = document.getElementById('tableContainer');
+    const searchInput = document.getElementById('searchInput'); // Ambil reference search
+
+    // Fungsi update icon
+    function updateToggleIcon(isCollapsed) {
+      const icon = btnToggleTable.querySelector('i');
+      if (isCollapsed) {
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+        btnToggleTable.title = 'Tampilkan Tabel';
+      } else {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+        btnToggleTable.title = 'Sembunyikan Tabel';
+      }
+    }
+
+    // Klik toggle manual
+    btnToggleTable.addEventListener('click', () => {
+      const isCollapsed = tableContainer.classList.toggle('collapsed');
+      btnToggleTable.classList.toggle('collapsed', isCollapsed);
+      updateToggleIcon(isCollapsed);
+    });
+
+    // Auto expand/collapse saat pencarian (GANTI yang lama)
+    searchInput.addEventListener('input', () => {
+      const hasValue = searchInput.value.trim().length > 0;
+      
+      if (hasValue) {
+        // Ada pencarian -> Expand tabel
+        tableContainer.classList.remove('collapsed');
+        btnToggleTable.classList.remove('collapsed');
+        updateToggleIcon(false);
+      } else {
+        // Kosong -> Collapse tabel
+        tableContainer.classList.add('collapsed');
+        btnToggleTable.classList.add('collapsed');
+        updateToggleIcon(true);
+      }
+      
+      renderTable(getFiltered());
+    });
+
+    // Set initial state: collapsed saat pertama kali load
+    tableContainer.classList.add('collapsed');
+    btnToggleTable.classList.add('collapsed');
+    updateToggleIcon(true);
+
+    // Load user from Firebase Auth
+    try {
+      if (typeof auth !== 'undefined') {
+        auth.onAuthStateChanged(function(authUser) {
+          if (authUser && typeof database !== 'undefined') {
+            database.ref('users/' + authUser.uid).once('value').then(function(snap) {
+              var ud = snap.val();
+              if (ud) {
+                var nameEl = document.getElementById('userName');
+                var roleEl = document.getElementById('userRole');
+                if (nameEl && ud.name) nameEl.textContent = ud.name;
+                if (roleEl && ud.role) roleEl.textContent = ud.role.charAt(0).toUpperCase() + ud.role.slice(1);
+              }
+            }).catch(function(){});
+          }
+        });
+      }
+    } catch(e) {}
+
+    /* ===== TOGGLE DROPDOWN RESPONSIVE ===== */
+const btnToggleActions = document.getElementById('btnToggleActions');
+const dropdownMenu = document.getElementById('dropdownMenu');
+
+// Toggle dropdown
+btnToggleActions.addEventListener('click', (e) => {
+  e.stopPropagation();
+  dropdownMenu.classList.toggle('active');
+  
+  // Rotate icon
+  const icon = btnToggleActions.querySelector('i');
+  if (dropdownMenu.classList.contains('active')) {
+    icon.classList.remove('fa-ellipsis-v');
+    icon.classList.add('fa-times');
+    btnToggleActions.classList.add('active');
+  } else {
+    icon.classList.remove('fa-times');
+    icon.classList.add('fa-ellipsis-v');
+    btnToggleActions.classList.remove('active');
+  }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (!dropdownMenu.contains(e.target) && !btnToggleActions.contains(e.target)) {
+    dropdownMenu.classList.remove('active');
+    const icon = btnToggleActions.querySelector('i');
+    icon.classList.remove('fa-times');
+    icon.classList.add('fa-ellipsis-v');
+    btnToggleActions.classList.remove('active');
+  }
+});
+
+// Mobile menu items functionality
+document.getElementById('btnRefreshMobile').addEventListener('click', () => {
+  loadData();
+  dropdownMenu.classList.remove('active');
+  showToast('Data di-refresh', 'success');
+});
+
+document.getElementById('btnCopyAllMobile').addEventListener('click', () => {
+  copyFiltered();
+  dropdownMenu.classList.remove('active');
+});
+
+document.getElementById('btnExportMobile').addEventListener('click', () => {
+  exportToCSV();
+  dropdownMenu.classList.remove('active');
+});
+
+document.getElementById('btnClearSearchMobile').addEventListener('click', () => {
+  document.getElementById('searchInput').value = '';
+  renderTable(allData);
+  dropdownMenu.classList.remove('active');
+  showToast('Pencarian direset', 'success');
+});
+
+// Sync mobile buttons visibility with desktop
+const originalRenderTable = renderTable;
+renderTable = function(rows) {
+  originalRenderTable(rows);
+  // Sync visibility
+  const hasData = rows && rows.length > 0;
+  document.getElementById('btnCopyAllMobile').style.display = hasData ? 'flex' : 'none';
+};
+
+// Tambah fungsi export CSV (helper)
+function exportToCSV() {
+  if (!allData.length) {
+    showToast('Tidak ada data untuk export', 'warning');
+    return;
+  }
+  const csv = [
+    ['No', 'Nama', 'Nomor'],
+    ...allData.map((r, i) => [i+1, r.nama, r.nomor])
+  ].map(row => row.join(',')).join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `data-pelanggan-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+  showToast('File CSV berhasil di-download', 'success');
+}
+
+     // Init - Load configs
+    const hasUrl = !!getGasUrl();
+    const hasSheetId = !!getSheetId();
+    const ready = hasUrl && hasSheetId;
+    updateGasIcon(ready);
+    
+    // Load semua konfigurasi dari Firebase
+    if (ready) {
+      loadData();
+    } else {
+      // Coba load dari Firebase dulu
+      loadGasConfigFromFirebase().then(() => {
+        const readyAfterLoad = !!getGasUrl() && !!getSheetId();
+        updateGasIcon(readyAfterLoad);
+        
+        if (readyAfterLoad) {
+          loadData();
+        } else {
+          setTimeout(openGasModal, 400);
+        }
+      });
+    }
+    
+    // Load Bot Token juga
+    await loadBotTokenFromFirebase();
+    }); 
+    
+</script>
+</body>
+</html>
