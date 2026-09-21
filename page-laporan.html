@@ -381,7 +381,7 @@
         <div class="report-content">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-chart-area" style="color: var(--primary);"></i> Grafik Tren Penjualan</h3>
+              <h3 class="card-title" id="chartCardTitle"><i class="fas fa-chart-area" style="color: var(--primary);"></i> Grafik Tren Penjualan</h3>
             </div>
             <div class="card-body">
               <div class="chart-container">
@@ -449,6 +449,7 @@
 
       let reportData = [];
       let chartInstance = null;
+      let currentReport = 'penjualan';
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -533,10 +534,30 @@
         }
       }
 
-      async function initLaporan() {
+      function initLaporan() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('dateFrom').value = today;
         document.getElementById('dateTo').value = today;
+
+        // Tab Switching Handler
+        document.querySelectorAll('.report-tab').forEach(tab => {
+          tab.onclick = function() {
+            document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentReport = this.dataset.report;
+            
+            const titleEl = document.getElementById('chartCardTitle');
+            if (currentReport === 'penjualan') {
+              titleEl.innerHTML = '<i class="fas fa-chart-area" style="color: var(--primary);"></i> Grafik Tren Penjualan';
+            } else {
+              titleEl.innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Grafik Mutasi Kas';
+            }
+
+            if (reportData.length > 0) {
+              renderChart(reportData);
+            }
+          };
+        });
 
         document.getElementById('periodSelect').addEventListener('change', (e) => {
           const period = e.target.value;
@@ -565,7 +586,6 @@
         };
         document.getElementById('btnExport').onclick = exportCSV;
 
-        // Auto load hari ini
         generateReport();
       }
 
@@ -695,9 +715,16 @@
 
         const byDate = {};
         transactions.forEach(t => {
-          if (t.status !== 'cancelled' && t.type === 'penjualan') {
-            const d = t.date || 'Lainnya';
-            byDate[d] = (byDate[d] || 0) + (t.total || 0);
+          if (t.status !== 'cancelled') {
+            if (currentReport === 'penjualan' && t.type === 'penjualan') {
+              const d = t.date || 'Lainnya';
+              byDate[d] = (byDate[d] || 0) + (t.total || 0);
+            } else if (currentReport === 'kas') {
+              const d = t.date || 'Lainnya';
+              const val = t.total || t.amount || 0;
+              const isInc = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
+              byDate[d] = (byDate[d] || 0) + (isInc ? val : -val);
+            }
           }
         });
 
@@ -709,7 +736,7 @@
           data: {
             labels: labels.map(d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
             datasets: [{
-              label: 'Penjualan',
+              label: currentReport === 'penjualan' ? 'Penjualan' : 'Mutasi Kas Bersih',
               data: data,
               borderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#4f46e5',
               backgroundColor: 'rgba(79, 70, 229, 0.1)',
@@ -749,7 +776,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `laporan_penjualan_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         Utils.showToast('Laporan berhasil diexport ke CSV', 'success');
