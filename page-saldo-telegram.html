@@ -119,7 +119,6 @@
 
     .filter-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; align-items: flex-end; }
 
-    /* Tabel dengan tinggi maksimum dan scroll internal */
     .table-container { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     .data-table th { position: sticky; top: 0; z-index: 10; padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
@@ -313,7 +312,7 @@
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-plus-circle" style="color: var(--primary);"></i> Catat Top Up Saldo</h3>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn btn-success btn-sm" onclick="openImportModal()"><i class="fas fa-paste"></i> Import / Upload Laporan</button>
+              <button class="btn btn-success btn-sm" onclick="openImportModal()"><i class="fas fa-paste"></i> Import / Upload</button>
               <button class="btn btn-outline btn-sm" onclick="openToolModal()"><i class="fas fa-cog"></i> Kelola Tools</button>
             </div>
           </div>
@@ -348,7 +347,10 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-history" style="color: var(--accent);"></i> Riwayat & Filter Rekap Top Up</h3>
-            <button class="btn btn-outline btn-sm" id="btnRefresh"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-success btn-sm" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Export CSV</button>
+              <button class="btn btn-outline btn-sm" id="btnRefresh"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
           </div>
           <div class="card-body">
             <!-- Filter Tanggal & Tools -->
@@ -380,7 +382,6 @@
               </div>
             </div>
 
-            <!-- Tabel dengan Scroll Internal agar tidak kepanjangan dan tidak tertutup menu bawah -->
             <div class="table-container" style="margin-top: 1rem;">
               <table class="data-table">
                 <thead>
@@ -432,7 +433,7 @@
           </div>
         </div>
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
-        <label class="form-label">Daftar Tools Aktif (Riwayat lama aman tidak berubah)</label>
+        <label class="form-label">Daftar Tools Aktif</label>
         <div id="toolListContainer" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;">
           <!-- List tools aktif -->
         </div>
@@ -500,6 +501,7 @@
       let selectedTool = "";
       let activeTools = ["DANA", "DIGIPOS", "MASTERLOAD"];
       let allHistory = [];
+      let currentFilteredHistory = [];
       const COLLECTION_TOPUP = "saldo_topup_history";
       const COLLECTION_TOOLS = "saldo_tools_config";
 
@@ -690,7 +692,7 @@
           }
         }
 
-        const filtered = allHistory.filter(h => {
+        currentFilteredHistory = allHistory.filter(h => {
           const t = h.timestamp || 0;
           const matchPeriod = period === 'all' || (t >= startTimestamp && t <= endTimestamp);
           const matchTool = toolFilter === 'all' || h.toolName === toolFilter;
@@ -698,10 +700,10 @@
         });
 
         let totalFiltered = 0;
-        filtered.forEach(f => totalFiltered += (f.nominal || 0));
+        currentFilteredHistory.forEach(f => totalFiltered += (f.nominal || 0));
 
         document.getElementById('statTotalTopup').textContent = Utils.formatRupiah(totalFiltered);
-        renderHistoryTable(filtered);
+        renderHistoryTable(currentFilteredHistory);
       };
 
       function renderHistoryTable(history) {
@@ -793,6 +795,32 @@
         });
       };
 
+      // Fitur Export ke file CSV
+      window.exportToCSV = function() {
+        if (!currentFilteredHistory.length) {
+          Utils.showToast('Tidak ada data untuk diexport', 'warning');
+          return;
+        }
+        const csvRows = [
+          ['No', 'Tanggal', 'Tools / Aplikasi', 'Nominal Top Up']
+        ];
+        
+        currentFilteredHistory.forEach((h, i) => {
+          const dateStr = h.date || (h.timestamp ? new Date(h.timestamp).toLocaleDateString('id-ID') : '-');
+          csvRows.push([i + 1, `"${dateStr}"`, `"${h.toolName}"`, h.nominal]);
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `rekap-saldo-topup-${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        Utils.showToast('File CSV berhasil didownload', 'success');
+      };
+
       // Modal Tools Management
       window.openToolModal = function() {
         renderToolManagerList();
@@ -835,7 +863,6 @@
         Utils.showToast('Tools ditambahkan', 'success');
       };
 
-      // Modal Edit Tools (Hanya mengubah nama pilihan ke depannya, riwayat lama aman tidak berubah)
       window.openEditToolModal = function(toolName) {
         document.getElementById('editOldToolName').value = toolName;
         document.getElementById('inputEditToolName').value = toolName;
@@ -870,7 +897,7 @@
           renderToolManagerList();
           renderToolsGrid();
           updateFilterToolDropdown();
-          Utils.showToast('Nama tools berhasil diperbarui (Riwayat lama tetap aman)!', 'success');
+          Utils.showToast('Nama tools berhasil diperbarui!', 'success');
         } catch(e) {
           Utils.hideLoading();
           Utils.showToast('Gagal memperbarui tools', 'error');
