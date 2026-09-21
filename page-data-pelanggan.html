@@ -512,15 +512,14 @@
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
-            Utils.confirm('Yakin ingin logout?', () => {
+            if (window.confirm('Yakin ingin logout?')) {
               auth.signOut().then(() => window.location.href = 'login.html');
-            });
+            }
           });
         }
       }
 
       async function initDirectory() {
-        // Load data awal di background (tanpa spinner berat) agar siap dicari
         try {
           const snap = await db.collection(COLLECTION_NAME).orderBy("name", "asc").get();
           directoryList = [];
@@ -579,7 +578,6 @@
         const q = document.getElementById('searchInput').value.toLowerCase().trim();
         const tbody = document.getElementById('customerTableBody');
 
-        // Jika kotak pencarian dikosongkan, sembunyikan kembali tabelnya agar tidak penuh ke bawah
         if (!q) {
           tbody.innerHTML = `
             <tr>
@@ -713,18 +711,22 @@
       }
 
       window.deleteCustomer = function(id, name) {
-        Utils.confirm(`Hapus <b>${name}</b> dari direktori?`, async () => {
-          Utils.showLoading('Menghapus...');
-          try {
-            await db.collection(COLLECTION_NAME).doc(id).delete();
-            Utils.hideLoading();
-            Utils.showToast('Data dihapus', 'success');
-            await initDirectory();
-          } catch(e) {
-            Utils.hideLoading();
-            Utils.showToast('Gagal menghapus', 'error');
-          }
-        });
+        // Murni menggunakan window.confirm murni agar tidak ada teks <b> yang lolos ke pop-up browser
+        if (window.confirm(`Yakin ingin menghapus ${name} dari direktori?`)) {
+          (async () => {
+            Utils.showLoading('Menghapus...');
+            try {
+              await db.collection(COLLECTION_NAME).doc(id).delete();
+              Utils.hideLoading();
+              Utils.showToast('Data dihapus', 'success');
+              await initDirectory();
+              filterTable();
+            } catch(e) {
+              Utils.hideLoading();
+              Utils.showToast('Gagal menghapus', 'error');
+            }
+          })();
+        }
       };
     })();
   </script>
