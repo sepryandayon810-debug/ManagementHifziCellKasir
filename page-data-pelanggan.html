@@ -109,8 +109,6 @@
     .stat-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); }
     .stat-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; flex-shrink: 0; }
     .stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-    .stat-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
-    .stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-main); }
     .stat-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.2rem; }
 
@@ -124,8 +122,9 @@
     .data-table td { padding: 0.85rem 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); vertical-align: middle; }
     .data-table tbody tr:hover { background: var(--bg-subtle); }
 
-    .action-btns { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
-    .action-btn { width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; }
+    .action-btns { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+    .action-btn { width: 34px; height: 34px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; }
+    .action-btn:hover.copy-btn { background: var(--success-light); color: var(--success); }
     .action-btn:hover.edit-btn { background: var(--warning-light); color: var(--warning); }
     .action-btn:hover.del-btn { background: var(--danger-light); color: var(--danger); }
 
@@ -290,7 +289,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Data Pelanggan</h1>
+          <h1 class="header-title">Data Pelanggan (Direktori Nomor & ID)</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
@@ -298,38 +297,24 @@
       </header>
 
       <div class="page-content">
-        <!-- Toolbar -->
+        <!-- Toolbar Pencarian & Tambah -->
         <div class="page-toolbar">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari nama pelanggan...">
+            <input type="text" id="searchInput" placeholder="Cari nama, nomor HP, atau ID (contoh: Digipos, Token)..." autocomplete="off">
           </div>
           <button class="btn btn-primary" id="btnAdd">
-            <i class="fas fa-plus"></i> Tambah Pelanggan
+            <i class="fas fa-plus"></i> Tambah Data Baru
           </button>
         </div>
 
-        <!-- Stats (Dipisah khusus untuk direktori pelanggan, tidak gabung ke hutang/transaksi toko) -->
+        <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+            <div class="stat-icon blue"><i class="fas fa-address-book"></i></div>
             <div>
-              <div class="stat-label">Total Pelanggan</div>
+              <div class="stat-label">Total Tersimpan</div>
               <div class="stat-value" id="statTotal">0</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-receipt"></i></div>
-            <div>
-              <div class="stat-label">Transaksi Pelanggan Ini</div>
-              <div class="stat-value" id="statCustomerTrans">0</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon orange"><i class="fas fa-coins"></i></div>
-            <div>
-              <div class="stat-label">Total Belanja Pelanggan Ini</div>
-              <div class="stat-value" id="statCustomerSpent">Rp 0</div>
             </div>
           </div>
         </div>
@@ -337,7 +322,7 @@
         <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Kontak Pelanggan Tersimpan</span>
+            <span class="data-card-title">Daftar Direktori Nama & Nomor</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -349,24 +334,23 @@
               <thead>
                 <tr>
                   <th style="width: 50px;">#</th>
-                  <th>Nama Pelanggan</th>
-                  <th>Nomor Telepon / WhatsApp</th>
-                  <th style="text-align: right;">Total Belanja Pelanggan</th>
-                  <th style="text-align: center; width: 100px;">Aksi</th>
+                  <th>NAMA</th>
+                  <th>NOMOR / ID / TOKEN</th>
+                  <th style="text-align: center; width: 140px;">Aksi / Salin</th>
                 </tr>
               </thead>
               <tbody id="customerTableBody">
                 <tr>
-                  <td colspan="5" class="empty-state" style="text-align: center; padding: 3rem;">
+                  <td colspan="4" class="empty-state" style="text-align: center; padding: 3rem;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                    Memuat data pelanggan...
+                    Memuat direktori...
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="table-footer">
-            <span id="tableFooterCount">Menampilkan 0 pelanggan</span>
+            <span id="tableFooterCount">Menampilkan 0 data</span>
           </div>
         </div>
       </div>
@@ -385,18 +369,18 @@
   <div class="modal-overlay" id="customerModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title" id="modalTitle">Tambah Pelanggan Baru</h3>
+        <h3 class="modal-title" id="modalTitle">Tambah Data Baru</h3>
         <button class="modal-close" onclick="closeCustomerModal()"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="editCustomerId">
         <div class="form-group">
-          <label class="form-label">Nama Pelanggan *</label>
-          <input type="text" class="form-input" id="inputName" placeholder="Contoh: Budi Santoso">
+          <label class="form-label">Nama / Keterangan *</label>
+          <input type="text" class="form-input" id="inputName" placeholder="Contoh: ID DIGIPOS / TOKEN LIDIA">
         </div>
         <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Nomor Telepon / WhatsApp</label>
-          <input type="tel" class="form-input" id="inputPhone" placeholder="Contoh: 081234567890">
+          <label class="form-label">Nomor / ID / Token *</label>
+          <input type="text" class="form-input" id="inputPhone" placeholder="Contoh: 081371501338 / 50210246026">
         </div>
       </div>
       <div class="modal-footer">
@@ -417,7 +401,6 @@
       "use strict";
 
       let customersList = [];
-      let transactionsList = [];
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -503,98 +486,60 @@
       }
 
       async function initDataPelanggan() {
-        await loadCustomersAndTransactions();
+        await loadCustomers(false);
 
         document.getElementById('searchInput').addEventListener('input', filterTable);
         document.getElementById('btnAdd').onclick = () => openCustomerModal();
-        document.getElementById('btnRefresh').onclick = () => loadCustomersAndTransactions(true);
+        document.getElementById('btnRefresh').onclick = () => loadCustomers(true);
         document.getElementById('btnSaveCustomer').onclick = saveCustomer;
       }
 
-      async function loadCustomersAndTransactions(showSpinner = false) {
+      async function loadCustomers(showSpinner = false) {
         if (showSpinner) Utils.showLoading();
         try {
-          // Ambil seluruh transaksi penjualan dari Firestore untuk menghitung rekam jejak belanja pelanggan
-          const transSnap = await db.collection("transactions").get();
-          transactionsList = [];
-          const customerSpending = {};
-          const customerTransCount = {};
-
-          transSnap.forEach(doc => {
-            const t = doc.data();
-            transactionsList.push(t);
-            if (t.status !== 'cancelled' && t.status !== 'voided' && t.customerName) {
-              const nameKey = t.customerName.trim().toLowerCase();
-              customerSpending[nameKey] = (customerSpending[nameKey] || 0) + (t.total || 0);
-              customerTransCount[nameKey] = (customerTransCount[nameKey] || 0) + 1;
-            }
-          });
-
-          // Ambil direktori pelanggan tersimpan di Firestore
-          const custSnap = await db.collection("customers").orderBy("name", "asc").get();
+          const snap = await db.collection("customers").orderBy("name", "asc").get();
           customersList = [];
-          let overallCustomerSpent = 0;
-          let overallCustomerTrans = 0;
-
-          custSnap.forEach(doc => {
-            const data = doc.data();
-            const nameKey = data.name.trim().toLowerCase();
-            const spent = customerSpending[nameKey] || 0;
-            const transCount = customerTransCount[nameKey] || 0;
-
-            overallCustomerSpent += spent;
-            overallCustomerTrans += transCount;
-
-            customersList.push({
-              id: doc.id,
-              ...data,
-              totalSpent: spent,
-              totalTransactions: transCount
-            });
+          snap.forEach(doc => {
+            customersList.push({ id: doc.id, ...doc.data() });
           });
 
           renderTable(customersList);
-          
-          // Statistik disesuaikan khusus untuk direktori pelanggan tersimpan
           document.getElementById('statTotal').textContent = customersList.length.toLocaleString('id-ID');
-          document.getElementById('statCustomerTrans').textContent = overallCustomerTrans.toLocaleString('id-ID');
-          document.getElementById('statCustomerSpent').textContent = Utils.formatRupiah(overallCustomerSpent);
-
-          if (showSpinner) Utils.showToast('Data pelanggan diperbarui', 'success');
+          if (showSpinner) Utils.showToast('Direktori diperbarui', 'success');
         } catch(e) {
-          console.error("Error loading customers:", e);
-          if (showSpinner) Utils.showToast('Gagal memuat data pelanggan', 'error');
+          console.error("Error loading directory:", e);
+          if (showSpinner) Utils.showToast('Gagal memuat data', 'error');
         } finally {
           if (showSpinner) Utils.hideLoading();
         }
       }
 
-      function renderTable(customers) {
+      function renderTable(rows) {
         const tbody = document.getElementById('customerTableBody');
-        document.getElementById('tableFooterCount').textContent = `Menampilkan ${customers.length} pelanggan`;
+        document.getElementById('tableFooterCount').textContent = `Menampilkan ${rows.length} data`;
 
-        if (customers.length === 0) {
+        if (rows.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" class="empty-state" style="text-align: center; padding: 3rem;">
-                <i class="fas fa-users" style="font-size: 2.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
-                <p>Belum ada data pelanggan tersimpan</p>
+              <td colspan="4" class="empty-state" style="text-align: center; padding: 3rem;">
+                <i class="fas fa-address-book" style="font-size: 2.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                <p>Belum ada direktori tersimpan</p>
               </td>
             </tr>
           `;
           return;
         }
 
-        tbody.innerHTML = customers.map((c, idx) => `
+        tbody.innerHTML = rows.map((c, idx) => `
           <tr>
             <td>${idx + 1}</td>
             <td><div style="font-weight: 600;">${c.name}</div></td>
-            <td>${c.phone || '-'}</td>
-            <td style="text-align: right; font-weight: 700; color: var(--success);">${Utils.formatRupiah(c.totalSpent || 0)}</td>
+            <td style="font-family: monospace; font-weight: 600; color: var(--primary);">${c.phone || '-'}</td>
             <td>
-              <div class="action-btns">
-                <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit Pelanggan"><i class="fas fa-edit"></i></button>
-                <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus Pelanggan"><i class="fas fa-trash"></i></button>
+              <div class="action-btns" style="justify-content: center;">
+                <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin Nomor/ID"><i class="fas fa-copy"></i></button>
+                <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
               </div>
             </td>
           </tr>
@@ -604,16 +549,28 @@
       function filterTable() {
         const q = document.getElementById('searchInput').value.toLowerCase().trim();
         const filtered = customersList.filter(c => 
-          c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+          c.name.toLowerCase().includes(q) || (c.phone && c.phone.toLowerCase().includes(q))
         );
         renderTable(filtered);
       }
+
+      window.copyNumber = function(number) {
+        if (!number) {
+          Utils.showToast('Tidak ada nomor untuk disalin', 'warning');
+          return;
+        }
+        navigator.clipboard.writeText(number).then(() => {
+          Utils.showToast(`Nomor/ID "${number}" berhasil disalin!`, 'success');
+        }).catch(() => {
+          Utils.showToast('Gagal menyalin ke clipboard', 'error');
+        });
+      };
 
       window.openCustomerModal = function(id = '', name = '', phone = '') {
         document.getElementById('editCustomerId').value = id;
         document.getElementById('inputName').value = name;
         document.getElementById('inputPhone').value = phone;
-        document.getElementById('modalTitle').textContent = id ? 'Edit Data Pelanggan' : 'Tambah Pelanggan Baru';
+        document.getElementById('modalTitle').textContent = id ? 'Edit Data Direktori' : 'Tambah Data Baru';
         document.getElementById('customerModal').classList.add('active');
       };
 
@@ -626,12 +583,12 @@
         const name = document.getElementById('inputName').value.trim();
         const phone = document.getElementById('inputPhone').value.trim();
 
-        if (!name) {
-          Utils.showToast('Nama pelanggan wajib diisi', 'warning');
+        if (!name || !phone) {
+          Utils.showToast('Nama dan Nomor/ID wajib diisi', 'warning');
           return;
         }
 
-        Utils.showLoading('Menyimpan data pelanggan...');
+        Utils.showLoading('Menyimpan data...');
         try {
           if (id) {
             await db.collection("customers").doc(id).update({
@@ -639,19 +596,19 @@
               phone,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            Utils.showToast('Pelanggan berhasil diperbarui', 'success');
+            Utils.showToast('Data berhasil diperbarui', 'success');
           } else {
             await db.collection("customers").add({
               name,
               phone,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            Utils.showToast('Pelanggan berhasil ditambahkan', 'success');
+            Utils.showToast('Data berhasil ditambahkan', 'success');
           }
           closeCustomerModal();
-          await loadCustomersAndTransactions(true);
+          await loadCustomers(true);
         } catch(e) {
-          console.error("Error saving customer:", e);
+          console.error("Error saving:", e);
           Utils.showToast('Gagal menyimpan data', 'error');
         } finally {
           Utils.hideLoading();
@@ -659,16 +616,16 @@
       }
 
       window.deleteCustomer = function(id, name) {
-        Utils.confirm(`Yakin ingin menghapus pelanggan <b>${name}</b>?`, async () => {
-          Utils.showLoading('Menghapus pelanggan...');
+        Utils.confirm(`Yakin ingin menghapus <b>${name}</b> dari direktori?`, async () => {
+          Utils.showLoading('Menghapus...');
           try {
             await db.collection("customers").doc(id).delete();
             Utils.hideLoading();
-            Utils.showToast('Pelanggan berhasil dihapus', 'success');
-            await loadCustomersAndTransactions(true);
+            Utils.showToast('Data berhasil dihapus', 'success');
+            await loadCustomers(true);
           } catch(e) {
             Utils.hideLoading();
-            Utils.showToast('Gagal menghapus pelanggan', 'error');
+            Utils.showToast('Gagal menghapus data', 'error');
           }
         });
       };
