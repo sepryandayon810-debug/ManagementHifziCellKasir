@@ -114,23 +114,25 @@
 
     .data-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
     .data-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-    .data-card-title { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+    .data-card-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
     .card-actions { display: flex; gap: 0.5rem; align-items: center; }
 
-    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .table-container { width: 100%; overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 450px; }
     .data-table th { padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
-    .data-table td { padding: 0.85rem 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .data-table td { padding: 0.75rem 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); vertical-align: middle; }
     .data-table tbody tr:hover { background: var(--bg-subtle); }
 
-    .action-btns { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
-    .action-btn { width: 34px; height: 34px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; }
-    .action-btn:hover.copy-btn { background: var(--success-light); color: var(--success); }
-    .action-btn:hover.edit-btn { background: var(--warning-light); color: var(--warning); }
-    .action-btn:hover.del-btn { background: var(--danger-light); color: var(--danger); }
+    .action-btns { display: flex; align-items: center; justify-content: flex-start; gap: 0.35rem; flex-wrap: nowrap; }
+    .action-btn { height: 32px; padding: 0 0.65rem; border-radius: 8px; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.78rem; font-weight: 600; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; white-space: nowrap; }
+    .action-btn.copy-btn { background: var(--success-light); color: var(--success); }
+    .action-btn.copy-btn:hover { filter: brightness(0.9); }
+    .action-btn.edit-btn { background: var(--warning-light); color: var(--warning); width: 32px; padding: 0; }
+    .action-btn.del-btn { background: var(--danger-light); color: var(--danger); width: 32px; padding: 0; }
 
     .table-footer { padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); background: var(--bg-subtle); display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); }
 
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; white-space: nowrap; }
     .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
@@ -292,7 +294,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Data Pelanggan & Nomor Penting</h1>
+          <h1 class="header-title">Data Pelanggan & Nomor</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
@@ -300,18 +302,18 @@
       </header>
 
       <div class="page-content">
-        <!-- Toolbar Pencarian, Tambah, & Import Cepat -->
+        <!-- Toolbar Pencarian & Aksi -->
         <div class="page-toolbar">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari nama, nomor HP, atau ID (Contoh: Digipos, Token)..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Ketik nama atau nomor untuk mencari..." autocomplete="off">
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="btn btn-success" onclick="openImportModal()" title="Paste Data dari Excel/Google Sheets">
-              <i class="fas fa-paste"></i> Import Cepat (Paste)
+            <button class="btn btn-success" onclick="openImportModal()">
+              <i class="fas fa-paste"></i> Import Cepat
             </button>
             <button class="btn btn-primary" id="btnAdd">
-              <i class="fas fa-plus"></i> Tambah Data
+              <i class="fas fa-plus"></i> Tambah
             </button>
           </div>
         </div>
@@ -327,10 +329,10 @@
           </div>
         </div>
 
-        <!-- Table Card -->
+        <!-- Table Card (Hidden otomatis saat awal, muncul saat dicari) -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Direktori Nama & Nomor (Klik tombol salin untuk transaksi)</span>
+            <span class="data-card-title">Hasil Pencarian Direktori</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -341,17 +343,17 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th style="width: 50px;">#</th>
+                  <th style="width: 45px;">#</th>
                   <th>NAMA / KETERANGAN</th>
                   <th>NOMOR / ID / TOKEN</th>
-                  <th style="text-align: center; width: 140px;">Aksi / Salin</th>
+                  <th style="text-align: center; width: 130px;">AKSI</th>
                 </tr>
               </thead>
               <tbody id="customerTableBody">
                 <tr>
-                  <td colspan="4" class="empty-state" style="text-align: center; padding: 3rem;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                    Memuat direktori...
+                  <td colspan="4" class="empty-state" style="text-align: center; padding: 2.5rem;">
+                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                    <p>Ketik nama atau nomor pada kotak pencarian di atas untuk menampilkan data.</p>
                   </td>
                 </tr>
               </tbody>
@@ -373,7 +375,7 @@
     </nav>
   </div>
 
-  <!-- Modal Tambah / Edit Pelanggan -->
+  <!-- Modal Tambah / Edit -->
   <div class="modal-overlay" id="customerModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -388,7 +390,7 @@
         </div>
         <div class="form-group" style="margin-bottom: 0;">
           <label class="form-label">Nomor / ID / Token *</label>
-          <input type="text" class="form-input" id="inputPhone" placeholder="Contoh: 081371501338 / 50210246026">
+          <input type="text" class="form-input" id="inputPhone" placeholder="Contoh: 081371501338">
         </div>
       </div>
       <div class="modal-footer">
@@ -398,25 +400,25 @@
     </div>
   </div>
 
-  <!-- Modal Import Cepat (Paste Excel) -->
+  <!-- Modal Import Cepat -->
   <div class="modal-overlay" id="importModal">
-    <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fas fa-paste" style="color: var(--primary);"></i> Import Cepat dari Google Sheets / Excel</h3>
+        <h3 class="modal-title"><i class="fas fa-paste" style="color: var(--primary);"></i> Import Cepat dari Excel / Sheets</h3>
         <button class="modal-close" onclick="closeImportModal()"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 0;">
           <label class="form-label">Paste Data Kolom Nama & Nomor di Sini</label>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-            Blok kolom <b>NAMA</b> dan <b>NOMOR</b> di Google Sheets Anda lalu tekan <code>Ctrl+V</code> di kotak bawah ini:
+            Blok kolom Nama dan Nomor di Google Sheets Anda lalu tekan <b>Ctrl+V</b> di bawah:
           </p>
-          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;ID ML SIMPAN  ML93248 0811664949"></textarea>
+          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;TOKEN LIDIA   50210246026"></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeImportModal()">Batal</button>
-        <button class="btn btn-success" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses Import</button>
+        <button class="btn btn-success" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses</button>
       </div>
     </div>
   </div>
@@ -432,7 +434,7 @@
       "use strict";
 
       let directoryList = [];
-      const COLLECTION_NAME = "customer_directory_v2"; // Koleksi murni terpisah dari hutang
+      const COLLECTION_NAME = "customer_directory_v2";
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -518,32 +520,27 @@
       }
 
       async function initDirectory() {
-        await loadDirectory(false);
-
-        document.getElementById('searchInput').addEventListener('input', filterTable);
-        document.getElementById('btnAdd').onclick = () => openCustomerModal();
-        document.getElementById('btnRefresh').onclick = () => loadDirectory(true);
-        document.getElementById('btnSaveCustomer').onclick = saveCustomer;
-      }
-
-      async function loadDirectory(showSpinner = false) {
-        if (showSpinner) Utils.showLoading();
+        // Load data awal di background (tanpa spinner berat) agar siap dicari
         try {
           const snap = await db.collection(COLLECTION_NAME).orderBy("name", "asc").get();
           directoryList = [];
           snap.forEach(doc => {
             directoryList.push({ id: doc.id, ...doc.data() });
           });
-
-          renderTable(directoryList);
           document.getElementById('statTotal').textContent = directoryList.length.toLocaleString('id-ID');
-          if (showSpinner) Utils.showToast('Direktori diperbarui', 'success');
         } catch(e) {
           console.error("Error loading directory:", e);
-          if (showSpinner) Utils.showToast('Gagal memuat data', 'error');
-        } finally {
-          if (showSpinner) Utils.hideLoading();
         }
+
+        document.getElementById('searchInput').addEventListener('input', filterTable);
+        document.getElementById('btnAdd').onclick = () => openCustomerModal();
+        document.getElementById('btnRefresh').onclick = async () => {
+          Utils.showLoading();
+          await initDirectory();
+          Utils.hideLoading();
+          Utils.showToast('Direktori diperbarui', 'success');
+        };
+        document.getElementById('btnSaveCustomer').onclick = saveCustomer;
       }
 
       function renderTable(rows) {
@@ -553,9 +550,9 @@
         if (rows.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="4" class="empty-state" style="text-align: center; padding: 3rem;">
-                <i class="fas fa-address-book" style="font-size: 2.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
-                <p>Belum ada direktori tersimpan</p>
+              <td colspan="4" class="empty-state" style="text-align: center; padding: 2.5rem;">
+                <i class="fas fa-search-minus" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                <p>Tidak ada data yang cocok dengan pencarian Anda.</p>
               </td>
             </tr>
           `;
@@ -564,12 +561,12 @@
 
         tbody.innerHTML = rows.map((c, idx) => `
           <tr>
-            <td>${idx + 1}</td>
+            <td style="color: var(--text-muted);">${idx + 1}</td>
             <td><div style="font-weight: 600;">${c.name}</div></td>
             <td style="font-family: monospace; font-weight: 600; color: var(--primary);">${c.phone || '-'}</td>
             <td>
               <div class="action-btns">
-                <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin Nomor/ID"><i class="fas fa-copy"></i> Salin</button>
+                <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin"><i class="fas fa-copy"></i> Salin</button>
                 <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
               </div>
@@ -580,6 +577,22 @@
 
       function filterTable() {
         const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        const tbody = document.getElementById('customerTableBody');
+
+        // Jika kotak pencarian dikosongkan, sembunyikan kembali tabelnya agar tidak penuh ke bawah
+        if (!q) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="empty-state" style="text-align: center; padding: 2.5rem;">
+                <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                <p>Ketik nama atau nomor pada kotak pencarian di atas untuk menampilkan data.</p>
+              </td>
+            </tr>
+          `;
+          document.getElementById('tableFooterCount').textContent = 'Menampilkan 0 data';
+          return;
+        }
+
         const filtered = directoryList.filter(c => 
           c.name.toLowerCase().includes(q) || (c.phone && c.phone.toLowerCase().includes(q))
         );
@@ -592,9 +605,9 @@
           return;
         }
         navigator.clipboard.writeText(number).then(() => {
-          Utils.showToast(`Berhasil disalin: ${number}`, 'success');
+          Utils.showToast(`Disalin: ${number}`, 'success');
         }).catch(() => {
-          Utils.showToast('Gagal menyalin ke clipboard', 'error');
+          Utils.showToast('Gagal menyalin', 'error');
         });
       };
 
@@ -619,7 +632,6 @@
         document.getElementById('importModal').classList.remove('active');
       };
 
-      // Proses Import Massal dari Textarea Paste Excel
       window.processBulkImport = async function() {
         const text = document.getElementById('importTextarea').value.trim();
         if (!text) {
@@ -630,20 +642,18 @@
         const lines = text.split('\n');
         let count = 0;
 
-        Utils.showLoading('Mengimpor data secara massal...');
+        Utils.showLoading('Mengimpor data...');
         try {
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
-            // Pisahkan kolom menggunakan Tab (hasil copy dari Google Sheets/Excel) atau koma
             const parts = line.split(/\t|,/);
             if (parts.length >= 2) {
               let name = parts[0].replace(/^"|"$/g, '').trim();
               let phone = parts[1].replace(/^"|"$/g, '').trim();
 
-              // Lewati baris header jika terbawa
-              if (i === 0 && (name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama pelanggan')) continue;
+              if (i === 0 && (name.toLowerCase() === 'nama' || name.toLowerCase() === 'nomor')) continue;
 
               if (name && phone) {
                 await db.collection(COLLECTION_NAME).add({
@@ -658,11 +668,10 @@
 
           Utils.hideLoading();
           closeImportModal();
-          Utils.showToast(`Berhasil mengimpor ${count} data baru!`, 'success');
-          await loadDirectory(true);
+          Utils.showToast(`Berhasil mengimpor ${count} data!`, 'success');
+          await initDirectory();
         } catch (e) {
           Utils.hideLoading();
-          console.error("Bulk import error:", e);
           Utils.showToast('Gagal mengimpor data', 'error');
         }
       };
@@ -673,7 +682,7 @@
         const phone = document.getElementById('inputPhone').value.trim();
 
         if (!name || !phone) {
-          Utils.showToast('Nama dan Nomor/ID wajib diisi', 'warning');
+          Utils.showToast('Nama dan Nomor wajib diisi', 'warning');
           return;
         }
 
@@ -685,36 +694,35 @@
               phone,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            Utils.showToast('Data berhasil diperbarui', 'success');
+            Utils.showToast('Data diperbarui', 'success');
           } else {
             await db.collection(COLLECTION_NAME).add({
               name,
               phone,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            Utils.showToast('Data berhasil ditambahkan', 'success');
+            Utils.showToast('Data ditambahkan', 'success');
           }
           closeCustomerModal();
-          await loadDirectory(true);
+          await initDirectory();
         } catch(e) {
-          console.error("Error saving:", e);
-          Utils.showToast('Gagal menyimpan data', 'error');
+          Utils.showToast('Gagal menyimpan', 'error');
         } finally {
           Utils.hideLoading();
         }
       }
 
       window.deleteCustomer = function(id, name) {
-        Utils.confirm(`Yakin ingin menghapus <b>${name}</b> dari direktori?`, async () => {
+        Utils.confirm(`Hapus <b>${name}</b> dari direktori?`, async () => {
           Utils.showLoading('Menghapus...');
           try {
             await db.collection(COLLECTION_NAME).doc(id).delete();
             Utils.hideLoading();
-            Utils.showToast('Data berhasil dihapus', 'success');
-            await loadDirectory(true);
+            Utils.showToast('Data dihapus', 'success');
+            await initDirectory();
           } catch(e) {
             Utils.hideLoading();
-            Utils.showToast('Gagal menghapus data', 'error');
+            Utils.showToast('Gagal menghapus', 'error');
           }
         });
       };
