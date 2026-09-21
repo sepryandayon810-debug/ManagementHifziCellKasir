@@ -139,6 +139,8 @@
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
     .btn-success { background: var(--success); color: white; }
     .btn-success:hover { filter: brightness(0.9); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { filter: brightness(0.9); }
     .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
@@ -329,7 +331,7 @@
           </div>
         </div>
 
-        <!-- Table Card (Hidden otomatis saat awal, muncul saat dicari) -->
+        <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
             <span class="data-card-title">Hasil Pencarian Direktori</span>
@@ -400,6 +402,23 @@
     </div>
   </div>
 
+  <!-- Modal Konfirmasi Hapus Custom (Sesuai Tema WebPOS) -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus</h3>
+        <button class="modal-close" onclick="closeDeleteModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-sub); font-size: 0.95rem;">Yakin ingin menghapus <b id="deleteTargetName" style="color: var(--text-main);"></b> dari direktori?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
+        <button class="btn btn-danger" id="btnConfirmDelete"><i class="fas fa-trash"></i> Hapus</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Import Cepat -->
   <div class="modal-overlay" id="importModal">
     <div class="modal-content" style="max-width: 500px;">
@@ -434,6 +453,7 @@
       "use strict";
 
       let directoryList = [];
+      let pendingDeleteId = null;
       const COLLECTION_NAME = "customer_directory_v2";
 
       async function syncStoreBrandName() {
@@ -486,7 +506,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.add('mobile-open');
+            sidebar.classList.toggle('mobile-open');
             if (backdrop) backdrop.classList.add('active');
           };
         }
@@ -540,6 +560,7 @@
           Utils.showToast('Direktori diperbarui', 'success');
         };
         document.getElementById('btnSaveCustomer').onclick = saveCustomer;
+        document.getElementById('btnConfirmDelete').onclick = confirmDeleteCustomer;
       }
 
       function renderTable(rows) {
@@ -567,7 +588,7 @@
               <div class="action-btns">
                 <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin"><i class="fas fa-copy"></i> Salin</button>
                 <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit"><i class="fas fa-edit"></i></button>
-                <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                <button class="action-btn del-btn" onclick="openDeleteModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
               </div>
             </td>
           </tr>
@@ -629,6 +650,34 @@
       window.closeImportModal = function() {
         document.getElementById('importModal').classList.remove('active');
       };
+
+      window.openDeleteModal = function(id, name) {
+        pendingDeleteId = id;
+        document.getElementById('deleteTargetName').textContent = name;
+        document.getElementById('deleteModal').classList.add('active');
+      };
+
+      window.closeDeleteModal = function() {
+        pendingDeleteId = null;
+        document.getElementById('deleteModal').classList.remove('active');
+      };
+
+      async function confirmDeleteCustomer() {
+        if (!pendingDeleteId) return;
+        
+        Utils.showLoading('Menghapus...');
+        try {
+          await db.collection(COLLECTION_NAME).doc(pendingDeleteId).delete();
+          Utils.hideLoading();
+          closeDeleteModal();
+          Utils.showToast('Data berhasil dihapus', 'success');
+          await initDirectory();
+          filterTable();
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal menghapus data', 'error');
+        }
+      }
 
       window.processBulkImport = async function() {
         const text = document.getElementById('importTextarea').value.trim();
@@ -703,31 +752,13 @@
           }
           closeCustomerModal();
           await initDirectory();
+          filterTable();
         } catch(e) {
           Utils.showToast('Gagal menyimpan', 'error');
         } finally {
           Utils.hideLoading();
         }
       }
-
-      window.deleteCustomer = function(id, name) {
-        // Murni menggunakan window.confirm murni agar tidak ada teks <b> yang lolos ke pop-up browser
-        if (window.confirm(`Yakin ingin menghapus ${name} dari direktori?`)) {
-          (async () => {
-            Utils.showLoading('Menghapus...');
-            try {
-              await db.collection(COLLECTION_NAME).doc(id).delete();
-              Utils.hideLoading();
-              Utils.showToast('Data dihapus', 'success');
-              await initDirectory();
-              filterTable();
-            } catch(e) {
-              Utils.hideLoading();
-              Utils.showToast('Gagal menghapus', 'error');
-            }
-          })();
-        }
-      };
     })();
   </script>
 </body>
