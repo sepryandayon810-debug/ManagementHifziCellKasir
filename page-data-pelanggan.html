@@ -126,7 +126,6 @@
 
     .action-btns { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
     .action-btn { width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; }
-    .action-btn:hover.copy-btn { background: var(--primary-light); color: var(--primary); }
     .action-btn:hover.edit-btn { background: var(--warning-light); color: var(--warning); }
     .action-btn:hover.del-btn { background: var(--danger-light); color: var(--danger); }
 
@@ -303,14 +302,14 @@
         <div class="page-toolbar">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari nama atau nomor telepon...">
+            <input type="text" id="searchInput" placeholder="Cari nama pelanggan...">
           </div>
           <button class="btn btn-primary" id="btnAdd">
             <i class="fas fa-plus"></i> Tambah Pelanggan
           </button>
         </div>
 
-        <!-- Stats -->
+        <!-- Stats (Dipisah khusus untuk direktori pelanggan, tidak gabung ke hutang/transaksi toko) -->
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon blue"><i class="fas fa-users"></i></div>
@@ -320,17 +319,17 @@
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-shopping-bag"></i></div>
+            <div class="stat-icon green"><i class="fas fa-receipt"></i></div>
             <div>
-              <div class="stat-label">Total Transaksi</div>
-              <div class="stat-value" id="statTotalTransaksi">0</div>
+              <div class="stat-label">Transaksi Pelanggan Ini</div>
+              <div class="stat-value" id="statCustomerTrans">0</div>
             </div>
           </div>
           <div class="stat-card">
             <div class="stat-icon orange"><i class="fas fa-coins"></i></div>
             <div>
-              <div class="stat-label">Total Belanja</div>
-              <div class="stat-value" id="statTotalBelanja">Rp 0</div>
+              <div class="stat-label">Total Belanja Pelanggan Ini</div>
+              <div class="stat-value" id="statCustomerSpent">Rp 0</div>
             </div>
           </div>
         </div>
@@ -338,7 +337,7 @@
         <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Pelanggan Tersimpan</span>
+            <span class="data-card-title">Daftar Kontak Pelanggan Tersimpan</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -352,7 +351,7 @@
                   <th style="width: 50px;">#</th>
                   <th>Nama Pelanggan</th>
                   <th>Nomor Telepon / WhatsApp</th>
-                  <th style="text-align: right;">Total Belanja</th>
+                  <th style="text-align: right;">Total Belanja Pelanggan</th>
                   <th style="text-align: center; width: 100px;">Aksi</th>
                 </tr>
               </thead>
@@ -418,7 +417,7 @@
       "use strict";
 
       let customersList = [];
-      let cachedTransactions = [];
+      let transactionsList = [];
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -504,15 +503,6 @@
       }
 
       async function initDataPelanggan() {
-        const cachedCustomers = localStorage.getItem("webpos_customers_cache");
-        if (cachedCustomers) {
-          try {
-            customersList = JSON.parse(cachedCustomers);
-            renderTable(customersList);
-            updateStats(customersList, []);
-          } catch(e) {}
-        }
-
         await loadCustomersAndTransactions();
 
         document.getElementById('searchInput').addEventListener('input', filterTable);
@@ -524,38 +514,52 @@
       async function loadCustomersAndTransactions(showSpinner = false) {
         if (showSpinner) Utils.showLoading();
         try {
+          // Ambil seluruh transaksi penjualan dari Firestore untuk menghitung rekam jejak belanja pelanggan
           const transSnap = await db.collection("transactions").get();
-          cachedTransactions = [];
+          transactionsList = [];
           const customerSpending = {};
-          const customerTransactionsCount = {};
+          const customerTransCount = {};
 
           transSnap.forEach(doc => {
             const t = doc.data();
-            cachedTransactions.push(t);
+            transactionsList.push(t);
             if (t.status !== 'cancelled' && t.status !== 'voided' && t.customerName) {
               const nameKey = t.customerName.trim().toLowerCase();
               customerSpending[nameKey] = (customerSpending[nameKey] || 0) + (t.total || 0);
-              customerTransactionsCount[nameKey] = (customerTransactionsCount[nameKey] || 0) + 1;
+              customerTransCount[nameKey] = (customerTransCount[nameKey] || 0) + 1;
             }
           });
 
+          // Ambil direktori pelanggan tersimpan di Firestore
           const custSnap = await db.collection("customers").orderBy("name", "asc").get();
           customersList = [];
+          let overallCustomerSpent = 0;
+          let overallCustomerTrans = 0;
+
           custSnap.forEach(doc => {
             const data = doc.data();
             const nameKey = data.name.trim().toLowerCase();
+            const spent = customerSpending[nameKey] || 0;
+            const transCount = customerTransCount[nameKey] || 0;
+
+            overallCustomerSpent += spent;
+            overallCustomerTrans += transCount;
+
             customersList.push({
               id: doc.id,
               ...data,
-              totalSpent: customerSpending[nameKey] || 0,
-              totalTransactions: customerTransactionsCount[nameKey] || 0
+              totalSpent: spent,
+              totalTransactions: transCount
             });
           });
 
-          localStorage.setItem("webpos_customers_cache", JSON.stringify(customersList));
-
           renderTable(customersList);
-          updateStats(customersList, cachedTransactions);
+          
+          // Statistik disesuaikan khusus untuk direktori pelanggan tersimpan
+          document.getElementById('statTotal').textContent = customersList.length.toLocaleString('id-ID');
+          document.getElementById('statCustomerTrans').textContent = overallCustomerTrans.toLocaleString('id-ID');
+          document.getElementById('statCustomerSpent').textContent = Utils.formatRupiah(overallCustomerSpent);
+
           if (showSpinner) Utils.showToast('Data pelanggan diperbarui', 'success');
         } catch(e) {
           console.error("Error loading customers:", e);
@@ -563,23 +567,6 @@
         } finally {
           if (showSpinner) Utils.hideLoading();
         }
-      }
-
-      function updateStats(customers, transactions) {
-        let totalCust = customers.length;
-        let totalTrans = 0;
-        let totalSpent = 0;
-
-        transactions.forEach(t => {
-          if (t.status !== 'cancelled' && t.status !== 'voided') {
-            totalTrans++;
-            totalSpent += (t.total || 0);
-          }
-        });
-
-        document.getElementById('statTotal').textContent = totalCust.toLocaleString('id-ID');
-        document.getElementById('statTotalTransaksi').textContent = totalTrans.toLocaleString('id-ID');
-        document.getElementById('statTotalBelanja').textContent = Utils.formatRupiah(totalSpent);
       }
 
       function renderTable(customers) {
@@ -659,10 +646,10 @@
               phone,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            Utils.showToast('Pelanggan berhasil diperbarui', 'success');
+            Utils.showToast('Pelanggan berhasil ditambahkan', 'success');
           }
           closeCustomerModal();
-          await loadCustomersAndTransactions();
+          await loadCustomersAndTransactions(true);
         } catch(e) {
           console.error("Error saving customer:", e);
           Utils.showToast('Gagal menyimpan data', 'error');
@@ -678,7 +665,7 @@
             await db.collection("customers").doc(id).delete();
             Utils.hideLoading();
             Utils.showToast('Pelanggan berhasil dihapus', 'success');
-            await loadCustomersAndTransactions();
+            await loadCustomersAndTransactions(true);
           } catch(e) {
             Utils.hideLoading();
             Utils.showToast('Gagal menghapus pelanggan', 'error');
