@@ -324,14 +324,13 @@
             </div>
 
             <div class="form-group" id="nominalGroup" style="display: none;">
-              <label class="form-label">Nomor / Tanggal / Nominal (Rp) *</label>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
                 <div>
-                  <label class="form-label" style="font-size: 0.75rem;">Tanggal Top Up</label>
+                  <label class="form-label">Tanggal Top Up</label>
                   <input type="date" class="form-input" id="inputDate">
                 </div>
                 <div>
-                  <label class="form-label" style="font-size: 0.75rem;">Nominal (Rp)</label>
+                  <label class="form-label">Nominal (Rp)</label>
                   <input type="number" class="form-input" id="inputNominal" placeholder="Contoh: 500000" min="100">
                 </div>
               </div>
@@ -414,7 +413,7 @@
     </nav>
   </div>
 
-  <!-- Modal Kelola Nama Tools -->
+  <!-- Modal Kelola Nama Tools (Dengan Tombol Edit & Tambah) -->
   <div class="modal-overlay" id="toolModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -430,13 +429,34 @@
           </div>
         </div>
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
-        <label class="form-label">Daftar Tools Aktif</label>
-        <div id="toolListContainer" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto;">
+        <label class="form-label">Daftar Tools Aktif (Riwayat lama aman tidak berubah)</label>
+        <div id="toolListContainer" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;">
           <!-- List tools aktif -->
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeToolModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Edit Tools -->
+  <div class="modal-overlay" id="editToolModal">
+    <div class="modal-content" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Nama Tools</h3>
+        <button class="modal-close" onclick="closeEditToolModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editOldToolName">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Nama Baru *</label>
+          <input type="text" class="form-input" id="inputEditToolName" placeholder="Nama baru">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeEditToolModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveEditedTool()"><i class="fas fa-save"></i> Simpan</button>
       </div>
     </div>
   </div>
@@ -515,7 +535,6 @@
           const avatar = document.getElementById('userAvatar');
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
-          // Set default tanggal hari ini pada form input
           document.getElementById('inputDate').valueAsDate = new Date();
 
           setupSidebarEvents();
@@ -784,9 +803,10 @@
       function renderToolManagerList() {
         const container = document.getElementById('toolListContainer');
         container.innerHTML = activeTools.map(tool => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm);">
-            <span style="font-weight: 600;">${tool}</span>
-            <button class="btn btn-sm btn-danger" onclick="removeTool('${tool}')" ${activeTools.length <= 1 ? 'disabled' : ''}><i class="fas fa-trash"></i></button>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm); gap: 0.5rem;">
+            <span style="font-weight: 600; flex: 1;">${tool}</span>
+            <button class="btn btn-sm btn-outline" onclick="openEditToolModal('${tool}')" title="Edit Nama Tools"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="removeTool('${tool}')" ${activeTools.length <= 1 ? 'disabled' : ''} title="Hapus"><i class="fas fa-trash"></i></button>
           </div>
         `).join('');
       }
@@ -810,6 +830,48 @@
         renderToolsGrid();
         updateFilterToolDropdown();
         Utils.showToast('Tools ditambahkan', 'success');
+      };
+
+      // Modal Edit Tools (Hanya mengubah opsi pilihan ke depannya, data lama aman)
+      window.openEditToolModal = function(toolName) {
+        document.getElementById('editOldToolName').value = toolName;
+        document.getElementById('inputEditToolName').value = toolName;
+        document.getElementById('editToolModal').classList.add('active');
+      };
+
+      window.closeEditToolModal = function() {
+        document.getElementById('editToolModal').classList.remove('active');
+      };
+
+      window.saveEditedTool = async function() {
+        const oldName = document.getElementById('editOldToolName').value;
+        const newName = document.getElementById('inputEditToolName').value.trim().toUpperCase();
+
+        if (!newName) {
+          Utils.showToast('Nama baru tidak boleh kosong', 'warning');
+          return;
+        }
+        if (activeTools.includes(newName) && newName !== oldName) {
+          Utils.showToast('Nama tools tersebut sudah ada', 'warning');
+          return;
+        }
+
+        activeTools = activeTools.map(t => t === oldName ? newName : t);
+        if (selectedTool === oldName) selectedTool = newName;
+
+        Utils.showLoading('Menyimpan perubahan...');
+        try {
+          await saveToolsToDb();
+          Utils.hideLoading();
+          closeEditToolModal();
+          renderToolManagerList();
+          renderToolsGrid();
+          updateFilterToolDropdown();
+          Utils.showToast('Nama tools berhasil diperbarui!', 'success');
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal memperbarui tools', 'error');
+        }
       };
 
       window.removeTool = async function(tool) {
@@ -868,7 +930,6 @@
               if (i === 0 && (dateStr.toLowerCase() === 'tanggal' || dateStr.toLowerCase() === 'date')) continue;
 
               if (dateStr && toolName && nominal > 0) {
-                // Konversi format tanggal DD/MM/YYYY ke timestamp
                 let timestamp = Date.now();
                 const dParts = dateStr.split('/');
                 if (dParts.length === 3) {
@@ -884,7 +945,6 @@
                 });
                 count++;
 
-                // Otomatis tambahkan tool ke activeTools jika belum ada
                 if (!activeTools.includes(toolName)) {
                   activeTools.push(toolName);
                 }
