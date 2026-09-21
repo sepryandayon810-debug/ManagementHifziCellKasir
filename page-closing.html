@@ -104,14 +104,15 @@
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
     .card-body { padding: 1.5rem; }
 
-    /* ⭐ Diubah ke 1 kolom ke bawah agar tidak terpotong di layar perangkat kecil ⭐ */
+    /* ⭐ Diubah ke 1 kolom ke bawah agar tersusun rapi dan tidak terpotong ke samping ⭐ */
     .denomination-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
     
-    .denomination-item { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border); }
-    .denomination-label { font-weight: 700; font-size: 0.95rem; min-width: 80px; color: var(--text-sub); }
-    .denomination-input { width: 90px !important; text-align: center; padding: 0.5rem !important; font-weight: 700; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text-main); font-size: 1rem; outline: none; }
+    .denomination-item { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border); }
+    .denomination-item-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .denomination-label { font-weight: 700; font-size: 0.95rem; color: var(--text-sub); }
+    .denomination-input { width: 100% !important; text-align: left; padding: 0.55rem 0.75rem !important; font-weight: 700; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text-main); font-size: 1rem; outline: none; }
     .denomination-input:focus { border-color: var(--primary); }
-    .denomination-total { flex: 1; text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--primary); }
+    .denomination-total { text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--primary); }
 
     .system-data-grid { display: flex; flex-direction: column; gap: 0.75rem; }
     .system-data-item { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border); }
@@ -211,7 +212,7 @@
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
             <li class="nav-item nav-dropdown open" id="dropdownKas">
-              <div class="nav-link nav-dropdown-toggle active" data-menu="kas">
+              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
                   <i class="fas fa-wallet"></i><span>Kas Management</span>
                 </div>
@@ -521,15 +522,26 @@
             parent.classList.toggle('open');
           });
         });
+
+        const logoutBtn = document.getElementById('btnLogout');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', () => {
+            Utils.confirm('Yakin ingin logout?', () => {
+              auth.signOut().then(() => window.location.href = 'login.html');
+            });
+          });
+        }
       }
 
       function generateDenominationInputs() {
         const grid = document.getElementById('denominationGrid');
         grid.innerHTML = denominations.map(d => `
           <div class="denomination-item">
-            <span class="denomination-label">${d.label}</span>
+            <div class="denomination-item-top">
+              <span class="denomination-label">${d.label}</span>
+              <span class="denomination-total" id="total_${d.value}">Rp 0</span>
+            </div>
             <input type="number" class="form-input denomination-input" id="denom_${d.value}" placeholder="0" min="0" oninput="ClosingCalculator.calculate()">
-            <span class="denomination-total" id="total_${d.value}">Rp 0</span>
           </div>
         `).join('');
       }
