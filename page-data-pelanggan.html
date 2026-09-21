@@ -122,7 +122,7 @@
     .data-table td { padding: 0.85rem 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); vertical-align: middle; }
     .data-table tbody tr:hover { background: var(--bg-subtle); }
 
-    .action-btns { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+    .action-btns { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
     .action-btn { width: 34px; height: 34px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; background: var(--bg-subtle); color: var(--text-sub); transition: all 0.15s; }
     .action-btn:hover.copy-btn { background: var(--success-light); color: var(--success); }
     .action-btn:hover.edit-btn { background: var(--warning-light); color: var(--warning); }
@@ -135,6 +135,8 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { filter: brightness(0.9); }
     .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
@@ -297,15 +299,21 @@
       </header>
 
       <div class="page-content">
-        <!-- Toolbar Pencarian & Tambah -->
+        <!-- Toolbar Pencarian, Tambah, & Upload File -->
         <div class="page-toolbar">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari nama, nomor HP, atau ID (contoh: Digipos, Token)..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Cari nama, nomor HP, atau ID (Contoh: Digipos, Token)..." autocomplete="off">
           </div>
-          <button class="btn btn-primary" id="btnAdd">
-            <i class="fas fa-plus"></i> Tambah Data Baru
-          </button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <input type="file" id="csvFileInput" accept=".csv, .txt" style="display: none;" onchange="handleFileUpload(event)">
+            <button class="btn btn-success" onclick="document.getElementById('csvFileInput').click()" title="Import dari CSV/Excel">
+              <i class="fas fa-file-upload"></i> Upload CSV
+            </button>
+            <button class="btn btn-primary" id="btnAdd">
+              <i class="fas fa-plus"></i> Tambah Data
+            </button>
+          </div>
         </div>
 
         <!-- Stats -->
@@ -313,7 +321,7 @@
           <div class="stat-card">
             <div class="stat-icon blue"><i class="fas fa-address-book"></i></div>
             <div>
-              <div class="stat-label">Total Tersimpan</div>
+              <div class="stat-label">Total Direktori Tersimpan</div>
               <div class="stat-value" id="statTotal">0</div>
             </div>
           </div>
@@ -322,7 +330,7 @@
         <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Direktori Nama & Nomor</span>
+            <span class="data-card-title">Daftar Direktori Nama & Nomor (Murni Database Kontak)</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -334,7 +342,7 @@
               <thead>
                 <tr>
                   <th style="width: 50px;">#</th>
-                  <th>NAMA</th>
+                  <th>NAMA / KETERANGAN</th>
                   <th>NOMOR / ID / TOKEN</th>
                   <th style="text-align: center; width: 140px;">Aksi / Salin</th>
                 </tr>
@@ -400,7 +408,9 @@
     (function() {
       "use strict";
 
-      let customersList = [];
+      let directoryList = [];
+      // Menggunakan koleksi khusus 'customer_directory' agar murni terpisah dari hutang/transaksi toko
+      const COLLECTION_NAME = "customer_directory";
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -438,7 +448,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initDataPelanggan();
+          initDirectory();
         });
       });
 
@@ -485,26 +495,26 @@
         }
       }
 
-      async function initDataPelanggan() {
-        await loadCustomers(false);
+      async function initDirectory() {
+        await loadDirectory(false);
 
         document.getElementById('searchInput').addEventListener('input', filterTable);
         document.getElementById('btnAdd').onclick = () => openCustomerModal();
-        document.getElementById('btnRefresh').onclick = () => loadCustomers(true);
+        document.getElementById('btnRefresh').onclick = () => loadDirectory(true);
         document.getElementById('btnSaveCustomer').onclick = saveCustomer;
       }
 
-      async function loadCustomers(showSpinner = false) {
+      async function loadDirectory(showSpinner = false) {
         if (showSpinner) Utils.showLoading();
         try {
-          const snap = await db.collection("customers").orderBy("name", "asc").get();
-          customersList = [];
+          const snap = await db.collection(COLLECTION_NAME).orderBy("name", "asc").get();
+          directoryList = [];
           snap.forEach(doc => {
-            customersList.push({ id: doc.id, ...doc.data() });
+            directoryList.push({ id: doc.id, ...doc.data() });
           });
 
-          renderTable(customersList);
-          document.getElementById('statTotal').textContent = customersList.length.toLocaleString('id-ID');
+          renderTable(directoryList);
+          document.getElementById('statTotal').textContent = directoryList.length.toLocaleString('id-ID');
           if (showSpinner) Utils.showToast('Direktori diperbarui', 'success');
         } catch(e) {
           console.error("Error loading directory:", e);
@@ -536,7 +546,7 @@
             <td><div style="font-weight: 600;">${c.name}</div></td>
             <td style="font-family: monospace; font-weight: 600; color: var(--primary);">${c.phone || '-'}</td>
             <td>
-              <div class="action-btns" style="justify-content: center;">
+              <div class="action-btns">
                 <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin Nomor/ID"><i class="fas fa-copy"></i></button>
                 <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
@@ -548,7 +558,7 @@
 
       function filterTable() {
         const q = document.getElementById('searchInput').value.toLowerCase().trim();
-        const filtered = customersList.filter(c => 
+        const filtered = directoryList.filter(c => 
           c.name.toLowerCase().includes(q) || (c.phone && c.phone.toLowerCase().includes(q))
         );
         renderTable(filtered);
@@ -591,14 +601,14 @@
         Utils.showLoading('Menyimpan data...');
         try {
           if (id) {
-            await db.collection("customers").doc(id).update({
+            await db.collection(COLLECTION_NAME).doc(id).update({
               name,
               phone,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             Utils.showToast('Data berhasil diperbarui', 'success');
           } else {
-            await db.collection("customers").add({
+            await db.collection(COLLECTION_NAME).add({
               name,
               phone,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -606,7 +616,7 @@
             Utils.showToast('Data berhasil ditambahkan', 'success');
           }
           closeCustomerModal();
-          await loadCustomers(true);
+          await loadDirectory(true);
         } catch(e) {
           console.error("Error saving:", e);
           Utils.showToast('Gagal menyimpan data', 'error');
@@ -619,15 +629,65 @@
         Utils.confirm(`Yakin ingin menghapus <b>${name}</b> dari direktori?`, async () => {
           Utils.showLoading('Menghapus...');
           try {
-            await db.collection("customers").doc(id).delete();
+            await db.collection(COLLECTION_NAME).doc(id).delete();
             Utils.hideLoading();
             Utils.showToast('Data berhasil dihapus', 'success');
-            await loadCustomers(true);
+            await loadDirectory(true);
           } catch(e) {
             Utils.hideLoading();
             Utils.showToast('Gagal menghapus data', 'error');
           }
         });
+      };
+
+      // Fitur Upload File CSV/Excel untuk migrasi data dari Google Sheet secara massal
+      window.handleFileUpload = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const text = e.target.result;
+          const lines = text.split('\n');
+          let successCount = 0;
+
+          Utils.showLoading('Mengimpor data dari file...');
+          try {
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+
+              // Pisahkan berdasarkan koma atau tab (mendukung CSV atau hasil copy paste Excel)
+              const parts = line.split(/,|\t/);
+              if (parts.length >= 2) {
+                let name = parts[0].replace(/^"|"$/g, '').trim();
+                let phone = parts[1].replace(/^"|"$/g, '').trim();
+
+                // Lewati baris header jika terdeteksi
+                if (i === 0 && (name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama pelanggan')) continue;
+
+                if (name && phone) {
+                  await db.collection(COLLECTION_NAME).add({
+                    name,
+                    phone,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+                  successCount++;
+                }
+              }
+            }
+
+            Utils.hideLoading();
+            Utils.showToast(`Berhasil mengimpor ${successCount} data baru!`, 'success');
+            event.target.value = ''; // Reset input file
+            await loadDirectory(true);
+          } catch (err) {
+            Utils.hideLoading();
+            console.error("Import error:", err);
+            Utils.showToast('Gagal mengimpor file', 'error');
+          }
+        };
+        reader.readAsText(file);
       };
     })();
   </script>
