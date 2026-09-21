@@ -141,7 +141,7 @@
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
-    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 450px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
     .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
     .modal-close { width: 36px; height: 36px; border: none; border-radius: 10px; background: var(--bg-subtle); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -151,8 +151,9 @@
     
     .form-group { margin-bottom: 1rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
-    .form-input { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; }
-    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); }
+    .form-input, .form-textarea { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; }
+    .form-input:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); }
+    .form-textarea { min-height: 120px; resize: vertical; }
 
     .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
     .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
@@ -291,7 +292,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Data Pelanggan (Direktori Nomor & ID)</h1>
+          <h1 class="header-title">Data Pelanggan & Nomor Penting</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
@@ -299,16 +300,15 @@
       </header>
 
       <div class="page-content">
-        <!-- Toolbar Pencarian, Tambah, & Upload File -->
+        <!-- Toolbar Pencarian, Tambah, & Import Cepat -->
         <div class="page-toolbar">
           <div class="search-box">
             <i class="fas fa-search"></i>
             <input type="text" id="searchInput" placeholder="Cari nama, nomor HP, atau ID (Contoh: Digipos, Token)..." autocomplete="off">
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <input type="file" id="csvFileInput" accept=".csv, .txt" style="display: none;" onchange="handleFileUpload(event)">
-            <button class="btn btn-success" onclick="document.getElementById('csvFileInput').click()" title="Import dari CSV/Excel">
-              <i class="fas fa-file-upload"></i> Upload CSV
+            <button class="btn btn-success" onclick="openImportModal()" title="Paste Data dari Excel/Google Sheets">
+              <i class="fas fa-paste"></i> Import Cepat (Paste)
             </button>
             <button class="btn btn-primary" id="btnAdd">
               <i class="fas fa-plus"></i> Tambah Data
@@ -330,7 +330,7 @@
         <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Direktori Nama & Nomor (Murni Database Kontak)</span>
+            <span class="data-card-title">Daftar Direktori Nama & Nomor (Klik tombol salin untuk transaksi)</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -398,6 +398,29 @@
     </div>
   </div>
 
+  <!-- Modal Import Cepat (Paste Excel) -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal-content" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-paste" style="color: var(--primary);"></i> Import Cepat dari Google Sheets / Excel</h3>
+        <button class="modal-close" onclick="closeImportModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Paste Data Kolom Nama & Nomor di Sini</label>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            Blok kolom <b>NAMA</b> dan <b>NOMOR</b> di Google Sheets Anda lalu tekan <code>Ctrl+V</code> di kotak bawah ini:
+          </p>
+          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;ID ML SIMPAN  ML93248 0811664949"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeImportModal()">Batal</button>
+        <button class="btn btn-success" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses Import</button>
+      </div>
+    </div>
+  </div>
+
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
   </div>
@@ -409,8 +432,7 @@
       "use strict";
 
       let directoryList = [];
-      // Menggunakan koleksi khusus 'customer_directory' agar murni terpisah dari hutang/transaksi toko
-      const COLLECTION_NAME = "customer_directory";
+      const COLLECTION_NAME = "customer_directory_v2"; // Koleksi murni terpisah dari hutang
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -547,7 +569,7 @@
             <td style="font-family: monospace; font-weight: 600; color: var(--primary);">${c.phone || '-'}</td>
             <td>
               <div class="action-btns">
-                <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin Nomor/ID"><i class="fas fa-copy"></i></button>
+                <button class="action-btn copy-btn" onclick="copyNumber('${c.phone || ''}')" title="Salin Nomor/ID"><i class="fas fa-copy"></i> Salin</button>
                 <button class="action-btn edit-btn" onclick="openCustomerModal('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${c.phone || ''}')" title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="action-btn del-btn" onclick="deleteCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
               </div>
@@ -570,7 +592,7 @@
           return;
         }
         navigator.clipboard.writeText(number).then(() => {
-          Utils.showToast(`Nomor/ID "${number}" berhasil disalin!`, 'success');
+          Utils.showToast(`Berhasil disalin: ${number}`, 'success');
         }).catch(() => {
           Utils.showToast('Gagal menyalin ke clipboard', 'error');
         });
@@ -586,6 +608,63 @@
 
       window.closeCustomerModal = function() {
         document.getElementById('customerModal').classList.remove('active');
+      };
+
+      window.openImportModal = function() {
+        document.getElementById('importTextarea').value = '';
+        document.getElementById('importModal').classList.add('active');
+      };
+
+      window.closeImportModal = function() {
+        document.getElementById('importModal').classList.remove('active');
+      };
+
+      // Proses Import Massal dari Textarea Paste Excel
+      window.processBulkImport = async function() {
+        const text = document.getElementById('importTextarea').value.trim();
+        if (!text) {
+          Utils.showToast('Kotak teks masih kosong', 'warning');
+          return;
+        }
+
+        const lines = text.split('\n');
+        let count = 0;
+
+        Utils.showLoading('Mengimpor data secara massal...');
+        try {
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // Pisahkan kolom menggunakan Tab (hasil copy dari Google Sheets/Excel) atau koma
+            const parts = line.split(/\t|,/);
+            if (parts.length >= 2) {
+              let name = parts[0].replace(/^"|"$/g, '').trim();
+              let phone = parts[1].replace(/^"|"$/g, '').trim();
+
+              // Lewati baris header jika terbawa
+              if (i === 0 && (name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama pelanggan')) continue;
+
+              if (name && phone) {
+                await db.collection(COLLECTION_NAME).add({
+                  name,
+                  phone,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                count++;
+              }
+            }
+          }
+
+          Utils.hideLoading();
+          closeImportModal();
+          Utils.showToast(`Berhasil mengimpor ${count} data baru!`, 'success');
+          await loadDirectory(true);
+        } catch (e) {
+          Utils.hideLoading();
+          console.error("Bulk import error:", e);
+          Utils.showToast('Gagal mengimpor data', 'error');
+        }
       };
 
       async function saveCustomer() {
@@ -638,56 +717,6 @@
             Utils.showToast('Gagal menghapus data', 'error');
           }
         });
-      };
-
-      // Fitur Upload File CSV/Excel untuk migrasi data dari Google Sheet secara massal
-      window.handleFileUpload = function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-          const text = e.target.result;
-          const lines = text.split('\n');
-          let successCount = 0;
-
-          Utils.showLoading('Mengimpor data dari file...');
-          try {
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].trim();
-              if (!line) continue;
-
-              // Pisahkan berdasarkan koma atau tab (mendukung CSV atau hasil copy paste Excel)
-              const parts = line.split(/,|\t/);
-              if (parts.length >= 2) {
-                let name = parts[0].replace(/^"|"$/g, '').trim();
-                let phone = parts[1].replace(/^"|"$/g, '').trim();
-
-                // Lewati baris header jika terdeteksi
-                if (i === 0 && (name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama pelanggan')) continue;
-
-                if (name && phone) {
-                  await db.collection(COLLECTION_NAME).add({
-                    name,
-                    phone,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                  });
-                  successCount++;
-                }
-              }
-            }
-
-            Utils.hideLoading();
-            Utils.showToast(`Berhasil mengimpor ${successCount} data baru!`, 'success');
-            event.target.value = ''; // Reset input file
-            await loadDirectory(true);
-          } catch (err) {
-            Utils.hideLoading();
-            console.error("Import error:", err);
-            Utils.showToast('Gagal mengimpor file', 'error');
-          }
-        };
-        reader.readAsText(file);
       };
     })();
   </script>
