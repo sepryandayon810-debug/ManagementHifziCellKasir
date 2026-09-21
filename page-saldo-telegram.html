@@ -96,7 +96,7 @@
     .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
     .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
-    .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; }
+    .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; padding-bottom: calc(var(--bottom-nav-height) + 2rem); }
 
     /* PAGE SPECIFIC */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
@@ -119,8 +119,10 @@
 
     .filter-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; align-items: flex-end; }
 
+    /* Tabel dengan tinggi maksimum dan scroll internal */
+    .table-container { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    .data-table th { padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+    .data-table th { position: sticky; top: 0; z-index: 10; padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
     .data-table td { padding: 0.85rem 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); vertical-align: middle; }
     .data-table tbody tr:hover { background: var(--bg-subtle); }
 
@@ -378,6 +380,7 @@
               </div>
             </div>
 
+            <!-- Tabel dengan Scroll Internal agar tidak kepanjangan dan tidak tertutup menu bawah -->
             <div class="table-container" style="margin-top: 1rem;">
               <table class="data-table">
                 <thead>
@@ -413,7 +416,7 @@
     </nav>
   </div>
 
-  <!-- Modal Kelola Nama Tools (Dengan Tombol Edit & Tambah) -->
+  <!-- Modal Kelola Nama Tools -->
   <div class="modal-overlay" id="toolModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -832,7 +835,7 @@
         Utils.showToast('Tools ditambahkan', 'success');
       };
 
-      // Modal Edit Tools (Hanya mengubah opsi pilihan ke depannya, data lama aman)
+      // Modal Edit Tools (Hanya mengubah nama pilihan ke depannya, riwayat lama aman tidak berubah)
       window.openEditToolModal = function(toolName) {
         document.getElementById('editOldToolName').value = toolName;
         document.getElementById('inputEditToolName').value = toolName;
@@ -867,7 +870,7 @@
           renderToolManagerList();
           renderToolsGrid();
           updateFilterToolDropdown();
-          Utils.showToast('Nama tools berhasil diperbarui!', 'success');
+          Utils.showToast('Nama tools berhasil diperbarui (Riwayat lama tetap aman)!', 'success');
         } catch(e) {
           Utils.hideLoading();
           Utils.showToast('Gagal memperbarui tools', 'error');
