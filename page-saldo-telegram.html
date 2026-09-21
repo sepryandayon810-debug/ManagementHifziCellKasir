@@ -119,6 +119,13 @@
 
     .filter-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; align-items: flex-end; }
 
+    /* Perbaikan total agar input date responsif dan mudah diklik */
+    input[type="date"] {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
     .table-container { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     .data-table th { position: sticky; top: 0; z-index: 10; padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
@@ -370,6 +377,7 @@
                   <option value="all">Semua Tools</option>
                 </select>
               </div>
+              <!-- ✅ Kotak Custom Tanggal (Sudah ditambahkan onchange lengkap pada 'Sampai Tanggal') -->
               <div class="form-group" id="customDateBox" style="display: none; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                   <label class="form-label">Dari Tanggal</label>
@@ -541,6 +549,11 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           document.getElementById('inputDate').valueAsDate = new Date();
+          
+          // Set default value untuk filter tanggal custom (hari ini)
+          const todayStr = new Date().toISOString().split('T')[0];
+          document.getElementById('filterStartDate').value = todayStr;
+          document.getElementById('filterEndDate').value = todayStr;
 
           setupSidebarEvents();
           initSaldoPage();
@@ -643,7 +656,6 @@
       async function loadTopupHistory(showSpinner = false) {
         if (showSpinner) Utils.showLoading();
         try {
-          // Mengambil data tanpa .orderBy agar kilat tanpa kendala index Firestore
           const snap = await db.collection(COLLECTION_TOPUP).get();
           allHistory = [];
 
@@ -651,7 +663,6 @@
             allHistory.push({ id: doc.id, ...doc.data() });
           });
 
-          // Sorting secara lokal di memori browser (terbaru di atas)
           allHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
           applyFilters();
