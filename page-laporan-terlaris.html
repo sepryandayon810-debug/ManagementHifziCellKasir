@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="id" data-theme-color="indigo">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <title>Barang Terlaris - WebPOS</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <script>if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')</script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Inline CSS (Sama persis dengan dashboard) -->
+  <style>
+/* WebPOS Modern CSS - Simplified */
+
+/* Theme Colors */
+:root{--primary:#6366f1;--primary-dark:#4f46e5;--secondary:#ec4899;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#3b82f6}
+[data-theme-color="blue"]{--primary:#3b82f6;--primary-dark:#2563eb;--secondary:#06b6d4}
+[data-theme-color="green"]{--primary:#10b981;--primary-dark:#059669;--secondary:#84cc16}
+[data-theme-color="orange"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#f59e0b}
+[data-theme-color="purple"]{--primary:#8b5cf6;--primary-dark:#7c3aed;--secondary:#d946ef}
+[data-theme-color="red"]{--primary:#ef4444;--primary-dark:#dc2626;--secondary:#f97316}
+[data-theme-color="pink"]{--primary:#ec4899;--primary-dark:#db2777;--secondary:#8b5cf6}
+[data-theme-color="teal"]{--primary:#14b8a6;--primary-dark:#0d9488;--secondary:#06b6d4}
+
+/* Base */
+:root{--bg-primary:#f8fafc;--bg-secondary:#f1f5f9;--bg-card:#fff;--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--border-color:#e2e8f0;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 6px rgba(0,0,0,0.1);--shadow-lg:0 10px 15px rgba(0,0,0,0.1);--radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;--radius-xl:1rem;--sidebar-width:280px;--sidebar-collapsed:76px;--header-height:70px;--bottom-nav-height:70px}
+
+[data-theme="dark"]{--bg-primary:#0f172a;--bg-secondary:#1e293b;--bg-card:#1e293b;--text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#64748b;--border-color:#334155}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+body{background:var(--bg-primary);color:var(--text-primary);line-height:1.6;min-height:100vh;overflow-x:hidden}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:9999px}
+
+/* Layout */
+.app-container{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-width);height:100vh;background:var(--bg-card);border-right:1px solid var(--border-color);z-index:1000;display:flex;flex-direction:column;transition:all .25s}
+.sidebar.collapsed{width:var(--sidebar-collapsed)}
+@media(max-width:1024px){.sidebar{transform:translateX(-100%)}.sidebar.mobile-open{transform:translateX(0)}}
+
+.sidebar-header{padding:1.25rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:1rem;min-height:var(--header-height)}
+.logo-container{display:flex;align-items:center;gap:.5rem}
+.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:.75rem;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.25rem}
+.logo-text{font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar.collapsed .logo-text{opacity:0;width:0}
+
+.menu-toggle{position:absolute;right:-14px;top:24px;width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1001;font-size:.75rem}
+.menu-toggle:hover{background:var(--primary-dark)}
+.sidebar.collapsed .menu-toggle{transform:rotate(180deg)}
+
+.sidebar-search{padding:1rem;border-bottom:1px solid var(--border-color)}
+.search-input-wrapper{position:relative;display:flex;align-items:center}
+.search-input-wrapper i{position:absolute;left:1rem;color:var(--text-muted);font-size:.875rem}
+.search-input{width:100%;padding:.5rem 1rem .5rem 2.5rem;border:1px solid var(--border-color);border-radius:.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.875rem}
+.search-input:focus{outline:none;border-color:var(--primary)}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:1rem}
+.nav-section{margin-bottom:1.5rem}
+.nav-section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.5rem 1rem;margin-bottom:.25rem}
+.sidebar.collapsed .nav-section-title{display:none}
+
+.nav-menu{list-style:none}
+.nav-item{margin-bottom:2px}
+.nav-link{display:flex;align-items:center;gap:1rem;padding:.625rem 1rem;border-radius:.75rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;font-weight:500;transition:all .15s;position:relative}
+.nav-link::before{content:'';position:absolute;left:0;top:0;height:100%;width:3px;background:var(--primary);transform:scaleY(0);transition:transform .15s;border-radius:0 .25rem .25rem 0}
+.nav-link:hover{background:rgba(99,102,241,.05);color:var(--primary)}
+.nav-link.active{background:rgba(99,102,241,.1);color:var(--primary);font-weight:600}
+.nav-link.active::before{transform:scaleY(1)}
+.nav-link i{width:22px;text-align:center;font-size:1.05rem}
+.nav-link span{white-space:nowrap}
+.sidebar.collapsed .nav-link span{display:none}
+
+.nav-dropdown{position:relative}
+.nav-dropdown-toggle{justify-content:space-between}
+.nav-dropdown-toggle .dropdown-arrow{transition:transform .2s;font-size:.75rem;margin-left:auto}
+.nav-dropdown.open .nav-dropdown-toggle .dropdown-arrow{transform:rotate(180deg)}
+.nav-submenu{list-style:none;padding-left:2.75rem;max-height:0;overflow:hidden;transition:max-height .25s}
+.sidebar.collapsed .nav-submenu{display:none}
+.nav-dropdown.open .nav-submenu{max-height:500px}
+.nav-submenu .nav-link{padding:.5rem 1rem;font-size:.85rem}
+
+.sidebar-footer{padding:1rem;border-top:1px solid var(--border-color);background:var(--bg-card)}
+.user-profile{display:flex;align-items:center;gap:1rem;cursor:pointer}
+.user-profile:hover{opacity:.8}
+.user-avatar{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:.875rem}
+.user-info{flex:1;overflow:hidden}
+.sidebar.collapsed .user-info{display:none}
+.user-name{font-weight:600;font-size:.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:.75rem;color:var(--text-muted);text-transform:capitalize}
+
+/* Main Content */
+.main-content{flex:1;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
+.sidebar.collapsed~.main-content{margin-left:var(--sidebar-collapsed)}
+@media(max-width:1024px){.main-content{margin-left:0}.sidebar.collapsed~.main-content{margin-left:0}}
+
+/* Header */
+.main-header{height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:1rem}
+.header-title{font-size:1.35rem;font-weight:700;color:var(--text-primary)}
+.header-actions{display:flex;align-items:center;gap:.5rem}
+
+.btn-icon{width:40px;height:40px;padding:0;border-radius:.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.btn-icon:hover{background:rgba(99,102,241,.05);color:var(--primary);border-color:var(--primary)}
+
+/* Page Content */
+.page-content{flex:1;padding:1.5rem;overflow-y:auto}
+@media(max-width:768px){.page-content{padding:1rem;padding-bottom:calc(var(--bottom-nav-height) + 1rem)}}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:.75rem;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .15s;border:none;outline:none;white-space:nowrap}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:white}
+.btn-primary:hover:not(:disabled){background:var(--primary-dark);transform:translateY(-2px)}
+.btn-success{background:var(--success);color:white}
+.btn-outline{background:transparent;border:1.5px solid var(--border-color);color:var(--text-secondary)}
+.btn-outline:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:.4rem .875rem;font-size:.8rem}
+.w-full{width:100%}
+
+/* Cards */
+.card{background:var(--bg-card);border-radius:1rem;border:1px solid var(--border-color);overflow:hidden;transition:all .25s}
+.card:hover{box-shadow:var(--shadow-lg)}
+.card-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.card-title{font-size:1.1rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:.5rem}
+.card-body{padding:1.5rem}
+
+/* Forms */
+.form-group{margin-bottom:1.25rem}
+.form-label{display:block;font-size:.875rem;font-weight:500;color:var(--text-secondary);margin-bottom:.5rem}
+.form-input,.form-select{width:100%;padding:.75rem 1rem;border:1.5px solid var(--border-color);border-radius:.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.95rem;transition:all .15s}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.form-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem}
+
+/* Tables */
+.table-container{overflow-x:auto;border-radius:1rem;border:1px solid var(--border-color)}
+.table{width:100%;border-collapse:collapse;font-size:.9rem}
+.table th,.table td{padding:.875rem 1rem;text-align:left;border-bottom:1px solid var(--border-color)}
+.table th{font-weight:600;color:var(--text-secondary);background:var(--bg-secondary);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+.table tbody tr:hover{background:rgba(99,102,241,.05)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:.25rem;padding:.35rem .75rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+.badge-primary{background:rgba(99,102,241,.1);color:var(--primary)}
+.badge-success{background:rgba(16,185,129,.1);color:var(--success)}
+.badge-warning{background:rgba(245,158,11,.1);color:var(--warning)}
+
+/* Toast */
+.toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;max-width:400px}
+.toast{display:flex;align-items:center;gap:1rem;padding:1rem 1.5rem;background:var(--bg-card);border-radius:.75rem;box-shadow:var(--shadow-lg);border-left:4px solid;animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{border-left-color:var(--success)}
+.toast.error{border-left-color:var(--danger)}
+
+/* Loading */
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;opacity:0;visibility:hidden;transition:all .25s}
+.loading-overlay.active{opacity:1;visibility:visible}
+.spinner{width:48px;height:48px;border:4px solid var(--border-color);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Mobile Nav */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);background:var(--bg-card);border-top:1px solid var(--border-color);z-index:999;padding:0 1rem}
+.mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;color:var(--text-muted);text-decoration:none;font-size:.7rem;font-weight:500;transition:all .15s;padding:.5rem}
+.mobile-nav-item i{font-size:1.25rem}
+.mobile-nav-item.active,.mobile-nav-item:hover{color:var(--primary)}
+@media(max-width:768px){.mobile-nav{display:flex}.page-content{padding-bottom:calc(var(--bottom-nav-height) + 1rem)}}
+
+/* Empty State */
+.empty-state{text-align:center;padding:3rem 1.5rem;color:var(--text-muted)}
+.empty-state i{font-size:3rem;margin-bottom:1rem;opacity:.5}
+
+/* Stats Grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:0.75rem}
+  .stat-card{padding:0.875rem}
+  .stat-icon{width:40px;height:40px;font-size:1.1rem}
+  .stat-value{font-size:1.1rem}
+  .stat-label{font-size:0.65rem}
+}
+.stat-card{background:var(--bg-card);border-radius:var(--radius-xl);border:1px solid var(--border-color);padding:1.25rem;display:flex;align-items:center;gap:1rem}
+.stat-icon{width:48px;height:48px;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:white}
+.stat-icon.orange{background:linear-gradient(135deg,#f97316,#f59e0b)}
+.stat-icon.green{background:linear-gradient(135deg,#10b981,#059669)}
+.stat-icon.blue{background:linear-gradient(135deg,#3b82f6,#06b6d4)}
+.stat-icon.purple{background:linear-gradient(135deg,#8b5cf6,#d946ef)}
+.stat-content{flex:1}
+.stat-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:.25rem}
+.stat-value{font-size:1.25rem;font-weight:700;color:var(--text-primary)}
+
+/* Filter Section */
+.filter-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+@media(max-width:768px){
+  .filter-section{grid-template-columns:1fr;gap:0.75rem}
+  .filter-section .btn{width:100%}
+}
+
+/* Chart Container */
+.chart-container{position:relative;height:300px;margin:1rem 0}
+@media(max-width:768px){.chart-container{height:250px}}
+
+/* Rank Badge */
+.rank-badge{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+.rank-1{background:#ffd700;color:#92400e}
+.rank-2{background:#c0c0c0;color:#374151}
+.rank-3{background:#cd7f32;color:white}
+.rank-other{background:var(--bg-secondary);color:var(--text-muted)}
+
+/* Product Info */
+.product-info{display:flex;align-items:center;gap:.75rem}
+.product-img{width:40px;height:40px;border-radius:var(--radius-md);background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:var(--text-muted)}
+.product-name{font-weight:600;color:var(--text-primary)}
+.product-meta{font-size:.75rem;color:var(--text-muted)}
+
+/* ===== TABLET 768px - 1024px ===== */
+@media(max-width:1024px) and (min-width:769px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important}
+  .filter-section{grid-template-columns:repeat(2,1fr)!important}
+  .main-header{padding:0 1rem}
+  .header-title{font-size:1.15rem}
+}
+
+/* ===== SMALL PHONE ≤480px ===== */
+@media(max-width:480px){
+  .header-title{font-size:0.95rem}
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important;gap:0.375rem!important}
+  .stat-card{padding:0.625rem!important}
+  .stat-icon{width:32px!important;height:32px!important;font-size:0.95rem!important}
+  .stat-value{font-size:0.8rem!important}
+  .stat-label{font-size:0.55rem!important}
+  .card-header{padding:0.75rem 1rem!important}
+  .card-title{font-size:0.9rem!important}
+  .product-img{width:32px!important;height:32px!important;font-size:1rem!important}
+  .product-name{font-size:0.85rem!important}
+  .rank-badge{width:28px!important;height:28px!important;font-size:0.75rem!important}
+}
+
+/* Mobile Responsive - FINAL */
+@media(max-width:768px){
+  *{box-sizing:border-box!important}
+  html,body{width:100%!important;max-width:100vw!important;overflow-x:hidden!important;margin:0!important;padding:0!important}
+  .app-container{width:100%!important;max-width:100vw!important}
+  .main-content{width:100%!important;max-width:100vw!important;margin:0!important}
+  .page-content{width:100%!important;max-width:100vw!important;padding:0.5rem!important}
+  
+  /* Stats - 2 kolom rapat */
+  .stats-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:0.5rem!important;width:100%!important;margin:0 0 1rem 0!important}
+  .stat-card{padding:0.75rem!important;gap:0.5rem!important;overflow:hidden!important}
+  .stat-icon{width:36px!important;height:36px!important;flex-shrink:0!important}
+  .stat-content{min-width:0!important;overflow:hidden!important}
+  .stat-label{font-size:0.6rem!important}
+  .stat-value{font-size:0.85rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  
+  /* Filter - vertikal */
+  .filter-section{display:flex!important;flex-direction:column!important;gap:0.5rem!important;width:100%!important}
+  .filter-section > div{width:100%!important}
+  .form-select{width:100%!important}
+  
+  /* Tombol Refresh & Download sejajar */
+  .filter-section > div:last-child{display:flex!important;flex-direction:row!important;gap:0.5rem!important}
+  .filter-section .btn{flex:1!important;width:auto!important}
+  
+    /* Card & Table */
+  .card{width:100%!important}
+  .card-header{padding:0.75rem!important}
+  .table-container{width:100%!important;overflow-x:auto!important}
+  
+  /* Table Ranking jadi Card Style */
+  .table thead{display:none}
+  .table tbody{display:flex;flex-direction:column;gap:0.5rem}
+  .table tbody tr{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:0.5rem;
+    padding:0.75rem;
+    background:var(--bg-card);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-md);
+    align-items:center;
+  }
+  .table tbody tr td{border:none;padding:0}
+  .table tbody tr td:nth-child(1){grid-row:1/3}
+  .table tbody tr td:nth-child(2){grid-column:2}
+  .table tbody tr td:nth-child(3){grid-column:2;text-align:left!important}
+  .table tbody tr td:nth-child(3) strong{font-size:1rem;color:var(--primary)}
+  .table tbody tr td:nth-child(4){grid-column:3;grid-row:1/3;text-align:right!important}
+  .table tbody tr td:nth-child(4) strong{display:block;font-size:0.9rem}
+  .product-info{gap:0.5rem}
+  .product-meta{font-size:0.65rem}
+  
+  /* Custom date range jadi 1 kolom di mobile */
+  #customDateRange{grid-template-columns:1fr!important}
+  
+  /* Filter section vertical rapat */
+  .filter-section{gap:0.5rem!important}
+  .filter-section > div:last-child{flex-direction:column!important}
+  .filter-section .btn{width:100%!important}
+}
+
+    /* ============================================
+   RESPONSIVE FLEXIBLE — PAGE LAPORAN TERLARIS
+   ============================================ */
+
+/* Desktop: sembunyikan burger menu */
+#mobileMenuToggle { display: none; }
+
+/* Tablet (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .filter-section { grid-template-columns: repeat(2, 1fr) !important; }
+  .main-header { padding: 0 1rem !important; }
+  .header-title { font-size: 1.15rem !important; }
+}
+
+/* Mobile (max 768px) */
+@media (max-width: 768px) {
+  html { font-size: 14px !important; }
+  
+  :root {
+    --header-height: 52px;
+    --bottom-nav-height: 58px;
+    --sidebar-width: 260px;
+  }
+  
+  /* Fix container overflow */
+  .app-container { overflow-x: hidden !important; }
+  .main-content { overflow-x: hidden !important; margin-left: 0 !important; }
+  .page-content {
+    padding: 0.75rem !important;
+    padding-bottom: calc(var(--bottom-nav-height) + 0.75rem) !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Header */
+  .main-header {
+    height: var(--header-height) !important;
+    padding: 0 0.75rem !important;
+  }
+  .header-title {
+    font-size: 0.95rem !important;
+    max-width: 150px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  #mobileMenuToggle {
+    display: flex !important;
+    width: 34px !important;
+    height: 34px !important;
+  }
+  
+  /* ===== STATS CARD — Fix overflow ===== */
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    margin: 0 0 1rem 0 !important;
+  }
+  .stat-card {
+    padding: 0.75rem !important;
+    gap: 0.5rem !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .stat-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+    flex-shrink: 0 !important;
+  }
+  .stat-content {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .stat-label {
+    font-size: 0.6rem !important;
+    line-height: 1.2 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stat-value {
+    font-size: 1rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  /* ===== FILTER CARD ===== */
+  .card {
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+  }
+  .card-header {
+    padding: 0.875rem 1rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  .card-title {
+    font-size: 0.95rem !important;
+  }
+  .card-body {
+    padding: 1rem !important;
+  }
+  
+  .filter-section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+  .filter-section > div,
+  .filter-section .form-group {
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    min-width: 0 !important;
+  }
+  .form-label {
+    font-size: 0.8rem !important;
+    margin-bottom: 0.35rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .form-select,
+  .form-input {
+    width: 100% !important;
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.9rem !important;
+    min-width: 0 !important;
+  }
+  
+  /* Tombol Refresh & Download sejajar */
+  .filter-section > div:last-child {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.5rem !important;
+  }
+  .filter-section .btn {
+    flex: 1 !important;
+    width: auto !important;
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Custom date range jadi 1 kolom */
+  #customDateRange {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* ===== TABLE — Scroll horizontal ===== */
+  .table-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+  .table {
+    min-width: 500px !important;
+    font-size: 0.85rem !important;
+  }
+  .table th,
+  .table td {
+    padding: 0.625rem 0.75rem !important;
+    white-space: nowrap !important;
+  }
+  .table th {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Product info compact */
+  .product-info {
+    gap: 0.5rem !important;
+  }
+  .product-img {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+  }
+  .product-name {
+    font-size: 0.85rem !important;
+  }
+  .product-meta {
+    font-size: 0.65rem !important;
+  }
+  
+  /* Rank badge */
+  .rank-badge {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Chart */
+  .chart-container {
+    height: 220px !important;
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+  }
+  .btn-icon {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.9rem !important;
+  }
+  
+  /* Bottom nav */
+  .mobile-nav {
+    height: 58px !important;
+  }
+  .mobile-nav-item {
+    font-size: 0.6rem !important;
+    gap: 0.15rem !important;
+  }
+  .mobile-nav-item i {
+    font-size: 1.15rem !important;
+  }
+}
+
+/* Small phone (max 380px) */
+@media (max-width: 380px) {
+  html { font-size: 13px !important; }
+  
+  .header-title {
+    font-size: 0.85rem !important;
+    max-width: 120px !important;
+  }
+  
+  .stats-grid {
+    gap: 0.4rem !important;
+  }
+  .stat-card {
+    padding: 0.625rem !important;
+  }
+  .stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.9rem !important;
+  }
+  .stat-value {
+    font-size: 0.9rem !important;
+  }
+  
+  .table {
+    min-width: 450px !important;
+  }
+  
+  .card-header .btn-sm {
+    font-size: 0.7rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+  
+  .filter-section .btn {
+    font-size: 0.75rem !important;
+  }
+}
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
+  <!-- Scripts -->
+  <script src="js/firebase-config.js"></script>
+   <script src="js/utils.js?v=3"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon">
+            <i class="fas fa-cash-register"></i>
+          </div>
+          <span class="logo-text">WebPOS</span>
+        </div>
+      </div>
+      
+      <button class="menu-toggle" id="menuToggle">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      
+      <div class="sidebar-search">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <!-- Utama -->
+        <div class="nav-section">
+          <div class="nav-section-title">Utama</div>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="index.html" class="nav-link" data-menu="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-kasir.html" class="nav-link" data-menu="kasir">
+                <i class="fas fa-cash-register"></i>
+                <span>Kasir</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-produk.html" class="nav-link" data-menu="produk">
+                <i class="fas fa-box"></i>
+                <span>Produk</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Transaksi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Transaksi</div>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="page-riwayat.html" class="nav-link" data-menu="riwayat">
+                <i class="fas fa-history"></i>
+                <span>Riwayat Transaksi</span>
+              </a>
+            </li>
+            <li class="nav-item nav-dropdown" data-dropdown>
+              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <i class="fas fa-wallet"></i>
+                  <span>Kas Management</span>
+                </div>
+                <i class="fas fa-chevron-down dropdown-arrow"></i>
+              </div>
+              <ul class="nav-submenu">
+                <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+                <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+                <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+                <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+                <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+                <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+                <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+                <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+              </ul>
+            </li>
+            <li class="nav-item">
+              <a href="page-pembelian.html" class="nav-link" data-menu="pembelian">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Pembelian / Restock</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-hutang.html" class="nav-link" data-menu="hutang">
+                <i class="fas fa-hand-holding-usd"></i>
+                <span>Hutang & Piutang</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Laporan -->
+        <div class="nav-section">
+          <div class="nav-section-title">Laporan</div>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="page-laporan.html" class="nav-link" data-menu="laporan">
+                <i class="fas fa-chart-bar"></i>
+                <span>Laporan Penjualan</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok">
+                <i class="fas fa-boxes"></i>
+                <span>Laporan Stok</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-laporan-terlaris.html" class="nav-link active" data-menu="laporan-terlaris">
+                <i class="fas fa-crown"></i>
+                <span>Barang Terlaris</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Integrasi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Integrasi</div>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram">
+                <i class="fab fa-telegram"></i>
+                <span>Saldo Telegram</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan">
+                <i class="fas fa-users"></i>
+                <span>Data Pelanggan</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Sistem -->
+        <div class="nav-section">
+          <div class="nav-section-title">Sistem</div>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="page-pengguna.html" class="nav-link" data-menu="pengguna">
+                <i class="fas fa-user-cog"></i>
+                <span>Pengguna</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-setting.html" class="nav-link" data-menu="setting">
+                <i class="fas fa-cog"></i>
+                <span>Pengaturan</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-backup.html" class="nav-link" data-menu="backup">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>Backup & Sync</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas">
+                <i class="fas fa-history"></i>
+                <span>Log Aktivitas</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-printer.html" class="nav-link" data-menu="printer">
+                <i class="fas fa-print"></i>
+                <span>Printer & Struk</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="page-reset.html" class="nav-link" data-menu="reset">
+                <i class="fas fa-trash-alt"></i>
+                <span>Reset Data</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile" id="userProfile">
+          <div class="user-avatar" id="userAvatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-role" id="userRole">-</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="main-header">
+        <div class="header-left">
+          <button class="btn-icon" id="mobileMenuToggle" style="display:none;">
+            <i class="fas fa-bars"></i>
+          </button>
+          <h1 class="header-title">Barang Terlaris</h1>
+        </div>
+        
+        <div class="header-actions">
+          <button class="btn-icon" id="btnTheme" title="Toggle Dark Mode">
+            <i class="fas fa-moon"></i>
+          </button>
+          <button class="btn-icon" id="btnLogout" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-content">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon orange">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Total Terjual</div>
+              <div class="stat-value" id="statTotalSold">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Total Pendapatan</div>
+              <div class="stat-value" id="statRevenue">Rp 0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <i class="fas fa-cube"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Produk Terjual</div>
+              <div class="stat-value" id="statActiveProducts">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Best Seller</div>
+              <div class="stat-value" id="statBestSeller" style="font-size: 1rem;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-filter" style="color: var(--primary);"></i>
+              Filter Periode
+            </h3>
+          </div>
+          <div class="card-body">
+            <div class="filter-section">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Rentang Waktu</label>
+                  <select class="form-select" id="filterPeriod" onchange="handlePeriodChange()">
+                  <option value="today">Hari Ini</option>
+                  <option value="yesterday">Kemarin</option>
+                  <option value="week">7 Hari Terakhir</option>
+                  <option value="month" selected>30 Hari Terakhir</option>
+                  <option value="year">Tahun Ini</option>
+                  <option value="custom">Custom Tanggal</option>
+                  <option value="all">Semua Waktu</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Kategori</label>
+                <select class="form-select" id="filterCategory" onchange="loadReport()">
+                  <option value="all">Semua Kategori</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Tampilkan</label>
+                <select class="form-select" id="filterLimit" onchange="loadReport()">
+                  <option value="10">Top 10</option>
+                  <option value="20" selected>Top 20</option>
+                  <option value="50">Top 50</option>
+                </select>
+              </div>
+                            <div class="form-group" style="margin-bottom: 0; display: flex; align-items: flex-end; gap: 0.5rem; flex: 1;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="loadReport()">
+                  <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn btn-outline" onclick="exportReport()" title="Export CSV">
+                  <i class="fas fa-download"></i>
+                </button>
+              </div>
+              
+              <!-- Custom Date Range (muncul saat Custom dipilih) -->
+              <div id="customDateRange" style="display:none; grid-column:1 / -1; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">Dari Tanggal</label>
+                  <input type="date" class="form-input" id="customStartDate" onchange="loadReport()">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">Sampai Tanggal</label>
+                  <input type="date" class="form-input" id="customEndDate" onchange="loadReport()">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking Table -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-list-ol" style="color: var(--success);"></i>
+              Ranking Produk
+            </h3>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="table-container" style="border: none; border-radius: 0;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 60px;">Rank</th>
+                    <th>Produk</th>
+                    <th>Terjual</th>
+                    <th>Pendapatan</th>
+                  </tr>
+                </thead>
+                <tbody id="rankingTableBody">
+                  <tr>
+                    <td colspan="4" class="empty-state">
+                      <i class="fas fa-spinner fa-spin"></i>
+                      <p>Memuat data...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav">
+      <a href="index.html" class="mobile-nav-item">
+        <i class="fas fa-home"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="page-kasir.html" class="mobile-nav-item">
+        <i class="fas fa-cash-register"></i>
+        <span>Kasir</span>
+      </a>
+      <a href="page-produk.html" class="mobile-nav-item">
+        <i class="fas fa-box"></i>
+        <span>Produk</span>
+      </a>
+      <a href="page-riwayat.html" class="mobile-nav-item">
+        <i class="fas fa-history"></i>
+        <span>Riwayat</span>
+      </a>
+      <a href="page-setting.html" class="mobile-nav-item">
+        <i class="fas fa-cog"></i>
+        <span>Setting</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p style="margin-top: 1rem; color: var(--text-secondary);">Loading...</p>
+  </div>
+
+    <script>
+    // State
+    let rankingData = [];
+    let cachedProducts = [];
+    let cachedCategories = [];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      auth.onAuthStateChanged((user) => {
+        if (!user && !Utils.getStorage('webpos_session')) {
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        if (user) Auth.loadUserData(user.uid);
+        initPage();
+      });
+    });
+
+    function preloadData() {
+      return Promise.all([
+        database.ref('products').once('value').then(snap => {
+          const data = snap.val() || {};
+          cachedProducts = Object.entries(data).map(([key, val]) => ({
+            ...val,
+            id: val.id || key,
+            code: val.code || val.kode || key
+          }));
+          Utils.setStorage('webpos_products', cachedProducts);
+          console.log('💾 Produk cached:', cachedProducts.length);
+        }).catch(() => {
+          cachedProducts = Utils.getStorage('webpos_products') || [];
+        }),
+        
+        database.ref('categories').once('value').then(snap => {
+          const data = snap.val() || {};
+          cachedCategories = Object.entries(data).map(([key, val]) => ({
+            ...val,
+            id: val.id || key
+          }));
+          Utils.setStorage('webpos_categories', cachedCategories);
+          console.log('💾 Kategori cached:', cachedCategories.length);
+        }).catch(() => {
+          cachedCategories = Utils.getStorage('webpos_categories') || [];
+        })
+      ]);
+    }
+
+        function initPage() {
+      initTheme();
+      initSidebar();
+      loadUserData();        // ← TAMBAHKAN INI
+      initEventListeners();
+      
+      preloadData().then(() => {
+        loadCategories();
+        loadReport();
+      });
+    }
+      
+    function initTheme() {
+      const btnTheme = document.getElementById('btnTheme');
+      const isDark = localStorage.getItem('webpos_dark_mode') === 'true';
+      
+      if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        btnTheme.innerHTML = '<i class="fas fa-sun"></i>';
+      }
+      
+      btnTheme.addEventListener('click', () => {
+        const currentDark = localStorage.getItem('webpos_dark_mode') === 'true';
+        const newDark = !currentDark;
+        localStorage.setItem('webpos_dark_mode', newDark);
+        document.documentElement.setAttribute('data-theme', newDark ? 'dark' : 'light');
+        btnTheme.innerHTML = newDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      });
+    }
+
+    function initSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const menuToggle = document.getElementById('menuToggle');
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+
+       const activeLink = document.querySelector('.nav-link.active');
+      if (activeLink) {
+        const parentDropdown = activeLink.closest('.nav-dropdown');
+        if (parentDropdown) {
+          parentDropdown.classList.add('open');
+        }
+      }
+      
+      if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          const icon = menuToggle.querySelector('i');
+          icon.style.transform = sidebar.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+      }
+      
+      if (mobileMenuToggle) {
+        mobileMenuToggle.style.display = window.innerWidth <= 1024 ? 'flex' : 'none';
+        mobileMenuToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('mobile-open');
+        });
+      }
+      
+      document.querySelectorAll('[data-dropdown]').forEach(dropdown => {
+        const toggle = dropdown.querySelector('.nav-dropdown-toggle');
+        if (toggle) {
+          toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropdown.classList.toggle('open');
+          });
+        }
+      });
+           document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 1024) {
+          // ⭐ JANGAN tutup sidebar kalau klik di area dropdown
+          const isDropdownClick = e.target.closest('.nav-dropdown') || e.target.closest('.nav-submenu');
+          if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target) && !isDropdownClick) {
+            sidebar.classList.remove('mobile-open');
+          }
+        }
+      });
+        }
+      
+
+            function loadUserData() {
+      const user = Auth.getCurrentUser ? Auth.getCurrentUser() : null;
+      
+      if (user) {
+        document.getElementById('userName').textContent = user.name || user.email || 'Admin';
+        document.getElementById('userRole').textContent = user.role 
+          ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) 
+          : 'Administrator';
+        
+        const avatar = document.getElementById('userAvatar');
+        if (user.name) {
+          const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+          avatar.textContent = initials;
+        } else if (user.email) {
+          avatar.textContent = user.email.charAt(0).toUpperCase();
+        }
+      } else {
+        const savedUser = Utils.getStorage('webpos_session');
+        if (savedUser) {
+          document.getElementById('userName').textContent = savedUser.name || savedUser.email || 'Admin';
+          document.getElementById('userRole').textContent = savedUser.role || 'Administrator';
+          
+          const avatar = document.getElementById('userAvatar');
+          if (savedUser.name) {
+            const initials = savedUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            avatar.textContent = initials;
+          } else {
+            avatar.textContent = (savedUser.email || 'A').charAt(0).toUpperCase();
+          }
+        } else {
+          const storeData = Utils.getStorage('webpos_store') || {};
+          document.getElementById('userName').textContent = storeData.storeName || 'Admin';
+          document.getElementById('userRole').textContent = 'Administrator';
+          document.getElementById('userAvatar').textContent = 'A';
+        }
+      }
+    }
+      
+    function initEventListeners() {
+      document.getElementById('btnLogout').addEventListener('click', () => {
+        Utils.confirm('Apakah Anda yakin ingin logout?', () => {
+          Auth.logout();
+        });
+      });
+    }
+
+    function loadCategories() {
+      const select = document.getElementById('filterCategory');
+      select.innerHTML = '<option value="all">Semua Kategori</option>';
+      
+      const cats = cachedCategories.length > 0 ? cachedCategories : Utils.getStorage('webpos_categories') || [];
+      
+      if (cats.length > 0) {
+        // Urutkan A-Z
+        cats.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        
+        cats.forEach(cat => {
+          if (cat.name) {
+            const option = document.createElement('option');
+            option.value = cat.id || cat.name;
+            option.textContent = cat.name;
+            select.appendChild(option);
+          }
+        });
+        
+        console.log('✅ Kategori loaded:', cats.length);
+      } else {
+        // Fallback: ekstrak dari produk
+        extractFromProducts();
+      }
+    }
+
+    function extractFromProducts() {
+      console.log('🔄 Fallback: Ekstrak kategori dari produk...');
+      const select = document.getElementById('filterCategory');
+      const categoryMap = new Map();
+      
+      const prods = cachedProducts.length > 0 ? cachedProducts : Utils.getStorage('webpos_products') || [];
+      
+      prods.forEach(p => {
+        if (p.categoryId) {
+          const catName = p.categoryName || p.category || `Kategori ${p.categoryId.substr(0,6)}`;
+          categoryMap.set(p.categoryId, { id: p.categoryId, name: catName });
+        } else if (p.category || p.kategori) {
+          const catName = p.category || p.kategori;
+          categoryMap.set(catName, { id: catName, name: catName });
+        }
+      });
+      
+      const cats = Array.from(categoryMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+      
+      cats.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        select.appendChild(option);
+      });
+      
+      console.log('📂 Kategori dari produk:', cats.length);
+    }
+
+    function handlePeriodChange() {
+      const period = document.getElementById('filterPeriod').value;
+      const customDiv = document.getElementById('customDateRange');
+      if (customDiv) {
+        customDiv.style.display = period === 'custom' ? 'grid' : 'none';
+      }
+      loadReport();
+    }
+      
+    function loadReport() {
+      Utils.showLoading();
+      
+      try {
+        const period = document.getElementById('filterPeriod').value;
+        const category = document.getElementById('filterCategory').value;
+        const limit = parseInt(document.getElementById('filterLimit').value);
+        
+        console.log('🔍 Filter:', { period, category, limit });
+        
+        const now = new Date();
+        let startDate, endDate;
+        
+                 if (period === 'today') {
+          startDate = endDate = new Date(now);
+        } else if (period === 'yesterday') {
+          const yest = new Date(now);
+          yest.setDate(yest.getDate() - 1);
+          startDate = new Date(yest);
+          endDate = new Date(yest);
+        } else if (period === 'week') {
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          endDate = new Date(now);
+        } else if (period === 'month') {
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          endDate = new Date(now);
+        } else if (period === 'year') {
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now);
+        } else if (period === 'custom') {
+          const startVal = document.getElementById('customStartDate').value;
+          const endVal = document.getElementById('customEndDate').value;
+          if (!startVal || !endVal) {
+            Utils.showToast('Pilih rentang tanggal custom', 'warning');
+            Utils.hideLoading();
+            return;
+          }
+          startDate = new Date(startVal);
+          endDate = new Date(endVal);
+        } else {
+          startDate = new Date(now.getFullYear() - 1, 0, 1);
+          endDate = new Date(now);
+        }
+        
+        const dates = [];
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          dates.push(d.toISOString().split('T')[0]);
+        }
+        
+        Promise.all(
+          dates.map(dateStr => database.ref(`transactions/${dateStr}`).once('value'))
+        ).then(snapshots => {
+          let allTransactions = [];
+          
+          snapshots.forEach((snap, idx) => {
+            const trans = snap.val() || {};
+            Object.entries(trans).forEach(([id, data]) => {
+              if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'returned') {
+                allTransactions.push({ id, dateKey: dates[idx], ...data });
+              }
+            });
+          });
+          
+          console.log('📊 Total transaksi:', allTransactions.length);
+          
+          const productSales = {};
+          let totalSold = 0;
+          let totalRevenue = 0;
+          
+          allTransactions.forEach(t => {
+            const items = t.items || [];
+            if (!Array.isArray(items)) return;
+            
+            items.forEach(item => {
+              const id = item.productId || item.id;
+              if (!id) return;
+              
+              // FILTER KATEGORI - Versi Sederhana & Robust
+              if (category !== 'all') {
+                let isMatch = false;
+                const selectedCat = category.toLowerCase();
+                
+                // 1. Cek dari item.category (langsung dari transaksi)
+                const itemCat = (item.category || item.kategori || '').toLowerCase();
+                if (itemCat === selectedCat || itemCat.includes(selectedCat)) {
+                  isMatch = true;
+                }
+                
+                // 2. Cek dari produk cache
+                if (!isMatch) {
+                  const product = cachedProducts.find(p => p.id === id || p.code === (item.code || item.kode));
+                  if (product) {
+                    const prodCatId = (product.categoryId || '').toString().toLowerCase();
+                    const prodCat = (product.category || product.kategori || '').toLowerCase();
+                    
+                    if (prodCatId === selectedCat || prodCat === selectedCat || prodCat.includes(selectedCat)) {
+                      isMatch = true;
+                    }
+                  }
+                }
+                
+                // 3. Cek dari nama produk mengandung nama kategori
+                if (!isMatch && item.name) {
+                  const name = item.name.toLowerCase();
+                  if (name.includes(selectedCat.replace('pulsa ', '').replace('voucher ', ''))) {
+                    isMatch = true;
+                  }
+                }
+                
+                if (!isMatch) return; // Skip item ini
+              }
+              
+              // Aggregate data
+              if (!productSales[id]) {
+                productSales[id] = {
+                  id: id,
+                  name: item.name || item.nama || 'Unknown',
+                  code: item.code || item.kode || id,
+                  category: item.category || item.kategori || '-',
+                  quantity: 0,
+                  revenue: 0
+                };
+              }
+              
+              const qty = parseInt(item.qty || item.quantity || 0);
+              const price = parseFloat(item.price || item.harga || 0);
+              const subtotal = item.subtotal || (qty * price);
+              
+              productSales[id].quantity += qty;
+              productSales[id].revenue += subtotal;
+              totalSold += qty;
+              totalRevenue += subtotal;
+            });
+          });
+          
+          rankingData = Object.values(productSales)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, limit);
+          
+          console.log('🏆 Ranking:', rankingData.length, 'items');
+          
+          document.getElementById('statTotalSold').textContent = totalSold.toLocaleString('id-ID');
+          document.getElementById('statRevenue').textContent = 'Rp ' + totalRevenue.toLocaleString('id-ID');
+          document.getElementById('statActiveProducts').textContent = Object.keys(productSales).length;
+          document.getElementById('statBestSeller').textContent = rankingData[0]?.name?.substring(0, 12) + (rankingData[0]?.name?.length > 12 ? '...' : '') || '-';
+          
+          renderTable(rankingData);
+          
+          if (rankingData.length === 0) {
+            Utils.showToast('Tidak ada data untuk filter ini', 'warning');
+          }
+          
+          Utils.hideLoading();
+          
+        }).catch(error => {
+          console.error('❌ Error Firebase:', error);
+          Utils.showToast('Gagal memuat data', 'error');
+          Utils.hideLoading();
+        });
+        
+      } catch (error) {
+        console.error('❌ Error:', error);
+        Utils.showToast('Error', 'error');
+        Utils.hideLoading();
+      }
+    }
+    
+    function renderTable(data) {
+      const tbody = document.getElementById('rankingTableBody');
+      
+      if (data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>Tidak ada data penjualan untuk periode ini</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      tbody.innerHTML = data.map((item, index) => {
+        const rank = index + 1;
+        const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+        
+        return `
+          <tr>
+            <td><div class="rank-badge ${rankClass}">${rank}</div></td>
+            <td>
+              <div class="product-info">
+                <div class="product-img"><i class="fas fa-box"></i></div>
+                <div>
+                  <div class="product-name">${item.name}</div>
+                  <div class="product-meta">${item.code} • ${item.category}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <strong>${item.quantity.toLocaleString('id-ID')}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">unit</div>
+            </td>
+            <td>
+              <strong>Rp ${item.revenue.toLocaleString('id-ID')}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">pendapatan</div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    function exportReport() {
+      const period = document.getElementById('filterPeriod').value;
+      const csvContent = [
+        ['Rank', 'Nama Produk', 'Kode', 'Kategori', 'Terjual', 'Pendapatan'],
+        ...rankingData.map((item, index) => [
+          index + 1,
+          `"${item.name}"`,
+          item.code,
+          item.category,
+          item.quantity,
+          item.revenue
+        ])
+      ].map(row => row.join(',')).join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Laporan_Terlaris_${period}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      
+      Utils.showToast('Laporan berhasil diexport', 'success');
+    }
+
+    window.loadReport = loadReport;
+    window.exportReport = exportReport;
+  </script>
+</body>
+</html>
