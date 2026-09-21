@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <title>WebPOS - Laporan Stok</title>
+
+  <!-- SKRIP TEMA GLOBAL -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff;
+      --accent: #0284c7; --success: #059669; --success-light: #ecfdf5;
+      --warning: #d97706; --warning-light: #fffbeb; --danger: #dc2626; --danger-light: #fef2f2;
+      --bg-base: #f8fafc; --bg-surface: #ffffff; --bg-subtle: #f1f5f9; --border: #e2e8f0;
+      --text-main: #0f172a; --text-muted: #64748b; --text-sub: #475569;
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
+    }
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme="dark"] {
+      --bg-base: #090d16; --bg-surface: #111827; --bg-subtle: #1e293b; --border: #2e384d;
+      --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+    .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
+    .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+    
+    /* SIDEBAR */
+    .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.25s ease, width 0.25s ease; }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
+    .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .sidebar.collapsed .logo-text { display: none; }
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input { width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none; }
+    .sidebar.collapsed .sidebar-search { display: none; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); padding: 0.35rem 0.75rem; margin-bottom: 0.2rem; }
+    .sidebar.collapsed .nav-section-title { display: none; }
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); color: var(--text-sub); text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer; }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; }
+    .sidebar.collapsed .nav-link span { display: none; }
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
+    .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN CONTENT & HEADER */
+    .main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden; }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; width: 100vw !important; } }
+    .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; position: sticky; top: 0; z-index: 90; width: 100%; box-sizing: border-box; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
+    .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; }
+
+    /* STATS & REPORT STYLES */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .stat-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); }
+    .stat-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; flex-shrink: 0; }
+    .stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .stat-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-icon.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stat-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.2rem; }
+    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-main); }
+
+    .card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
+    .card-body { padding: 1.25rem; }
+
+    .toolbar { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .search-box { flex: 1; min-width: 240px; position: relative; }
+    .search-box i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+    .search-box input { width: 100%; padding: 0.65rem 0.85rem 0.65rem 2.25rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; }
+    .search-box input:focus { border-color: var(--primary); background: var(--bg-surface); }
+
+    .table-container { width: 100%; overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .data-table th, .data-table td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .data-table th { font-weight: 700; color: var(--text-sub); background: var(--bg-subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .data-table tbody tr:hover { background: var(--bg-subtle); }
+
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+    .badge-success { background: var(--success-light); color: var(--success); }
+    .badge-warning { background: var(--warning-light); color: var(--warning); }
+    .badge-danger { background: var(--danger-light); color: var(--danger); }
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-sub); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+
+    .form-select { padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.88rem; outline: none; cursor: pointer; }
+    .form-select:focus { border-color: var(--primary); background: var(--bg-surface); }
+
+    .action-btns { display: flex; gap: 0.35rem; justify-content: center; }
+    .btn-action { width: 32px; height: 32px; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+    .btn-edit { background: var(--primary-light); color: var(--primary); }
+    .btn-edit:hover { background: var(--primary); color: white; }
+    .btn-history { background: rgba(2, 132, 199, 0.1); color: var(--accent); }
+    .btn-history:hover { background: var(--accent); color: white; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--bg-surface); border-radius: var(--radius-2xl); width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+    .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+    .modal-close { width: 36px; height: 36px; border: none; border-radius: 10px; background: var(--bg-subtle); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .modal-close:hover { background: var(--danger-light); color: var(--danger); }
+    .modal-body { padding: 1.5rem; max-height: 60vh; overflow-y: auto; }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
+
+    .adjustment-item { padding: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 0.65rem; background: var(--bg-subtle); }
+    .adjustment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.82rem; }
+    .type-in { color: var(--success); font-weight: 700; }
+    .type-out { color: var(--danger); font-weight: 700; }
+    .type-adjust { color: var(--warning); font-weight: 700; }
+
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
+    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
+    .mobile-nav-item.active { color: var(--primary); }
+    .mobile-nav-item i { font-size: 1.1rem; }
+    @media (max-width: 1024px) {
+      .mobile-nav { display: flex; }
+      .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
+      .d-md-none { display: flex !important; }
+    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+  </style>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- SIDEBAR LENGKAP -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+          <span class="logo-text">WebPOS</span>
+        </div>
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
+      </div>
+
+      <div class="sidebar-search">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- Utama -->
+        <div class="nav-section">
+          <div class="nav-section-title">Utama</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+            <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+            <li class="nav-item"><a href="page-produk.html" class="nav-link" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Transaksi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Transaksi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+            <li class="nav-item nav-dropdown" id="dropdownKas">
+              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <i class="fas fa-wallet"></i><span>Kas Management</span>
+                </div>
+                <i class="fas fa-chevron-down dropdown-arrow"></i>
+              </div>
+              <ul class="nav-submenu">
+                <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+                <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+                <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+                <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+                <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+                <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+                <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+                <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+              </ul>
+            </li>
+            <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+            <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Laporan -->
+        <div class="nav-section">
+          <div class="nav-section-title">Laporan</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+            <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link active" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+            <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Integrasi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Integrasi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+            <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Penggajian -->
+        <div class="nav-section">
+          <div class="nav-section-title">Penggajian</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Sistem -->
+        <div class="nav-section">
+          <div class="nav-section-title">Sistem</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+            <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+            <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Memuat...</div>
+            <div class="user-role" id="userRole">-</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <h1 class="header-title">Laporan Stok Gudang</h1>
+        </div>
+        <div class="header-actions">
+          <button class="btn-icon" id="btnExport" title="Export CSV"><i class="fas fa-file-csv"></i></button>
+          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-boxes"></i></div>
+            <div>
+              <div class="stat-label">Total Produk</div>
+              <div class="stat-value" id="statTotal">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div>
+              <div class="stat-label">Stok Aman</div>
+              <div class="stat-value" id="statAman">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+              <div class="stat-label">Stok Menipis (≤5)</div>
+              <div class="stat-value" id="statRendah">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+            <div>
+              <div class="stat-label">Stok Habis (0)</div>
+              <div class="stat-value" id="statHabis">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-warehouse" style="color: var(--primary);"></i> Inventori & Stok Produk</h3>
+          </div>
+          <div class="card-body">
+            <div class="toolbar">
+              <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchProduct" placeholder="Cari berdasarkan nama atau kode produk...">
+              </div>
+              <select class="form-select" id="filterCategory">
+                <option value="">Semua Kategori</option>
+              </select>
+              <select class="form-select" id="filterStatus">
+                <option value="">Semua Status</option>
+                <option value="aman">Aman (>5)</option>
+                <option value="rendah">Menipis (≤5)</option>
+                <option value="habis">Habis (0)</option>
+              </select>
+            </div>
+
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nama Produk</th>
+                    <th>Kategori</th>
+                    <th style="text-align: center;">Stok</th>
+                    <th>Satuan</th>
+                    <th>Status</th>
+                    <th style="text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                  <tr>
+                    <td colspan="6" class="empty-state">
+                      <i class="fas fa-spinner fa-spin"></i>
+                      <p>Memuat data inventori...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="mobile-nav">
+      <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+      <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+      <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
+      <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+      <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+    </nav>
+  </div>
+
+  <!-- Modal Adjustment Stok -->
+  <div class="modal-overlay" id="adjustModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-edit" style="color: var(--primary);"></i> Penyesuaian Stok</h3>
+        <button class="modal-close" onclick="closeAdjustModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="adjProductId">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Nama Produk</label>
+          <input type="text" class="form-input" id="adjProductName" readonly style="background: var(--bg-subtle);">
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Stok Saat Ini</label>
+          <input type="text" class="form-input" id="adjCurrentStock" readonly style="background: var(--bg-subtle);">
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Tipe Penyesuaian *</label>
+          <select class="form-select" id="adjType" style="width: 100%;">
+            <option value="in">Stok Masuk (Penambahan)</option>
+            <option value="out">Stok Keluar (Pengurangan)</option>
+            <option value="set">Set Stok (Ganti Nilai Langsung)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Jumlah *</label>
+          <input type="number" class="form-input" id="adjQty" placeholder="0" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catatan</label>
+          <input type="text" class="form-input" id="adjNote" placeholder="Contoh: Stok opname / Barang rusak">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAdjustModal()">Batal</button>
+        <button class="btn btn-primary" onclick="submitAdjustment()">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal History Stok -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Perubahan Stok</h3>
+        <button class="modal-close" onclick="closeHistoryModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="historyModalBody">
+        <div class="empty-state">Memuat riwayat...</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeHistoryModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+  </div>
+
+  <div class="toast-box" id="toastContainer"></div>
+
+  <script>
+    (function() {
+      "use strict";
+
+      let productsList = [];
+      let categoriesMap = {};
+
+      async function syncStoreBrandName() {
+        const logoEl = document.querySelector(".logo-text");
+        if (!logoEl) return;
+        const cached = localStorage.getItem("webpos_store_name");
+        if (cached) logoEl.textContent = cached;
+        try {
+          const doc = await db.collection("settings").doc("store").get();
+          if (doc.exists && doc.data().name) {
+            logoEl.textContent = doc.data().name;
+            localStorage.setItem("webpos_store_name", doc.data().name);
+          }
+        } catch(e) {}
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        syncStoreBrandName();
+
+        auth.onAuthStateChanged(async (user) => {
+          if (!user) {
+            window.location.href = 'login.html';
+            return;
+          }
+
+          let userData = { name: user.email, role: 'admin' };
+          try {
+            const doc = await db.collection("users").doc(user.uid).get();
+            if (doc.exists) userData = doc.data();
+          } catch(e) {}
+
+          const dName = userData.name || userData.username || user.email.split('@')[0];
+          document.getElementById('userName').textContent = dName;
+          document.getElementById('userRole').textContent = (userData.role || 'Admin').toUpperCase();
+          const avatar = document.getElementById('userAvatar');
+          if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
+
+          setupSidebarEvents();
+          initLaporanStok();
+        });
+      });
+
+      function setupSidebarEvents() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const menuToggle = document.getElementById('menuToggle');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+
+        if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle('collapsed');
+        if (mobileToggle) {
+          mobileToggle.onclick = (e) => {
+            e.stopPropagation();
+            sidebar.classList.add('mobile-open');
+            if (backdrop) backdrop.classList.add('active');
+          };
+        }
+        if (backdrop) {
+          backdrop.onclick = () => {
+            sidebar.classList.remove('mobile-open');
+            if (backdrop) backdrop.classList.remove('active');
+          };
+        }
+
+        document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+          toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const parent = this.closest('.nav-dropdown');
+            document.querySelectorAll('.nav-dropdown.open').forEach(openDropdown => {
+              if (openDropdown !== parent) openDropdown.classList.remove('open');
+            });
+            parent.classList.toggle('open');
+          });
+        });
+
+        const logoutBtn = document.getElementById('btnLogout');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', () => {
+            Utils.confirm('Yakin ingin logout?', () => {
+              auth.signOut().then(() => window.location.href = 'login.html');
+            });
+          });
+        }
+      }
+
+      async function initLaporanStok() {
+        await loadCategories();
+        await loadProducts();
+
+        document.getElementById('searchProduct').addEventListener('input', filterAndRenderTable);
+        document.getElementById('filterCategory').addEventListener('change', filterAndRenderTable);
+        document.getElementById('filterStatus').addEventListener('change', filterAndRenderTable);
+        document.getElementById('btnExport').onclick = exportCSV;
+      }
+
+      async function loadCategories() {
+        try {
+          const snap = await db.collection("categories").get();
+          categoriesMap = {};
+          let html = '<option value="">Semua Kategori</option>';
+          snap.forEach(doc => {
+            const data = doc.data();
+            categoriesMap[doc.id] = data.name;
+            html += `<option value="${doc.id}">${data.name}</option>`;
+          });
+          document.getElementById('filterCategory').innerHTML = html;
+        } catch(e) {
+          console.error("Error loading categories:", e);
+        }
+      }
+
+      async function loadProducts() {
+        Utils.showLoading();
+        try {
+          const snap = await db.collection("products").get();
+          productsList = [];
+          snap.forEach(doc => {
+            productsList.push({ id: doc.id, ...doc.data() });
+          });
+          updateStats(productsList);
+          renderTable(productsList);
+        } catch(e) {
+          console.error("Error loading products:", e);
+          Utils.showToast('Gagal memuat data produk', 'error');
+        } finally {
+          Utils.hideLoading();
+        }
+      }
+
+      function updateStats(products) {
+        let total = products.length;
+        let aman = 0;
+        let rendah = 0;
+        let habis = 0;
+
+        products.forEach(p => {
+          const stock = p.stock || 0;
+          if (stock === 0) habis++;
+          else if (stock <= 5) rendah++;
+          else aman++;
+        });
+
+        document.getElementById('statTotal').textContent = total.toLocaleString('id-ID');
+        document.getElementById('statAman').textContent = aman.toLocaleString('id-ID');
+        document.getElementById('statRendah').textContent = rendah.toLocaleString('id-ID');
+        document.getElementById('statHabis').textContent = habis.toLocaleString('id-ID');
+      }
+
+      function renderTable(products) {
+        const tbody = document.getElementById('stockTableBody');
+        if (products.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="empty-state">
+                <i class="fas fa-boxes"></i>
+                <p>Tidak ada produk ditemukan</p>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = products.map(p => {
+          const stock = p.stock || 0;
+          let badge = '';
+          if (stock === 0) badge = '<span class="badge badge-danger">Habis</span>';
+          else if (stock <= 5) badge = '<span class="badge badge-warning">Menipis</span>';
+          else badge = '<span class="badge badge-success">Aman</span>';
+
+          const catName = categoriesMap[p.categoryId] || 'Umum';
+
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 600;">${p.name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Kode: ${p.code || '-'}</div>
+              </td>
+              <td>${catName}</td>
+              <td style="text-align: center; font-weight: 700;">${stock.toLocaleString('id-ID')}</td>
+              <td>${p.unit || 'pcs'}</td>
+              <td>${badge}</td>
+              <td style="text-align: center;">
+                <div class="action-btns">
+                  <button class="btn-action btn-edit" onclick="openAdjustModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${stock})" title="Sesuaikan Stok"><i class="fas fa-edit"></i></button>
+                  <button class="btn-action btn-history" onclick="openHistoryModal('${p.id}', '${p.name.replace(/'/g, "\\'")}')" title="Riwayat Stok"><i class="fas fa-history"></i></button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      function filterAndRenderTable() {
+        const query = document.getElementById('searchProduct').value.toLowerCase().trim();
+        const catId = document.getElementById('filterCategory').value;
+        const status = document.getElementById('filterStatus').value;
+
+        const filtered = productsList.filter(p => {
+          const matchQuery = !query || p.name.toLowerCase().includes(query) || (p.code && p.code.toLowerCase().includes(query));
+          const matchCat = !catId || p.categoryId === catId;
+          
+          let matchStatus = true;
+          const stock = p.stock || 0;
+          if (status === 'aman') matchStatus = stock > 5;
+          else if (status === 'rendah') matchStatus = stock > 0 && stock <= 5;
+          else if (status === 'habis') matchStatus = stock === 0;
+
+          return matchQuery && matchCat && matchStatus;
+        });
+
+        renderTable(filtered);
+      }
+
+      window.openAdjustModal = function(id, name, currentStock) {
+        document.getElementById('adjProductId').value = id;
+        document.getElementById('adjProductName').value = name;
+        document.getElementById('adjCurrentStock').value = currentStock;
+        document.getElementById('adjType').value = 'in';
+        document.getElementById('adjQty').value = 1;
+        document.getElementById('adjNote').value = '';
+        document.getElementById('adjustModal').classList.add('active');
+      };
+
+      window.closeAdjustModal = function() {
+        document.getElementById('adjustModal').classList.remove('active');
+      };
+
+      window.submitAdjustment = async function() {
+        const id = document.getElementById('adjProductId').value;
+        const type = document.getElementById('adjType').value;
+        const qty = parseInt(document.getElementById('adjQty').value) || 0;
+        const note = document.getElementById('adjNote').value.trim() || 'Penyesuaian manual';
+        const currentStock = parseInt(document.getElementById('adjCurrentStock').value) || 0;
+
+        if (qty <= 0) {
+          Utils.showToast('Jumlah penyesuaian harus lebih dari 0', 'warning');
+          return;
+        }
+
+        let newStock = currentStock;
+        if (type === 'in') newStock += qty;
+        else if (type === 'out') newStock = Math.max(0, currentStock - qty);
+        else if (type === 'set') newStock = qty;
+
+        Utils.showLoading('Menyimpan penyesuaian stok...');
+        try {
+          const user = auth.currentUser;
+          const prodRef = db.collection("products").doc(id);
+          
+          await prodRef.update({
+            stock: newStock,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // Simpan log riwayat stok
+          await db.collection("stock_history").add({
+            productId: id,
+            productName: document.getElementById('adjProductName').value,
+            type,
+            qty,
+            previousStock: currentStock,
+            newStock,
+            note,
+            userId: user ? user.uid : '',
+            userName: document.getElementById('userName').textContent,
+            timestamp: Date.now(),
+            date: Utils.getTodayString()
+          });
+
+          Utils.hideLoading();
+          Utils.showToast('Stok berhasil diperbarui!', 'success');
+          closeAdjustModal();
+          loadProducts();
+        } catch (e) {
+          Utils.hideLoading();
+          console.error("Error updating stock:", e);
+          Utils.showToast('Gagal memperbarui stok: ' + e.message, 'error');
+        }
+      };
+
+      window.openHistoryModal = async function(id, name) {
+        const body = document.getElementById('historyModalBody');
+        body.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Memuat riwayat...</p></div>';
+        document.getElementById('historyModal').classList.add('active');
+
+        try {
+          const snap = await db.collection("stock_history").where("productId", "==", id).get();
+          let history = [];
+          snap.forEach(doc => history.push(doc.data()));
+
+          if (history.length === 0) {
+            body.innerHTML = `<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada riwayat perubahan stok untuk <b>${name}</b></p></div>`;
+            return;
+          }
+
+          history.sort((a, b) => b.timestamp - a.timestamp);
+
+          body.innerHTML = history.map(h => {
+            const dateStr = new Date(h.timestamp).toLocaleString('id-ID');
+            let typeLabel = h.type === 'in' ? '<span class="type-in">Masuk (+' + h.qty + ')</span>' : h.type === 'out' ? '<span class="type-out">Keluar (-' + h.qty + ')</span>' : '<span class="type-adjust">Set (' + h.qty + ')</span>';
+            return `
+              <div class="adjustment-item">
+                <div class="adjustment-header">
+                  <span><b>${dateStr}</b></span>
+                  <span>${typeLabel}</span>
+                </div>
+                <div style="font-size: 0.85rem; margin-top: 2px;">Stok: ${h.previousStock} &rarr; <b>${h.newStock}</b></div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Catatan: ${h.note} (Oleh: ${h.userName || 'Admin'})</div>
+              </div>
+            `;
+          }).join('');
+        } catch (e) {
+          console.error("Error loading history:", e);
+          body.innerHTML = `<div class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat riwayat</p></div>`;
+        }
+      };
+
+      window.closeHistoryModal = function() {
+        document.getElementById('historyModal').classList.remove('active');
+      };
+
+      function exportCSV() {
+        if (!productsList || productsList.length === 0) {
+          Utils.showToast('Tidak ada data untuk diexport', 'warning');
+          return;
+        }
+
+        let csv = 'Kode,Nama Produk,Kategori,Stok,Satuan\n';
+        productsList.forEach(p => {
+          const catName = categoriesMap[p.categoryId] || 'Umum';
+          csv += `"${p.code || ''}","${p.name}","${catName}",${p.stock || 0},"${p.unit || 'pcs'}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `laporan_stok_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        Utils.showToast('Laporan stok berhasil diexport ke CSV', 'success');
+      }
+    })();
+  </script>
+</body>
+</html>
