@@ -16,7 +16,7 @@
     })();
   </script>
 
-  <!-- Font Awesome -->
+  <!-- Font Awesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,7 +57,7 @@
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
-      --bottom-nav-height: 60px;
+      --bottom-nav-height: 65px;
     }
 
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
@@ -89,7 +89,7 @@
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
     .sidebar-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
       z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease;
     }
@@ -222,7 +222,7 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* REDESIGNED KAS STATS & CARDS */
+    /* KAS STATS & CARDS */
     .kas-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -256,7 +256,7 @@
     .kas-stat-value.primary { color: var(--primary); }
     .kas-stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
 
-    /* REDESIGNED QUICK ACTIONS */
+    /* QUICK ACTIONS */
     .kas-actions { display: flex; gap: 0.85rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
     .kas-action-btn {
       flex: 1; min-width: 140px; display: flex; align-items: center; justify-content: center; gap: 0.6rem;
@@ -296,7 +296,7 @@
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border);
-      z-index: 99; padding: 0 0.5rem;
+      z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around;
     }
     .mobile-nav-item {
       flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -358,7 +358,7 @@
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
             <li class="nav-item nav-dropdown open" id="dropdownKas">
-              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div class="nav-link nav-dropdown-toggle active" data-menu="kas">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
                   <i class="fas fa-wallet"></i><span>Kas Management</span>
                 </div>
@@ -439,7 +439,7 @@
       </header>
 
       <div class="page-content">
-        <!-- Kas Stats (Redesigned with Icons) -->
+        <!-- Kas Stats -->
         <div class="kas-stats">
           <div class="kas-stat">
             <div class="kas-stat-icon primary"><i class="fas fa-wallet"></i></div>
@@ -464,7 +464,7 @@
           </div>
         </div>
 
-        <!-- Quick Actions (Modernized Buttons) -->
+        <!-- Quick Actions -->
         <div class="kas-actions">
           <button class="kas-action-btn success" onclick="goToTopup()">
             <i class="fas fa-arrow-up"></i> Top Up
@@ -543,7 +543,7 @@
       }
 
       window.goToTopup = function() {
-        localStorage.removeItem('fromKasir');
+        localStorage.setItem('fromKasir', 'true');
         window.location.href = 'page-kas-topup.html';
       };
 
@@ -559,9 +559,7 @@
           let userData = { name: user.email, role: 'kasir' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) {
-              userData = doc.data();
-            }
+            if (doc.exists) userData = doc.data();
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -596,16 +594,6 @@
           };
         }
 
-        document.querySelectorAll('.nav-link').forEach(link => {
-          link.addEventListener('click', () => {
-            if (link.classList.contains('nav-dropdown-toggle')) return;
-            if (window.innerWidth <= 1024) {
-              sidebar.classList.remove('mobile-open');
-              if (backdrop) backdrop.classList.remove('active');
-            }
-          });
-        });
-
         document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
           toggle.addEventListener('click', function(e) {
             e.preventDefault();
@@ -633,26 +621,54 @@
           const today = Utils.getTodayString();
           const snapshot = await db.collection("transactions").where("date", "==", today).get();
           
-          let kasMasuk = 0;
-          let kasKeluar = 0;
+          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, topupAdmin = 0, tarik = 0, tarikAdmin = 0;
           let historyList = [];
 
           snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.status === 'cancelled') return;
+            if (data.status === 'cancelled' || data.status === 'voided') return;
 
-            if (data.type === 'topup' || data.type === 'kas_masuk') {
-              kasMasuk += data.total || data.amount || 0;
-            } else if (data.type === 'tarik' || data.type === 'kas_keluar') {
-              kasKeluar += data.total || data.amount || 0;
+            switch (data.type) {
+              case 'penjualan':
+                penjualan += data.paymentMethod === 'hutang'
+                  ? (data.paymentAmount || 0)
+                  : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                break;
+              case 'kas_masuk':
+                if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
+                  kasMasuk += data.amount || 0;
+                }
+                break;
+              case 'kas_keluar':
+                kasKeluar += data.amount || data.total || 0;
+                break;
+              case 'topup':
+                topup += data.amount || 0;
+                topupAdmin += data.adminFee || 0;
+                break;
+              case 'tarik':
+                tarik += data.amount || 0;
+                tarikAdmin += data.adminFee || 0;
+                break;
             }
 
             historyList.push({ id: doc.id, ...data });
           });
 
-          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(kasMasuk);
-          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(kasKeluar);
-          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasMasuk - kasKeluar);
+          // Ambil modal harian
+          const modalSnap = await db.collection("modal").where("date", "==", today).get();
+          let modalAwal = 0;
+          modalSnap.forEach(mDoc => {
+            modalAwal += mDoc.data().amount || 0;
+          });
+
+          const topupKasFisik = topup + topupAdmin;
+          const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
+          const kasDitangan = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
+
+          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(kasMasuk + penjualan + topupKasFisik);
+          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(kasKeluar + tarikKasFisik);
+          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasDitangan);
 
           const tbody = document.getElementById('kasHistory');
           if (historyList.length === 0) {
@@ -664,7 +680,7 @@
               </tr>
             `;
           } else {
-            historyList.sort((a, b) => (b.timestamp?.toMillis?.() || Date.now()) - (a.timestamp?.toMillis?.() || Date.now()));
+            historyList.sort((a, b) => (b.timestamp?.toMillis?.() || b.timestamp || Date.now()) - (a.timestamp?.toMillis?.() || a.timestamp || Date.now()));
             tbody.innerHTML = historyList.map(t => {
               const isIncome = ['topup', 'kas_masuk', 'penjualan'].includes(t.type);
               const typeLabels = {
@@ -676,8 +692,9 @@
               };
 
               let timeStr = '-';
-              if (t.timestamp && t.timestamp.toDate) {
-                timeStr = t.timestamp.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+              if (t.timestamp) {
+                const timeVal = typeof t.timestamp === 'object' && t.timestamp.toDate ? t.timestamp.toDate() : new Date(t.timestamp);
+                timeStr = timeVal.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
               }
 
               return `
