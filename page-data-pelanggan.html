@@ -137,7 +137,6 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-    .btn-danger { background: var(--danger); color: white; }
     .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
@@ -292,7 +291,7 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Data Pelanggan (Google Sheets)</h1>
+          <h1 class="header-title">Data Pelanggan</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon" id="btnGasSettings" title="Pengaturan Koneksi Google Sheets"><i class="fas fa-bolt" id="gasIcon"></i></button>
@@ -340,10 +339,10 @@
         <!-- Table Card -->
         <div class="data-card">
           <div class="data-card-header">
-            <span class="data-card-title">Daftar Pelanggan Google Sheets</span>
+            <span class="data-card-title">Daftar Pelanggan Tersimpan</span>
             <div class="card-actions">
               <button class="btn btn-outline btn-sm" id="btnRefresh" title="Refresh Data">
-                <i class="fas fa-sync-alt"></i> Refresh Cepat
+                <i class="fas fa-sync-alt"></i> Refresh
               </button>
             </div>
           </div>
@@ -389,7 +388,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fas fa-bolt" style="color:var(--warning);"></i> Konfigurasi Google Sheets</h3>
-        <button class="modal-close" id="closeGasModal"><i class="fas fa-times"></i></button>
+        <button class="modal-close" onclick="closeGasModal()"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -402,8 +401,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" id="closeGasModal2">Batal</button>
-        <button class="btn btn-primary" id="btnSaveGas"><i class="fas fa-save"></i> Simpan Koneksi</button>
+        <button class="btn btn-outline" onclick="closeGasModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveGasConfig()"><i class="fas fa-save"></i> Simpan Koneksi</button>
       </div>
     </div>
   </div>
@@ -443,8 +442,7 @@
     (function() {
       "use strict";
 
-      let allData = [];
-      let cachedTransactions = [];
+      let allCustomers = [];
       let currentGasUrl = localStorage.getItem("webpos_gas_url") || "";
       let currentSheetId = localStorage.getItem("webpos_gas_sheet_id") || "";
 
@@ -532,22 +530,20 @@
       }
 
       async function initDataPelanggan() {
-        // Load instan dari cache lokal jika ada agar muat kilat
+        // Load cache lokal dulu agar kilat
         const cached = localStorage.getItem("webpos_customers_gas_cache");
         if (cached) {
           try {
-            allData = JSON.parse(cached);
-            renderTable(allData);
-            updateStats(allData, []);
+            allCustomers = JSON.parse(cached);
+            renderTable(allCustomers);
+            updateStats(allCustomers, [], 0);
           } catch(e) {}
         }
 
         if (currentGasUrl && currentSheetId) {
           updateGasIcon(true);
-          loadDataFromSheet();
+          await loadDataFromSheet();
         } else {
-          updateGasIcon(false);
-          // Coba ambil config dari Firestore settings jika ada
           try {
             const doc = await db.collection("settings").doc("gas_config").get();
             if (doc.exists) {
@@ -556,25 +552,22 @@
               currentSheetId = cfg.sheetId || "";
               localStorage.setItem("webpos_gas_url", currentGasUrl);
               localStorage.setItem("webpos_gas_sheet_id", currentSheetId);
-              if (currentGasUrl && currentSheetId) {
-                updateGasIcon(true);
-                loadDataFromSheet();
-              } else {
-                setTimeout(openGasModal, 500);
-              }
-            } else {
-              setTimeout(openGasModal, 500);
             }
-          } catch(e) {
-            setTimeout(openGasModal, 500);
+          } catch(e) {}
+
+          if (currentGasUrl && currentSheetId) {
+            updateGasIcon(true);
+            await loadDataFromSheet();
+          } else {
+            setTimeout(openGasModal, 400);
           }
         }
 
         document.getElementById('searchInput').addEventListener('input', filterTable);
         document.getElementById('btnAdd').onclick = () => openCustomerModal();
         document.getElementById('btnRefresh').onclick = () => loadDataFromSheet(true);
-        document.getElementById('btnSaveCustomer').onclick = saveCustomer;
         document.getElementById('btnGasSettings').onclick = openGasModal;
+        document.getElementById('btnSaveCustomer').onclick = saveCustomer;
         document.getElementById('closeGasModal').onclick = closeGasModal;
         document.getElementById('closeGasModal2').onclick = closeGasModal;
         document.getElementById('btnSaveGas').onclick = saveGasConfig;
@@ -598,7 +591,7 @@
       async function loadDataFromSheet(showSpinner = false) {
         if (showSpinner) Utils.showLoading();
         try {
-          // Ambil transaksi Firestore untuk hitung total belanja
+          // Ambil transaksi dari Firestore untuk hitung total belanja
           const transSnap = await db.collection("transactions").get();
           const customerSpending = {};
           let totalTransCount = 0;
@@ -616,9 +609,9 @@
             }
           });
 
-          // Ambil data dari Google Sheets
+          // Ambil dari Google Sheets
           const res = await gasRequest({ action: 'getData' });
-          allData = (res.data || []).map(r => {
+          allCustomers = (res.data || []).map(r => {
             const nameKey = (r.nama || '').trim().toLowerCase();
             return {
               ...r,
@@ -626,10 +619,10 @@
             };
           });
 
-          localStorage.setItem("webpos_customers_gas_cache", JSON.stringify(allData));
+          localStorage.setItem("webpos_customers_gas_cache", JSON.stringify(allCustomers));
 
-          renderTable(allData);
-          updateStats(allData, totalTransCount, totalSpentAll);
+          renderTable(allCustomers);
+          updateStats(allCustomers, totalTransCount, totalSpentAll);
           if (showSpinner) Utils.showToast('Data berhasil disinkronkan', 'success');
         } catch(e) {
           console.error("Error loading sheet data:", e);
@@ -639,22 +632,21 @@
         }
       }
 
-      function updateStats(data, transCount = 0, spentAll = 0) {
-        document.getElementById('statTotal').textContent = data.length.toLocaleString('id-ID');
+      function updateStats(customers, transCount = 0, spentAll = 0) {
+        document.getElementById('statTotal').textContent = customers.length.toLocaleString('id-ID');
         document.getElementById('statTotalTransaksi').textContent = transCount.toLocaleString('id-ID');
         document.getElementById('statTotalBelanja').textContent = Utils.formatRupiah(spentAll);
       }
 
       function renderTable(rows) {
         const tbody = document.getElementById('customerTableBody');
-        document.getElementById('tableFooterCount').textContent = `Menampilkan ${rows.length} pelanggan`;
 
         if (!rows || rows.length === 0) {
           tbody.innerHTML = `
             <tr>
               <td colspan="5" class="empty-state" style="text-align: center; padding: 3rem;">
                 <i class="fas fa-users" style="font-size: 2.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
-                <p>Belum ada data pelanggan di Google Sheets</p>
+                <p>Belum ada data pelanggan</p>
               </td>
             </tr>
           `;
@@ -680,10 +672,10 @@
       function filterTable() {
         const q = document.getElementById('searchInput').value.toLowerCase().trim();
         if (!q) {
-          renderTable(allData);
+          renderTable(allCustomers);
           return;
         }
-        const filtered = allData.filter(r => 
+        const filtered = allCustomers.filter(r => 
           (r.nama || '').toLowerCase().includes(q) || String(r.nomor || '').includes(q)
         );
         renderTable(filtered);
@@ -711,7 +703,7 @@
           return;
         }
 
-        Utils.showLoading('Menyimpan ke Google Sheets...');
+        Utils.showLoading('Menyimpan data...');
         try {
           if (row) {
             await gasRequest({ action: 'editData', row: Number(row), nama, nomor });
@@ -753,7 +745,7 @@
         document.getElementById('gasModal').classList.remove('active');
       }
 
-      async function saveGasConfig() {
+      window.saveGasConfig = async function() {
         const url = document.getElementById('gasUrlInput').value.trim();
         const sheetId = document.getElementById('gasSheetIdInput').value.trim();
 
@@ -769,19 +761,18 @@
           localStorage.setItem("webpos_gas_url", url);
           localStorage.setItem("webpos_gas_sheet_id", sheetId);
 
-          // Simpan juga ke Firestore settings jika online
           await db.collection("settings").doc("gas_config").set({ url, sheetId }, { merge: true });
 
           Utils.hideLoading();
-          Utils.showToast('Koneksi Google Sheets tersimpan!', 'success');
+          Utils.showToast('Konfigurasi tersimpan!', 'success');
           closeGasModal();
           updateGasIcon(true);
-          loadDataFromSheet(true);
+          await loadDataFromSheet(true);
         } catch(e) {
           Utils.hideLoading();
           Utils.showToast('Gagal menyimpan konfigurasi', 'error');
         }
-      }
+      };
     })();
   </script>
 </body>
