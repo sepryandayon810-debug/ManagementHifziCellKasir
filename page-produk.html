@@ -83,10 +83,10 @@
       overflow-x: hidden;
     }
 
-    .app-container { display: flex; min-height: 100vh; position: relative; }
+    .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
 
     .sidebar-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
       z-index: 999; opacity: 0; visibility: hidden;
       transition: all 0.25s ease;
@@ -116,7 +116,7 @@
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: bold; font-size: 1.15rem;
+      color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
     }
     .logo-text {
       font-size: 1.25rem; font-weight: 800;
@@ -129,7 +129,7 @@
     .menu-toggle {
       width: 28px; height: 28px; background: var(--primary);
       border: none; border-radius: 50%; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;
     }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
 
@@ -159,6 +159,7 @@
       padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
       color: var(--text-sub); text-decoration: none;
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+      cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
     .nav-link.active { background: var(--primary-light); color: var(--primary); }
@@ -184,12 +185,11 @@
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
-      transition: margin-left 0.25s; min-width: 0;
+      transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden;
     }
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
-    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; width: 100vw !important; } }
 
-    /* HEADER AMAN & BEBAS TUMPANG TINDIH */
     .main-header {
       height: var(--header-h); 
       background: var(--bg-surface);
@@ -201,6 +201,7 @@
       position: sticky; 
       top: 0; 
       z-index: 90;
+      width: 100%; box-sizing: border-box;
     }
     .header-left { 
       display: flex; 
@@ -213,7 +214,7 @@
       font-weight: 700; 
       color: var(--text-main);
       margin: 0;
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
@@ -224,7 +225,7 @@
       cursor: pointer; flex-shrink: 0;
     }
 
-    .page-content { padding: 1.5rem; flex: 1; }
+    .page-content { padding: 1.5rem; flex: 1; width: 100%; box-sizing: border-box; padding-bottom: calc(65px + 2rem); }
 
     /* TAB NAV KATEGORI / PRODUK */
     .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
@@ -272,27 +273,16 @@
     .view-btn { padding: 0.5rem 0.75rem; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
     .view-btn.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-sm); }
 
-    /* GRID 3x3 */
+    /* GRID PRODUK */
     .produk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media(max-width: 768px) {
-      .produk-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    @media(max-width: 768px) { .produk-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    /* FORMAT LIST PRODUK (Tanpa Gambar, Teks Penuh ke Samping) */
     .produk-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
-    .produk-list .produk-card {
-      flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
-    }
+    .produk-list .produk-card { flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%; }
     .produk-list .produk-image { display: none; }
-    .produk-list .produk-info {
-      flex: 1; padding: 0 0.5rem; display: flex; flex-direction: column; justify-content: center; min-width: 0;
-    }
-    .produk-list .produk-name {
-      white-space: normal; overflow: visible; font-size: 0.95rem; margin-bottom: 0.1rem; line-height: 1.3;
-    }
-    .produk-list .produk-actions {
-      border-top: none; background: transparent; padding: 0; gap: 0.4rem;
-    }
+    .produk-list .produk-info { flex: 1; padding: 0 0.5rem; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .produk-list .produk-name { white-space: normal; overflow: visible; font-size: 0.95rem; margin-bottom: 0.1rem; line-height: 1.3; }
+    .produk-list .produk-actions { border-top: none; background: transparent; padding: 0; gap: 0.4rem; }
 
     .produk-card {
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
@@ -334,13 +324,9 @@
 
     /* KATEGORI GRID & LIST */
     .kategori-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media(max-width: 768px) {
-      .kategori-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    @media(max-width: 768px) { .kategori-grid { grid-template-columns: repeat(2, 1fr); } }
     .kategori-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
-    .kategori-list .kategori-card {
-      flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%;
-    }
+    .kategori-list .kategori-card { flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%; }
     .kategori-card {
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
       padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s; cursor: pointer; position: relative;
@@ -354,7 +340,7 @@
 
     /* MODAL */
     .modal-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
       z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.2s; padding: 1rem;
@@ -418,9 +404,7 @@
       .page-content { padding-bottom: calc(60px + 1.5rem); }
       .d-md-none { display: flex !important; }
     }
-    @media (min-width: 1025px) {
-      .d-md-none { display: none !important; }
-    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
   <!-- Firebase Compat -->
@@ -559,7 +543,7 @@
         </div>
       </div>
 
-      <!-- TAB NAV (Kategori di Kiri, Produk di Kanan) -->
+      <!-- TAB NAV -->
       <div class="tab-nav" id="mainTabNav">
         <button class="tab-btn active" data-tab="kategori"><i class="fas fa-tags"></i> Kategori</button>
         <button class="tab-btn" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
@@ -650,7 +634,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Stok</label>
-          <input type="number" class="form-input" id="produkStock" placeholder="" value="">
+          <input type="number" class="form-input" id="produkStock" placeholder="">
         </div>
       </div>
       <div class="form-row">
@@ -1250,7 +1234,6 @@
       if (id) {
         await db.collection("categories").doc(id).update(katData);
         
-        // ⭐ Sinkronisasi otomatis MENIMPA gambar ke SEMUA produk di kategori ini
         const prodSnap = await db.collection("products").where("categoryId", "==", id).get();
         const batch = db.batch();
         prodSnap.forEach(docSnap => {
