@@ -201,7 +201,6 @@
 
   function switchMode(mode) {
     clearAlerts();
-
     if (mode === 'login') {
       document.getElementById("tabLoginBtn").classList.add("active");
       document.getElementById("tabRegisterBtn").classList.remove("active");
@@ -217,7 +216,21 @@
     }
   }
 
-  // 1. PROSES LOGIN (DENGAN PENGECEKAN STATUS APPROVAL)
+  // Fungsi pencatatan perangkat login otomatis ke Firestore
+  async function recordUserLogin(userId) {
+    try {
+      const userAgentInfo = navigator.userAgent;
+      await db.collection("users").doc(userId).collection("login_history").add({
+        userAgent: userAgentInfo,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        ip: "-"
+      });
+    } catch (err) {
+      console.error("Gagal mencatat riwayat perangkat:", err);
+    }
+  }
+
+  // 1. PROSES LOGIN
   document.getElementById("formLogin").onsubmit = async (e) => {
     e.preventDefault();
     const identifier = document.getElementById("loginIdentifier").value.trim();
@@ -231,7 +244,6 @@
     try {
       let targetEmail = identifier;
 
-      // Jika input adalah username, cari email padanannya di Firestore
       if (!identifier.includes("@")) {
         const usernameQuery = await db.collection("users")
           .where("username", "==", identifier.toLowerCase())
@@ -244,15 +256,16 @@
         targetEmail = usernameQuery.docs[0].data().email;
       }
 
-      // Login ke Firebase Auth
       const userCred = await auth.signInWithEmailAndPassword(targetEmail, pass);
+      const uid = userCred.user.uid;
 
-      // Verifikasi status akun di Firestore
-      const userDoc = await db.collection("users").doc(userCred.user.uid).get();
+      // Catat riwayat perangkat saat berhasil login
+      await recordUserLogin(uid);
+
+      const userDoc = await db.collection("users").doc(uid).get();
       if (userDoc.exists) {
         const userData = userDoc.data();
 
-        // JIKA STATUS MASIH PENDING, KELUARKAN KEMBALI
         if (userData.status === "pending") {
           await auth.signOut();
           warnBox.textContent = "Akun Anda sedang menunggu persetujuan (approval) dari Owner. Hubungi Owner untuk aktivasi akun.";
@@ -278,7 +291,7 @@
     }
   };
 
-  // 2. PROSES DAFTAR (AKUN PERTAMA AUTO-DEVELOPER/OWNER, SISANYA PENDING)
+  // 2. PROSES DAFTAR
   document.getElementById("formRegister").onsubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById("regName").value.trim();
@@ -293,7 +306,6 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan akun...';
 
     try {
-      // Periksa apakah username sudah dipakai
       const checkUsername = await db.collection("users")
         .where("username", "==", username)
         .limit(1)
@@ -303,24 +315,21 @@
         throw new Error("Username sudah digunakan. Silakan pilih username lain.");
       }
 
-      // Periksa apakah ini akun pendaftar pertama kali di database
       const allUsersSnap = await db.collection("users").limit(1).get();
       const isFirstAccount = allUsersSnap.empty;
 
       let finalStatus = "pending";
       let finalRole = requestedRole;
 
-      // Akun pertama otomatis menjadi Developer / Owner aktif tanpa approval
       if (isFirstAccount) {
         finalStatus = "active";
         finalRole = "developer";
       }
 
-      // Buat akun Auth
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      const uid = cred.user.uid;
 
-      // Simpan data lengkap ke Firestore
-      await db.collection("users").doc(cred.user.uid).set({
+      await db.collection("users").doc(uid).set({
         name: name,
         username: username,
         email: email,
@@ -330,13 +339,13 @@
       });
 
       if (isFirstAccount) {
+        await recordUserLogin(uid);
         succBox.textContent = "Selamat! Anda terdaftar sebagai Pemilik Utama (Developer). Mengalihkan...";
         succBox.style.display = "block";
         setTimeout(() => {
           window.location.href = "index.html";
         }, 1200);
       } else {
-        // Jika akun staf, langsung sign out agar tidak masuk sebelum di-approve
         await auth.signOut();
         warnBox.textContent = `Pendaftaran berhasil diajukan! Akun @${username} menunggu persetujuan (approval) dari Owner sebelum dapat digunakan.`;
         warnBox.style.display = "block";
