@@ -52,7 +52,7 @@
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
       
-      --sidebar-width: 260px;
+      --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
     }
@@ -93,7 +93,7 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR TERKONTROL DAN RAPI */
+    /* SIDEBAR LENGKAP & PRESISI */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -123,7 +123,7 @@
       font-size: 1.2rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
@@ -167,7 +167,6 @@
     .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
 
-    /* SUBMENU DROPDOWN YANG AMAN DAN TIDAK MELUAP */
     .nav-dropdown { position: relative; }
     .nav-dropdown-toggle { justify-content: space-between; }
     .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
@@ -428,13 +427,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -452,6 +452,7 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Utama -->
       <div class="nav-section">
         <div class="nav-section-title">Utama</div>
         <ul class="nav-menu">
@@ -461,11 +462,12 @@
         </ul>
       </div>
 
+      <!-- Transaksi -->
       <div class="nav-section">
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
-          <li class="nav-item nav-dropdown open" id="dropdownKas">
+          <li class="nav-item nav-dropdown" id="dropdownKas">
             <div class="nav-link nav-dropdown-toggle" data-menu="kas">
               <div style="display:flex; align-items:center; gap:0.75rem;">
                 <i class="fas fa-wallet"></i><span>Kas Management</span>
@@ -488,6 +490,7 @@
         </ul>
       </div>
 
+      <!-- Laporan -->
       <div class="nav-section">
         <div class="nav-section-title">Laporan</div>
         <ul class="nav-menu">
@@ -497,6 +500,24 @@
         </ul>
       </div>
 
+      <!-- Integrasi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Penggajian -->
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Sistem -->
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
@@ -835,9 +856,16 @@
       backdrop.classList.remove("active");
     };
 
-    document.querySelectorAll(".nav-dropdown").forEach(d => {
-      const t = d.querySelector(".nav-dropdown-toggle");
-      if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    document.querySelectorAll(".nav-dropdown-toggle").forEach(toggle => {
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = this.closest('.nav-dropdown');
+        document.querySelectorAll('.nav-dropdown.open').forEach(openDropdown => {
+          if (openDropdown !== parent) openDropdown.classList.remove('open');
+        });
+        parent.classList.toggle('open');
+      });
     });
   }
 
@@ -852,7 +880,7 @@
         if (btn.dataset.tab === "kategori") {
           document.getElementById("pageMainTitle").textContent = "Manajemen Produk";
         } else {
-          document.getElementById("pageMainTitle").textContent = "Daftar Produk";
+          document.getElementById("pageMainTitle").textContent = "Manajemen Produk";
         }
       };
     });
@@ -945,7 +973,7 @@
   window.selectCategory = function(catId, catName) {
     selectedCategoryFilter = catId;
     document.getElementById("filterKategori").value = catId;
-    document.getElementById("pageMainTitle").textContent = "Produk: " + catName;
+    document.getElementById("pageMainTitle").textContent = "Manajemen Produk";
 
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector('.tab-btn[data-tab="produk"]').classList.add("active");
