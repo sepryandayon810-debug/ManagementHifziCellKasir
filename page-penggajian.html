@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebPOS - Penggajian</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0}.wrap{max-width:980px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin-top:20px}form{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:12px}input,button{padding:11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}button{background:#4f46e5;color:#fff;border:0;font-weight:700;cursor:pointer}.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left}@media(max-width:700px){form{grid-template-columns:1fr}.wrap{padding:14px}.table{font-size:13px;min-width:650px}.card{overflow:auto}}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="js/firebase-config.js"></script>
+</head>
+<body><main class="wrap"><header class="top"><div><h1>Data Penggajian</h1><small id="userRole">Memuat...</small></div><button id="logout">Keluar</button></header><section class="card"><h2>Input Penggajian</h2><form id="form"><input id="employee" placeholder="Nama staf" required><input id="period" type="month" required><input id="amount" type="number" min="1" placeholder="Nominal" required><button>Simpan</button></form></section><section class="card"><h2>Riwayat Penggajian</h2><table class="table"><thead><tr><th>Staf</th><th>Periode</th><th>Nominal</th><th>Status</th></tr></thead><tbody id="rows"><tr><td colspan="4">Memuat...</td></tr></tbody></table></section></main><script>
+const $=id=>document.getElementById(id), money=n=>'Rp '+Number(n||0).toLocaleString('id-ID');
+async function load(){const s=await db.collection('payroll').orderBy('createdAt','desc').limit(100).get().catch(()=>({docs:[]}));$('rows').innerHTML=s.docs.length?s.docs.map(d=>{const x=d.data();return `<tr><td>${x.employeeName||'-'}</td><td>${x.period||'-'}</td><td>${money(x.amount)}</td><td>${x.status||'draft'}</td></tr>`}).join(''):'<tr><td colspan="4">Belum ada data.</td></tr>'}
+auth.onAuthStateChanged(async u=>{if(!u)return location.href='login.html';const d=await db.collection('users').doc(u.uid).get();$('userRole').textContent=(d.exists?d.data().role:'kasir').toUpperCase();$('logout').onclick=()=>auth.signOut().then(()=>location.href='login.html');load();$('form').onsubmit=async e=>{e.preventDefault();await db.collection('payroll').add({employeeName:$('employee').value.trim(),period:$('period').value,amount:Number($('amount').value),status:'draft',createdBy:u.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});e.target.reset();load()}});
+</script></body></html>
