@@ -52,7 +52,7 @@
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
       
-      --sidebar-width: 270px;
+      --sidebar-width: 260px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
     }
@@ -93,7 +93,7 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR RAPI & PRESISI */
+    /* SIDEBAR TERKONTROL DAN RAPI */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -120,10 +120,10 @@
       color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
     }
     .logo-text {
-      font-size: 1.25rem; font-weight: 800;
+      font-size: 1.2rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
@@ -160,11 +160,25 @@
       padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
       color: var(--text-sub); text-decoration: none;
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+      cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
     .nav-link.active { background: var(--primary-light); color: var(--primary); }
     .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
+
+    /* SUBMENU DROPDOWN YANG AMAN DAN TIDAK MELUAP */
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
+    }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
@@ -414,7 +428,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
@@ -452,7 +465,7 @@
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
-          <li class="nav-item nav-dropdown" id="dropdownKas">
+          <li class="nav-item nav-dropdown open" id="dropdownKas">
             <div class="nav-link nav-dropdown-toggle" data-menu="kas">
               <div style="display:flex; align-items:center; gap:0.75rem;">
                 <i class="fas fa-wallet"></i><span>Kas Management</span>
@@ -836,7 +849,6 @@
         btn.classList.add("active");
         document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
         
-        // Tetapkan judul header secara konsisten
         if (btn.dataset.tab === "kategori") {
           document.getElementById("pageMainTitle").textContent = "Manajemen Produk";
         } else {
