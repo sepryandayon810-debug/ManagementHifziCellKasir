@@ -163,7 +163,6 @@
       padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
       color: var(--text-sub); text-decoration: none;
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
-      cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
     .nav-link.active { background: var(--primary-light); color: var(--primary); }
@@ -233,17 +232,10 @@
     .header-actions { display: flex; align-items: center; gap: 0.75rem; }
 
     .btn-icon-box {
-      width: 38px; 
-      height: 38px; 
-      border-radius: var(--radius-md);
-      background: var(--bg-subtle); 
-      border: 1px solid var(--border);
-      color: var(--text-sub); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
     }
 
     .page-content { padding: 1.5rem; flex: 1; }
@@ -560,7 +552,7 @@
       </p>
       <input type="hidden" id="targetRoleUserId">
       <div class="form-group">
-        <label class="form-label">Role Akses</label>
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
         <select class="form-select" id="newRoleSelect">
           <option value="kasir">Kasir</option>
           <option value="admin">Admin</option>
@@ -570,13 +562,13 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="closeRoleModal()">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewRole()">Simpan Role</button>
+      <button type="button" class="btn btn-secondary" onclick="closeRoleModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewRole()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Role</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL EDIT PASSWORD -->
+<!-- MODAL EDIT PASSWORD STAF -->
 <div class="modal-overlay" id="modalEditPassword">
   <div class="modal-content">
     <div class="modal-header">
@@ -589,13 +581,13 @@
       </p>
       <input type="hidden" id="targetStaffUid">
       <div class="form-group">
-        <label class="form-label">Password Baru (min. 6 karakter)</label>
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Password Baru (min. 6 karakter)</label>
         <input type="password" class="form-input" id="newStaffPassword" placeholder="••••••••">
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="closePasswordModal()">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()">Simpan Password</button>
+      <button type="button" class="btn btn-secondary" onclick="closePasswordModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Password</button>
     </div>
   </div>
 </div>
@@ -613,7 +605,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="document.getElementById('modalDeviceHistory').classList.remove('active')">Tutup</button>
+      <button type="button" class="btn btn-outline" onclick="document.getElementById('modalDeviceHistory').classList.remove('active')" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Tutup</button>
     </div>
   </div>
 </div>
@@ -845,29 +837,41 @@
     }
   };
 
-  // MODAL RIWAYAT DEVICE
+  // MODAL RIWAYAT DEVICE (TANPA INDEX FIRESTORE)
   window.openDeviceHistory = async function(uid, name) {
     const listEl = document.getElementById("deviceHistoryList");
     listEl.innerHTML = `<div style="text-align:center; padding: 2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat riwayat perangkat...</div>`;
     document.getElementById("modalDeviceHistory").classList.add("active");
 
     try {
-      const snap = await db.collection("users").doc(uid).collection("login_history").orderBy("timestamp", "desc").limit(10).get();
+      const snap = await db.collection("users").doc(uid).collection("login_history").get();
       if (snap.empty) {
         listEl.innerHTML = `<div style="text-align:center; padding: 2rem; color:var(--text-muted); font-size:0.85rem;">Belum ada catatan perangkat login untuk ${name}.</div>`;
         return;
       }
 
-      let html = "";
+      let historyArr = [];
       snap.forEach(doc => {
-        const d = doc.data();
-        const timeStr = d.timestamp ? new Date(d.timestamp.toDate ? d.timestamp.toDate() : d.timestamp).toLocaleString("id-ID") : "Waktu tidak diketahui";
+        historyArr.push(doc.data());
+      });
+
+      // Sorting lokal terbaru di atas
+      historyArr.sort((a, b) => {
+        const tA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
+        const tB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp || 0);
+        return tB - tA;
+      });
+
+      let html = "";
+      historyArr.forEach(d => {
+        const timeVal = d.timestamp?.toDate ? d.timestamp.toDate() : (d.timestamp ? new Date(d.timestamp) : null);
+        const timeStr = timeVal && !isNaN(timeVal) ? timeVal.toLocaleString("id-ID") : "Waktu baru saja";
         html += `
           <div style="padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); display:flex; align-items:flex-start; gap:0.75rem;">
             <i class="fas fa-desktop" style="margin-top:3px; color:var(--primary);"></i>
             <div style="flex:1; font-size:0.82rem;">
               <div style="font-weight:700; color:var(--text-main); word-break:break-all;">${d.userAgent || 'Browser / Perangkat Standar'}</div>
-              <div style="color:var(--text-muted); margin-top:2px;"><i class="far fa-clock"></i> ${timeStr} ${d.ip ? '• IP: ' + d.ip : ''}</div>
+              <div style="color:var(--text-muted); margin-top:2px;"><i class="far fa-clock"></i> ${timeStr}</div>
             </div>
           </div>
         `;
@@ -875,7 +879,7 @@
       listEl.innerHTML = html;
     } catch(err) {
       console.error(err);
-      listEl.innerHTML = `<div style="text-align:center; padding: 2rem; color:var(--danger);">Gagal memuat data perangkat. (Pastikan sub-koleksi login_history tersedia)</div>`;
+      listEl.innerHTML = `<div style="text-align:center; padding: 2rem; color:var(--danger);">Gagal memuat data perangkat.</div>`;
     }
   };
 
