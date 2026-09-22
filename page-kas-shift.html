@@ -125,10 +125,15 @@
 
     .history-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
     .filter-bar { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); overflow-x: auto; }
-    .filter-btn { padding: 0.4rem 0.85rem; border: 1px solid var(--border); border-radius: 99px; background: var(--bg-surface); color: var(--text-sub); font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .filter-btn { padding: 0.4rem 0.85rem; border: 1.5px solid var(--border); border-radius: 99px; background: var(--bg-surface); color: var(--text-sub); font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-    .date-filter-row { display: flex; gap: 0.5rem; align-items: center; padding: 0.75rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    /* Desain baris filter tanggal yang sangat rapi & profesional */
+    .date-filter-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); align-items: flex-end; }
+    @media(min-width: 480px) {
+      .date-filter-row { grid-template-columns: 1fr 1fr auto; }
+    }
+
     .date-range-info { padding: 0.65rem 1rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; }
     
     .history-list { max-height: 420px; overflow-y: auto; }
@@ -296,7 +301,6 @@
           <h1 class="header-title">Kas & Shift</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-icon" id="btnTheme" title="Toggle Tema"><i class="fas fa-moon"></i></button>
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
@@ -333,7 +337,7 @@
               </div>
               <div class="summary-item">
                 <div class="summary-label">Kas Sistem</div>
-                <div class="summary-value primary" id="summaryKasSistem">Rp 0</div>
+                <div class="summary-value" style="color: var(--primary);" id="summaryKasSistem">Rp 0</div>
               </div>
             </div>
           </div>
@@ -354,12 +358,19 @@
               <button class="filter-btn" data-filter="all">Semua</button>
             </div>
 
+            <!-- Baris Filter Tanggal Custom yang Rapi & Menarik -->
             <div class="date-filter-row d-none" id="dateFilterRow">
-              <span class="form-label" style="margin-bottom:0;">Dari:</span>
-              <input type="date" class="form-input" id="dateFrom" style="max-width: 140px; padding: 0.4rem;">
-              <span class="form-label" style="margin-bottom:0;">Sampai:</span>
-              <input type="date" class="form-input" id="dateTo" style="max-width: 140px; padding: 0.4rem;">
-              <button class="btn btn-primary btn-sm" id="btnApplyDate"><i class="fas fa-search"></i> Terapkan</button>
+              <div>
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem;">Dari Tanggal</label>
+                <input type="date" class="form-input" id="dateFrom">
+              </div>
+              <div>
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem;">Sampai Tanggal</label>
+                <input type="date" class="form-input" id="dateTo">
+              </div>
+              <div>
+                <button class="btn btn-primary btn-sm" id="btnApplyDate" style="width: 100%; height: 38px;"><i class="fas fa-search"></i> Terapkan</button>
+              </div>
             </div>
 
             <div class="date-range-info" id="dateRangeInfo"><i class="fas fa-calendar-alt"></i><span>Memuat data...</span></div>
@@ -386,7 +397,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">Tutup Shift</h3>
-        <button class="modal-close" onclick="document.getElementById('closeShiftModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+        <button class="modal-close" onclick="document.getElementById('closeShiftModal').classList.remove('active')" style="background:none; border:none; font-size:1.1rem; cursor:pointer; color:var(--text-muted);"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -500,20 +511,6 @@
             });
           });
         }
-
-        // Theme toggle
-        const themeBtn = document.getElementById('btnTheme');
-        if (themeBtn) {
-          themeBtn.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('webpos_theme', newTheme);
-            themeBtn.querySelector('i').className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-          });
-          const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-          themeBtn.querySelector('i').className = currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-        }
       }
 
       function initKasShift() {
@@ -550,10 +547,10 @@
             const dateRow = document.getElementById('dateFilterRow');
             if (filterType === 'custom') {
               dateRow.classList.remove('d-none');
-              dateRow.classList.add('d-flex');
+              dateRow.style.display = 'grid';
             } else {
               dateRow.classList.add('d-none');
-              dateRow.classList.remove('d-flex');
+              dateRow.style.display = 'none';
               loadShiftHistory(filterType);
             }
           });
@@ -629,7 +626,6 @@
           const user = auth.currentUser;
           const shiftId = 'shift_' + Date.now();
           
-          // Ambil modal awal hari ini
           const modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
           const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
 
@@ -661,7 +657,6 @@
           const kasAkhir = parseInt(document.getElementById('kasAkhirInput').value.replace(/\./g, '')) || 0;
           const catatan = document.getElementById('catatanInput').value;
 
-          // Ambil transaksi hari ini
           const transSnap = await db.collection('transactions').where('dateString', '==', today).get();
           let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0, topupAdminFee = 0, tarikAdminFee = 0;
           
@@ -681,7 +676,6 @@
           const modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
           const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
 
-          // Hitung piutang hari ini
           let totalPiutang = 0;
           const todayStart = new Date(today + 'T00:00:00').getTime();
           const todayEnd = todayStart + 86400000;
@@ -811,7 +805,7 @@
           let html = '';
           
           if (filteredShifts.length === 0) {
-            html = '<div class="empty-state" style="padding: 2.5rem;"><i class="fas fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4;"></i><p>Tidak ada data shift untuk periode ini</p></div>';
+            html = '<div class="empty-state" style="padding: 2.5rem; text-align: center;"><i class="fas fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4;"></i><p style="color:var(--text-muted);">Tidak ada data shift untuk periode ini</p></div>';
           } else {
             filteredShifts.forEach(shift => {
               const formattedDate = new Date(shift.openTime || Date.now()).toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
