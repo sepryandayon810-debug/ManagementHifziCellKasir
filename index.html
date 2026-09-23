@@ -583,7 +583,6 @@
     </div>
 
     <nav class="sidebar-nav">
-      <!-- Utama -->
       <div class="nav-section">
         <div class="nav-section-title">Utama</div>
         <ul class="nav-menu">
@@ -593,7 +592,6 @@
         </ul>
       </div>
 
-      <!-- Transaksi -->
       <div class="nav-section">
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
@@ -621,7 +619,6 @@
         </ul>
       </div>
 
-      <!-- Laporan -->
       <div class="nav-section">
         <div class="nav-section-title">Laporan</div>
         <ul class="nav-menu">
@@ -631,7 +628,6 @@
         </ul>
       </div>
 
-      <!-- Integrasi -->
       <div class="nav-section">
         <div class="nav-section-title">Integrasi</div>
         <ul class="nav-menu">
@@ -640,7 +636,6 @@
         </ul>
       </div>
 
-      <!-- Penggajian -->
       <div class="nav-section">
         <div class="nav-section-title">Penggajian</div>
         <ul class="nav-menu">
@@ -648,15 +643,12 @@
         </ul>
       </div>
 
-      <!-- Sistem -->
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
           <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
-          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
-          <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
         </ul>
       </div>
@@ -677,7 +669,9 @@
   <main class="main-content">
     <header class="main-header">
       <div class="header-left">
-        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu">
+          <i class="fas fa-bars"></i>
+        </button>
         <h1 class="header-title">Dashboard</h1>
       </div>
 
@@ -706,7 +700,9 @@
       <!-- SHIFT MASTER TOGGLE -->
       <div class="shift-master-toggle" id="btnToggleShift">
         <div class="shift-toggle-inner">
-          <div class="shift-toggle-icon"><i class="fas fa-store-slash" id="shiftToggleIcon"></i></div>
+          <div class="shift-toggle-icon">
+            <i class="fas fa-store-slash" id="shiftToggleIcon"></i>
+          </div>
           <div class="shift-toggle-info">
             <div class="shift-toggle-label">Operasional Kasir</div>
             <div class="shift-toggle-value" id="shiftToggleText">Buka Shift Kerja</div>
@@ -1169,10 +1165,13 @@
           switch (t.type) {
             case "penjualan":
               penjualan += t.total || 0;
+              // Penjualan kredit hanya menambah kas sebesar pembayaran aktual.
               cashPenjualan += t.paymentMethod === "hutang"
                 ? (t.paymentAmount || 0)
                 : (typeof t.paymentAmount === "number" ? t.paymentAmount : (t.total || 0));
               laba += t.profit || 0;
+              // Input hutang membuat transaksi sintetis agar kas dapat dihitung,
+              // tetapi tidak boleh dihitung sebagai transaksi kasir kedua.
               if (t.source !== "hutang_page") trxCount++;
               break;
             case "topup": topup += t.amount || 0; topupAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
@@ -1201,6 +1200,7 @@
         }
       });
 
+      // Mutasi fisik: admin top up tinggal di laci; admin tarik mengurangi uang yang diberikan.
       const topupKasFisik = topup + topupAdminFee;
       const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
       const kasLaci = modalAwal + kasMasuk - kasKeluar + cashPenjualan + topupKasFisik - tarikKasFisik;
