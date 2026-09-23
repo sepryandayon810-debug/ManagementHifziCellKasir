@@ -379,6 +379,30 @@
     }
     .confirmation-input input:focus { border-color: var(--danger); }
 
+    /* UNDO BANNER */
+    .undo-banner {
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      background: var(--primary-light); border: 1.5px solid var(--primary);
+      border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
+    }
+    .undo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 1.15rem; flex-shrink: 0;
+    }
+    .undo-info { flex: 1; min-width: 200px; }
+    .undo-title { font-weight: 800; font-size: 0.95rem; color: var(--primary); }
+    .undo-sub { font-size: 0.8rem; color: var(--text-sub); }
+    .undo-close {
+      width: 32px; height: 32px; border: none; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .undo-close:hover { background: var(--bg-subtle); color: var(--danger); }
+
     /* TOAST */
     .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
     .toast-pill {
@@ -590,6 +614,17 @@
     </header>
 
     <div class="page-content">
+      <!-- UNDO BANNER -->
+      <div class="undo-banner" id="undoBanner" style="display:none;">
+        <div class="undo-icon"><i class="fas fa-rotate-left"></i></div>
+        <div class="undo-info">
+          <div class="undo-title">Data berhasil direset</div>
+          <div class="undo-sub" id="undoSub">Anda masih bisa memulihkan data selama <strong id="undoTimer">15:00</strong></div>
+        </div>
+        <button class="btn btn-primary" id="btnUndo"><i class="fas fa-rotate-left"></i> Undo</button>
+        <button class="undo-close" id="btnUndoClose" title="Tutup"><i class="fas fa-times"></i></button>
+      </div>
+
       <!-- Warning Card -->
       <div class="warning-card">
         <div class="warning-header">
@@ -726,6 +761,8 @@
   "use strict";
 
   let resetType = '';
+  let currentTrashId = '';
+  let undoTimerInterval = null;
 
   function showLoading() { document.getElementById("loadingOverlay").classList.add("active"); }
   function hideLoading() { document.getElementById("loadingOverlay").classList.remove("active"); }
@@ -773,6 +810,115 @@
     await Promise.all(batches.map(b => b.commit()));
   }
 
+  // ===== SISTEM UNDO: backup ke koleksi resetTrash sebelum hapus =====
+  const RESET_MAP = {
+    transaksi: ["transactions", "modal", "shifts", "debts"],
+    produk: ["products", "categories"],
+    total: ["transactions", "modal", "shifts", "debts", "products", "categories", "customers", "settings", "users"]
+  };
+
+  async function backupAndDelete(collections, type) {
+    // 1. Buat dokumen induk trash
+    const trashRef = await db.collection("resetTrash").add({
+      type: type,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      collections: collections
+    });
+
+    // 2. Salin semua dokumen ke subkoleksi items (1 dokumen per dokumen asli)
+    for (const colName of collections) {
+      const snap = await db.collection(colName).get();
+      let batch = db.batch();
+      let n = 0;
+      for (const doc of snap.docs) {
+        batch.set(trashRef.collection("items").doc(), {
+          collection: colName,
+          docId: doc.id,
+          data: doc.data()
+        });
+        n++;
+        if (n % 400 === 0) { await batch.commit(); batch = db.batch(); }
+      }
+      if (n % 400 !== 0) await batch.commit();
+
+      // 3. Hapus koleksi asli
+      await deleteCollection(colName);
+    }
+    return trashRef.id;
+  }
+
+  async function performUndo(trashId) {
+    if (!trashId) { toast("Tidak ada data untuk dipulihkan", "error"); return; }
+    showLoading();
+    try {
+      const trashRef = db.collection("resetTrash").doc(trashId);
+      const itemsSnap = await trashRef.collection("items").get();
+      let batch = db.batch();
+      let n = 0;
+      for (const item of itemsSnap.docs) {
+        const d = item.data();
+        batch.set(db.collection(d.collection).doc(d.docId), d.data);
+        batch.delete(item.ref);
+        n++;
+        if (n % 400 === 0) { await batch.commit(); batch = db.batch(); }
+      }
+      if (n % 400 !== 0) await batch.commit();
+      await trashRef.delete();
+
+      hideUndoBanner();
+      toast("Data berhasil dipulihkan (undo)", "success");
+      await loadStats();
+    } catch (e) {
+      console.error(e);
+      toast("Gagal memulihkan data: " + e.message, "error");
+    }
+    hideLoading();
+  }
+
+  function showUndoBanner() {
+    const banner = document.getElementById("undoBanner");
+    document.getElementById("undoSub").innerHTML =
+      'Anda masih bisa memulihkan data selama <strong id="undoTimer">15:00</strong>';
+    banner.style.display = "flex";
+
+    const btnUndo = document.getElementById("btnUndo");
+    btnUndo.disabled = false;
+    btnUndo.innerHTML = '<i class="fas fa-rotate-left"></i> Undo';
+
+    let seconds = 15 * 60;
+    clearInterval(undoTimerInterval);
+    undoTimerInterval = setInterval(() => {
+      seconds--;
+      const m = String(Math.max(0, Math.floor(seconds / 60))).padStart(2, "0");
+      const s = String(Math.max(0, seconds % 60)).padStart(2, "0");
+      const t = document.getElementById("undoTimer");
+      if (t) t.textContent = m + ":" + s;
+      if (seconds <= 0) {
+        clearInterval(undoTimerInterval);
+        btnUndo.disabled = true;
+        btnUndo.innerHTML = '<i class="fas fa-ban"></i> Waktu Habis';
+        const sub = document.getElementById("undoSub");
+        if (sub) sub.textContent = "Waktu pemulihan telah habis. Data tidak dapat dikembalikan.";
+      }
+    }, 1000);
+  }
+
+  function hideUndoBanner() {
+    clearInterval(undoTimerInterval);
+    document.getElementById("undoBanner").style.display = "none";
+  }
+
+  // Cek apakah ada data trash tersisa (misal user menutup halaman sebelum undo)
+  async function checkExistingTrash() {
+    try {
+      const snap = await db.collection("resetTrash").orderBy("createdAt", "desc").limit(1).get();
+      if (!snap.empty) {
+        currentTrashId = snap.docs[0].id;
+        showUndoBanner();
+      }
+    } catch (e) { console.warn("Gagal cek trash:", e); }
+  }
+
   async function countDocs(collectionName) {
     try {
       const snap = await db.collection(collectionName).get();
@@ -817,36 +963,14 @@
     showLoading();
 
     try {
-      if (resetType === "transaksi") {
-        await Promise.all([
-          deleteCollection("transactions"),
-          deleteCollection("modal"),
-          deleteCollection("shifts"),
-          deleteCollection("debts")
-        ]);
-        toast("Data transaksi berhasil direset", "success");
-      } else if (resetType === "produk") {
-        await Promise.all([
-          deleteCollection("products"),
-          deleteCollection("categories")
-        ]);
-        toast("Data produk berhasil direset", "success");
-      } else if (resetType === "total") {
-        await Promise.all([
-          deleteCollection("transactions"),
-          deleteCollection("modal"),
-          deleteCollection("shifts"),
-          deleteCollection("debts"),
-          deleteCollection("products"),
-          deleteCollection("categories"),
-          deleteCollection("customers"),
-          deleteCollection("settings"),
-          deleteCollection("users")
-        ]);
-        toast("Semua data berhasil direset", "success");
-      }
+      currentTrashId = await backupAndDelete(RESET_MAP[resetType], resetType);
+
+      if (resetType === "transaksi") toast("Data transaksi berhasil direset", "success");
+      else if (resetType === "produk") toast("Data produk berhasil direset", "success");
+      else toast("Semua data berhasil direset", "success");
 
       closeModal();
+      showUndoBanner();
       await loadStats();
     } catch (error) {
       console.error("Error resetting data:", error);
@@ -923,6 +1047,7 @@
       }
 
       loadStats();
+      checkExistingTrash();
     });
 
     setupSidebarEvents();
@@ -951,6 +1076,10 @@
     document.getElementById("confirmInput").addEventListener("keydown", (e) => {
       if (e.key === "Enter") executeReset();
     });
+
+    // Undo
+    document.getElementById("btnUndo").onclick = () => performUndo(currentTrashId);
+    document.getElementById("btnUndoClose").onclick = hideUndoBanner;
 
     // Tema
     document.getElementById("btnThemeToggle").onclick = () => {
