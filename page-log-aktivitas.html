@@ -235,7 +235,7 @@
 
     .page-content { padding: 1.5rem; flex: 1; }
 
-    /* CARDS & STATS */
+    /* STATS GRID */
     .stats-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem; margin-bottom: 1.5rem;
@@ -313,15 +313,15 @@
     .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* TOAST */
-    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
-    .toast {
-      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem;
-      background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
-      border-left: 4px solid; font-size: 0.85rem; font-weight: 600; color: var(--text-main);
+    .toast-box { position: fixed; top: 1rem; right: 1rem; z-index: 3000; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
+    .toast-pill {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
+      background: var(--bg-surface); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md); border-left: 4px solid var(--primary);
+      font-size: 0.85rem; font-weight: 600; color: var(--text-main);
     }
-    .toast.success { border-left-color: var(--success); }
-    .toast.error { border-left-color: var(--danger); }
-    .toast.warning { border-left-color: var(--warning); }
+    .toast-pill.success { border-left-color: var(--success); }
+    .toast-pill.error { border-left-color: var(--danger); }
 
     /* MOBILE NAVIGATION */
     .mobile-bar {
@@ -344,7 +344,7 @@
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
-  <!-- Firebase & Config -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -359,7 +359,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -457,7 +457,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="user-profile">
+      <div class="user-profile" id="userProfile">
         <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
         <div class="user-info">
           <div class="user-name" id="userName">Memuat...</div>
@@ -514,13 +514,13 @@
       </div>
 
       <!-- FILTER CARD -->
-      <div class="card">
+      <div class="card" style="margin-bottom: 1.25rem;">
         <div class="card-header">
           <h3 class="card-title"><i class="fas fa-filter" style="color: var(--primary);"></i> Filter Log</h3>
         </div>
         <div class="card-body">
           <div class="filter-section">
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Rentang Waktu</label>
               <select class="form-select" id="filterPeriod" onchange="applyFilters()">
                 <option value="today">Hari Ini</option>
@@ -529,7 +529,7 @@
                 <option value="all">Semua Waktu</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tipe Aktivitas</label>
               <select class="form-select" id="filterType" onchange="applyFilters()">
                 <option value="all">Semua Aktivitas</option>
@@ -540,7 +540,7 @@
                 <option value="delete">Hapus Data</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Pengguna</label>
               <select class="form-select" id="filterUser" onchange="applyFilters()">
                 <option value="all">Semua Pengguna</option>
@@ -599,20 +599,27 @@
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
-<div class="toast-container" id="toastContainer"></div>
+<div class="toast-box" id="toastContainer"></div>
 
 <script>
   let currentPage = 1;
   let logsPerPage = 20;
   let allLogs = [];
   let filteredLogs = [];
+  let currentUser = null;
 
   document.addEventListener("DOMContentLoaded", () => {
     syncStoreBrandName();
     setupSidebarEvents();
-    setupAuthUser();
-    loadUserOptions();
-    loadLogs();
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+      currentUser = user;
+      initUserSession(user);
+    });
   });
 
   async function syncStoreBrandName() {
@@ -679,26 +686,29 @@
     });
   }
 
-  async function setupAuthUser() {
-    if (typeof auth !== 'undefined') {
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-          window.location.href = "login.html";
-          return;
-        }
-        try {
-          const doc = await db.collection("users").doc(user.uid).get();
-          if (doc.exists) {
-            const u = doc.data();
-            const name = u.name || u.username || user.email.split("@")[0];
-            const role = (u.role || "Kasir").toUpperCase();
-            document.getElementById("userName").textContent = name;
-            document.getElementById("userRole").textContent = role;
-            document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
-          }
-        } catch(e) {}
-      });
+  async function initUserSession(user) {
+    try {
+      const doc = await db.collection("users").doc(user.uid).get();
+      let displayName = user.email.split("@")[0];
+      let displayRole = "Kasir";
+
+      if (doc.exists) {
+        const u = doc.data();
+        displayName = u.name || u.username || displayName;
+        displayRole = u.role || displayRole;
+      }
+
+      document.getElementById("userName").textContent = displayName;
+      document.getElementById("userRole").textContent = displayRole.toUpperCase();
+      const avatar = document.getElementById("userAvatar");
+      if (avatar) avatar.textContent = displayName.slice(0, 2).toUpperCase();
+
+    } catch(err) {
+      console.error(err);
     }
+
+    loadUserOptions();
+    loadLogs();
   }
 
   function loadUserOptions() {
@@ -717,7 +727,7 @@
     if (logs.length === 0) {
       logs.unshift({
         timestamp: new Date().toISOString(),
-        user: 'Administrator',
+        user: document.getElementById("userName").textContent || 'Administrator',
         action: 'login',
         detail: 'Masuk ke dalam sistem'
       });
@@ -804,17 +814,17 @@
       filteredLogs = [];
       renderLogs();
       calculateStats();
-      showToast('Semua log berhasil dihapus', 'success');
+      toast('Semua log berhasil dihapus', 'success');
     }
   }
 
-  function showToast(msg, type = 'success') {
+  function toast(msg, type = 'success') {
     const container = document.getElementById('toastContainer');
     const el = document.createElement('div');
-    el.className = `toast ${type}`;
-    el.innerHTML = `<i class="fas fa-check-circle"></i><span>${msg}</span>`;
+    el.className = `toast-pill ${type}`;
+    el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'circle-exclamation'}"></i><span>${msg}</span>`;
     container.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
+    setTimeout(() => el.remove(), 3500);
   }
 </script>
 </body>
