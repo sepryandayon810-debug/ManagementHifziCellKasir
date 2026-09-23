@@ -468,9 +468,6 @@
         <h1 class="header-title">Data Penggajian Staf</h1>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary btn-sm" id="btnOpenManageStaff" title="Kelola Daftar Staf Khusus">
-          <i class="fas fa-users-gear"></i> Kelola Staf
-        </button>
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
@@ -484,6 +481,10 @@
             <select class="form-select" id="filterMonth" style="padding:0.45rem 0.75rem; font-size:0.82rem; width:auto;">
               <option value="all">Semua Bulan</option>
             </select>
+            <!-- TOMBOL KELOLA STAF & BUAT GAJI BERADA RAPI DI DALAM CARD HEADER -->
+            <button class="btn btn-secondary btn-sm" id="btnOpenManageStaff" title="Kelola Daftar Staf Khusus">
+              <i class="fas fa-users-gear"></i> Kelola Staf
+            </button>
             <button class="btn btn-primary btn-sm" id="btnOpenAddPayroll">
               <i class="fas fa-plus"></i> Buat Penggajian Baru
             </button>
@@ -775,7 +776,6 @@
 
   async function loadStaffAndPayrolls() {
     try {
-      // 1. Tarik akun aktif dari 'users'
       const userSnap = await db.collection("users").where("status", "==", "active").get();
       staffList = [];
       
@@ -784,7 +784,6 @@
         staffList.push({ id: u.id, name: u.name || u.username, role: u.role || 'staf' });
       });
 
-      // 2. Tarik daftar staf manual tersimpan dari koleksi 'settings' -> 'manual_staff'
       const mStaffDoc = await db.collection("settings").doc("manual_staff").get();
       if (mStaffDoc.exists) {
         manualStaffs = mStaffDoc.data().list || [];
@@ -795,7 +794,6 @@
         manualStaffs = [];
       }
 
-      // 3. Tarik riwayat penggajian
       const paySnap = await db.collection("payrolls").orderBy("createdAt", "desc").get();
       allPayrolls = [];
       paySnap.forEach(doc => {
@@ -862,7 +860,6 @@
     `).join("");
   }
 
-  // KELOLA STAF MANUAL MODAL
   window.openManageStaffModal = function() {
     renderManualStaffTable();
     document.getElementById("modalManageStaff").classList.add("active");
@@ -941,7 +938,6 @@
     document.getElementById("modalPayroll").classList.remove("active");
   };
 
-  // AUTOCOMPLETE PENCARIAN STAF
   window.onStaffTypeSearch = function(query) {
     const dropdown = document.getElementById("staffAutocompleteList");
     const q = query.toLowerCase().trim();
@@ -966,7 +962,6 @@
       `).join("");
     }
 
-    // Opsi simpan nama baru ke daftar staf manual
     html += `
       <div class="autocomplete-item" style="background:var(--primary-light); color:var(--primary); font-weight:700;" onclick="selectStaffItem('manual_${Date.now()}', '${query}', 'STAF')">
         <span><i class="fas fa-plus"></i> Gunakan & Simpan nama: "${query}"</span>
@@ -983,7 +978,6 @@
     document.getElementById("selectedStaffName").value = name;
     document.getElementById("staffAutocompleteList").style.display = "none";
     
-    // Jika nama baru diketik, otomatis masukkan ke daftar staf manual agar tersimpan selamanya
     if (id.startsWith('manual_')) {
       const exists = manualStaffs.some(ms => ms.name.toLowerCase() === name.toLowerCase());
       if (!exists) {
@@ -1003,7 +997,6 @@
     }
   };
 
-  // LOGIKA PEMANGGILAN HUTANG & DETEKSI TUNGGAKAN BULAN LALU
   async function onStaffSelected(staffId, staffName) {
     const container = document.getElementById("staffDebtsContainer");
     const prevInput = document.getElementById("prevUnpaidSalary");
@@ -1030,7 +1023,6 @@
       }
       const prevPeriodKey = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}`;
 
-      // 1. CEK TUNGGAKAN BULAN LALU
       let detectedUnpaid = 0;
       allPayrolls.forEach(p => {
         const pStaffId = p.staffId || "";
@@ -1046,7 +1038,6 @@
       });
       prevInput.value = detectedUnpaid;
 
-      // 2. TARIK HUTANG AKTIF DARI KOLEKSI 'debts'
       const snap = await db.collection("debts").where("status", "==", "active").get();
       activeStaffDebts = [];
       
