@@ -395,7 +395,7 @@
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
-  <!-- Firebase Compat -->
+  <!-- Firebase Compat (Tanpa Storage error) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -409,7 +409,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -570,7 +570,7 @@
           <span class="badge badge-success" id="autoBadge">Aktif</span>
         </div>
         <div class="card-body">
-          <p style="color:var(--text-secondary);font-size:.9rem;line-height:1.6;margin-bottom:1.25rem">
+          <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;margin-bottom:1.25rem">
             Data otomatis di-backup ke Google Sheets setiap malam pukul 00:00. Tidak perlu klik apa pun — jalan sendiri di background.
           </p>
 
@@ -613,7 +613,7 @@
           <div class="card-title"><i class="fas fa-file-export"></i>Export Manual (CSV)</div>
         </div>
         <div class="card-body">
-          <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.25rem">
+          <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
             Download data langsung ke file CSV di device kamu. Berguna untuk backup lokal atau import ke Excel.
           </p>
           <div style="display:flex;gap:1rem;flex-wrap:wrap;width:100%">
@@ -734,7 +734,8 @@
 <script src="js/role-guard.js"></script>
 
 <script>
-  const db = (typeof database !== 'undefined' && database) ? database : firebase.database();
+  // Menggunakan instance database global yang sudah diinisialisasi di firebase-config.js
+  const dbRef = (typeof database !== 'undefined' && database) ? database : firebase.database();
   let currentUser = null;
 
   const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
@@ -767,15 +768,15 @@
     if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
   }
 
-  // Sinkronisasi Nama Toko (mengambil nama toko dari database atau localStorage)
+  // Sinkronisasi Nama Toko di Sidebar
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
     const cachedName = localStorage.getItem("webpos_store_name");
     if (cachedName) logoEl.textContent = cachedName;
     try {
-      if (typeof db !== 'undefined') {
-        const doc = await db.ref("settings/store/name").once("value");
+      if (typeof dbRef !== 'undefined') {
+        const doc = await dbRef.ref("settings/store/name").once("value");
         if (doc.exists() && doc.val()) {
           logoEl.textContent = doc.val();
           localStorage.setItem("webpos_store_name", doc.val());
@@ -856,21 +857,21 @@
       const paths = ['products','customers','categories','users'];
       let totalRecords = 0;
       for (const p of paths) {
-        const snap = await db.ref(p).once('value');
+        const snap = await dbRef.ref(p).once('value');
         totalRecords += Object.keys(snap.val() || {}).length;
       }
       
       const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const transSnap = await db.ref('transactions/' + today).once('value');
+      const transSnap = await dbRef.ref('transactions/' + today).once('value');
       const trans = transSnap.val() || {};
       document.getElementById('todayTrans').textContent = Object.keys(trans).length.toLocaleString('id-ID');
 
-      const debtsSnap = await db.ref('debts').once('value');
+      const debtsSnap = await dbRef.ref('debts').once('value');
       const debts = debtsSnap.val() || {};
       const activeDebts = Object.values(debts).filter(d => d.status === 'active').length;
       document.getElementById('totalProducts').textContent = (totalRecords + activeDebts).toLocaleString('id-ID');
 
-      const logSnap = await db.ref('backup/lastLog').once('value');
+      const logSnap = await dbRef.ref('backup/lastLog').once('value');
       const log = logSnap.val();
       if (log) {
         document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
@@ -969,7 +970,7 @@
   async function exportProductsCSV() {
     setProgress(20);
     try {
-      const snap = await db.ref('products').once('value');
+      const snap = await dbRef.ref('products').once('value');
       const data = snap.val() || {};
       const rows = [['ID','Nama Produk','Kategori','Harga Beli','Harga Jual','Stok','Status','Barcode','Dibuat']];
       Object.entries(data).forEach(([id,p]) => {
@@ -988,7 +989,7 @@
   async function exportTransactionsCSV() {
     setProgress(10);
     try {
-      const snap = await db.ref('transactions').once('value');
+      const snap = await dbRef.ref('transactions').once('value');
       const all = snap.val() || {};
       const rows = [['Tanggal','ID Transaksi','Pelanggan','Total','Metode','Kasir','Status','Items']];
       let count = 0;
@@ -1022,11 +1023,11 @@
     document.getElementById('loadingOverlay').classList.add('active');
     try {
       const data = {
-        products: (await db.ref('products').once('value')).val() || {},
-        transactions: (await db.ref('transactions').once('value')).val() || {},
-        customers: (await db.ref('customers').once('value')).val() || {},
-        kas: (await db.ref('kas').once('value')).val() || {},
-        categories: (await db.ref('categories').once('value')).val() || {},
+        products: (await dbRef.ref('products').once('value')).val() || {},
+        transactions: (await dbRef.ref('transactions').once('value')).val() || {},
+        customers: (await dbRef.ref('customers').once('value')).val() || {},
+        kas: (await dbRef.ref('kas').once('value')).val() || {},
+        categories: (await dbRef.ref('categories').once('value')).val() || {},
         exportedAt: Date.now()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -1052,9 +1053,9 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.products) await db.ref('products').set(data.products);
-      if (data.transactions) await db.ref('transactions').set(data.transactions);
-      if (data.customers) await db.ref('customers').set(data.customers);
+      if (data.products) await dbRef.ref('products').set(data.products);
+      if (data.transactions) await dbRef.ref('transactions').set(data.transactions);
+      if (data.customers) await dbRef.ref('customers').set(data.customers);
       showToast('Import berhasil! Data telah dipulihkan.');
       loadStats();
     } catch(e) {
@@ -1091,7 +1092,7 @@
       return;
     }
     currentUser = user;
-    db.ref('users/' + user.uid).once('value').then(snap => {
+    dbRef.ref('users/' + user.uid).once('value').then(snap => {
       const data = snap.val() || {};
       const name = data.name || user.email.split('@')[0];
       const role = (data.role || 'admin').toUpperCase();
