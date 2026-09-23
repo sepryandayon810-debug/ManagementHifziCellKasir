@@ -216,19 +216,8 @@
       top: 0; 
       z-index: 90;
     }
-    .header-left { 
-      display: flex; 
-      align-items: center; 
-      gap: 0.85rem; 
-      min-width: 0;
-    }
-    .header-title { 
-      font-size: 1.2rem; 
-      font-weight: 700; 
-      color: var(--text-main);
-      margin: 0;
-      white-space: nowrap;
-    }
+    .header-left { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
     .header-actions { display: flex; align-items: center; gap: 0.75rem; }
 
     .btn-icon-box {
@@ -375,13 +364,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP (TIDAK ADA MENU YANG HILANG) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -399,6 +389,7 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Utama -->
       <div class="nav-section">
         <div class="nav-section-title">Utama</div>
         <ul class="nav-menu">
@@ -408,6 +399,7 @@
         </ul>
       </div>
 
+      <!-- Transaksi -->
       <div class="nav-section">
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
@@ -435,6 +427,7 @@
         </ul>
       </div>
 
+      <!-- Laporan -->
       <div class="nav-section">
         <div class="nav-section-title">Laporan</div>
         <ul class="nav-menu">
@@ -444,6 +437,7 @@
         </ul>
       </div>
 
+      <!-- Integrasi -->
       <div class="nav-section">
         <div class="nav-section-title">Integrasi</div>
         <ul class="nav-menu">
@@ -452,6 +446,7 @@
         </ul>
       </div>
 
+      <!-- Penggajian -->
       <div class="nav-section">
         <div class="nav-section-title">Penggajian</div>
         <ul class="nav-menu">
@@ -459,12 +454,15 @@
         </ul>
       </div>
 
+      <!-- Sistem -->
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link active" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
           <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
         </ul>
       </div>
@@ -490,6 +488,8 @@
       </div>
       <div class="header-actions">
         <button class="btn-icon-box" id="btnRefresh" title="Segarkan Data"><i class="fas fa-rotate"></i></button>
+        <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
       </div>
     </header>
 
@@ -531,12 +531,13 @@
   </main>
 </div>
 
+<!-- MOBILE BAR -->
 <nav class="mobile-bar">
   <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
   <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
   <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
   <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
-  <a href="page-setting.html" class="mobile-bar-item active"><i class="fas fa-cog"></i><span>Setting</span></a>
+  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
 <!-- MODAL EDIT ROLE -->
@@ -562,8 +563,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closeRoleModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewRole()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Role</button>
+      <button type="button" class="btn btn-secondary" onclick="closeRoleModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewRole()">Simpan Role</button>
     </div>
   </div>
 </div>
@@ -586,8 +587,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closePasswordModal()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--primary); color:#fff; border:none;">Simpan Password</button>
+      <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()">Simpan Password</button>
     </div>
   </div>
 </div>
@@ -605,7 +606,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="document.getElementById('modalDeviceHistory').classList.remove('active')" style="padding:0.65rem 1.25rem; border-radius:10px; font-weight:700; cursor:pointer; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-main);">Tutup</button>
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('modalDeviceHistory').classList.remove('active')">Tutup</button>
     </div>
   </div>
 </div>
@@ -630,6 +631,7 @@
     setTimeout(() => el.remove(), 3500);
   }
 
+  // Sinkronisasi Nama Toko di Sidebar
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
@@ -669,6 +671,11 @@
         document.getElementById("userRole").textContent = currentUserRole.toUpperCase();
         if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
 
+        // Terapkan RoleGuard agar menu sidebar sinkron dengan index
+        if (typeof RoleGuard !== 'undefined') {
+          RoleGuard.apply(currentUserRole);
+        }
+
         if (currentUserRole !== "developer" && currentUserRole !== "owner" && currentUserRole !== "admin") {
           alert("Akses Ditolak: Halaman ini hanya dapat diakses oleh Admin, Owner, dan Developer!");
           window.location.href = "index.html";
@@ -689,6 +696,23 @@
         currentActiveTab = btn.dataset.tab;
         renderTable();
       };
+    });
+
+    // Dark Mode Toggle di Header
+    document.getElementById("btnThemeToggle")?.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    });
+
+    document.getElementById("btnLogout")?.addEventListener("click", () => {
+      if (confirm("Yakin ingin keluar dari sistem?")) {
+        auth.signOut().then(() => {
+          localStorage.removeItem('webpos_session');
+          window.location.href = "login.html";
+        });
+      }
     });
   }
 
@@ -714,6 +738,14 @@
     document.querySelectorAll(".nav-dropdown").forEach(d => {
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    });
+
+    document.getElementById("menuSearch")?.addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".nav-link span").forEach(span => {
+        const li = span.closest(".nav-item");
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
     });
   }
 
@@ -777,7 +809,7 @@
           <td style="text-align:right">
             <div class="btn-action-group" style="justify-content:flex-end">
               ${status === 'pending' ? `
-                <button class="btn-action btn-approve" onclick="window.approveUser('${u.id}', '${u.name}')">
+                <button class="btn-action btn-approve" onclick="window.approveUser('${u.id}', '${u.name || 'Staf'}')">
                   <i class="fas fa-check"></i> Setujui
                 </button>
                 <button class="btn-action btn-reject" onclick="window.rejectUser('${u.id}')">
@@ -837,7 +869,6 @@
     }
   };
 
-  // MODAL RIWAYAT DEVICE (TANPA INDEX FIRESTORE)
   window.openDeviceHistory = async function(uid, name) {
     const listEl = document.getElementById("deviceHistoryList");
     listEl.innerHTML = `<div style="text-align:center; padding: 2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat riwayat perangkat...</div>`;
@@ -855,7 +886,6 @@
         historyArr.push(doc.data());
       });
 
-      // Sorting lokal terbaru di atas
       historyArr.sort((a, b) => {
         const tA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
         const tB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp || 0);
@@ -883,7 +913,6 @@
     }
   };
 
-  // MODAL ROLE KUSTOM
   window.openRoleModal = function(uid, name, currentRole) {
     document.getElementById("targetRoleUserId").value = uid;
     document.getElementById("targetRoleUserName").textContent = name;
@@ -909,7 +938,6 @@
     }
   };
 
-  // MODAL PASSWORD KUSTOM
   window.openPasswordModal = function(uid, name) {
     document.getElementById("targetStaffUid").value = uid;
     document.getElementById("targetStaffName").textContent = name;
