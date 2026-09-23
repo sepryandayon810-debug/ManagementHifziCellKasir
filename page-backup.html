@@ -764,7 +764,7 @@
     if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
   }
 
-  // Sinkronisasi Nama Toko di Sidebar
+  // Sinkronisasi Nama Toko di Sidebar menggunakan instance `db` yang benar dari firebase-config.js
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
@@ -817,6 +817,13 @@
     });
 
     document.getElementById("btnThemeToggle")?.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    });
+
+    document.getElementById("btnTheme")?.addEventListener("click", () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       const nextTheme = isDark ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", nextTheme);
