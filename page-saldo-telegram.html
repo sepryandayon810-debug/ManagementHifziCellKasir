@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Rekap Saldo & Top Up</title>
+  <title>WebPOS - Saldo Top Up</title>
 
   <!-- SKRIP PENERAPAN TEMA GLOBAL -->
   <script>
@@ -236,8 +236,10 @@
       color: var(--text-main);
       margin: 0;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
 
     .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
@@ -348,6 +350,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -444,6 +447,8 @@
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -464,9 +469,10 @@
       <header class="main-header">
         <div class="header-left">
           <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Rekap Saldo & Top Up</h1>
+          <h1 class="header-title">Saldo Top Up</h1>
         </div>
         <div class="header-actions">
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
           <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
@@ -546,7 +552,7 @@
                   <option value="all">Semua Tools</option>
                 </select>
               </div>
-              <!-- Custom Tanggal (Aman, responsif, tidak melebar) -->
+              <!-- Custom Tanggal -->
               <div class="form-group" id="customDateBox" style="display: none; gap: 0.75rem;">
                 <div>
                   <label class="form-label">Dari Tanggal</label>
@@ -682,6 +688,7 @@
       let activeTools = ["DANA", "DIGIPOS", "MASTERLOAD"];
       let allHistory = [];
       let currentFilteredHistory = [];
+      let currentUserRole = "kasir";
       const COLLECTION_TOPUP = "saldo_topup_history";
       const COLLECTION_TOOLS = "saldo_tools_config";
 
@@ -711,7 +718,13 @@
           let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              currentUserRole = (userData.role || "kasir").toLowerCase();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(currentUserRole);
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -741,7 +754,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.add('mobile-open');
+            sidebar.classList.toggle('mobile-open');
             backdrop.classList.add('active');
           };
         }
@@ -761,6 +774,24 @@
             parent.classList.toggle('open');
           });
         });
+
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
 
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
