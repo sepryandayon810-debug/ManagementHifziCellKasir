@@ -15,11 +15,8 @@ if (!window.firebaseConfigInitialized) {
     firebase.initializeApp(firebaseConfig);
   }
 
-  // Layanan Firebase Global
   window.auth = firebase.auth();
   window.db = firebase.firestore();
-  
-  // Storage pengaman jika diperlukan
   try {
     window.storage = firebase.storage();
   } catch(e) {
@@ -27,6 +24,7 @@ if (!window.firebaseConfigInitialized) {
   }
 }
 
-const auth = window.auth;
-const db = window.db;
-const storage = window.storage;
+// Gunakan window agar tidak terjadi error "already been declared"
+var auth = window.auth;
+var db = window.db;
+var storage = window.storage;
