@@ -771,8 +771,8 @@
     const cachedName = localStorage.getItem("webpos_store_name");
     if (cachedName) logoEl.textContent = cachedName;
     try {
-      if (typeof database !== 'undefined') {
-        const doc = await database.ref("settings/store/name").once("value");
+      if (typeof db !== 'undefined') {
+        const doc = await db.ref("settings/store/name").once("value");
         if (doc.exists() && doc.val()) {
           logoEl.textContent = doc.val();
           localStorage.setItem("webpos_store_name", doc.val());
@@ -846,21 +846,21 @@
       const paths = ['products','customers','categories','users'];
       let totalRecords = 0;
       for (const p of paths) {
-        const snap = await database.ref(p).once('value');
+        const snap = await db.ref(p).once('value');
         totalRecords += Object.keys(snap.val() || {}).length;
       }
       
       const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const transSnap = await database.ref('transactions/' + today).once('value');
+      const transSnap = await db.ref('transactions/' + today).once('value');
       const trans = transSnap.val() || {};
       document.getElementById('todayTrans').textContent = Object.keys(trans).length.toLocaleString('id-ID');
 
-      const debtsSnap = await database.ref('debts').once('value');
+      const debtsSnap = await db.ref('debts').once('value');
       const debts = debtsSnap.val() || {};
       const activeDebts = Object.values(debts).filter(d => d.status === 'active').length;
       document.getElementById('totalProducts').textContent = (totalRecords + activeDebts).toLocaleString('id-ID');
 
-      const logSnap = await database.ref('backup/lastLog').once('value');
+      const logSnap = await db.ref('backup/lastLog').once('value');
       const log = logSnap.val();
       if (log) {
         document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
@@ -960,7 +960,7 @@
   async function exportProductsCSV() {
     setProgress(20);
     try {
-      const snap = await database.ref('products').once('value');
+      const snap = await db.ref('products').once('value');
       const data = snap.val() || {};
       const rows = [['ID','Nama Produk','Kategori','Harga Beli','Harga Jual','Stok','Status','Barcode','Dibuat']];
       Object.entries(data).forEach(([id,p]) => {
@@ -979,7 +979,7 @@
   async function exportTransactionsCSV() {
     setProgress(10);
     try {
-      const snap = await database.ref('transactions').once('value');
+      const snap = await db.ref('transactions').once('value');
       const all = snap.val() || {};
       const rows = [['Tanggal','ID Transaksi','Pelanggan','Total','Metode','Kasir','Status','Items']];
       let count = 0;
@@ -1013,11 +1013,11 @@
     document.getElementById('loadingOverlay').classList.add('active');
     try {
       const data = {
-        products: (await database.ref('products').once('value')).val() || {},
-        transactions: (await database.ref('transactions').once('value')).val() || {},
-        customers: (await database.ref('customers').once('value')).val() || {},
-        kas: (await database.ref('kas').once('value')).val() || {},
-        categories: (await database.ref('categories').once('value')).val() || {},
+        products: (await db.ref('products').once('value')).val() || {},
+        transactions: (await db.ref('transactions').once('value')).val() || {},
+        customers: (await db.ref('customers').once('value')).val() || {},
+        kas: (await db.ref('kas').once('value')).val() || {},
+        categories: (await db.ref('categories').once('value')).val() || {},
         exportedAt: Date.now()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -1044,9 +1044,9 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.products) await database.ref('products').set(data.products);
-      if (data.transactions) await database.ref('transactions').set(data.transactions);
-      if (data.customers) await database.ref('customers').set(data.customers);
+      if (data.products) await db.ref('products').set(data.products);
+      if (data.transactions) await db.ref('transactions').set(data.transactions);
+      if (data.customers) await db.ref('customers').set(data.customers);
       showToast('Import berhasil! Data telah dipulihkan.');
       loadStats();
     } catch(e) {
@@ -1085,7 +1085,7 @@
       return;
     }
     currentUser = user;
-    database.ref('users/' + user.uid).once('value').then(snap => {
+    db.ref('users/' + user.uid).once('value').then(snap => {
       const data = snap.val() || {};
       const name = data.name || user.email.split('@')[0];
       const role = (data.role || 'admin').toUpperCase();
