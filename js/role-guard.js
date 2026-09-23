@@ -30,7 +30,6 @@ const RoleGuard = {
       this.hideMenu('[data-menu="data-pelanggan"]');
       this.hideMenu('[data-menu="penggajian"]');
       this.hideMenu('[data-menu="pengguna"]');
-      this.hideMenu('[data-menu="setting"]');
       this.hideMenu('[data-menu="backup"]');
       this.hideMenu('[data-menu="reset"]');
       this.hideMenu('[data-menu="log-aktivitas"]');
