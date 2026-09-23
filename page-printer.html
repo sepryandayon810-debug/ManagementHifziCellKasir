@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Printer Digital</title>
+  <title>WebPOS - Printer & Struk</title>
 
   <!-- SKRIP PENERAPAN TEMA GLOBAL -->
   <script>
@@ -534,7 +534,7 @@
             </div>
           </div>
 
-          <!-- Status Printer (Tersambung ke js/printer.js & Pengaturan) -->
+          <!-- Status Printer -->
           <div class="card">
             <div class="card-header">
               <span class="card-title"><i class="fab fa-bluetooth-b" style="color: var(--accent)"></i> Status Printer Thermal</span>
@@ -542,7 +542,7 @@
             <div class="card-body">
               <div class="info-box info">
                 <div class="info-title"><i class="fas fa-info-circle"></i> Pengaturan Printer</div>
-                <div>Pengaturan perangkat printer thermal utama diatur langsung melalui menu <strong>Pengaturan</strong>. Klik tombol di bawah untuk memeriksa konfigurasi.</div>
+                <div>Konfigurasi dan pemilihan printer thermal utama diatur langsung melalui menu <strong>Pengaturan</strong>.</div>
               </div>
               <button class="btn btn-outline btn-block" onclick="window.location.href='page-setting.html'">
                 <i class="fas fa-cog"></i> Buka Menu Pengaturan
@@ -649,12 +649,30 @@
     let scannedData = null;
 
     document.addEventListener("DOMContentLoaded", () => {
+      syncStoreBrandName();
       setupSidebarEvents();
       setupAuthUser();
       loadHeaderSettings();
       renderManualForm();
       updatePreview();
     });
+
+    // Sinkronisasi Nama Toko pada Sidebar secara Dinamis
+    async function syncStoreBrandName() {
+      const logoEl = document.querySelector(".logo-text");
+      if (!logoEl) return;
+      const cachedName = localStorage.getItem("webpos_store_name");
+      if (cachedName) logoEl.textContent = cachedName;
+      try {
+        if (typeof db !== 'undefined') {
+          const doc = await db.collection("settings").doc("store").get();
+          if (doc.exists && doc.data().name) {
+            logoEl.textContent = doc.data().name;
+            localStorage.setItem("webpos_store_name", doc.data().name);
+          }
+        }
+      } catch (e) {}
+    }
 
     function setupSidebarEvents() {
       const sidebar = document.getElementById("sidebar");
