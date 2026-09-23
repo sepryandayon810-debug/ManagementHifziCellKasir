@@ -357,6 +357,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -674,7 +675,6 @@
 
     document.getElementById("btnLogout").onclick = () => {
       if (confirm("Yakin ingin keluar dari sistem?")) {
-        // Catat log logout sebelum keluar
         recordActivity('logout', 'Keluar dari sistem');
         if (typeof auth !== 'undefined') auth.signOut();
         localStorage.removeItem('webpos_session');
@@ -705,16 +705,31 @@
 
       currentUserRole = displayRole.toLowerCase();
 
+      // ⭐ BATASI HAK AKSES: Hanya Owner dan Developer yang boleh buka halaman ini
+      if (currentUserRole !== 'owner' && currentUserRole !== 'developer') {
+        alert("Akses Ditolak: Halaman Log Aktivitas hanya untuk Owner dan Developer.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      if (typeof RoleGuard !== 'undefined') {
+        RoleGuard.apply(currentUserRole);
+      }
+
       document.getElementById("userName").textContent = displayName;
       document.getElementById("userRole").textContent = displayRole.toUpperCase();
       const avatar = document.getElementById("userAvatar");
       if (avatar) avatar.textContent = displayName.slice(0, 2).toUpperCase();
 
-      // Cek apakah baru pertama kali buka sesi login ini di tab/browser ini
-      const sessionKey = `logged_in_${user.uid}`;
-      if (!sessionStorage.getItem(sessionKey)) {
-        sessionStorage.setItem(sessionKey, "true");
-        recordActivity('login', 'Masuk ke dalam sistem');
+      // ⭐ Catat login multi-sesi secara unik per jam masuk
+      const lastLoginKey = `last_login_logged_${user.uid}`;
+      const nowTime = Date.now();
+      const lastLoginTime = parseInt(localStorage.getItem(lastLoginKey) || '0');
+      
+      // Jika jeda login > 10 menit dari sesi sebelumnya, catat sebagai login baru
+      if (nowTime - lastLoginTime > 10 * 60 * 1000) {
+        localStorage.setItem(lastLoginKey, nowTime.toString());
+        recordActivity('login', `Masuk ke dalam sistem (${displayRole.toUpperCase()})`);
       }
 
     } catch(err) {
@@ -725,17 +740,16 @@
     loadLogs();
   }
 
-  // Fungsi helper untuk merekam log baru secara global (dapat dipanggil dari halaman lain juga)
   window.recordActivity = function(action, detail) {
     const userName = document.getElementById("userName")?.textContent || "Pengguna";
-    const userRole = document.getElementById("userRole")?.textContent || "KASIR";
+    const userRole = document.getElementById("userRole")?.textContent || currentUserRole.toUpperCase();
     
     let logs = getStorageData('webpos_activity_logs') || [];
     logs.unshift({
       timestamp: new Date().toISOString(),
       user: userName,
       role: userRole,
-      action: action, // 'login', 'logout', 'transaction', 'create', 'update', 'delete'
+      action: action, 
       detail: detail
     });
     setStorageData('webpos_activity_logs', logs);
@@ -756,20 +770,19 @@
     } catch(e) {}
   }
 
-  function loadUserOptions() {
+  async function loadUserOptions() {
     const select = document.getElementById('filterUser');
     select.innerHTML = '<option value="all">Semua Pengguna</option>';
     
     try {
-      db.collection("users").get().then(snap => {
-        snap.forEach(doc => {
-          const u = doc.data();
-          const name = u.name || u.username || u.email;
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = `${name} (${(u.role || 'kasir').toUpperCase()})`;
-          select.appendChild(opt);
-        });
+      const snap = await db.collection("users").get();
+      snap.forEach(doc => {
+        const u = doc.data();
+        const name = u.name || u.username || u.email;
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `${name} (${(u.role || 'kasir').toUpperCase()})`;
+        select.appendChild(opt);
       });
     } catch(e) {
       const users = getStorageData('webpos_users') || [];
@@ -784,8 +797,6 @@
 
   function loadLogs() {
     let logs = getStorageData('webpos_activity_logs') || [];
-    
-    // Jika role kasir, batasi hanya melihat log miliknya sendiri (opsional sesuai kebijakan, saat ini Owner/Developer melihat semua)
     allLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     applyFilters();
     calculateStats();
@@ -833,7 +844,7 @@
         <tr>
           <td style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap;">${dateStr}</td>
           <td>
-            <div style="font-weight: 700; color: var(--text-main); display: flex; align-items: center;">
+            <div style="font-weight: 700; color: var(--text-main); display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
               ${log.user || 'Admin'}
               <span class="role-tag role-${roleClass}">${log.role || 'KASIR'}</span>
             </div>
