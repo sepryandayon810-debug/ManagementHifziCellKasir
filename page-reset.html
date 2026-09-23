@@ -460,7 +460,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
-<base target="">
+<base target="_blank">
 </head>
 <body>
 
@@ -739,6 +739,24 @@
     setTimeout(() => el.remove(), 3500);
   }
 
+  // Sinkronisasi nama toko (logo + judul tab) dari Firestore settings/store
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    const cachedName = localStorage.getItem("webpos_store_name");
+    if (cachedName) {
+      logoEl.textContent = cachedName;
+      document.title = cachedName + " - Reset Data";
+    }
+    try {
+      const doc = await db.collection("settings").doc("store").get();
+      if (doc.exists && doc.data().name) {
+        logoEl.textContent = doc.data().name;
+        localStorage.setItem("webpos_store_name", doc.data().name);
+        document.title = doc.data().name + " - Reset Data";
+      }
+    } catch (e) {}
+  }
+
   // Hapus seluruh isi satu koleksi Firestore (batch per 400 dokumen)
   async function deleteCollection(collectionName) {
     const snap = await db.collection(collectionName).get();
@@ -881,6 +899,8 @@
         window.location.href = "login.html";
         return;
       }
+
+      syncStoreBrandName();
 
       // Load profil user dari Firestore
       try {
