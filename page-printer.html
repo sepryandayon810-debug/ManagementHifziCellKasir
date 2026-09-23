@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Printer & Struk</title>
+  <title>WebPOS - Printer Digital</title>
 
   <!-- SKRIP PENERAPAN TEMA GLOBAL -->
   <script>
@@ -345,6 +345,7 @@
     .toast.error { border-left-color: var(--danger); }
     .toast.warning { border-left-color: var(--warning); }
 
+    /* MOBILE BOTTOM NAVIGATION BAR */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -365,14 +366,14 @@
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
-  <!-- Firebase & Helper Printer -->
+  <!-- Firebase & Konfigurasi -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
-  <!-- Menghubungkan modul printer terpusat -->
+  <!-- Modul Printer Terpusat -->
   <script src="js/printer.js"></script>
 </head>
 <body>
@@ -380,7 +381,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -398,6 +399,7 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Utama -->
       <div class="nav-section">
         <div class="nav-section-title">Utama</div>
         <ul class="nav-menu">
@@ -407,6 +409,7 @@
         </ul>
       </div>
 
+      <!-- Transaksi -->
       <div class="nav-section">
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
@@ -434,6 +437,7 @@
         </ul>
       </div>
 
+      <!-- Laporan -->
       <div class="nav-section">
         <div class="nav-section-title">Laporan</div>
         <ul class="nav-menu">
@@ -443,6 +447,7 @@
         </ul>
       </div>
 
+      <!-- Integrasi -->
       <div class="nav-section">
         <div class="nav-section-title">Integrasi</div>
         <ul class="nav-menu">
@@ -451,6 +456,7 @@
         </ul>
       </div>
 
+      <!-- Penggajian -->
       <div class="nav-section">
         <div class="nav-section-title">Penggajian</div>
         <ul class="nav-menu">
@@ -458,6 +464,7 @@
         </ul>
       </div>
 
+      <!-- Sistem -->
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
@@ -527,18 +534,18 @@
             </div>
           </div>
 
-          <!-- Status Printer (Tersambung ke js/printer.js) -->
+          <!-- Status Printer (Tersambung ke js/printer.js & Pengaturan) -->
           <div class="card">
             <div class="card-header">
               <span class="card-title"><i class="fab fa-bluetooth-b" style="color: var(--accent)"></i> Status Printer Thermal</span>
             </div>
             <div class="card-body">
               <div class="info-box info">
-                <div class="info-title"><i class="fas fa-info-circle"></i> Info Pengaturan Printer</div>
-                <div>Konfigurasi dan pemilihan printer thermal utama diatur melalui menu <strong>Pengaturan</strong>. Tombol cetak di bawah ini akan otomatis menggunakan printer aktif tersebut.</div>
+                <div class="info-title"><i class="fas fa-info-circle"></i> Pengaturan Printer</div>
+                <div>Pengaturan perangkat printer thermal utama diatur langsung melalui menu <strong>Pengaturan</strong>. Klik tombol di bawah untuk memeriksa konfigurasi.</div>
               </div>
               <button class="btn btn-outline btn-block" onclick="window.location.href='page-setting.html'">
-                <i class="fas fa-cog"></i> Buka Pengaturan Printer
+                <i class="fas fa-cog"></i> Buka Menu Pengaturan
               </button>
             </div>
           </div>
@@ -642,10 +649,82 @@
     let scannedData = null;
 
     document.addEventListener("DOMContentLoaded", () => {
+      setupSidebarEvents();
+      setupAuthUser();
       loadHeaderSettings();
       renderManualForm();
       updatePreview();
     });
+
+    function setupSidebarEvents() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("sidebarBackdrop");
+      const menuToggle = document.getElementById("menuToggle");
+      const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+
+      if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
+      if (mobileMenuToggle) {
+        mobileMenuToggle.onclick = (e) => {
+          e.stopPropagation();
+          sidebar.classList.add("mobile-open");
+          backdrop.classList.add("active");
+        };
+      }
+      backdrop.onclick = () => {
+        sidebar.classList.remove("mobile-open");
+        backdrop.classList.remove("active");
+      };
+
+      document.querySelectorAll(".nav-dropdown").forEach(d => {
+        const t = d.querySelector(".nav-dropdown-toggle");
+        if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+      });
+
+      document.getElementById("btnThemeToggle").onclick = () => {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        const nextTheme = isDark ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", nextTheme);
+        localStorage.setItem("webpos_theme", nextTheme);
+      };
+
+      document.getElementById("btnLogout").onclick = () => {
+        if (confirm("Yakin ingin keluar dari sistem?")) {
+          if (typeof auth !== 'undefined') auth.signOut();
+          localStorage.removeItem('webpos_session');
+          window.location.href = "login.html";
+        }
+      };
+
+      document.getElementById("menuSearch")?.addEventListener("input", function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll(".nav-link span").forEach(span => {
+          const li = span.closest(".nav-item");
+          if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+        });
+      });
+    }
+
+    async function setupAuthUser() {
+      if (typeof auth !== 'undefined') {
+        auth.onAuthStateChanged(async (user) => {
+          if (!user) {
+            window.location.href = "login.html";
+            return;
+          }
+          try {
+            const doc = await db.collection("users").doc(user.uid).get();
+            if (doc.exists) {
+              const u = doc.data();
+              const name = u.name || u.username || user.email.split("@")[0];
+              const role = (u.role || "Kasir").toUpperCase();
+              document.getElementById("userName").textContent = name;
+              document.getElementById("userRole").textContent = role;
+              document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
+            }
+          } catch(e) {}
+        });
+      }
+    }
 
     window.setReceiptType = function(type) {
       currentReceiptType = type;
@@ -744,19 +823,14 @@
       updatePreview();
     }
 
-    // --- INTEGRASI PANGGILAN PRINTER DARI js/printer.js ---
     window.printThermalUsingHelper = function() {
       const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
       if (nom <= 0) { showToast('Isi nominal terlebih dahulu', 'warning'); return; }
 
       const textContent = document.getElementById('receiptPreview').innerText;
-
-      // Memanggil fungsi cetak terpusat dari js/printer.js
       if (typeof window.printToThermalPrinter === 'function') {
         window.printToThermalPrinter(textContent);
       } else {
-        // Fallback jika helper belum mendefinisikan fungsi global
-        showToast('Modul printer.js terpanggil, mencetak...', 'info');
         const w = window.open('', '_print', 'width=350,height=600');
         w.document.write(`<pre>${textContent}</pre>`);
         w.document.close();
@@ -787,7 +861,6 @@
       window.open('https://wa.me/?text=' + text, '_blank');
     }
 
-    // Upload & OCR handler
     const uploadArea = document.getElementById('ocrUploadArea');
     const fileInput = document.getElementById('ocrFileInput');
     uploadArea?.addEventListener('click', () => fileInput?.click());
@@ -798,7 +871,7 @@
           document.getElementById('ocrLoading').style.display = 'none';
           document.getElementById('ocrResultSection').style.display = 'block';
           document.getElementById('ocrParsedData').innerHTML = `<div><strong>Status:</strong> Berhasil dibaca</div>`;
-        }, 1500);
+        }, 1200);
       }
     });
 
