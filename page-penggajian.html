@@ -203,16 +203,16 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* HEADER RESPONSIF TIDAK TUMPANG TINDIH */
+    /* HEADER FIX AGAR TIDAK TUMPANG TINDIH */
     .main-header {
       min-height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0.75rem 1.25rem; position: sticky; top: 0; z-index: 90; flex-wrap: wrap; gap: 0.75rem;
+      padding: 0.75rem 1.25rem; position: sticky; top: 0; z-index: 90; gap: 1rem;
     }
     .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
-    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
-    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
     .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
@@ -452,22 +452,23 @@
         <h1 class="header-title">Data Penggajian Staf</h1>
       </div>
       <div class="header-actions">
-        <button class="btn btn-primary btn-sm" id="btnOpenAddPayroll">
-          <i class="fas fa-plus"></i> Buat Penggajian Baru
-        </button>
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
     </header>
 
     <div class="page-content">
+      <!-- TOMBOL UTAMA DI DALAM CARD HEADER AGAR TIDAK TUMPANG TINDIH -->
       <div class="card">
         <div class="card-header">
           <h3 class="card-title"><i class="fas fa-money-check-dollar" style="color:var(--primary);"></i> Riwayat & Status Gaji Staf</h3>
-          <div style="display:flex; gap:0.5rem;">
-            <select class="form-select" id="filterMonth" style="padding:0.45rem 0.75rem; font-size:0.82rem;">
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <select class="form-select" id="filterMonth" style="padding:0.45rem 0.75rem; font-size:0.82rem; width:auto;">
               <option value="all">Semua Bulan</option>
             </select>
+            <button class="btn btn-primary btn-sm" id="btnOpenAddPayroll">
+              <i class="fas fa-plus"></i> Buat Penggajian Baru
+            </button>
           </div>
         </div>
         <div class="card-body" style="padding:0;">
@@ -516,15 +517,26 @@
       <form id="payrollForm">
         <div class="form-group">
           <label class="form-label">Pilih Staf / Karyawan</label>
-          <select class="form-select" id="payrollStaffSelect" required>
-            <option value="">Pilih staf...</option>
-          </select>
+          <div style="display:flex; gap:0.5rem;">
+            <select class="form-select" id="payrollStaffSelect" style="flex:1;">
+              <option value="">Pilih dari daftar...</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnToggleManualStaff" title="Ketik Nama Manual" onclick="toggleManualStaffInput()">
+              <i class="fas fa-keyboard"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- INPUT NAMA MANUAL JIKA TIDAK ADA DI USER -->
+        <div class="form-group" id="manualStaffGroup" style="display:none;">
+          <label class="form-label">Nama Staf (Manual)</label>
+          <input type="text" class="form-input" id="manualStaffName" placeholder="Masukkan nama staf..." oninput="onManualStaffInput()">
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
           <div class="form-group">
             <label class="form-label">Periode Bulan</label>
-            <select class="form-select" id="payrollMonth" required onchange="onStaffSelected()">
+            <select class="form-select" id="payrollMonth" required onchange="triggerStaffReload()">
               <option value="01">Januari</option>
               <option value="02">Februari</option>
               <option value="03">Maret</option>
@@ -541,7 +553,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Tahun</label>
-            <input type="number" class="form-input" id="payrollYear" required onchange="onStaffSelected()">
+            <input type="number" class="form-input" id="payrollYear" required onchange="triggerStaffReload()">
           </div>
         </div>
 
@@ -597,6 +609,7 @@
   let staffList = [];
   let activeStaffDebts = [];
   let allPayrolls = [];
+  let isManualStaff = false;
 
   function formatRupiah(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -715,19 +728,19 @@
         staffList.push(u);
       });
 
-      // Scan juga dari riwayat 'debts' agar staf yang hanya punya catatan hutang otomatis masuk pilihan
+      // Tarik juga nama unik dari koleksi hutang ('debts') agar staf yang punya hutang tetapi tidak ada di users tetap muncul
       const debtSnap = await db.collection("debts").where("status", "==", "active").get();
       debtSnap.forEach(doc => {
         const d = doc.data();
         if (d.userId && !staffMap[d.userId]) {
-          const staffName = d.name || "Staf / Anggota";
-          staffMap[d.userId] = staffName;
-          staffList.push({ id: d.userId, name: staffName, role: "staf" });
+          const sName = d.name || "Staf / Anggota";
+          staffMap[d.userId] = sName;
+          staffList.push({ id: d.userId, name: sName, role: "staf" });
         }
       });
 
       const staffSelect = document.getElementById("payrollStaffSelect");
-      staffSelect.innerHTML = '<option value="">Pilih staf...</option>';
+      staffSelect.innerHTML = '<option value="">Pilih dari daftar...</option>';
       staffList.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s.id;
@@ -796,6 +809,10 @@
 
   window.openAddPayrollModal = async function() {
     document.getElementById("payrollForm").reset();
+    isManualStaff = false;
+    document.getElementById("manualStaffGroup").style.display = "none";
+    document.getElementById("payrollStaffSelect").style.display = "block";
+
     const now = new Date();
     document.getElementById("payrollYear").value = now.getFullYear();
     document.getElementById("payrollMonth").value = String(now.getMonth() + 1).padStart(2, '0');
@@ -808,8 +825,37 @@
     document.getElementById("modalPayroll").classList.remove("active");
   };
 
-  // LOGIKA PEMANGGILAN HUTANG & TUNGGAKAN BULAN LALU (BACK-DATE)
+  window.toggleManualStaffInput = function() {
+    isManualStaff = !isManualStaff;
+    const selectEl = document.getElementById("payrollStaffSelect");
+    const manualGroup = document.getElementById("manualStaffGroup");
+    
+    if (isManualStaff) {
+      selectEl.style.display = "none";
+      manualGroup.style.display = "block";
+      selectEl.value = "";
+      document.getElementById("staffDebtsContainer").innerHTML = 'Input manual aktif (tidak ada pemotongan hutang otomatis).';
+    } else {
+      selectEl.style.display = "block";
+      manualGroup.style.display = "none";
+      document.getElementById("manualStaffName").value = "";
+      document.getElementById("staffDebtsContainer").innerHTML = 'Pilih staf terlebih dahulu untuk melihat daftar hutang aktif.';
+    }
+    calculateTakeHomePay();
+  };
+
+  window.triggerStaffReload = function() {
+    if (!isManualStaff) {
+      onStaffSelected();
+    }
+  };
+
+  window.onManualStaffInput = function() {
+    calculateTakeHomePay();
+  };
+
   async function onStaffSelected() {
+    if (isManualStaff) return;
     const staffId = document.getElementById("payrollStaffSelect").value;
     const container = document.getElementById("staffDebtsContainer");
     const prevInput = document.getElementById("prevUnpaidSalary");
@@ -827,7 +873,6 @@
       const monthVal = document.getElementById("payrollMonth").value;
       const yearVal = parseInt(document.getElementById("payrollYear").value);
       
-      // Hitung periode bulan sebelumnya (untuk mendeteksi otomatis back-date tunggakan)
       let prevMonthNum = parseInt(monthVal) - 1;
       let prevYearNum = yearVal;
       if (prevMonthNum === 0) {
@@ -836,7 +881,6 @@
       }
       const prevPeriodKey = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}`;
 
-      // Cek apakah bulan sebelumnya ada gaji berstatus 'unpaid'
       const prevPayrollSnap = await db.collection("payrolls")
         .where("staffId", "==", staffId)
         .where("period", "==", prevPeriodKey)
@@ -850,7 +894,6 @@
       });
       prevInput.value = detectedUnpaid;
 
-      // Tarik daftar hutang aktif SPESIFIK milik staf tersebut dari koleksi 'debts'
       const snap = await db.collection("debts").where("userId", "==", staffId).where("status", "==", "active").get();
       activeStaffDebts = [];
       snap.forEach(doc => {
@@ -900,19 +943,37 @@
   };
 
   async function savePayrollRecord() {
-    const staffId = document.getElementById("payrollStaffSelect").value;
+    let staffId = "";
+    let staffName = "";
+
+    if (isManualStaff) {
+      staffName = document.getElementById("manualStaffName").value.trim();
+      staffId = "manual_" + Date.now();
+      if (!staffName) {
+        toast("Nama staf manual wajib diisi", "error");
+        return;
+      }
+    } else {
+      staffId = document.getElementById("payrollStaffSelect").value;
+      if (!staffId) {
+        toast("Pilih staf terlebih dahulu", "error");
+        return;
+      }
+      const staffObj = staffList.find(s => s.id === staffId);
+      staffName = staffObj ? (staffObj.name || staffObj.username) : "Staf";
+    }
+
     const month = document.getElementById("payrollMonth").value;
     const year = document.getElementById("payrollYear").value;
     const baseSalary = parseFloat(document.getElementById("baseSalary").value) || 0;
     const prevUnpaidSalary = parseFloat(document.getElementById("prevUnpaidSalary").value) || 0;
     const status = document.getElementById("payrollStatus").value;
 
-    if (!staffId || !month || !year || baseSalary <= 0) {
+    if (!month || !year || baseSalary <= 0) {
       toast("Harap lengkapi data form dengan benar", "error");
       return;
     }
 
-    const staffObj = staffList.find(s => s.id === staffId);
     const period = `${year}-${month}`;
     const monthNames = {"01":"Januari","02":"Februari","03":"Maret","04":"April","05":"Mei","06":"Juni","07":"Juli","08":"Agustus","09":"September","10":"Oktober","11":"November","12":"Desember"};
     const periodName = `${monthNames[month]} ${year}`;
@@ -923,6 +984,7 @@
       const dId = chk.value;
       const dObj = activeStaffDebts.find(d => d.id === dId);
       if (dObj) {
+        totalDebtDunduction += dObj.remaining || 0; // Typo fix
         totalDebtDeduction += dObj.remaining || 0;
         selectedDebts.push({ id: dObj.id, name: dObj.name, amountDeducted: dObj.remaining });
       }
@@ -940,7 +1002,7 @@
       const payrollRef = db.collection("payrolls").doc();
       batch.set(payrollRef, {
         staffId,
-        staffName: staffObj.name || staffObj.username || 'Staf',
+        staffName,
         period,
         periodName,
         baseSalary,
@@ -952,7 +1014,6 @@
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // Update hutang yang dipilih menjadi lunas (paid) di koleksi 'debts'
       selectedDebts.forEach(d => {
         const debtRef = db.collection("debts").doc(d.id);
         batch.update(debtRef, {
