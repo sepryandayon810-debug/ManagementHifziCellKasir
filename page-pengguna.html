@@ -211,14 +211,16 @@
       display: flex; 
       align-items: center; 
       justify-content: space-between;
-      padding: 0 1.25rem; 
+      padding: 0 1rem; 
       position: sticky; 
       top: 0; 
       z-index: 90;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .header-left { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
-    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
-    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .header-left { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+    .header-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
 
     .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
@@ -287,13 +289,30 @@
     .role-developer { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
     .role-owner { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
-    .btn-action-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-    .btn-action {
-      padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.78rem;
-      font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    /* TOMBOL TINDAKAN DISUSUN 2 KOLOM KE SAMPING */
+    .btn-action-group { 
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: 4px; 
+      max-width: 160px;
+      margin-left: auto;
     }
-    .btn-approve { background: var(--success); color: #fff; }
-    .btn-reject { background: var(--danger-light); color: var(--danger); }
+    .btn-action {
+      padding: 0.35rem 0.5rem; 
+      border-radius: 6px; 
+      font-size: 0.75rem;
+      font-weight: 700; 
+      border: none; 
+      cursor: pointer; 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 4px;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .btn-approve { background: var(--success); color: #fff; grid-column: span 2; }
+    .btn-reject { background: var(--danger-light); color: var(--danger); grid-column: span 2; }
     .btn-delete { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
     .btn-delete:hover { color: var(--danger); }
     .btn-password { background: var(--primary-light); color: var(--primary); border: 1px solid var(--border); }
@@ -500,7 +519,6 @@
         <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
         <h1 class="header-title">Manajemen Staf</h1>
       </div>
-      <!-- HEADER BERSIH HANYA UNTUK DARK MODE & LOGOUT -->
       <div class="header-actions">
         <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
@@ -508,7 +526,6 @@
     </header>
 
     <div class="page-content">
-      <!-- TOOLBAR DIPINDAHKAN KE SINI (ADA TOMBOL REFRESH YANG RAPI) -->
       <div class="toolbar-section">
         <div class="tab-bar" style="border:none; margin-bottom:0;">
           <button class="tab-item active" data-tab="active">
@@ -848,7 +865,7 @@
                     <i class="fas fa-user-pen"></i> Role
                   </button>
                   <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${u.id}')" title="Hapus User">
-                    <i class="fas fa-trash"></i>
+                    <i class="fas fa-trash"></i> Hapus
                   </button>
                 ` : ''}
               `}
