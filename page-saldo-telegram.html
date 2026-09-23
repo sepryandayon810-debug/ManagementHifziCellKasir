@@ -262,8 +262,30 @@
     .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .card-body { padding: 1.25rem; }
 
-    .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
-    .tool-btn { position: relative; padding: 0.75rem; border: 2px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; transition: all 0.15s; font-size: 0.85rem; text-align: center; }
+    /* PILIH TOOLS / APLIKASI DIUBAH MENJADI 2 KOLOM (KIRI-KANAN) */
+    .tools-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: 0.75rem; 
+      margin-bottom: 1rem; 
+    }
+    .tool-btn { 
+      position: relative; 
+      padding: 0.85rem 0.75rem; 
+      border: 2px solid var(--border); 
+      border-radius: var(--radius-md); 
+      background: var(--bg-subtle); 
+      color: var(--text-main); 
+      font-weight: 600; 
+      cursor: pointer; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 0.35rem; 
+      transition: all 0.15s; 
+      font-size: 0.85rem; 
+      text-align: center; 
+    }
     .tool-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
     .tool-btn.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
     .tool-btn i { font-size: 1.2rem; color: var(--primary); }
@@ -300,8 +322,11 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
-    .btn-success { background: var(--success); color: white; }
-    .btn-success:hover { filter: brightness(0.9); }
+    
+    /* TOMBOL MENGIKUTI WARNA UTAMA (PRIMARY) DARI SETTING */
+    .btn-theme-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .btn-theme-primary:hover { background: var(--primary-hover); }
+
     .btn-danger { background: var(--danger); color: white; }
     .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
@@ -494,7 +519,7 @@
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-plus-circle" style="color: var(--primary);"></i> Catat Top Up Saldo</h3>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn btn-success btn-sm" onclick="openImportModal()"><i class="fas fa-paste"></i> Import / Upload</button>
+              <button class="btn btn-theme-primary btn-sm" onclick="openImportModal()"><i class="fas fa-paste"></i> Import / Upload</button>
               <button class="btn btn-outline btn-sm" onclick="openToolModal()"><i class="fas fa-cog"></i> Kelola Tools</button>
             </div>
           </div>
@@ -502,7 +527,7 @@
             <div class="form-group">
               <label class="form-label">Pilih Tools / Aplikasi *</label>
               <div class="tools-grid" id="toolsGridContainer">
-                <!-- Tombol tools akan dirender otomatis -->
+                <!-- Tombol tools 2 kolom (kiri-kanan) -->
               </div>
             </div>
 
@@ -530,7 +555,7 @@
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-history" style="color: var(--accent);"></i> Riwayat & Filter Rekap Top Up</h3>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn btn-success btn-sm" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Export CSV</button>
+              <button class="btn btn-theme-primary btn-sm" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Export CSV</button>
               <button class="btn btn-outline btn-sm" id="btnRefresh"><i class="fas fa-sync-alt"></i> Refresh</button>
             </div>
           </div>
@@ -653,7 +678,7 @@
   <div class="modal-overlay" id="importModal">
     <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fas fa-paste" style="color: var(--success);"></i> Import Laporan Sebelumnya</h3>
+        <h3 class="modal-title"><i class="fas fa-paste" style="color: var(--primary);"></i> Import Laporan Sebelumnya</h3>
         <button class="modal-close" onclick="closeImportModal()"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
@@ -667,7 +692,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeImportModal()">Batal</button>
-        <button class="btn btn-success" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses Import</button>
+        <button class="btn btn-theme-primary" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses Import</button>
       </div>
     </div>
   </div>
@@ -754,7 +779,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.toggle('mobile-open');
+            sidebar.classList.add('mobile-open');
             backdrop.classList.add('active');
           };
         }
