@@ -255,6 +255,8 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
     .btn-secondary:hover { background: var(--border); }
+    .btn-danger { background: var(--danger-light); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: white; }
     .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
 
     .form-group { margin-bottom: 1.15rem; }
@@ -466,6 +468,9 @@
         <h1 class="header-title">Data Penggajian Staf</h1>
       </div>
       <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" id="btnOpenManageStaff" title="Kelola Daftar Staf Khusus">
+          <i class="fas fa-users-gear"></i> Kelola Staf
+        </button>
         <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
@@ -519,6 +524,43 @@
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
 
+<!-- MODAL KELOLA DAFTAR STAF KHUSUS -->
+<div class="modal-overlay" id="modalManageStaff">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-users-gear" style="color:var(--primary);"></i> Kelola Daftar Staf Khusus</h3>
+      <button class="modal-close" onclick="closeManageStaffModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+        Tambah atau hapus nama staf manual yang tidak memiliki akun aplikasi agar bersih dari salah ketik.
+      </p>
+      
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <input type="text" class="form-input" id="newStaffManualName" placeholder="Nama staf baru...">
+        <button class="btn btn-primary" onclick="addNewManualStaff()"><i class="fas fa-plus"></i> Tambah</button>
+      </div>
+
+      <div class="table-container" style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-md);">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nama Staf</th>
+              <th style="text-align:right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="manualStaffTableBody">
+            <tr><td colspan="2" style="text-align:center; color:var(--text-muted)">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeManageStaffModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL TAMBAH / PROSES GAJI -->
 <div class="modal-overlay" id="modalPayroll">
   <div class="modal-content">
@@ -529,7 +571,6 @@
     <div class="modal-body">
       <form id="payrollForm">
         
-        <!-- PENCARIAN STAF BERSIH (HANYA DARI USERS & RIWAYAT PENGGAJIAN) -->
         <div class="form-group">
           <label class="form-label">Cari / Ketik Nama Staf</label>
           <div class="autocomplete-wrapper">
@@ -539,7 +580,7 @@
             <div class="autocomplete-dropdown" id="staffAutocompleteList"></div>
           </div>
           <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:0.25rem;">
-            * Ketik nama bebas atau pilih dari akun aktif sistem.
+            * Staf ditarik dari akun aktif sistem atau daftar staf khusus yang Anda tambahkan.
           </small>
         </div>
 
@@ -619,6 +660,7 @@
   let staffList = [];
   let activeStaffDebts = [];
   let allPayrolls = [];
+  let manualStaffs = [];
 
   function formatRupiah(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -685,6 +727,7 @@
     loadStaffAndPayrolls();
 
     document.getElementById("btnOpenAddPayroll").onclick = openAddPayrollModal;
+    document.getElementById("btnOpenManageStaff").onclick = openManageStaffModal;
     document.getElementById("btnSubmitPayroll").onclick = savePayrollRecord;
 
     document.getElementById("btnThemeToggle")?.addEventListener("click", () => {
@@ -732,7 +775,7 @@
 
   async function loadStaffAndPayrolls() {
     try {
-      // 1. Tarik daftar staf murni dari pengguna aktif ('users')
+      // 1. Tarik akun aktif dari 'users'
       const userSnap = await db.collection("users").where("status", "==", "active").get();
       staffList = [];
       
@@ -741,7 +784,18 @@
         staffList.push({ id: u.id, name: u.name || u.username, role: u.role || 'staf' });
       });
 
-      // 2. Tarik juga nama staf yang pernah tercatat di riwayat 'payrolls' sebelumnya agar tidak hilang
+      // 2. Tarik daftar staf manual tersimpan dari koleksi 'settings' -> 'manual_staff'
+      const mStaffDoc = await db.collection("settings").doc("manual_staff").get();
+      if (mStaffDoc.exists) {
+        manualStaffs = mStaffDoc.data().list || [];
+        manualStaffs.forEach(ms => {
+          staffList.push({ id: ms.id, name: ms.name, role: 'staf' });
+        });
+      } else {
+        manualStaffs = [];
+      }
+
+      // 3. Tarik riwayat penggajian
       const paySnap = await db.collection("payrolls").orderBy("createdAt", "desc").get();
       allPayrolls = [];
       paySnap.forEach(doc => {
@@ -808,6 +862,67 @@
     `).join("");
   }
 
+  // KELOLA STAF MANUAL MODAL
+  window.openManageStaffModal = function() {
+    renderManualStaffTable();
+    document.getElementById("modalManageStaff").classList.add("active");
+  };
+
+  window.closeManageStaffModal = function() {
+    document.getElementById("modalManageStaff").classList.remove("active");
+    loadStaffAndPayrolls();
+  };
+
+  function renderManualStaffTable() {
+    const tbody = document.getElementById("manualStaffTableBody");
+    if (manualStaffs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--text-muted)">Belum ada daftar staf manual.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = manualStaffs.map(ms => `
+      <tr>
+        <td><strong>${ms.name}</strong></td>
+        <td style="text-align:right">
+          <button class="btn btn-danger btn-sm" onclick="window.deleteManualStaff('${ms.id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  window.addNewManualStaff = async function() {
+    const nameInput = document.getElementById("newStaffManualName");
+    const name = nameInput.value.trim();
+    if (!name) {
+      toast("Nama staf tidak boleh kosong!", "error");
+      return;
+    }
+
+    const newObj = { id: "manual_staff_" + Date.now(), name: name };
+    manualStaffs.push(newObj);
+
+    try {
+      await db.collection("settings").doc("manual_staff").set({ list: manualStaffs }, { merge: true });
+      nameInput.value = "";
+      renderManualStaffTable();
+      toast("Staf manual berhasil disimpan!", "success");
+    } catch(err) {
+      toast("Gagal menyimpan: " + err.message, "error");
+    }
+  };
+
+  window.deleteManualStaff = async function(id) {
+    if (!confirm("Hapus nama staf ini dari daftar?")) return;
+    manualStaffs = manualStaffs.filter(ms => ms.id !== id);
+    try {
+      await db.collection("settings").doc("manual_staff").set({ list: manualStaffs });
+      renderManualStaffTable();
+      toast("Staf dihapus dari daftar", "success");
+    } catch(err) {
+      toast("Gagal menghapus: " + err.message, "error");
+    }
+  };
+
   window.openAddPayrollModal = async function() {
     document.getElementById("payrollForm").reset();
     document.getElementById("staffSearchInput").value = "";
@@ -851,10 +966,10 @@
       `).join("");
     }
 
-    // Opsi ketik nama baru secara bebas (jika belum ada di list)
+    // Opsi simpan nama baru ke daftar staf manual
     html += `
       <div class="autocomplete-item" style="background:var(--primary-light); color:var(--primary); font-weight:700;" onclick="selectStaffItem('manual_${Date.now()}', '${query}', 'STAF')">
-        <span><i class="fas fa-plus"></i> Gunakan nama baru: "${query}"</span>
+        <span><i class="fas fa-plus"></i> Gunakan & Simpan nama: "${query}"</span>
       </div>
     `;
 
@@ -862,12 +977,21 @@
     dropdown.style.display = "block";
   };
 
-  window.selectStaffItem = function(id, name, role) {
+  window.selectStaffItem = async function(id, name, role) {
     document.getElementById("staffSearchInput").value = `${name} (${role})`;
     document.getElementById("selectedStaffId").value = id;
     document.getElementById("selectedStaffName").value = name;
     document.getElementById("staffAutocompleteList").style.display = "none";
     
+    // Jika nama baru diketik, otomatis masukkan ke daftar staf manual agar tersimpan selamanya
+    if (id.startsWith('manual_')) {
+      const exists = manualStaffs.some(ms => ms.name.toLowerCase() === name.toLowerCase());
+      if (!exists) {
+        manualStaffs.push({ id: id, name: name });
+        await db.collection("settings").doc("manual_staff").set({ list: manualStaffs }, { merge: true });
+      }
+    }
+
     onStaffSelected(id, name);
   };
 
@@ -879,7 +1003,7 @@
     }
   };
 
-  // LOGIKA PEMANGGILAN HUTANG & DETEKSI TUNGGAKAN BULAN LALU (BERDASARKAN ID ATAU NAMA)
+  // LOGIKA PEMANGGILAN HUTANG & DETEKSI TUNGGAKAN BULAN LALU
   async function onStaffSelected(staffId, staffName) {
     const container = document.getElementById("staffDebtsContainer");
     const prevInput = document.getElementById("prevUnpaidSalary");
@@ -906,7 +1030,7 @@
       }
       const prevPeriodKey = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}`;
 
-      // 1. CEK TUNGGAKAN BULAN LALU (Berdasarkan staffId ATAU kecocokan nama)
+      // 1. CEK TUNGGAKAN BULAN LALU
       let detectedUnpaid = 0;
       allPayrolls.forEach(p => {
         const pStaffId = p.staffId || "";
@@ -922,7 +1046,7 @@
       });
       prevInput.value = detectedUnpaid;
 
-      // 2. TARIK HUTANG AKTIF DARI KOLEKSI 'debts' (Berdasarkan userId ATAU kesamaan nama)
+      // 2. TARIK HUTANG AKTIF DARI KOLEKSI 'debts'
       const snap = await db.collection("debts").where("status", "==", "active").get();
       activeStaffDebts = [];
       
