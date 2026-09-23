@@ -18,12 +18,13 @@ function applyMenuVisibility() {
         return;
       }
 
-      // 2. ADMIN: Sembunyikan menu pengaturan sistem tingkat tinggi
+      // 2. ADMIN: Sembunyikan menu pengaturan sistem tingkat tinggi & Log Aktivitas
       if (role === "admin") {
         hideMenuItem('[data-menu="penggajian"]');
         hideMenuItem('[data-menu="reset"]');
         hideMenuItem('[data-menu="pengguna"]');
         hideMenuItem('[data-menu="setting"]');
+        hideMenuItem('[data-menu="log-aktivitas"]'); // ← Tambahkan ini untuk Admin
         return;
       }
 
@@ -36,9 +37,9 @@ function applyMenuVisibility() {
         hideMenuItem('[data-menu="telegram"]');
         hideMenuItem('[data-menu="penggajian"]');
         hideMenuItem('[data-menu="pengguna"]');
-        hideMenuItem('[data-menu="setting"]');
         hideMenuItem('[data-menu="backup"]');
         hideMenuItem('[data-menu="reset"]');
+        hideMenuItem('[data-menu="log-aktivitas"]'); // ← Tambahkan ini untuk Kasir
 
         // Sembunyikan kartu laba & modal di dashboard kasir
         const labaEl = document.getElementById("totalLaba");
