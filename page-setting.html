@@ -6,6 +6,16 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Pengaturan</title>
 
+  <!-- SKRIP PENERAPAN TEMA GLOBAL -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,8 +53,6 @@
       --header-h: 68px;
     }
 
-    /* PALET WARNA GLOBAL TEMA */
-    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
@@ -267,7 +275,6 @@
     .setting-label { font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.15rem; }
     .setting-desc { font-size: 0.78rem; color: var(--text-muted); }
 
-    /* PILIHAN WARNA TEMA (GRID) */
     .theme-options-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
       gap: 0.75rem; margin-top: 0.75rem;
@@ -370,20 +377,8 @@
       .page-content { padding-bottom: calc(60px + 1.5rem); }
       .d-md-none { display: flex !important; }
     }
-    @media (min-width: 1025px) {
-      .d-md-none { display: none !important; }
-    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
-
-  <!-- SKRIP GLOBAL PENERAPAN TEMA (DAPAT DI-LOAD DI SEMUA HALAMAN) -->
-  <script>
-    (function() {
-      const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
-      document.documentElement.setAttribute("data-theme", savedTheme);
-      document.documentElement.setAttribute("data-theme-color", savedColor);
-    })();
-  </script>
 
   <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -392,13 +387,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP SESUAI INDEX -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -416,6 +412,7 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Utama -->
       <div class="nav-section">
         <div class="nav-section-title">Utama</div>
         <ul class="nav-menu">
@@ -425,6 +422,7 @@
         </ul>
       </div>
 
+      <!-- Transaksi -->
       <div class="nav-section">
         <div class="nav-section-title">Transaksi</div>
         <ul class="nav-menu">
@@ -452,6 +450,7 @@
         </ul>
       </div>
 
+      <!-- Laporan -->
       <div class="nav-section">
         <div class="nav-section-title">Laporan</div>
         <ul class="nav-menu">
@@ -461,12 +460,32 @@
         </ul>
       </div>
 
+      <!-- Integrasi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Penggajian -->
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Sistem -->
       <div class="nav-section">
         <div class="nav-section-title">Sistem</div>
         <ul class="nav-menu">
           <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
           <li class="nav-item"><a href="page-setting.html" class="nav-link active" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
           <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
           <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
         </ul>
       </div>
@@ -606,7 +625,7 @@
         </div>
       </div>
 
-      <!-- TAB 4: TAMPILAN (DIPERBARUI DENGAN PILIHAN TEMA WARNA GLOBAL) -->
+      <!-- TAB 4: TAMPILAN -->
       <div class="tab-panel" id="tab-tampilan">
         <div class="settings-grid">
           <div class="card">
@@ -614,7 +633,6 @@
               <h3 class="card-title"><i class="fas fa-palette" style="color:var(--primary);"></i> Preferensi Tampilan & Tema</h3>
             </div>
             <div class="card-body">
-              <!-- Dark Mode Toggle -->
               <div class="setting-item" style="margin-bottom: 1.5rem;">
                 <div class="setting-info">
                   <div class="setting-label">Tema Gelap (Dark Mode)</div>
@@ -626,7 +644,6 @@
                 </label>
               </div>
 
-              <!-- Pilihan Warna Global -->
               <div class="form-group">
                 <label class="form-label">Pilih Warna Utama Sistem</label>
                 <div class="theme-options-grid" id="themeColorGrid">
@@ -640,7 +657,7 @@
                   </div>
                   <div class="theme-color-card" data-color="blue">
                     <div class="color-circle" style="background:#2563eb;"></div>
-                    <div class="color-color-name" style="font-size:0.75rem; font-weight:700;">Ocean Blue</div>
+                    <div class="theme-color-name">Ocean Blue</div>
                   </div>
                   <div class="theme-color-card" data-color="orange">
                     <div class="color-circle" style="background:#ea580c;"></div>
@@ -680,7 +697,7 @@
   </main>
 </div>
 
-<!-- BOTTOM BAR MOBILE -->
+<!-- MOBILE BAR -->
 <nav class="mobile-bar">
   <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
   <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
@@ -728,6 +745,7 @@
     setTimeout(() => el.remove(), 3500);
   }
 
+  // Sinkronisasi Nama Toko di Logo Sidebar
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
@@ -743,12 +761,31 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged(async user => {
       if (!user) {
         window.location.href = "login.html";
         return;
       }
       currentUser = user;
+      
+      // Ambil role pengguna dan terapkan RoleGuard agar sidebar sinkron dengan index
+      try {
+        const uDoc = await db.collection("users").doc(user.uid).get();
+        if (uDoc.exists) {
+          const u = uDoc.data();
+          const role = (u.role || "kasir").toLowerCase();
+          const dName = u.name || user.email.split("@")[0];
+          
+          document.getElementById("userName").textContent = dName;
+          document.getElementById("userRole").textContent = role.toUpperCase();
+          if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
+
+          if (typeof RoleGuard !== 'undefined') {
+            RoleGuard.apply(role);
+          }
+        }
+      } catch(e) {}
+
       initSettings(user);
     });
   });
@@ -763,11 +800,6 @@
       const uDoc = await db.collection("users").doc(user.uid).get();
       if (uDoc.exists) {
         const u = uDoc.data();
-        const dName = u.name || user.email.split("@")[0];
-        document.getElementById("userName").textContent = dName;
-        document.getElementById("userRole").textContent = (u.role || "Admin").toUpperCase();
-        if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
-
         document.getElementById("userFullName").value = u.name || "";
         document.getElementById("userUsername").value = u.username || "-";
         document.getElementById("userEmail").value = user.email || "-";
@@ -794,13 +826,12 @@
     setupPrinterSection();
   }
 
-  // ⭐ PENGATURAN TEMA & WARNA GLOBAL ⭐
+  // Pengaturan Tema & Warna Global Sesuai Index
   function setupThemePreferences() {
     const darkModeToggle = document.getElementById("darkModeToggle");
     const currentTheme = localStorage.getItem("webpos_theme") || "light";
     const currentColor = localStorage.getItem("webpos_theme_color") || "indigo";
 
-    // Set nilai awal toggle dan card warna
     darkModeToggle.checked = (currentTheme === "dark");
     document.querySelectorAll(".theme-color-card").forEach(card => {
       if (card.dataset.color === currentColor) card.classList.add("active");
@@ -816,7 +847,6 @@
       };
     });
 
-    // Event listener Dark Mode
     darkModeToggle.onchange = (e) => {
       const isDark = e.target.checked;
       const themeName = isDark ? "dark" : "light";
@@ -824,7 +854,6 @@
       localStorage.setItem("webpos_theme", themeName);
     };
 
-    // Tombol header dark mode toggle
     const btnHeaderDark = document.getElementById("btnThemeToggle");
     if (btnHeaderDark) {
       btnHeaderDark.onclick = () => {
@@ -859,6 +888,14 @@
     document.querySelectorAll(".nav-dropdown").forEach(d => {
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    });
+
+    document.getElementById("menuSearch")?.addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".nav-link span").forEach(span => {
+        const li = span.closest(".nav-item");
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
     });
   }
 
