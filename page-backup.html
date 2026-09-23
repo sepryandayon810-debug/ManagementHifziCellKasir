@@ -1,5 +1,1107 @@
-<!doctype html>
-<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebPOS - Backup & Sync</title><style>body{font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0}.wrap{max-width:760px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-top:20px}button{padding:12px 18px;border:0;border-radius:8px;background:#4f46e5;color:#fff;font-weight:bold;cursor:pointer}.note{color:#64748b;line-height:1.6}#message{margin-top:14px;color:#059669}</style><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="js/firebase-config.js"></script></head><body><main class="wrap"><header class="top"><div><h1>Backup & Sync</h1><small id="role">Memuat...</small></div><button id="logout">Keluar</button></header><section class="card"><h2>Backup Data</h2><p class="note">Unduh salinan JSON dari data operasional penting. Backup ini belum menyediakan restore otomatis.</p><button id="export">Unduh Backup JSON</button><div id="message"></div></section></main><script>
-const collections=['settings','categories','products','transactions','modal','shifts','closing','debts','customer_directory_v2','saldo_topup_history'];
-auth.onAuthStateChanged(async u=>{if(!u)return location.href='login.html';const d=await db.collection('users').doc(u.uid).get();document.getElementById('role').textContent=(d.exists?d.data().role:'kasir').toUpperCase();document.getElementById('logout').onclick=()=>auth.signOut().then(()=>location.href='login.html');document.getElementById('export').onclick=async()=>{const backup={exportedAt:new Date().toISOString(),collections:{}};for(const name of collections){const s=await db.collection(name).get();backup.collections[name]=s.docs.map(x=>({id:x.id,...x.data()}))}const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hifzi-cell-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();document.getElementById('message').textContent='Backup berhasil diunduh.'}});
-</script></body></html>
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <title>WebPOS - Backup & Sync</title>
+
+  <!-- SKRIP PENERAPAN TEMA GLOBAL -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+    }
+
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+
+    [data-theme="dark"] {
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container { display: flex; min-height: 100vh; position: relative; }
+
+    /* BACKDROP MOBILE */
+    .sidebar-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+      z-index: 999; opacity: 0; visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-width); height: 100vh;
+      background: var(--bg-surface); border-right: 1px solid var(--border);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: transform 0.25s ease, width 0.25s ease;
+    }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    
+    @media(max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mobile-open { transform: translateX(0); }
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: var(--header-h);
+    }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 1.15rem;
+    }
+    .logo-text {
+      font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+    }
+    .sidebar.collapsed .logo-text { display: none; }
+
+    .menu-toggle {
+      width: 28px; height: 28px; background: var(--primary);
+      border: none; border-radius: 50%; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input {
+      width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none;
+    }
+    .sidebar.collapsed .sidebar-search { display: none; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0.35rem 0.75rem; margin-bottom: 0.2rem;
+    }
+    .sidebar.collapsed .nav-section-title { display: none; }
+
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
+      color: var(--text-sub); text-decoration: none;
+      font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+      cursor: pointer;
+    }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
+
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
+    }
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
+
+    .sidebar-footer {
+      padding: 0.85rem 1rem; border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-width);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left 0.25s; min-width: 0;
+    }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+
+    .main-header {
+      height: var(--header-h); 
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      padding: 0 1.25rem; 
+      position: sticky; 
+      top: 0; 
+      z-index: 90;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn-icon-box {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    .page-content { padding: 1.5rem; flex: 1; }
+
+    /* STATS GRID */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+      box-shadow: var(--shadow-sm); transition: all 0.2s;
+    }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; color: #fff; flex-shrink: 0;
+    }
+    .stat-icon.purple { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .stat-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+    .stat-content { flex: 1; min-width: 0; }
+    .stat-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .stat-value { font-size: 1.35rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
+
+    /* CARDS */
+    .card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .card-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
+    .card-body { padding: 1.25rem; }
+
+    /* ACTION LIST */
+    .action-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .action-item {
+      display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1rem;
+      background: var(--bg-subtle); border-radius: var(--radius-md);
+      border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+    }
+    .action-item:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+    .action-icon {
+      width: 40px; height: 40px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 1rem; color: white; flex-shrink: 0;
+    }
+    .action-icon.export { background: var(--success); }
+    .action-icon.import { background: var(--accent); }
+    .action-icon.sync { background: var(--warning); }
+    .action-icon.cloud { background: var(--primary); }
+    .action-content { flex: 1; min-width: 0; }
+    .action-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.15rem; }
+    .action-desc { font-size: 0.75rem; color: var(--text-muted); }
+    .action-arrow { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* FORMS & BUTTONS */
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-sub); margin-bottom: 0.4rem; }
+    .form-input {
+      width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
+      font-size: 0.9rem; font-family: inherit; outline: none;
+    }
+    .form-input:focus { border-color: var(--primary); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.85rem;
+      font-weight: 700; cursor: pointer; border: none; outline: none; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
+    .btn-sm { padding: 0.4rem 0.875rem; font-size: 0.78rem; }
+
+    /* TABLE */
+    .table-container { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .table th {
+      padding: 0.85rem 1rem; background: var(--bg-subtle); color: var(--text-muted);
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+    .badge-success { background: var(--success-light); color: var(--success); }
+    .badge-warning { background: var(--warning-light); color: var(--warning); }
+    .badge-danger { background: var(--danger-light); color: var(--danger); }
+
+    /* PROGRESS BAR */
+    .progress-bar-outer { width: 100%; height: 6px; background: var(--bg-subtle); border-radius: 999px; overflow: hidden; margin-top: 1rem; }
+    .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s ease; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: var(--bg-surface); border-radius: var(--radius-xl);
+      width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+    }
+    .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 1.25rem; }
+    .modal-footer { padding: 1.1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
+
+    /* TOAST */
+    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
+    .toast {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem;
+      background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+      border-left: 4px solid; font-size: 0.85rem; font-weight: 600; color: var(--text-main);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.info { border-left-color: var(--accent); }
+
+    /* LOADING */
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-base); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 9998; opacity: 0; visibility: hidden; transition: all 0.25s;
+    }
+    .loading-overlay.active { opacity: 1; visibility: visible; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* MOBILE NAVIGATION */
+    .mobile-bar {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
+      z-index: 99; padding: 0 0.5rem;
+    }
+    .mobile-bar-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600;
+    }
+    .mobile-bar-item.active { color: var(--primary); }
+    .mobile-bar-item i { font-size: 1.1rem; }
+
+    @media (max-width: 1024px) {
+      .mobile-bar { display: flex; }
+      .page-content { padding-bottom: calc(60px + 1.5rem); }
+      .d-md-none { display: flex !important; }
+    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+  </style>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- SIDEBAR LENGKAP -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span class="logo-text">WebPOS</span>
+      </div>
+      <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
+    </div>
+
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <!-- Utama -->
+      <div class="nav-section">
+        <div class="nav-section-title">Utama</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+          <li class="nav-item"><a href="page-produk.html" class="nav-link" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Transaksi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Transaksi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+          <li class="nav-item nav-dropdown" id="dropdownKas">
+            <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <i class="fas fa-wallet"></i><span>Kas Management</span>
+              </div>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </div>
+            <ul class="nav-submenu">
+              <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+              <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+              <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+              <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+              <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+              <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+              <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+          <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Laporan -->
+      <div class="nav-section">
+        <div class="nav-section-title">Laporan</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+          <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+          <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Integrasi -->
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Penggajian -->
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <!-- Sistem -->
+      <div class="nav-section">
+        <div class="nav-section-title">Sistem</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-backup.html" class="nav-link active" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+          <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Memuat...</div>
+          <div class="user-role" id="userRole">-</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-left">
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+        <h1 class="header-title">Backup & Sync</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-clock"></i></div>
+          <div class="stat-content">
+            <div class="stat-label">Backup Terakhir</div>
+            <div class="stat-value" id="lastBackupTime" style="font-size: 1.1rem;">-</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fas fa-box"></i></div>
+          <div class="stat-content">
+            <div class="stat-label">Total Data</div>
+            <div class="stat-value" id="totalProducts">-</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fas fa-receipt"></i></div>
+          <div class="stat-content">
+            <div class="stat-label">Transaksi Hari Ini</div>
+            <div class="stat-value" id="todayTrans">-</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="fas fa-robot"></i></div>
+          <div class="stat-content">
+            <div class="stat-label">Auto Backup</div>
+            <div class="stat-value" id="autoStatus" style="font-size: 1.1rem;">-</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto Backup Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-robot"></i>Auto Backup (Google Sheets)</div>
+          <span class="badge badge-success" id="autoBadge">Aktif</span>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--text-secondary);font-size:.9rem;line-height:1.6;margin-bottom:1.25rem">
+            Data otomatis di-backup ke Google Sheets setiap malam pukul 00:00. Tidak perlu klik apa pun — jalan sendiri di background.
+          </p>
+
+          <!-- Sheet ID -->
+          <div class="form-group">
+            <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
+              <i class="fas fa-id-card" style="font-size:.8rem;color:var(--text-muted)"></i> Sheet ID Backup
+              <button type="button" class="btn-icon-box" style="width:28px;height:28px;margin-left:auto" onclick="toggleVisibility('sheetIdInput','sheetIdEye')" title="Tampilkan/Sembunyikan">
+                <i class="fas fa-eye" id="sheetIdEye"></i>
+              </button>
+            </label>
+            <input type="password" class="form-input" id="sheetIdInput" placeholder="••••••••••••••••••••••••••" style="font-family:monospace;letter-spacing:.05em" readonly>
+            <small style="color:var(--text-muted);font-size:.75rem;margin-top:.25rem;display:block">
+              <i class="fas fa-lock"></i> Data disimpan aman di localStorage device kamu
+            </small>
+          </div>
+
+          <!-- Firebase URL -->
+          <div class="form-group">
+            <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
+              <i class="fas fa-database" style="font-size:.8rem;color:var(--text-muted)"></i> Firebase DB URL
+              <button type="button" class="btn-icon-box" style="width:28px;height:28px;margin-left:auto" onclick="toggleVisibility('dbUrlInput','dbUrlEye')" title="Tampilkan/Sembunyikan">
+                <i class="fas fa-eye" id="dbUrlEye"></i>
+              </button>
+            </label>
+            <input type="password" class="form-input" id="dbUrlInput" placeholder="••••••••••••••••••••••••••" style="font-family:monospace;letter-spacing:.05em" readonly>
+          </div>
+
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="saveSettings()"><i class="fas fa-save"></i> Simpan</button>
+            <button class="btn btn-outline" onclick="editSettings()"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="clearSettings()"><i class="fas fa-trash"></i> Hapus</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Manual Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-file-export"></i>Export Manual (CSV)</div>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.25rem">
+            Download data langsung ke file CSV di device kamu. Berguna untuk backup lokal atau import ke Excel.
+          </p>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;width:100%">
+            <button class="btn btn-primary" onclick="exportProductsCSV()" style="flex:1;min-width:140px"><i class="fas fa-box"></i> Export Produk</button>
+            <button class="btn btn-primary" onclick="exportTransactionsCSV()" style="flex:1;min-width:140px"><i class="fas fa-receipt"></i> Export Transaksi</button>
+            <button class="btn btn-success" onclick="exportAllCSV()" style="flex:1;min-width:140px"><i class="fas fa-file-archive"></i> Export Semua</button>
+          </div>
+          <div class="progress-bar-outer" id="exportProgress" style="display:none">
+            <div class="progress-bar-fill" id="exportFill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action List Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-tools"></i>Tindakan Cepat</div>
+        </div>
+        <div class="card-body">
+          <div class="action-list">
+            <div class="action-item" onclick="exportDataJSON()">
+              <div class="action-icon export"><i class="fas fa-file-export"></i></div>
+              <div class="action-content">
+                <div class="action-name">Export JSON Lengkap</div>
+                <div class="action-desc">Simpan semua data ke file JSON (produk, transaksi, pelanggan)</div>
+              </div>
+              <i class="fas fa-chevron-right action-arrow"></i>
+            </div>
+            <div class="action-item" onclick="document.getElementById('importModal').classList.add('active')">
+              <div class="action-icon import"><i class="fas fa-file-import"></i></div>
+              <div class="action-content">
+                <div class="action-name">Import Data</div>
+                <div class="action-desc">Pulihkan data dari file backup JSON</div>
+              </div>
+              <i class="fas fa-chevron-right action-arrow"></i>
+            </div>
+            <div class="action-item" onclick="syncData()">
+              <div class="action-icon sync"><i class="fas fa-sync"></i></div>
+              <div class="action-content">
+                <div class="action-name">Sinkronisasi Sekarang</div>
+                <div class="action-desc">Force sync data ke cloud</div>
+              </div>
+              <i class="fas fa-chevron-right action-arrow"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Log Table Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="fas fa-list-alt"></i>Riwayat Backup</div>
+          <button class="btn btn-outline btn-sm" onclick="clearHistory()"><i class="fas fa-trash"></i> Hapus</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr><th>Waktu</th><th>Tipe</th><th>Status</th><th>Produk</th><th>Transaksi</th><th>Catatan</th></tr>
+              </thead>
+              <tbody id="logBody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">Memuat log...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bar">
+  <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+  <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
+  <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+</nav>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-file-import" style="color:var(--primary)"></i>Import Data</div>
+      <button class="modal-close" onclick="document.getElementById('importModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="border:2px dashed var(--border);border-radius:var(--radius-lg);padding:2rem;text-align:center;cursor:pointer;transition:all .2s"
+           ondragover="this.style.borderColor='var(--primary)';this.style.background='var(--bg-subtle)'" 
+           ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent'"
+           onclick="document.getElementById('importFile').click()">
+        <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:var(--text-muted);margin-bottom:.5rem"></i>
+        <p style="color:var(--text-sub);font-size:.9rem">Klik atau drag file JSON ke sini</p>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('importModal').classList.remove('active')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="margin-top:1rem;color:var(--text-muted);font-size:.9rem">Memuat data...</p>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Scripts -->
+<script src="js/firebase-config.js?v=2"></script>
+<script src="js/utils.js?v=3"></script>
+<script src="js/auth.js"></script>
+<script src="js/sidebar-filter.js"></script>
+<script src="js/role-guard.js"></script>
+
+<script>
+  const db = (typeof database !== 'undefined' && database) ? database : firebase.database();
+  let currentUser = null;
+
+  const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
+  const savedDbUrl = localStorage.getItem('backup_db_url') || '';
+  document.getElementById('sheetIdInput').value = savedSheetId;
+  document.getElementById('dbUrlInput').value = savedDbUrl;
+  if (savedSheetId) document.getElementById('sheetIdInput').readOnly = true;
+  if (savedDbUrl) document.getElementById('dbUrlInput').readOnly = true;
+
+  function formatDate(ts) {
+    if (!ts) return '-';
+    const d = new Date(Number(ts));
+    return d.toLocaleString('id-ID', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+
+  function showToast(msg, type='success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':(type==='error'?'exclamation-circle':'info-circle')}"></i><span>${msg}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  function setProgress(pct) {
+    const bar = document.getElementById('exportProgress');
+    const fill = document.getElementById('exportFill');
+    bar.style.display = 'block';
+    fill.style.width = pct + '%';
+    if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
+  }
+
+  // Sinkronisasi Nama Toko (mengambil nama toko dari database atau localStorage)
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    if (!logoEl) return;
+    const cachedName = localStorage.getItem("webpos_store_name");
+    if (cachedName) logoEl.textContent = cachedName;
+    try {
+      if (typeof db !== 'undefined') {
+        const doc = await db.ref("settings/store/name").once("value");
+        if (doc.exists() && doc.val()) {
+          logoEl.textContent = doc.val();
+          localStorage.setItem("webpos_store_name", doc.val());
+        }
+      }
+    } catch (e) {}
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    syncStoreBrandName();
+    setupSidebarEvents();
+  });
+
+  function setupSidebarEvents() {
+    const sidebar = document.getElementById("sidebar");
+    const backdrop = document.getElementById("sidebarBackdrop");
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+
+    if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
+    if (mobileMenuToggle) {
+      mobileMenuToggle.onclick = (e) => {
+        e.stopPropagation();
+        sidebar.classList.add("mobile-open");
+        backdrop.classList.add("active");
+      };
+    }
+    backdrop.onclick = () => {
+      sidebar.classList.remove("mobile-open");
+      backdrop.classList.remove("active");
+    };
+
+    document.querySelectorAll(".nav-dropdown").forEach(d => {
+      const t = d.querySelector(".nav-dropdown-toggle");
+      if (t) {
+        t.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          d.classList.toggle("open");
+        };
+      }
+    });
+
+    document.getElementById("btnThemeToggle")?.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    });
+
+    document.getElementById("btnTheme")?.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    });
+
+    document.getElementById("btnLogout")?.addEventListener("click", () => {
+      if (confirm("Yakin ingin keluar dari sistem?")) {
+        if (typeof auth !== 'undefined') auth.signOut();
+        localStorage.removeItem('webpos_session');
+        window.location.href = "login.html";
+      }
+    });
+
+    document.getElementById("menuSearch")?.addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".nav-link span").forEach(span => {
+        const li = span.closest(".nav-item");
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  }
+
+  async function loadStats() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    try {
+      const paths = ['products','customers','categories','users'];
+      let totalRecords = 0;
+      for (const p of paths) {
+        const snap = await db.ref(p).once('value');
+        totalRecords += Object.keys(snap.val() || {}).length;
+      }
+      
+      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      const transSnap = await db.ref('transactions/' + today).once('value');
+      const trans = transSnap.val() || {};
+      document.getElementById('todayTrans').textContent = Object.keys(trans).length.toLocaleString('id-ID');
+
+      const debtsSnap = await db.ref('debts').once('value');
+      const debts = debtsSnap.val() || {};
+      const activeDebts = Object.values(debts).filter(d => d.status === 'active').length;
+      document.getElementById('totalProducts').textContent = (totalRecords + activeDebts).toLocaleString('id-ID');
+
+      const logSnap = await db.ref('backup/lastLog').once('value');
+      const log = logSnap.val();
+      if (log) {
+        document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
+        const totalBackedUp = log.summary ? Object.values(log.summary).reduce((a,b)=>a+b,0) : 0;
+        document.getElementById('autoStatus').textContent = totalBackedUp > 0 ? totalBackedUp.toLocaleString('id-ID') + ' REC' : 'AKTIF';
+        document.getElementById('autoStatus').style.color = log.status==='success' ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('autoBadge').textContent = log.status==='success' ? 'Aktif' : 'Gagal';
+        document.getElementById('autoBadge').className = 'badge ' + (log.status==='success'?'badge-success':'badge-danger');
+      } else {
+        document.getElementById('lastBackupTime').textContent = 'Belum pernah';
+        document.getElementById('autoStatus').textContent = 'MENUNGGU';
+        document.getElementById('autoStatus').style.color = 'var(--warning)';
+      }
+      renderLog(log ? [log] : []);
+    } catch(e) {
+      console.error(e);
+      showToast('Gagal memuat statistik', 'error');
+    }
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+
+  function renderLog(logs) {
+    const tbody = document.getElementById('logBody');
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">Belum ada riwayat backup</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td>${formatDate(l.timestamp)}</td>
+        <td><span class="badge ${l.type==='auto'?'badge-success':'badge-warning'}">${l.type==='auto'?'Auto':'Manual'}</span></td>
+        <td><span class="badge ${l.status==='success'?'badge-success':'badge-danger'}">${l.status==='success'?'Sukses':'Gagal'}</span></td>
+        <td>${l.productCount||0}</td>
+        <td>${l.transactionCount||0}</td>
+        <td>${l.note||'-'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function toggleVisibility(inputId, eyeId) {
+    const input = document.getElementById(inputId);
+    const eye = document.getElementById(eyeId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      eye.className = 'fas fa-eye-slash';
+    } else {
+      input.type = 'password';
+      eye.className = 'fas fa-eye';
+    }
+  }
+
+  function saveSettings() {
+    const sheetId = document.getElementById('sheetIdInput').value.trim();
+    const dbUrl = document.getElementById('dbUrlInput').value.trim();
+    if (sheetId) localStorage.setItem('backup_sheet_id', sheetId);
+    if (dbUrl) localStorage.setItem('backup_db_url', dbUrl);
+
+    document.getElementById('sheetIdInput').readOnly = true;
+    document.getElementById('dbUrlInput').readOnly = true;
+    document.getElementById('sheetIdInput').type = 'password';
+    document.getElementById('dbUrlInput').type = 'password';
+    document.getElementById('sheetIdEye').className = 'fas fa-eye';
+    document.getElementById('dbUrlEye').className = 'fas fa-eye';
+
+    showToast('Setting tersimpan!');
+  }
+
+  function editSettings() {
+    document.getElementById('sheetIdInput').readOnly = false;
+    document.getElementById('dbUrlInput').readOnly = false;
+    document.getElementById('sheetIdInput').type = 'text';
+    document.getElementById('dbUrlInput').type = 'text';
+    document.getElementById('sheetIdInput').focus();
+    showToast('Mode edit aktif — ubah lalu klik Simpan', 'info');
+  }
+
+  function clearSettings() {
+    if (!confirm('Hapus semua setting backup?')) return;
+    localStorage.removeItem('backup_sheet_id');
+    localStorage.removeItem('backup_db_url');
+    document.getElementById('sheetIdInput').value = '';
+    document.getElementById('dbUrlInput').value = '';
+    showToast('Setting dihapus');
+  }
+
+  function downloadCSV(filename, rows) {
+    const csv = rows.map(r => r.map(c => '"' + String(c||'').replace(/"/g,'""') + '"').join(',')).join('\n');
+    const blob = new Blob(["\uFEFF" + csv], {type:'text/csv;charset=utf-8;'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename + '_' + new Date().toISOString().slice(0,10) + '.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function exportProductsCSV() {
+    setProgress(20);
+    try {
+      const snap = await db.ref('products').once('value');
+      const data = snap.val() || {};
+      const rows = [['ID','Nama Produk','Kategori','Harga Beli','Harga Jual','Stok','Status','Barcode','Dibuat']];
+      Object.entries(data).forEach(([id,p]) => {
+        rows.push([id, p.name||'', p.category||'', p.buyPrice||0, p.sellingPrice||0, p.stock||0, p.status||'active', p.barcode||'', p.createdAt||'-']);
+      });
+      setProgress(80);
+      downloadCSV('Produk_Backup', rows);
+      setProgress(100);
+      showToast('Export produk berhasil!');
+    } catch(e) {
+      showToast('Gagal export: ' + e.message, 'error');
+      setProgress(0);
+    }
+  }
+
+  async function exportTransactionsCSV() {
+    setProgress(10);
+    try {
+      const snap = await db.ref('transactions').once('value');
+      const all = snap.val() || {};
+      const rows = [['Tanggal','ID Transaksi','Pelanggan','Total','Metode','Kasir','Status','Items']];
+      let count = 0;
+      Object.entries(all).forEach(([date, dayTrans]) => {
+        Object.entries(dayTrans).forEach(([id,t]) => {
+          const items = (t.items||[]).map(i => (i.name||'') + 'x' + (i.qty||1)).join(', ');
+          rows.push([date, id, t.customerName||'-', t.total||0, t.paymentMethod||'-', t.cashier||'-', t.status||'completed', items]);
+          count++;
+        });
+      });
+      setProgress(80);
+      downloadCSV('Transaksi_Backup', rows);
+      setProgress(100);
+      showToast('Export ' + count + ' transaksi berhasil!');
+    } catch(e) {
+      showToast('Gagal export: ' + e.message, 'error');
+      setProgress(0);
+    }
+  }
+
+  async function exportAllCSV() {
+    setProgress(5);
+    await exportProductsCSV();
+    setProgress(50);
+    await exportTransactionsCSV();
+    setProgress(100);
+    showToast('Semua data berhasil di-export!');
+  }
+
+  async function exportDataJSON() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    try {
+      const data = {
+        products: (await db.ref('products').once('value')).val() || {},
+        transactions: (await db.ref('transactions').once('value')).val() || {},
+        customers: (await db.ref('customers').once('value')).val() || {},
+        kas: (await db.ref('kas').once('value')).val() || {},
+        categories: (await db.ref('categories').once('value')).val() || {},
+        exportedAt: Date.now()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'webpos_backup_' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup JSON berhasil di-download!');
+    } catch(e) {
+      showToast('Gagal export: ' + e.message, 'error');
+    }
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+
+  async function importData(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!confirm('Data yang ada akan ditimpa. Lanjutkan import?')) return;
+
+    document.getElementById('loadingOverlay').classList.add('active');
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.products) await db.ref('products').set(data.products);
+      if (data.transactions) await db.ref('transactions').set(data.transactions);
+      if (data.customers) await db.ref('customers').set(data.customers);
+      showToast('Import berhasil! Data telah dipulihkan.');
+      loadStats();
+    } catch(e) {
+      showToast('Gagal import: ' + e.message, 'error');
+    }
+    document.getElementById('loadingOverlay').classList.remove('active');
+    document.getElementById('importModal').classList.remove('active');
+    input.value = '';
+  }
+
+  async function syncData() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      const syncTime = Date.now().toString();
+      localStorage.setItem('last_backup', syncTime);
+      showToast('Sinkronisasi berhasil!');
+      loadStats();
+    } catch(e) {
+      showToast('Gagal sinkronisasi', 'error');
+    }
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+
+  function clearHistory() {
+    if (!confirm('Hapus semua riwayat backup?')) return;
+    renderLog([]);
+    showToast('Riwayat berhasil dibersihkan');
+  }
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+    currentUser = user;
+    db.ref('users/' + user.uid).once('value').then(snap => {
+      const data = snap.val() || {};
+      const name = data.name || user.email.split('@')[0];
+      const role = (data.role || 'admin').toUpperCase();
+      document.getElementById('userName').textContent = name;
+      document.getElementById('userRole').textContent = role;
+      const avatar = document.getElementById('userAvatar');
+      if (avatar && data.name) avatar.textContent = data.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    });
+    loadStats();
+  });
+</script>
+</body>
+</html>
