@@ -33,11 +33,19 @@
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
     }
+
+    /* KUSTOMISASI PALET WARNA UTAMA GLOBAL */
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+
     [data-theme="dark"] {
       --bg-base: #090d16; --bg-surface: #111827; --bg-subtle: #1e293b; --border: #2e384d;
       --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
     .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
@@ -151,7 +159,7 @@
     .modal-close { width: 36px; height: 36px; border: none; border-radius: 10px; background: var(--bg-subtle); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .modal-close:hover { background: var(--danger-light); color: var(--danger); }
     .modal-body { padding: 1.25rem; }
-    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
+    .modal-footer { padding: 1.0rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
     
     .form-group { margin-bottom: 1rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
@@ -180,6 +188,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -402,7 +411,7 @@
     </div>
   </div>
 
-  <!-- Modal Konfirmasi Hapus Custom (Sesuai Tema WebPOS) -->
+  <!-- Modal Konfirmasi Hapus Custom -->
   <div class="modal-overlay" id="deleteModal">
     <div class="modal-content" style="max-width: 400px;">
       <div class="modal-header">
@@ -482,7 +491,13 @@
           let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              const role = (userData.role || "admin").toLowerCase();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(role);
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -528,15 +543,6 @@
             parent.classList.toggle('open');
           });
         });
-
-        const logoutBtn = document.getElementById('btnLogout');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', () => {
-            if (window.confirm('Yakin ingin logout?')) {
-              auth.signOut().then(() => window.location.href = 'login.html');
-            }
-          });
-        }
       }
 
       async function initDirectory() {
