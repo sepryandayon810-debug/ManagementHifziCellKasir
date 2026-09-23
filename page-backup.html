@@ -409,7 +409,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -728,14 +728,10 @@
 
 <!-- Scripts -->
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=3"></script>
-<script src="js/auth.js"></script>
 <script src="js/sidebar-filter.js"></script>
 <script src="js/role-guard.js"></script>
 
 <script>
-  // Menggunakan instance database global yang sudah diinisialisasi di firebase-config.js
-  const dbRef = (typeof database !== 'undefined' && database) ? database : firebase.database();
   let currentUser = null;
 
   const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
@@ -768,15 +764,14 @@
     if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
   }
 
-  // Sinkronisasi Nama Toko di Sidebar
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
     const cachedName = localStorage.getItem("webpos_store_name");
     if (cachedName) logoEl.textContent = cachedName;
     try {
-      if (typeof dbRef !== 'undefined') {
-        const doc = await dbRef.ref("settings/store/name").once("value");
+      if (typeof database !== 'undefined') {
+        const doc = await database.ref("settings/store/name").once("value");
         if (doc.exists() && doc.val()) {
           logoEl.textContent = doc.val();
           localStorage.setItem("webpos_store_name", doc.val());
@@ -827,13 +822,6 @@
       localStorage.setItem("webpos_theme", nextTheme);
     });
 
-    document.getElementById("btnTheme")?.addEventListener("click", () => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      const nextTheme = isDark ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", nextTheme);
-      localStorage.setItem("webpos_theme", nextTheme);
-    });
-
     document.getElementById("btnLogout")?.addEventListener("click", () => {
       if (confirm("Yakin ingin keluar dari sistem?")) {
         if (typeof auth !== 'undefined') auth.signOut();
@@ -857,21 +845,21 @@
       const paths = ['products','customers','categories','users'];
       let totalRecords = 0;
       for (const p of paths) {
-        const snap = await dbRef.ref(p).once('value');
+        const snap = await database.ref(p).once('value');
         totalRecords += Object.keys(snap.val() || {}).length;
       }
       
       const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const transSnap = await dbRef.ref('transactions/' + today).once('value');
+      const transSnap = await database.ref('transactions/' + today).once('value');
       const trans = transSnap.val() || {};
       document.getElementById('todayTrans').textContent = Object.keys(trans).length.toLocaleString('id-ID');
 
-      const debtsSnap = await dbRef.ref('debts').once('value');
+      const debtsSnap = await database.ref('debts').once('value');
       const debts = debtsSnap.val() || {};
       const activeDebts = Object.values(debts).filter(d => d.status === 'active').length;
       document.getElementById('totalProducts').textContent = (totalRecords + activeDebts).toLocaleString('id-ID');
 
-      const logSnap = await dbRef.ref('backup/lastLog').once('value');
+      const logSnap = await database.ref('backup/lastLog').once('value');
       const log = logSnap.val();
       if (log) {
         document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
@@ -889,8 +877,9 @@
     } catch(e) {
       console.error(e);
       showToast('Gagal memuat statistik', 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('active');
     }
-    document.getElementById('loadingOverlay').classList.remove('active');
   }
 
   function renderLog(logs) {
@@ -970,7 +959,7 @@
   async function exportProductsCSV() {
     setProgress(20);
     try {
-      const snap = await dbRef.ref('products').once('value');
+      const snap = await database.ref('products').once('value');
       const data = snap.val() || {};
       const rows = [['ID','Nama Produk','Kategori','Harga Beli','Harga Jual','Stok','Status','Barcode','Dibuat']];
       Object.entries(data).forEach(([id,p]) => {
@@ -989,7 +978,7 @@
   async function exportTransactionsCSV() {
     setProgress(10);
     try {
-      const snap = await dbRef.ref('transactions').once('value');
+      const snap = await database.ref('transactions').once('value');
       const all = snap.val() || {};
       const rows = [['Tanggal','ID Transaksi','Pelanggan','Total','Metode','Kasir','Status','Items']];
       let count = 0;
@@ -1023,11 +1012,11 @@
     document.getElementById('loadingOverlay').classList.add('active');
     try {
       const data = {
-        products: (await dbRef.ref('products').once('value')).val() || {},
-        transactions: (await dbRef.ref('transactions').once('value')).val() || {},
-        customers: (await dbRef.ref('customers').once('value')).val() || {},
-        kas: (await dbRef.ref('kas').once('value')).val() || {},
-        categories: (await dbRef.ref('categories').once('value')).val() || {},
+        products: (await database.ref('products').once('value')).val() || {},
+        transactions: (await database.ref('transactions').once('value')).val() || {},
+        customers: (await database.ref('customers').once('value')).val() || {},
+        kas: (await database.ref('kas').once('value')).val() || {},
+        categories: (await database.ref('categories').once('value')).val() || {},
         exportedAt: Date.now()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -1040,8 +1029,9 @@
       showToast('Backup JSON berhasil di-download!');
     } catch(e) {
       showToast('Gagal export: ' + e.message, 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('active');
     }
-    document.getElementById('loadingOverlay').classList.remove('active');
   }
 
   async function importData(input) {
@@ -1053,17 +1043,18 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.products) await dbRef.ref('products').set(data.products);
-      if (data.transactions) await dbRef.ref('transactions').set(data.transactions);
-      if (data.customers) await dbRef.ref('customers').set(data.customers);
+      if (data.products) await database.ref('products').set(data.products);
+      if (data.transactions) await database.ref('transactions').set(data.transactions);
+      if (data.customers) await database.ref('customers').set(data.customers);
       showToast('Import berhasil! Data telah dipulihkan.');
       loadStats();
     } catch(e) {
       showToast('Gagal import: ' + e.message, 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('active');
+      document.getElementById('importModal').classList.remove('active');
+      input.value = '';
     }
-    document.getElementById('loadingOverlay').classList.remove('active');
-    document.getElementById('importModal').classList.remove('active');
-    input.value = '';
   }
 
   async function syncData() {
@@ -1076,8 +1067,9 @@
       loadStats();
     } catch(e) {
       showToast('Gagal sinkronisasi', 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('active');
     }
-    document.getElementById('loadingOverlay').classList.remove('active');
   }
 
   function clearHistory() {
@@ -1086,13 +1078,13 @@
     showToast('Riwayat berhasil dibersihkan');
   }
 
-  firebase.auth().onAuthStateChanged(user => {
+  auth.onAuthStateChanged(user => {
     if (!user) {
       window.location.href = 'login.html';
       return;
     }
     currentUser = user;
-    dbRef.ref('users/' + user.uid).once('value').then(snap => {
+    database.ref('users/' + user.uid).once('value').then(snap => {
       const data = snap.val() || {};
       const name = data.name || user.email.split('@')[0];
       const role = (data.role || 'admin').toUpperCase();
