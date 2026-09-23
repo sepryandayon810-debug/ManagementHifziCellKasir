@@ -4,12 +4,10 @@ if (typeof window.RoleGuard === 'undefined') {
     apply: function(userRole) {
       const role = (userRole || 'kasir').toLowerCase();
 
-      // 1. DEVELOPER & OWNER: Memiliki akses penuh ke seluruh menu
       if (role === 'developer' || role === 'owner') {
         return;
       }
 
-      // 2. ADMIN: Mengelola operasional harian, transaksi, kas, dan laporan
       if (role === 'admin') {
         this.hideMenu('[data-menu="penggajian"]');
         this.hideMenu('[data-menu="reset"]');
@@ -19,7 +17,6 @@ if (typeof window.RoleGuard === 'undefined') {
         return;
       }
 
-      // 3. KASIR: Fokus pada mesin kasir, transaksi pribadi, mutasi kas laci sendiri
       if (role === 'kasir') {
         this.hideMenu('[data-menu="pembelian"]');
         this.hideMenu('[data-menu="laporan"]');
@@ -53,4 +50,4 @@ if (typeof window.RoleGuard === 'undefined') {
     }
   };
 }
-const RoleGuard = window.RoleGuard;
+var RoleGuard = window.RoleGuard;
