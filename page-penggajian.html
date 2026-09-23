@@ -71,6 +71,9 @@
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
       --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -200,21 +203,22 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
+    /* HEADER RESPONSIF TIDAK TUMPANG TINDIH */
     .main-header {
-      height: var(--header-h); background: var(--bg-surface);
+      min-height: var(--header-h); background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 1.5rem; position: sticky; top: 0; z-index: 90;
+      padding: 0.75rem 1.25rem; position: sticky; top: 0; z-index: 90; flex-wrap: wrap; gap: 0.75rem;
     }
-    .header-left { display: flex; align-items: center; gap: 0.75rem; }
-    .header-title { font-size: 1.25rem; font-weight: 700; }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
     .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
       background: var(--bg-subtle); border: 1px solid var(--border);
       color: var(--text-sub); display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      cursor: pointer; flex-shrink: 0;
     }
 
     .page-content { padding: 1.5rem; flex: 1; }
@@ -227,11 +231,11 @@
       padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
     }
-    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .card-body { padding: 1.25rem; }
 
     .table-container { overflow-x: auto; }
-    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; color: var(--text-main); }
     .data-table th {
       padding: 0.85rem 1.25rem; background: var(--bg-subtle); color: var(--text-muted);
       font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border);
@@ -245,10 +249,10 @@
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-family: inherit;
+      padding: 0.6rem 1.1rem; border-radius: var(--radius-md); font-family: inherit;
       font-size: 0.85rem; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
     }
-    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
     .btn-secondary:hover { background: var(--border); }
@@ -261,7 +265,7 @@
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
       font-size: 0.9rem; font-family: inherit; outline: none;
     }
-    .form-input:focus, .form-select:focus { border-color: var(--primary); background: #fff; }
+    .form-input:focus, .form-select:focus { border-color: var(--primary); background: var(--bg-surface); }
 
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -273,7 +277,7 @@
     .modal-content {
       background: var(--bg-surface); border-radius: var(--radius-xl);
       width: 100%; max-width: 520px; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
-      max-height: 90vh; overflow-y: auto;
+      max-height: 90vh; overflow-y: auto; color: var(--text-main);
     }
     .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .modal-title { font-size: 1.1rem; font-weight: 700; }
@@ -292,7 +296,7 @@
       display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
       background: var(--bg-surface); border-radius: var(--radius-md);
       box-shadow: var(--shadow-md); border-left: 4px solid var(--primary);
-      font-size: 0.85rem; font-weight: 600;
+      font-size: 0.85rem; font-weight: 600; color: var(--text-main);
     }
     .toast-pill.success { border-left-color: var(--success); }
     .toast-pill.error { border-left-color: var(--danger); }
@@ -520,7 +524,7 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
           <div class="form-group">
             <label class="form-label">Periode Bulan</label>
-            <select class="form-select" id="payrollMonth" required>
+            <select class="form-select" id="payrollMonth" required onchange="onStaffSelected()">
               <option value="01">Januari</option>
               <option value="02">Februari</option>
               <option value="03">Maret</option>
@@ -537,7 +541,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Tahun</label>
-            <input type="number" class="form-input" id="payrollYear" required>
+            <input type="number" class="form-input" id="payrollYear" required onchange="onStaffSelected()">
           </div>
         </div>
 
@@ -549,12 +553,12 @@
         <div class="form-group">
           <label class="form-label">Tunggakan Gaji Bulan Lalu (Rp)</label>
           <input type="number" class="form-input" id="prevUnpaidSalary" placeholder="0" value="0" oninput="calculateTakeHomePay()">
-          <small style="color:var(--text-muted); font-size:0.75rem;">Masukkan jika bulan lalu gaji belum terbayarkan penuh.</small>
+          <small style="color:var(--text-muted); font-size:0.75rem;">Otomatis terisi jika ada sisa gaji bulan lalu (atau ubah manual untuk back-date).</small>
         </div>
 
         <!-- BAGIAN PEMOTONGAN HUTANG STAF -->
         <div class="form-group" style="background:var(--bg-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
-          <label class="form-label" style="margin-bottom:0.5rem;"><i class="fas fa-hand-holding-usd" style="color:var(--danger)"></i> Potong Hutang Staf</label>
+          <label class="form-label" style="margin-bottom:0.5rem;"><i class="fas fa-hand-holding-usd" style="color:var(--danger)"></i> Potong Hutang Staf (Pilih yang dibayar)</label>
           <div id="staffDebtsContainer" style="font-size:0.85rem; color:var(--text-muted);">
             Pilih staf terlebih dahulu untuk melihat daftar hutang aktif.
           </div>
@@ -652,7 +656,6 @@
       console.error(err);
     }
 
-    // Set default tahun di form
     const now = new Date();
     document.getElementById("payrollYear").value = now.getFullYear();
     document.getElementById("payrollMonth").value = String(now.getMonth() + 1).padStart(2, '0');
@@ -702,22 +705,36 @@
 
   async function loadStaffAndPayrolls() {
     try {
-      // Load Staf
       const userSnap = await db.collection("users").where("status", "==", "active").get();
       staffList = [];
-      const staffSelect = document.getElementById("payrollStaffSelect");
-      staffSelect.innerHTML = '<option value="">Pilih staf...</option>';
+      const staffMap = {};
       
       userSnap.forEach(doc => {
         const u = { id: doc.id, ...doc.data() };
+        staffMap[u.id] = u.name || u.username;
         staffList.push(u);
+      });
+
+      // Scan juga dari riwayat 'debts' agar staf yang hanya punya catatan hutang otomatis masuk pilihan
+      const debtSnap = await db.collection("debts").where("status", "==", "active").get();
+      debtSnap.forEach(doc => {
+        const d = doc.data();
+        if (d.userId && !staffMap[d.userId]) {
+          const staffName = d.name || "Staf / Anggota";
+          staffMap[d.userId] = staffName;
+          staffList.push({ id: d.userId, name: staffName, role: "staf" });
+        }
+      });
+
+      const staffSelect = document.getElementById("payrollStaffSelect");
+      staffSelect.innerHTML = '<option value="">Pilih staf...</option>';
+      staffList.forEach(s => {
         const opt = document.createElement("option");
-        opt.value = u.id;
-        opt.textContent = `${u.name || u.username} (${(u.role || 'kasir').toUpperCase()})`;
+        opt.value = s.id;
+        opt.textContent = `${s.name || s.username} (${(s.role || 'staf').toUpperCase()})`;
         staffSelect.appendChild(opt);
       });
 
-      // Load Riwayat Penggajian
       const paySnap = await db.collection("payrolls").orderBy("createdAt", "desc").get();
       allPayrolls = [];
       paySnap.forEach(doc => {
@@ -777,7 +794,7 @@
     `).join("");
   }
 
-  window.openAddPayrollModal = function() {
+  window.openAddPayrollModal = async function() {
     document.getElementById("payrollForm").reset();
     const now = new Date();
     document.getElementById("payrollYear").value = now.getFullYear();
@@ -791,20 +808,49 @@
     document.getElementById("modalPayroll").classList.remove("active");
   };
 
-  // Saat Staf Dipilih di Form, Ambil Daftar Hutang Aktif Staf Tersebut dari Koleksi 'debts'
+  // LOGIKA PEMANGGILAN HUTANG & TUNGGAKAN BULAN LALU (BACK-DATE)
   async function onStaffSelected() {
     const staffId = document.getElementById("payrollStaffSelect").value;
     const container = document.getElementById("staffDebtsContainer");
+    const prevInput = document.getElementById("prevUnpaidSalary");
     
     if (!staffId) {
       container.innerHTML = 'Pilih staf terlebih dahulu untuk melihat daftar hutang aktif.';
+      prevInput.value = 0;
       calculateTakeHomePay();
       return;
     }
 
-    container.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Memuat data hutang staf...`;
+    container.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Memuat data hutang & riwayat gaji...`;
 
     try {
+      const monthVal = document.getElementById("payrollMonth").value;
+      const yearVal = parseInt(document.getElementById("payrollYear").value);
+      
+      // Hitung periode bulan sebelumnya (untuk mendeteksi otomatis back-date tunggakan)
+      let prevMonthNum = parseInt(monthVal) - 1;
+      let prevYearNum = yearVal;
+      if (prevMonthNum === 0) {
+        prevMonthNum = 12;
+        prevYearNum -= 1;
+      }
+      const prevPeriodKey = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}`;
+
+      // Cek apakah bulan sebelumnya ada gaji berstatus 'unpaid'
+      const prevPayrollSnap = await db.collection("payrolls")
+        .where("staffId", "==", staffId)
+        .where("period", "==", prevPeriodKey)
+        .where("status", "==", "unpaid")
+        .get();
+
+      let detectedUnpaid = 0;
+      prevPayrollSnap.forEach(doc => {
+        const pData = doc.data();
+        detectedUnpaid += (pData.netSalary || 0);
+      });
+      prevInput.value = detectedUnpaid;
+
+      // Tarik daftar hutang aktif SPESIFIK milik staf tersebut dari koleksi 'debts'
       const snap = await db.collection("debts").where("userId", "==", staffId).where("status", "==", "active").get();
       activeStaffDebts = [];
       snap.forEach(doc => {
@@ -821,7 +867,7 @@
       activeStaffDebts.forEach(d => {
         const sisa = d.remaining || 0;
         html += `
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; background:#fff; padding:0.5rem; border-radius:6px; border:1px solid var(--border);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; background:var(--bg-surface); padding:0.5rem; border-radius:6px; border:1px solid var(--border);">
             <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; flex:1;">
               <input type="checkbox" class="debt-checkbox" value="${d.id}" data-remaining="${sisa}" onchange="calculateTakeHomePay()" checked>
               <span>${d.name || 'Hutang / Kasbon'} (${d.type || 'hutang'})</span>
@@ -871,7 +917,6 @@
     const monthNames = {"01":"Januari","02":"Februari","03":"Maret","04":"April","05":"Mei","06":"Juni","07":"Juli","08":"Agustus","09":"September","10":"Oktober","11":"November","12":"Desember"};
     const periodName = `${monthNames[month]} ${year}`;
 
-    // Kumpulkan hutang yang dipotong
     let totalDebtDeduction = 0;
     let selectedDebts = [];
     document.querySelectorAll(".debt-checkbox:checked").forEach(chk => {
@@ -892,11 +937,10 @@
     try {
       const batch = db.batch();
 
-      // 1. Simpan record penggajian
       const payrollRef = db.collection("payrolls").doc();
       batch.set(payrollRef, {
         staffId,
-        staffName: staffObj.name || staffObj.username,
+        staffName: staffObj.name || staffObj.username || 'Staf',
         period,
         periodName,
         baseSalary,
@@ -908,7 +952,7 @@
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // 2. Jika ada hutang yang dipotong, update sisa hutang di koleksi 'debts' menjadi 0 (atau lunas)
+      // Update hutang yang dipilih menjadi lunas (paid) di koleksi 'debts'
       selectedDebts.forEach(d => {
         const debtRef = db.collection("debts").doc(d.id);
         batch.update(debtRef, {
