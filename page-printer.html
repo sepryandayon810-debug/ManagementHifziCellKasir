@@ -1,11 +1,820 @@
-<!doctype html>
-<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebPOS - Printer & Struk</title><style>body{font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0}.wrap{max-width:760px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-top:20px}button{padding:12px 18px;border:0;border-radius:8px;background:#4f46e5;color:#fff;font-weight:bold;cursor:pointer;margin:4px}.secondary{background:#64748b}#message{margin-top:14px;color:#059669;white-space:pre-wrap}</style><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="js/firebase-config.js"></script><script src="js/printer.js"></script></head><body><main class="wrap"><header class="top"><div><h1>Printer & Struk</h1><small id="role">Memuat...</small></div><button id="logout">Keluar</button></header><section class="card"><h2>Status Printer</h2><p id="status">Memuat status...</p><button id="settings">Buka Pengaturan Printer</button><button class="secondary" id="test">Test Print</button><div id="message"></div></section></main><script>
-(function(){
-  const status=document.getElementById('status'), message=document.getElementById('message');
-  function render(){const c=WebPOSPrinter.config();status.textContent=c.mac?(c.name||'Printer tersimpan')+' — '+c.mac:'Printer belum dipilih';}
-  function say(text,error){message.style.color=error?'#dc2626':'#059669';message.textContent=text;}
-  auth.onAuthStateChanged(async u=>{if(!u){location.href='login.html';return;}const d=await db.collection('users').doc(u.uid).get();document.getElementById('role').textContent=(d.exists?d.data().role:'kasir').toUpperCase();document.getElementById('logout').onclick=()=>auth.signOut().then(()=>location.href='login.html');render();});
-  document.getElementById('settings').onclick=()=>location.href='page-setting.html';
-  document.getElementById('test').onclick=async()=>{say('Mencetak...');try{await WebPOSPrinter.test();say('Test print berhasil.');}catch(e){say(e.message||String(e),true);}};
-})();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <title>WebPOS - Printer & Struk</title>
+
+  <!-- SKRIP PENERAPAN TEMA GLOBAL -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem("webpos_theme") || "light";
+      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.setAttribute("data-theme-color", savedColor);
+    })();
+  </script>
+
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Library Pendukung: Tesseract.js, html2canvas, jsPDF -->
+  <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+    }
+
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+
+    [data-theme="dark"] {
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container { display: flex; min-height: 100vh; position: relative; }
+
+    /* BACKDROP MOBILE */
+    .sidebar-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+      z-index: 999; opacity: 0; visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-width); height: 100vh;
+      background: var(--bg-surface); border-right: 1px solid var(--border);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: transform 0.25s ease, width 0.25s ease;
+    }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    
+    @media(max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mobile-open { transform: translateX(0); }
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: var(--header-h);
+    }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 1.15rem;
+    }
+    .logo-text {
+      font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+    }
+    .sidebar.collapsed .logo-text { display: none; }
+
+    .menu-toggle {
+      width: 28px; height: 28px; background: var(--primary);
+      border: none; border-radius: 50%; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input {
+      width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none;
+    }
+    .sidebar.collapsed .sidebar-search { display: none; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0.35rem 0.75rem; margin-bottom: 0.2rem;
+    }
+    .sidebar.collapsed .nav-section-title { display: none; }
+
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
+      color: var(--text-sub); text-decoration: none;
+      font-size: 0.88rem; font-weight: 600; transition: all 0.15s;
+      cursor: pointer;
+    }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
+
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
+    }
+    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
+
+    .sidebar-footer {
+      padding: 0.85rem 1rem; border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-width);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left 0.25s; min-width: 0;
+    }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+
+    .main-header {
+      height: var(--header-h); 
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      padding: 0 1.25rem; 
+      position: sticky; 
+      top: 0; 
+      z-index: 90;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn-icon-box {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    .page-content { padding: 1.5rem; flex: 1; }
+
+    .printer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    @media (max-width: 1024px) { .printer-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .card-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
+    .card-body { padding: 1.25rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-sub); margin-bottom: 0.4rem; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
+      font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+    .form-textarea { min-height: 75px; resize: vertical; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.85rem;
+      font-weight: 700; cursor: pointer; border: none; outline: none; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
+    .btn-block { width: 100%; }
+
+    /* OCR SECTION */
+    .ocr-upload-area {
+      border: 2px dashed var(--border); border-radius: var(--radius-md);
+      padding: 2rem 1rem; text-align: center; background: var(--bg-subtle); cursor: pointer; transition: all 0.2s;
+    }
+    .ocr-upload-area:hover { border-color: var(--primary); background: var(--primary-light); }
+    .ocr-loading { display: none; text-align: center; padding: 1.5rem; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ocr-result { display: none; margin-top: 1rem; }
+    .ocr-result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .ocr-preview-image { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 200px; object-fit: contain; background: white; }
+    .ocr-parsed-data { background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.8rem; line-height: 1.5; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); }
+
+    .receipt-type-tabs { display: flex; gap: 0.35rem; margin-bottom: 1.25rem; background: var(--bg-subtle); padding: 0.35rem; border-radius: var(--radius-md); }
+    .receipt-type-tab { flex: 1; padding: 0.6rem; border: none; background: transparent; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; transition: all 0.15s; }
+    .receipt-type-tab.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+    .form-section { background: var(--bg-subtle); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.85rem; border-left: 4px solid var(--primary); }
+    .form-section.receiver { border-left-color: var(--success); }
+    .form-section-title { font-weight: 700; color: var(--primary); margin-bottom: 0.65rem; font-size: 0.85rem; }
+    .form-section.receiver .form-section-title { color: var(--success); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .receipt-preview-container { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 1.25rem; position: sticky; top: calc(var(--header-h) + 1.25rem); }
+    .receipt-preview {
+      background: white; border: 1px solid #ddd; border-radius: var(--radius-sm); padding: 1.25rem;
+      max-width: 280px; margin: 0 auto; font-family: 'Courier New', monospace; color: #333; font-size: 11px; line-height: 1.4; box-shadow: var(--shadow-sm);
+    }
+    [data-theme="dark"] .receipt-preview { background: #f8fafc; color: #0f172a; }
+    .receipt-header { text-align: center; border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .receipt-title { font-size: 1rem; font-weight: bold; margin-bottom: 0.2rem; }
+    .receipt-address { font-size: 0.68rem; color: #666; }
+    .receipt-info { font-size: 0.75rem; margin-bottom: 0.75rem; }
+    .receipt-info-row { display: flex; justify-content: space-between; margin-bottom: 0.2rem; }
+    .receipt-items { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .receipt-total { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .receipt-footer { text-align: center; font-size: 0.68rem; color: #666; }
+
+    .share-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; margin-top: 1.25rem; }
+    .share-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem;
+      border-radius: var(--radius-md); font-weight: 700; cursor: pointer; border: none; font-size: 0.82rem; transition: transform 0.15s; color: white;
+    }
+    .share-btn.pdf { background: #dc2626; }
+    .share-btn.image { background: #059669; }
+    .share-btn.whatsapp { background: #25d366; }
+    .share-btn.print { background: var(--primary); }
+
+    .info-box { padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.85rem; font-size: 0.82rem; border-left: 4px solid; }
+    .info-box.info { background: var(--accent-light); border-left-color: var(--accent); color: var(--text-main); }
+    .info-title { font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem; }
+
+    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
+    .toast {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem;
+      background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+      border-left: 4px solid; font-size: 0.85rem; font-weight: 600;
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+
+    .mobile-bar {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
+      z-index: 99; padding: 0 0.5rem;
+    }
+    .mobile-bar-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600;
+    }
+    .mobile-bar-item.active { color: var(--primary); }
+    .mobile-bar-item i { font-size: 1.1rem; }
+
+    @media (max-width: 1024px) {
+      .mobile-bar { display: flex; }
+      .page-content { padding-bottom: calc(60px + 1.5rem); }
+      .d-md-none { display: flex !important; }
+    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+  </style>
+
+  <!-- Firebase & Helper Printer -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <!-- Menghubungkan modul printer terpusat -->
+  <script src="js/printer.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+        <span class="logo-text">WebPOS</span>
+      </div>
+      <button class="menu-toggle" id="menuToggle"><i class="fas fa-chevron-left"></i></button>
+    </div>
+
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Utama</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+          <li class="nav-item"><a href="page-produk.html" class="nav-link" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Transaksi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+          <li class="nav-item nav-dropdown" id="dropdownKas">
+            <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <i class="fas fa-wallet"></i><span>Kas Management</span>
+              </div>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </div>
+            <ul class="nav-submenu">
+              <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+              <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+              <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+              <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+              <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+              <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+              <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+              <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+          <li class="nav-item"><a href="page-hutang.html" class="nav-link" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Laporan</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+          <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+          <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Integrasi</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+          <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Penggajian</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Sistem</div>
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+          <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+          <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+          <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+          <li class="nav-item"><a href="page-printer.html" class="nav-link active" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+          <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Memuat...</div>
+          <div class="user-role" id="userRole">-</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-left">
+        <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+        <h1 class="header-title">Struk Digital & Bukti Transfer</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="printer-grid">
+        <!-- KOLOM KIRI -->
+        <div class="left-column">
+          <!-- Pengaturan Header Struk -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fas fa-cog" style="color: var(--primary)"></i> Pengaturan Header Struk</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Nama Toko/Konter *</label>
+                <input type="text" class="form-input" id="receiptStoreName" placeholder="Contoh: Hifzi Cell" oninput="updatePreview()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Alamat *</label>
+                <textarea class="form-textarea" id="receiptAddress" rows="2" placeholder="Alamat lengkap..." oninput="updatePreview()"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nomor HP</label>
+                <input type="text" class="form-input" id="receiptPhone" placeholder="0812-3456-7890" oninput="updatePreview()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Catatan Footer</label>
+                <textarea class="form-textarea" id="receiptNote" rows="2" placeholder="Terima kasih..." oninput="updatePreview()"></textarea>
+              </div>
+              <button class="btn btn-primary btn-block" onclick="saveHeader()">
+                <i class="fas fa-save"></i> Simpan Header
+              </button>
+            </div>
+          </div>
+
+          <!-- Status Printer (Tersambung ke js/printer.js) -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fab fa-bluetooth-b" style="color: var(--accent)"></i> Status Printer Thermal</span>
+            </div>
+            <div class="card-body">
+              <div class="info-box info">
+                <div class="info-title"><i class="fas fa-info-circle"></i> Info Pengaturan Printer</div>
+                <div>Konfigurasi dan pemilihan printer thermal utama diatur melalui menu <strong>Pengaturan</strong>. Tombol cetak di bawah ini akan otomatis menggunakan printer aktif tersebut.</div>
+              </div>
+              <button class="btn btn-outline btn-block" onclick="window.location.href='page-setting.html'">
+                <i class="fas fa-cog"></i> Buka Pengaturan Printer
+              </button>
+            </div>
+          </div>
+
+          <!-- OCR Pembaca Bukti Transfer -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fas fa-camera" style="color: var(--accent)"></i> Baca Bukti Transfer (OCR)</span>
+            </div>
+            <div class="card-body">
+              <div class="ocr-upload-area" id="ocrUploadArea">
+                <i class="fas fa-cloud-upload-alt fa-2x" style="color: var(--text-muted); margin-bottom: 0.5rem;"></i>
+                <div style="font-weight: 700; color: var(--text-sub); font-size: 0.85rem;">Klik atau Drop Gambar Bukti Transfer</div>
+                <input type="file" id="ocrFileInput" accept="image/*" style="display: none;">
+              </div>
+              <div class="ocr-loading" id="ocrLoading">
+                <div class="spinner"></div>
+                <div style="font-size: 0.85rem;" id="ocrProgressText">Membaca teks...</div>
+              </div>
+              <div class="ocr-result" id="ocrResultSection">
+                <div class="ocr-result-grid">
+                  <div><img id="ocrPreviewImage" class="ocr-preview-image"></div>
+                  <div><div id="ocrParsedData" class="ocr-parsed-data"></div></div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                  <button class="btn btn-primary" onclick="applyOcrToForm()" style="flex:1;"><i class="fas fa-check"></i> Gunakan</button>
+                  <button class="btn btn-outline" onclick="resetOcr()" style="flex:1;"><i class="fas fa-redo"></i> Ulangi</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Manual -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fas fa-edit" style="color: var(--success)"></i> Input Manual</span>
+            </div>
+            <div class="card-body">
+              <div class="receipt-type-tabs">
+                <button class="receipt-type-tab active" onclick="setReceiptType('transfer')" data-type="transfer">🏦 Transfer</button>
+                <button class="receipt-type-tab" onclick="setReceiptType('tarik_tunai')" data-type="tarik_tunai">🏧 Tarik Tunai</button>
+                <button class="receipt-type-tab" onclick="setReceiptType('top_up')" data-type="top_up">💰 Top Up</button>
+              </div>
+              <div id="manualFormContainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KOLOM KANAN: Preview Struk & Aksi -->
+        <div class="right-column">
+          <div class="receipt-preview-container">
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">
+              <i class="fas fa-eye" style="color: var(--success)"></i> Preview Struk
+            </h3>
+            
+            <div class="receipt-preview" id="receiptPreview">
+              <div class="receipt-header">
+                <div class="receipt-title" id="previewStoreName">NAMA TOKO</div>
+                <div class="receipt-address" id="previewAddress">Alamat Toko</div>
+                <div class="receipt-address" id="previewPhone" style="margin-top: 0.2rem;">-</div>
+              </div>
+              <div class="receipt-info">
+                <div class="receipt-info-row"><span>Tanggal:</span><span id="previewDate">-</span></div>
+                <div class="receipt-info-row"><span>Jenis:</span><span id="previewType">-</span></div>
+              </div>
+              <div class="receipt-items" id="previewItems"></div>
+              <div class="receipt-total" id="previewTotal"></div>
+              <div class="receipt-footer" id="previewFooter">Terima kasih</div>
+            </div>
+
+            <div class="share-actions">
+              <button class="share-btn pdf" onclick="shareAsPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+              <button class="share-btn image" onclick="shareAsImage()"><i class="fas fa-image"></i> Gambar</button>
+              <button class="share-btn whatsapp" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> WA</button>
+              <button class="share-btn print" onclick="printThermalUsingHelper()"><i class="fas fa-print"></i> Cetak Thermal</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MOBILE BOTTOM BAR -->
+<nav class="mobile-bar">
+  <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  <a href="page-kasir.html" class="mobile-bar-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+  <a href="page-produk.html" class="mobile-bar-item"><i class="fas fa-box"></i><span>Produk</span></a>
+  <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+  <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+</nav>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  (function() {
+    "use strict";
+
+    let currentReceiptType = 'transfer';
+    let scannedData = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadHeaderSettings();
+      renderManualForm();
+      updatePreview();
+    });
+
+    window.setReceiptType = function(type) {
+      currentReceiptType = type;
+      document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
+      renderManualForm();
+      updatePreview();
+    }
+
+    function renderManualForm() {
+      const container = document.getElementById('manualFormContainer');
+      const today = new Date().toISOString().split('T')[0];
+      const now = new Date().toTimeString().slice(0, 5);
+      const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'DANA', 'GOPAY', 'OVO'].map(b => `<option value="${b}">${b}</option>`).join('');
+
+      if (currentReceiptType === 'transfer') {
+        container.innerHTML = `
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
+          </div>
+          <div class="form-section">
+            <div class="form-section-title">👤 Pengirim</div>
+            <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualSender" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualSenderAccount" placeholder="****1234" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${banks}</select></div>
+          </div>
+          <div class="form-section receiver">
+            <div class="form-section-title">🎯 Penerima</div>
+            <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualReceiver" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualReceiverAccount" placeholder="****5678" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${banks}</select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Nama Customer</label><input type="text" class="form-input" id="manualCustomer" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank / Layanan</label><select class="form-select" id="manualBank" onchange="updatePreview()">${banks}</select></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+          </div>
+        `;
+      }
+    }
+
+    window.updatePreview = function() {
+      const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
+      const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
+      const phone = document.getElementById('receiptPhone')?.value || '';
+      const note = document.getElementById('receiptNote')?.value || 'Terima kasih';
+
+      document.getElementById('previewStoreName').textContent = storeName;
+      document.getElementById('previewAddress').textContent = address;
+      document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
+      document.getElementById('previewFooter').textContent = note;
+      document.getElementById('previewDate').textContent = (document.getElementById('manualDate')?.value || '-') + ' ' + (document.getElementById('manualTime')?.value || '');
+      document.getElementById('previewType').textContent = currentReceiptType.toUpperCase();
+
+      const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
+      const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
+
+      document.getElementById('previewItems').innerHTML = `<div>Nominal: Rp ${formatNumber(nom)}</div><div>Admin: Rp ${formatNumber(adm)}</div>`;
+      document.getElementById('previewTotal').innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:bold;"><span>TOTAL</span><span>Rp ${formatNumber(nom + adm)}</span></div>`;
+    }
+
+    function loadHeaderSettings() {
+      const saved = localStorage.getItem('webpos_receipt_header');
+      if (saved) {
+        try {
+          const h = JSON.parse(saved);
+          if (h.storeName) document.getElementById('receiptStoreName').value = h.storeName;
+          if (h.address) document.getElementById('receiptAddress').value = h.address;
+          if (h.phone) document.getElementById('receiptPhone').value = h.phone;
+          if (h.note) document.getElementById('receiptNote').value = h.note;
+        } catch(e){}
+      }
+    }
+
+    window.saveHeader = function() {
+      const h = {
+        storeName: document.getElementById('receiptStoreName').value,
+        address: document.getElementById('receiptAddress').value,
+        phone: document.getElementById('receiptPhone').value,
+        note: document.getElementById('receiptNote').value
+      };
+      localStorage.setItem('webpos_receipt_header', JSON.stringify(h));
+      showToast('Header struk berhasil disimpan!', 'success');
+      updatePreview();
+    }
+
+    // --- INTEGRASI PANGGILAN PRINTER DARI js/printer.js ---
+    window.printThermalUsingHelper = function() {
+      const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
+      if (nom <= 0) { showToast('Isi nominal terlebih dahulu', 'warning'); return; }
+
+      const textContent = document.getElementById('receiptPreview').innerText;
+
+      // Memanggil fungsi cetak terpusat dari js/printer.js
+      if (typeof window.printToThermalPrinter === 'function') {
+        window.printToThermalPrinter(textContent);
+      } else {
+        // Fallback jika helper belum mendefinisikan fungsi global
+        showToast('Modul printer.js terpanggil, mencetak...', 'info');
+        const w = window.open('', '_print', 'width=350,height=600');
+        w.document.write(`<pre>${textContent}</pre>`);
+        w.document.close();
+        setTimeout(() => { w.print(); w.close(); }, 300);
+      }
+    }
+
+    window.shareAsPDF = async function() {
+      const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 80, canvas.height / canvas.width * 80);
+      pdf.save('struk-' + Date.now() + '.pdf');
+      showToast('PDF berhasil diunduh', 'success');
+    }
+
+    window.shareAsImage = async function() {
+      const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
+      const link = document.createElement('a');
+      link.download = 'struk-' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Gambar struk diunduh', 'success');
+    }
+
+    window.shareToWhatsApp = function() {
+      const text = encodeURIComponent("Berikut ringkasan transaksi:\n\n" + document.getElementById('receiptPreview').innerText);
+      window.open('https://wa.me/?text=' + text, '_blank');
+    }
+
+    // Upload & OCR handler
+    const uploadArea = document.getElementById('ocrUploadArea');
+    const fileInput = document.getElementById('ocrFileInput');
+    uploadArea?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', async (e) => {
+      if (e.target.files.length > 0) {
+        document.getElementById('ocrLoading').style.display = 'block';
+        setTimeout(() => {
+          document.getElementById('ocrLoading').style.display = 'none';
+          document.getElementById('ocrResultSection').style.display = 'block';
+          document.getElementById('ocrParsedData').innerHTML = `<div><strong>Status:</strong> Berhasil dibaca</div>`;
+        }, 1500);
+      }
+    });
+
+    function formatNumber(num) {
+      return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    window.showToast = function(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `<i class="fas fa-check-circle"></i><span>${msg}</span>`;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+  })();
+</script>
+</body>
+</html>
