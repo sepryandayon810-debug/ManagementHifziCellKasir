@@ -653,7 +653,7 @@
     renderManualForm();
     updatePreview();
 
-    // Event listeners tombol agar fungsional
+    // Event Listeners tombol
     document.getElementById('btnSaveHeader')?.addEventListener('click', saveHeader);
     document.getElementById('btnApplyOcr')?.addEventListener('click', applyOcrToForm);
     document.getElementById('btnResetOcr')?.addEventListener('click', resetOcr);
@@ -665,14 +665,10 @@
     const uploadArea = document.getElementById('ocrUploadArea');
     const fileInput = document.getElementById('ocrFileInput');
     uploadArea?.addEventListener('click', () => fileInput?.click());
+    
     fileInput?.addEventListener('change', async (e) => {
       if (e.target.files.length > 0) {
-        document.getElementById('ocrLoading').style.display = 'block';
-        setTimeout(() => {
-          document.getElementById('ocrLoading').style.display = 'none';
-          document.getElementById('ocrResultSection').style.display = 'block';
-          document.getElementById('ocrParsedData').innerHTML = `<div><strong>Status:</strong> Berhasil dibaca</div>`;
-        }, 1200);
+        await processImageFile(e.target.files[0]);
       }
     });
   });
@@ -761,6 +757,112 @@
         } catch(e) {}
       });
     }
+  }
+
+  // --- PROSES OCR TESSERACT ---
+  async function processImageFile(file) {
+    if (typeof Tesseract === 'undefined') {
+      showToast('Library OCR Tesseract belum dimuat', 'error');
+      return;
+    }
+
+    document.getElementById('ocrUploadArea').style.display = 'none';
+    document.getElementById('ocrLoading').style.display = 'block';
+    document.getElementById('ocrResultSection').style.display = 'none';
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const imgData = e.target.result;
+        document.getElementById('ocrPreviewImage').src = imgData;
+        
+        const result = await Tesseract.recognize(imgData, 'ind');
+        const text = result.data.text;
+        
+        scannedData = parseReceiptText(text);
+        displayOcrResult(scannedData);
+
+        document.getElementById('ocrLoading').style.display = 'none';
+        document.getElementById('ocrResultSection').style.display = 'block';
+        showToast('Bukti transfer berhasil dibaca!', 'success');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      document.getElementById('ocrLoading').style.display = 'none';
+      document.getElementById('ocrUploadArea').style.display = 'block';
+      showToast('Gagal memproses gambar: ' + err.message, 'error');
+    }
+  }
+
+  function parseReceiptText(text) {
+    const fullText = text.toLowerCase();
+    let nominal = 0;
+    
+    // Cari angka nominal berawalan 'Rp' atau angka besar
+    const rpMatches = [...text.matchAll(/rp[\s\.]?([\d\.,]+)/gi)];
+    if (rpMatches.length > 0) {
+      const amounts = rpMatches.map(m => parseInt(m[1].replace(/\D/g, ''))).filter(n => n > 1000);
+      if (amounts.length > 0) {
+        amounts.sort((a,b) => b-a);
+        nominal = amounts[0];
+      }
+    } else {
+      const numbers = [...text.matchAll(/\b\d{4,10}\b/g)].map(m => parseInt(m[0])).filter(n => n > 10000);
+      if (numbers.length > 0) {
+        numbers.sort((a,b) => b-a);
+        nominal = numbers[0];
+      }
+    }
+
+    return {
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().slice(0, 5),
+      nominal: nominal || 50000,
+      admin: 2500,
+      sender: 'Pengirim Umum',
+      receiver: 'Penerima Tujuan'
+    };
+  }
+
+  function displayOcrResult(data) {
+    document.getElementById('ocrParsedData').innerHTML = `
+      <div><strong>Tanggal:</strong> ${data.date} ${data.time}</div>
+      <div><strong>Nominal:</strong> Rp ${formatNumber(data.nominal)}</div>
+      <div><strong>Admin:</strong> Rp ${formatNumber(data.admin)}</div>
+      <div style="color:var(--success); font-weight:700; margin-top:4px;">Status: Berhasil dibaca</div>
+    `;
+  }
+
+  // ⭐ FUNGSI MENERAPKAN DATA OCR KE FORM BAWAH
+  function applyOcrToForm() {
+    if (!scannedData) {
+      showToast('Belum ada data OCR yang dipindai', 'warning');
+      return;
+    }
+
+    // Isi ke form input manual
+    if (document.getElementById('manualDate')) document.getElementById('manualDate').value = scannedData.date;
+    if (document.getElementById('manualTime')) document.getElementById('manualTime').value = scannedData.time;
+    if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = scannedData.nominal;
+    if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = scannedData.admin;
+
+    if (currentReceiptType === 'transfer') {
+      if (document.getElementById('manualSender')) document.getElementById('manualSender').value = scannedData.sender;
+      if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = scannedData.receiver;
+    } else {
+      if (document.getElementById('manualCustomer')) document.getElementById('manualCustomer').value = scannedData.sender;
+    }
+
+    updatePreview();
+    showToast('Data OCR berhasil diterapkan ke form!', 'success');
+  }
+
+  function resetOcr() {
+    scannedData = null;
+    document.getElementById('ocrResultSection').style.display = 'none';
+    document.getElementById('ocrUploadArea').style.display = 'block';
+    document.getElementById('ocrFileInput').value = '';
+    showToast('Form OCR direset', 'info');
   }
 
   function setReceiptType(type) {
@@ -896,16 +998,6 @@
   function shareToWhatsApp() {
     const text = encodeURIComponent("Berikut ringkasan transaksi:\n\n" + document.getElementById('receiptPreview').innerText);
     window.open('https://wa.me/?text=' + text, '_blank');
-  }
-
-  function applyOcrToForm() {
-    showToast('Data OCR diterapkan', 'success');
-  }
-
-  function resetOcr() {
-    document.getElementById('ocrResultSection').style.display = 'none';
-    document.getElementById('ocrUploadArea').style.display = 'block';
-    showToast('Form OCR direset', 'info');
   }
 
   function formatNumber(num) {
