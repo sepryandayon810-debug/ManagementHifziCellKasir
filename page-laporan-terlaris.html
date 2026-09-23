@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Barang Terlaris</title>
+  <title>WebPOS - Best Seller</title>
 
   <!-- SKRIP TEMA GLOBAL -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      const savedColor = localStorage.getItem("webpos_theme_color") || localStorage.getItem("theme_color") || "indigo";
       document.documentElement.setAttribute("data-theme", savedTheme);
       document.documentElement.setAttribute("data-theme-color", savedColor);
     })();
@@ -24,20 +24,60 @@
 
   <style>
     :root {
-      --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff;
-      --accent: #0284c7; --success: #059669; --success-light: #ecfdf5;
-      --warning: #d97706; --warning-light: #fffbeb; --danger: #dc2626; --danger-light: #fef2f2;
-      --bg-base: #f8fafc; --bg-surface: #ffffff; --bg-subtle: #f1f5f9; --border: #e2e8f0;
-      --text-main: #0f172a; --text-muted: #64748b; --text-sub: #475569;
-      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-2xl: 24px;
+      
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+      --bottom-nav-height: 65px;
     }
+
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
+
     [data-theme="dark"] {
-      --bg-base: #090d16; --bg-surface: #111827; --bg-subtle: #1e293b; --border: #2e384d;
-      --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1;
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
     .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
@@ -50,10 +90,10 @@
     @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
     .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); }
     .logo-container { display: flex; align-items: center; gap: 0.65rem; }
-    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; }
     .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .sidebar.collapsed .logo-text { display: none; }
-    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
     .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
     .search-input-wrapper { position: relative; display: flex; align-items: center; }
@@ -94,8 +134,8 @@
     .header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
     .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
+    .btn-icon-box { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
     .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; }
 
     /* STATS & REPORT STYLES */
@@ -120,7 +160,7 @@
     .form-input, .form-select { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; }
     .form-input:focus, .form-select:focus { border-color: var(--primary); background: var(--bg-surface); }
 
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: all 0.15s; }
     .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); color: var(--text-sub); border: 1px solid var(--border); }
@@ -163,10 +203,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -263,6 +303,8 @@
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -282,11 +324,12 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
-          <h1 class="header-title">Barang Terlaris (Best Seller)</h1>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <h1 class="header-title">Best Seller</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
@@ -414,6 +457,10 @@
 
       let rankingData = [];
       let categoriesMap = {};
+      let currentUserRole = "kasir";
+      let allTransactionsCache = null;
+      let lastCacheTime = 0;
+      const CACHE_DURATION = 5 * 60 * 1000; // Cache 5 menit agar refresh instan
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -441,7 +488,13 @@
           let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              currentUserRole = (userData.role || "kasir").toLowerCase();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(currentUserRole);
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -465,7 +518,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.add('mobile-open');
+            sidebar.classList.toggle('mobile-open');
             if (backdrop) backdrop.classList.add('active');
           };
         }
@@ -488,6 +541,24 @@
           });
         });
 
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
+
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
@@ -501,13 +572,13 @@
       async function initTerlaris() {
         await loadCategories();
         
-        document.getElementById('btnGenerate').onclick = loadReport;
-        document.getElementById('filterPeriod').onchange = loadReport;
-        document.getElementById('filterCategory').onchange = loadReport;
-        document.getElementById('filterLimit').onchange = loadReport;
+        document.getElementById('btnGenerate').onclick = () => loadReport(true);
+        document.getElementById('filterPeriod').onchange = () => loadReport(false);
+        document.getElementById('filterCategory').onchange = () => loadReport(false);
+        document.getElementById('filterLimit').onchange = () => loadReport(false);
         document.getElementById('btnExport').onclick = exportCSV;
 
-        loadReport();
+        loadReport(false);
       }
 
       async function loadCategories() {
@@ -526,7 +597,7 @@
         }
       }
 
-      async function loadReport() {
+      async function loadReport(forceRefresh = false) {
         Utils.showLoading();
         try {
           const period = document.getElementById('filterPeriod').value;
@@ -553,22 +624,31 @@
             d.setDate(d.getDate() + 1);
           }
 
-          let allTransactions = [];
-          for (const dStr of dates) {
-            const snap = await db.collection("transactions").where("date", "==", dStr).get();
-            snap.forEach(doc => {
-              const data = doc.data();
-              if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'voided') {
-                allTransactions.push(data);
-              }
-            });
+          // Gunakan Cache Transaksi agar tombol refresh cepat & tidak lambat
+          const currentTime = Date.now();
+          if (forceRefresh || !allTransactionsCache || (currentTime - lastCacheTime > CACHE_DURATION)) {
+            let allTransactions = [];
+            // Batasi batch request jika rentang waktu terlalu panjang ('all') agar tidak timeout
+            const queryDates = period === 'all' ? dates.slice(-90) : dates; 
+            
+            for (const dStr of queryDates) {
+              const snap = await db.collection("transactions").where("date", "==", dStr).get();
+              snap.forEach(doc => {
+                const data = doc.data();
+                if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'voided') {
+                  allTransactions.push(data);
+                }
+              });
+            }
+            allTransactionsCache = allTransactions;
+            lastCacheTime = currentTime;
           }
 
           let productSales = {};
           let totalSold = 0;
           let totalRevenue = 0;
 
-          allTransactions.forEach(t => {
+          allTransactionsCache.forEach(t => {
             const items = t.items || [];
             items.forEach(item => {
               const pId = item.productId || item.id;
@@ -606,7 +686,7 @@
           document.getElementById('statBestSeller').textContent = rankingData[0] ? rankingData[0].name : '-';
 
           renderRankingTable(rankingData);
-          Utils.showToast('Data barang terlaris dimuat', 'success');
+          if (forceRefresh) Utils.showToast('Data barang terlaris disegarkan', 'success');
         } catch (e) {
           console.error("Error loading best seller report:", e);
           Utils.showToast('Gagal memuat laporan terlaris', 'error');
