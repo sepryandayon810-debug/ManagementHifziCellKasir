@@ -399,7 +399,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
@@ -764,7 +764,7 @@
     if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
   }
 
-  // Sinkronisasi Nama Toko di Sidebar menggunakan instance `db` yang benar dari firebase-config.js
+  // Sinkronisasi Nama Toko di Sidebar menggunakan instance Firestore (`db`)
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
@@ -772,10 +772,10 @@
     if (cachedName) logoEl.textContent = cachedName;
     try {
       if (typeof db !== 'undefined') {
-        const doc = await db.ref("settings/store/name").once("value");
-        if (doc.exists() && doc.val()) {
-          logoEl.textContent = doc.val();
-          localStorage.setItem("webpos_store_name", doc.val());
+        const doc = await db.collection("settings").doc("store").get();
+        if (doc.exists && doc.data().name) {
+          logoEl.textContent = doc.data().name;
+          localStorage.setItem("webpos_store_name", doc.data().name);
         }
       }
     } catch (e) {}
@@ -850,25 +850,23 @@
   async function loadStats() {
     document.getElementById('loadingOverlay').classList.add('active');
     try {
+      // Menggunakan Firestore (.collection())
       const paths = ['products','customers','categories','users'];
       let totalRecords = 0;
       for (const p of paths) {
-        const snap = await db.ref(p).once('value');
-        totalRecords += Object.keys(snap.val() || {}).length;
+        const snap = await db.collection(p).get();
+        totalRecords += snap.size;
       }
       
-      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const transSnap = await db.ref('transactions/' + today).once('value');
-      const trans = transSnap.val() || {};
-      document.getElementById('todayTrans').textContent = Object.keys(trans).length.toLocaleString('id-ID');
+      const today = new Date().toISOString().slice(0,10);
+      const transSnap = await db.collection('transactions').where('date', '==', today).get();
+      document.getElementById('todayTrans').textContent = transSnap.size.toLocaleString('id-ID');
 
-      const debtsSnap = await db.ref('debts').once('value');
-      const debts = debtsSnap.val() || {};
-      const activeDebts = Object.values(debts).filter(d => d.status === 'active').length;
-      document.getElementById('totalProducts').textContent = (totalRecords + activeDebts).toLocaleString('id-ID');
+      const debtsSnap = await db.collection('debts').where('status', '==', 'active').get();
+      document.getElementById('totalProducts').textContent = (totalRecords + debtsSnap.size).toLocaleString('id-ID');
 
-      const logSnap = await db.ref('backup/lastLog').once('value');
-      const log = logSnap.val();
+      const logDoc = await db.collection('backup').doc('lastLog').get();
+      const log = logDoc.exists ? logDoc.data() : null;
       if (log) {
         document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
         const totalBackedUp = log.summary ? Object.values(log.summary).reduce((a,b)=>a+b,0) : 0;
@@ -967,11 +965,11 @@
   async function exportProductsCSV() {
     setProgress(20);
     try {
-      const snap = await db.ref('products').once('value');
-      const data = snap.val() || {};
+      const snap = await db.collection('products').get();
       const rows = [['ID','Nama Produk','Kategori','Harga Beli','Harga Jual','Stok','Status','Barcode','Dibuat']];
-      Object.entries(data).forEach(([id,p]) => {
-        rows.push([id, p.name||'', p.category||'', p.buyPrice||0, p.sellingPrice||0, p.stock||0, p.status||'active', p.barcode||'', p.createdAt||'-']);
+      snap.forEach(doc => {
+        const p = doc.data();
+        rows.push([doc.id, p.name||'', p.category||'', p.buyPrice||0, p.sellingPrice||0, p.stock||0, p.status||'active', p.barcode||'', p.createdAt||'-']);
       });
       setProgress(80);
       downloadCSV('Produk_Backup', rows);
@@ -986,16 +984,14 @@
   async function exportTransactionsCSV() {
     setProgress(10);
     try {
-      const snap = await db.ref('transactions').once('value');
-      const all = snap.val() || {};
+      const snap = await db.collection('transactions').get();
       const rows = [['Tanggal','ID Transaksi','Pelanggan','Total','Metode','Kasir','Status','Items']];
       let count = 0;
-      Object.entries(all).forEach(([date, dayTrans]) => {
-        Object.entries(dayTrans).forEach(([id,t]) => {
-          const items = (t.items||[]).map(i => (i.name||'') + 'x' + (i.qty||1)).join(', ');
-          rows.push([date, id, t.customerName||'-', t.total||0, t.paymentMethod||'-', t.cashier||'-', t.status||'completed', items]);
-          count++;
-        });
+      snap.forEach(doc => {
+        const t = doc.data();
+        const items = (t.items||[]).map(i => (i.name||'') + 'x' + (i.qty||1)).join(', ');
+        rows.push([t.date||'-', doc.id, t.customerName||'-', t.total||0, t.paymentMethod||'-', t.cashier||'-', t.status||'completed', items]);
+        count++;
       });
       setProgress(80);
       downloadCSV('Transaksi_Backup', rows);
@@ -1019,12 +1015,19 @@
   async function exportDataJSON() {
     document.getElementById('loadingOverlay').classList.add('active');
     try {
+      const getCollectionData = async (colName) => {
+        const snap = await db.collection(colName).get();
+        let obj = {};
+        snap.forEach(d => { obj[d.id] = d.data(); });
+        return obj;
+      };
+
       const data = {
-        products: (await db.ref('products').once('value')).val() || {},
-        transactions: (await db.ref('transactions').once('value')).val() || {},
-        customers: (await db.ref('customers').once('value')).val() || {},
-        kas: (await db.ref('kas').once('value')).val() || {},
-        categories: (await db.ref('categories').once('value')).val() || {},
+        products: await getCollectionData('products'),
+        transactions: await getCollectionData('transactions'),
+        customers: await getCollectionData('customers'),
+        kas: await getCollectionData('kas'),
+        categories: await getCollectionData('categories'),
         exportedAt: Date.now()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -1051,9 +1054,21 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.products) await db.ref('products').set(data.products);
-      if (data.transactions) await db.ref('transactions').set(data.transactions);
-      if (data.customers) await db.ref('customers').set(data.customers);
+      
+      const batchSave = async (colName, objData) => {
+        if (!objData) return;
+        const batch = db.batch();
+        Object.entries(objData).forEach(([id, val]) => {
+          const ref = db.collection(colName).doc(id);
+          batch.set(ref, val);
+        });
+        await batch.commit();
+      };
+
+      if (data.products) await batchSave('products', data.products);
+      if (data.transactions) await batchSave('transactions', data.transactions);
+      if (data.customers) await batchSave('customers', data.customers);
+
       showToast('Import berhasil! Data telah dipulihkan.');
       loadStats();
     } catch(e) {
@@ -1092,8 +1107,8 @@
       return;
     }
     currentUser = user;
-    db.ref('users/' + user.uid).once('value').then(snap => {
-      const data = snap.val() || {};
+    db.collection('users').doc(user.uid).get().then(doc => {
+      const data = doc.exists ? doc.data() : {};
       const name = data.name || user.email.split('@')[0];
       const role = (data.role || 'admin').toUpperCase();
       document.getElementById('userName').textContent = name;
