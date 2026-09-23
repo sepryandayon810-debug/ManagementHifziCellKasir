@@ -34,9 +34,17 @@
       --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
     }
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
+
     [data-theme="dark"] {
       --bg-base: #090d16; --bg-surface: #111827; --bg-subtle: #1e293b; --border: #2e384d;
-      --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1;
+      --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1; --primary-light: rgba(79, 70, 229, 0.2);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
@@ -50,10 +58,10 @@
     @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
     .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); }
     .logo-container { display: flex; align-items: center; gap: 0.65rem; }
-    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; }
     .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .sidebar.collapsed .logo-text { display: none; }
-    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
     .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
     .search-input-wrapper { position: relative; display: flex; align-items: center; }
@@ -94,20 +102,25 @@
     .header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
     .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
+    .btn-icon-box { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
     .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; }
 
-    /* STATS & REPORT STYLES */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
-    .stat-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); }
-    .stat-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; flex-shrink: 0; }
+    /* STATS GRID 2x2 (KIRI-KANAN) */
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: 1rem; 
+      margin-bottom: 1.25rem; 
+    }
+    .stat-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: var(--shadow-sm); }
+    .stat-icon { width: 42px; height: 42px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: white; flex-shrink: 0; }
     .stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
     .stat-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
     .stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-icon.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
-    .stat-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.2rem; }
-    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-main); }
+    .stat-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.15rem; }
+    .stat-value { font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
 
     .card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
     .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
@@ -185,10 +198,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -285,6 +298,8 @@
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -304,17 +319,17 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
           <h1 class="header-title">Laporan Stok Gudang</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-icon" id="btnExport" title="Export CSV"><i class="fas fa-file-csv"></i></button>
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
       <div class="page-content">
-        <!-- Stats Cards -->
+        <!-- Stats Cards 2x2 (Kiri-Kanan) -->
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon blue"><i class="fas fa-boxes"></i></div>
@@ -350,6 +365,9 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-warehouse" style="color: var(--primary);"></i> Inventori & Stok Produk</h3>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-primary btn-sm" id="btnExport" title="Export CSV" style="width: auto;"><i class="fas fa-file-csv"></i> Export CSV</button>
+            </div>
           </div>
           <div class="card-body">
             <div class="toolbar">
@@ -357,10 +375,10 @@
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchProduct" placeholder="Cari berdasarkan nama atau kode produk...">
               </div>
-              <select class="form-select" id="filterCategory">
+              <select class="form-select" id="filterCategory" style="max-width: 200px;">
                 <option value="">Semua Kategori</option>
               </select>
-              <select class="form-select" id="filterStatus">
+              <select class="form-select" id="filterStatus" style="max-width: 200px;">
                 <option value="">Semua Status</option>
                 <option value="aman">Aman (>5)</option>
                 <option value="rendah">Menipis (≤5)</option>
@@ -440,7 +458,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeAdjustModal()">Batal</button>
-        <button class="btn btn-primary" onclick="submitAdjustment()">Simpan Perubahan</button>
+        <button class="btn btn-primary" onclick="submitAdjustment()" style="width: auto;">Simpan Perubahan</button>
       </div>
     </div>
   </div>
@@ -461,10 +479,11 @@
     </div>
   </div>
 
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+  <div class="loading-overlay" id="loadingOverlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; opacity:0; visibility:hidden; transition:all 0.2s;">
+    <div class="spinner" style="width:40px; height:40px; border:4px solid rgba(255,255,255,0.2); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+    <p style="margin-top:1rem; color:#fff; font-weight:700;">Memuat...</p>
   </div>
+  <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
   <div class="toast-box" id="toastContainer"></div>
 
@@ -474,6 +493,7 @@
 
       let productsList = [];
       let categoriesMap = {};
+      let currentUserRole = "kasir";
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -501,7 +521,13 @@
           let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              currentUserRole = (userData.role || "kasir").toLowerCase();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(currentUserRole);
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -548,6 +574,24 @@
           });
         });
 
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
+
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
@@ -585,7 +629,8 @@
       }
 
       async function loadProducts() {
-        Utils.showLoading();
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.opacity = '1', overlay.style.visibility = 'visible';
         try {
           const snap = await db.collection("products").get();
           productsList = [];
@@ -598,7 +643,7 @@
           console.error("Error loading products:", e);
           Utils.showToast('Gagal memuat data produk', 'error');
         } finally {
-          Utils.hideLoading();
+          if (overlay) overlay.style.opacity = '0', overlay.style.visibility = 'hidden';
         }
       }
 
