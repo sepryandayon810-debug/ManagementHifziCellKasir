@@ -446,7 +446,7 @@
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Memuat data...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -458,9 +458,8 @@
       let rankingData = [];
       let categoriesMap = {};
       let currentUserRole = "kasir";
-      let allTransactionsCache = null;
-      let lastCacheTime = 0;
-      const CACHE_DURATION = 5 * 60 * 1000; // Cache 5 menit agar refresh instan
+      let globalTransactions = []; // Cache lokal agar instan
+      let isDataLoaded = false;
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -518,7 +517,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.toggle('mobile-open');
+            sidebar.classList.add('mobile-open');
             if (backdrop) backdrop.classList.add('active');
           };
         }
@@ -572,13 +571,13 @@
       async function initTerlaris() {
         await loadCategories();
         
-        document.getElementById('btnGenerate').onclick = () => loadReport(true);
-        document.getElementById('filterPeriod').onchange = () => loadReport(false);
-        document.getElementById('filterCategory').onchange = () => loadReport(false);
-        document.getElementById('filterLimit').onchange = () => loadReport(false);
+        document.getElementById('btnGenerate').onclick = () => fetchAndProcessData(true);
+        document.getElementById('filterPeriod').onchange = () => processReportData();
+        document.getElementById('filterCategory').onchange = () => processReportData();
+        document.getElementById('filterLimit').onchange = () => processReportData();
         document.getElementById('btnExport').onclick = exportCSV;
 
-        loadReport(false);
+        await fetchAndProcessData(false);
       }
 
       async function loadCategories() {
@@ -597,102 +596,100 @@
         }
       }
 
-      async function loadReport(forceRefresh = false) {
-        Utils.showLoading();
+      // Tarik semua data transaksi sekaligus (1 kali query) agar sangat cepat
+      async function fetchAndProcessData(forceRefresh = false) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.classList.add('active');
+
         try {
-          const period = document.getElementById('filterPeriod').value;
-          const catId = document.getElementById('filterCategory').value;
-          const limit = parseInt(document.getElementById('filterLimit').value) || 20;
-
-          const now = new Date();
-          let startDate = new Date();
-
-          if (period === 'today') {
-            startDate = now;
-          } else if (period === 'week') {
-            startDate.setDate(now.getDate() - 7);
-          } else if (period === 'month') {
-            startDate.setDate(now.getDate() - 30);
-          } else if (period === 'all') {
-            startDate = new Date(2020, 0, 1);
-          }
-
-          let dates = [];
-          let d = new Date(startDate);
-          while (d <= now) {
-            dates.push(d.toISOString().split('T')[0]);
-            d.setDate(d.getDate() + 1);
-          }
-
-          // Gunakan Cache Transaksi agar tombol refresh cepat & tidak lambat
-          const currentTime = Date.now();
-          if (forceRefresh || !allTransactionsCache || (currentTime - lastCacheTime > CACHE_DURATION)) {
-            let allTransactions = [];
-            // Batasi batch request jika rentang waktu terlalu panjang ('all') agar tidak timeout
-            const queryDates = period === 'all' ? dates.slice(-90) : dates; 
-            
-            for (const dStr of queryDates) {
-              const snap = await db.collection("transactions").where("date", "==", dStr).get();
-              snap.forEach(doc => {
-                const data = doc.data();
-                if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'voided') {
-                  allTransactions.push(data);
-                }
-              });
-            }
-            allTransactionsCache = allTransactions;
-            lastCacheTime = currentTime;
-          }
-
-          let productSales = {};
-          let totalSold = 0;
-          let totalRevenue = 0;
-
-          allTransactionsCache.forEach(t => {
-            const items = t.items || [];
-            items.forEach(item => {
-              const pId = item.productId || item.id;
-              const qty = parseInt(item.qty || item.quantity || 0);
-              const price = parseFloat(item.harga || item.price || 0);
-              const subtotal = item.total || (qty * price);
-
-              if (catId !== 'all' && item.categoryId && item.categoryId !== catId) {
-                return;
+          if (forceRefresh || !isDataLoaded || globalTransactions.length === 0) {
+            const snap = await db.collection("transactions").get();
+            globalTransactions = [];
+            snap.forEach(doc => {
+              const data = doc.data();
+              if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'voided') {
+                globalTransactions.push(data);
               }
-
-              if (!productSales[pId]) {
-                productSales[pId] = {
-                  name: item.productName || item.name || 'Produk',
-                  categoryId: item.categoryId || '',
-                  quantity: 0,
-                  revenue: 0
-                };
-              }
-
-              productSales[pId].quantity += qty;
-              productSales[pId].revenue += subtotal;
-              totalSold += qty;
-              totalRevenue += subtotal;
             });
-          });
-
-          rankingData = Object.values(productSales)
-            .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, limit);
-
-          document.getElementById('statTotalSold').textContent = totalSold.toLocaleString('id-ID');
-          document.getElementById('statRevenue').textContent = Utils.formatRupiah(totalRevenue);
-          document.getElementById('statActiveProducts').textContent = Object.keys(productSales).length.toLocaleString('id-ID');
-          document.getElementById('statBestSeller').textContent = rankingData[0] ? rankingData[0].name : '-';
-
-          renderRankingTable(rankingData);
-          if (forceRefresh) Utils.showToast('Data barang terlaris disegarkan', 'success');
+            isDataLoaded = true;
+          }
+          processReportData();
+          if (forceRefresh) Utils.showToast('Data berhasil disegarkan', 'success');
         } catch (e) {
-          console.error("Error loading best seller report:", e);
-          Utils.showToast('Gagal memuat laporan terlaris', 'error');
+          console.error("Error fetching transactions:", e);
+          Utils.showToast('Gagal memuat data transaksi', 'error');
         } finally {
-          Utils.hideLoading();
+          if (overlay) overlay.classList.remove('active');
         }
+      }
+
+      // Proses filter dan kalkulasi secara lokal (instan tanpa lag)
+      function processReportData() {
+        const period = document.getElementById('filterPeriod').value;
+        const catId = document.getElementById('filterCategory').value;
+        const limit = parseInt(document.getElementById('filterLimit').value) || 20;
+
+        const now = new Date();
+        let startDate = null;
+
+        if (period === 'today') {
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        } else if (period === 'week') {
+          startDate = new Date();
+          startDate.setDate(now.getDate() - 7);
+        } else if (period === 'month') {
+          startDate = new Date();
+          startDate.setDate(now.getDate() - 30);
+        }
+
+        let productSales = {};
+        let totalSold = 0;
+        let totalRevenue = 0;
+
+        globalTransactions.forEach(t => {
+          // Filter berdasarkan rentang waktu
+          if (startDate && t.date) {
+            const tDate = new Date(t.date);
+            if (tDate < startDate) return;
+          }
+
+          const items = t.items || [];
+          items.forEach(item => {
+            const pId = item.productId || item.id;
+            const qty = parseInt(item.qty || item.quantity || 0);
+            const price = parseFloat(item.harga || item.price || 0);
+            const subtotal = item.total || (qty * price);
+
+            if (catId !== 'all' && item.categoryId && item.categoryId !== catId) {
+              return;
+            }
+
+            if (!productSales[pId]) {
+              productSales[pId] = {
+                name: item.productName || item.name || 'Produk',
+                categoryId: item.categoryId || '',
+                quantity: 0,
+                revenue: 0
+              };
+            }
+
+            productSales[pId].quantity += qty;
+            productSales[pId].revenue += subtotal;
+            totalSold += qty;
+            totalRevenue += subtotal;
+          });
+        });
+
+        rankingData = Object.values(productSales)
+          .sort((a, b) => b.quantity - a.quantity)
+          .slice(0, limit);
+
+        document.getElementById('statTotalSold').textContent = totalSold.toLocaleString('id-ID');
+        document.getElementById('statRevenue').textContent = Utils.formatRupiah(totalRevenue);
+        document.getElementById('statActiveProducts').textContent = Object.keys(productSales).length.toLocaleString('id-ID');
+        document.getElementById('statBestSeller').textContent = rankingData[0] ? rankingData[0].name : '-';
+
+        renderRankingTable(rankingData);
       }
 
       function renderRankingTable(data) {
