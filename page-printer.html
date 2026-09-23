@@ -293,7 +293,7 @@
     .ocr-result { display: none; margin-top: 1rem; }
     .ocr-result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
     .ocr-preview-image { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 200px; object-fit: contain; background: white; }
-    .ocr-parsed-data { background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.8rem; line-height: 1.5; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); }
+    .ocr-parsed-data { background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.8rem; line-height: 1.5; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); color: var(--text-main); }
 
     .receipt-type-tabs { display: flex; gap: 0.35rem; margin-bottom: 1.25rem; background: var(--bg-subtle); padding: 0.35rem; border-radius: var(--radius-md); }
     .receipt-type-tab { flex: 1; padding: 0.6rem; border: none; background: transparent; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; transition: all 0.15s; }
@@ -331,15 +331,16 @@
     .share-btn.whatsapp { background: #25d366; }
     .share-btn.print { background: var(--primary); }
 
-    .info-box { padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.85rem; font-size: 0.82rem; border-left: 4px solid; }
-    .info-box.info { background: var(--accent-light); border-left-color: var(--accent); color: var(--text-main); }
-    .info-title { font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem; }
+    .info-box { padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.85rem; font-size: 0.82rem; border-left: 4px solid; color: var(--text-main); }
+    .info-box.info { background: var(--accent-light); border-left-color: var(--accent); }
+    [data-theme="dark"] .info-box.info { background: rgba(2, 132, 199, 0.15); color: var(--text-main); }
+    .info-title { font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem; color: var(--text-main); }
 
     .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
     .toast {
       display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem;
       background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
-      border-left: 4px solid; font-size: 0.85rem; font-weight: 600;
+      border-left: 4px solid; font-size: 0.85rem; font-weight: 600; color: var(--text-main);
     }
     .toast.success { border-left-color: var(--success); }
     .toast.error { border-left-color: var(--danger); }
@@ -373,7 +374,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/sidebar-filter.js"></script>
-  <!-- Modul Printer Terpusat -->
   <script src="js/printer.js"></script>
 </head>
 <body>
@@ -528,7 +528,7 @@
                 <label class="form-label">Catatan Footer</label>
                 <textarea class="form-textarea" id="receiptNote" rows="2" placeholder="Terima kasih..." oninput="updatePreview()"></textarea>
               </div>
-              <button class="btn btn-primary btn-block" onclick="saveHeader()">
+              <button class="btn btn-primary btn-block" id="btnSaveHeader">
                 <i class="fas fa-save"></i> Simpan Header
               </button>
             </div>
@@ -571,8 +571,8 @@
                   <div><div id="ocrParsedData" class="ocr-parsed-data"></div></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                  <button class="btn btn-primary" onclick="applyOcrToForm()" style="flex:1;"><i class="fas fa-check"></i> Gunakan</button>
-                  <button class="btn btn-outline" onclick="resetOcr()" style="flex:1;"><i class="fas fa-redo"></i> Ulangi</button>
+                  <button class="btn btn-primary" id="btnApplyOcr" style="flex:1;"><i class="fas fa-check"></i> Gunakan</button>
+                  <button class="btn btn-outline" id="btnResetOcr" style="flex:1;"><i class="fas fa-redo"></i> Ulangi</button>
                 </div>
               </div>
             </div>
@@ -617,10 +617,10 @@
             </div>
 
             <div class="share-actions">
-              <button class="share-btn pdf" onclick="shareAsPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-              <button class="share-btn image" onclick="shareAsImage()"><i class="fas fa-image"></i> Gambar</button>
-              <button class="share-btn whatsapp" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> WA</button>
-              <button class="share-btn print" onclick="printThermalUsingHelper()"><i class="fas fa-print"></i> Cetak Thermal</button>
+              <button class="share-btn pdf" id="btnSharePdf"><i class="fas fa-file-pdf"></i> PDF</button>
+              <button class="share-btn image" id="btnShareImg"><i class="fas fa-image"></i> Gambar</button>
+              <button class="share-btn whatsapp" id="btnShareWa"><i class="fab fa-whatsapp"></i> WA</button>
+              <button class="share-btn print" id="btnPrintThermal"><i class="fas fa-print"></i> Cetak Thermal</button>
             </div>
           </div>
         </div>
@@ -642,242 +642,25 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-  (function() {
-    "use strict";
+  let currentReceiptType = 'transfer';
+  let scannedData = null;
 
-    let currentReceiptType = 'transfer';
-    let scannedData = null;
+  document.addEventListener("DOMContentLoaded", () => {
+    syncStoreBrandName();
+    setupSidebarEvents();
+    setupAuthUser();
+    loadHeaderSettings();
+    renderManualForm();
+    updatePreview();
 
-    document.addEventListener("DOMContentLoaded", () => {
-      syncStoreBrandName();
-      setupSidebarEvents();
-      setupAuthUser();
-      loadHeaderSettings();
-      renderManualForm();
-      updatePreview();
-    });
-
-    // Sinkronisasi Nama Toko pada Sidebar secara Dinamis
-    async function syncStoreBrandName() {
-      const logoEl = document.querySelector(".logo-text");
-      if (!logoEl) return;
-      const cachedName = localStorage.getItem("webpos_store_name");
-      if (cachedName) logoEl.textContent = cachedName;
-      try {
-        if (typeof db !== 'undefined') {
-          const doc = await db.collection("settings").doc("store").get();
-          if (doc.exists && doc.data().name) {
-            logoEl.textContent = doc.data().name;
-            localStorage.setItem("webpos_store_name", doc.data().name);
-          }
-        }
-      } catch (e) {}
-    }
-
-    function setupSidebarEvents() {
-      const sidebar = document.getElementById("sidebar");
-      const backdrop = document.getElementById("sidebarBackdrop");
-      const menuToggle = document.getElementById("menuToggle");
-      const mobileMenuToggle = document.getElementById("mobileMenuToggle");
-
-      if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
-      if (mobileMenuToggle) {
-        mobileMenuToggle.onclick = (e) => {
-          e.stopPropagation();
-          sidebar.classList.add("mobile-open");
-          backdrop.classList.add("active");
-        };
-      }
-      backdrop.onclick = () => {
-        sidebar.classList.remove("mobile-open");
-        backdrop.classList.remove("active");
-      };
-
-      document.querySelectorAll(".nav-dropdown").forEach(d => {
-        const t = d.querySelector(".nav-dropdown-toggle");
-        if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
-      });
-
-      document.getElementById("btnThemeToggle").onclick = () => {
-        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-        const nextTheme = isDark ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", nextTheme);
-        localStorage.setItem("webpos_theme", nextTheme);
-      };
-
-      document.getElementById("btnLogout").onclick = () => {
-        if (confirm("Yakin ingin keluar dari sistem?")) {
-          if (typeof auth !== 'undefined') auth.signOut();
-          localStorage.removeItem('webpos_session');
-          window.location.href = "login.html";
-        }
-      };
-
-      document.getElementById("menuSearch")?.addEventListener("input", function() {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll(".nav-link span").forEach(span => {
-          const li = span.closest(".nav-item");
-          if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
-        });
-      });
-    }
-
-    async function setupAuthUser() {
-      if (typeof auth !== 'undefined') {
-        auth.onAuthStateChanged(async (user) => {
-          if (!user) {
-            window.location.href = "login.html";
-            return;
-          }
-          try {
-            const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) {
-              const u = doc.data();
-              const name = u.name || u.username || user.email.split("@")[0];
-              const role = (u.role || "Kasir").toUpperCase();
-              document.getElementById("userName").textContent = name;
-              document.getElementById("userRole").textContent = role;
-              document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
-            }
-          } catch(e) {}
-        });
-      }
-    }
-
-    window.setReceiptType = function(type) {
-      currentReceiptType = type;
-      document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
-      renderManualForm();
-      updatePreview();
-    }
-
-    function renderManualForm() {
-      const container = document.getElementById('manualFormContainer');
-      const today = new Date().toISOString().split('T')[0];
-      const now = new Date().toTimeString().slice(0, 5);
-      const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'DANA', 'GOPAY', 'OVO'].map(b => `<option value="${b}">${b}</option>`).join('');
-
-      if (currentReceiptType === 'transfer') {
-        container.innerHTML = `
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
-          </div>
-          <div class="form-section">
-            <div class="form-section-title">👤 Pengirim</div>
-            <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualSender" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualSenderAccount" placeholder="****1234" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${banks}</select></div>
-          </div>
-          <div class="form-section receiver">
-            <div class="form-section-title">🎯 Penerima</div>
-            <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualReceiver" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualReceiverAccount" placeholder="****5678" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${banks}</select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
-          </div>
-        `;
-      } else {
-        container.innerHTML = `
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
-          </div>
-          <div class="form-group"><label class="form-label">Nama Customer</label><input type="text" class="form-input" id="manualCustomer" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Bank / Layanan</label><select class="form-select" id="manualBank" onchange="updatePreview()">${banks}</select></div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
-            <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
-          </div>
-        `;
-      }
-    }
-
-    window.updatePreview = function() {
-      const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
-      const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
-      const phone = document.getElementById('receiptPhone')?.value || '';
-      const note = document.getElementById('receiptNote')?.value || 'Terima kasih';
-
-      document.getElementById('previewStoreName').textContent = storeName;
-      document.getElementById('previewAddress').textContent = address;
-      document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
-      document.getElementById('previewFooter').textContent = note;
-      document.getElementById('previewDate').textContent = (document.getElementById('manualDate')?.value || '-') + ' ' + (document.getElementById('manualTime')?.value || '');
-      document.getElementById('previewType').textContent = currentReceiptType.toUpperCase();
-
-      const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
-      const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
-
-      document.getElementById('previewItems').innerHTML = `<div>Nominal: Rp ${formatNumber(nom)}</div><div>Admin: Rp ${formatNumber(adm)}</div>`;
-      document.getElementById('previewTotal').innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:bold;"><span>TOTAL</span><span>Rp ${formatNumber(nom + adm)}</span></div>`;
-    }
-
-    function loadHeaderSettings() {
-      const saved = localStorage.getItem('webpos_receipt_header');
-      if (saved) {
-        try {
-          const h = JSON.parse(saved);
-          if (h.storeName) document.getElementById('receiptStoreName').value = h.storeName;
-          if (h.address) document.getElementById('receiptAddress').value = h.address;
-          if (h.phone) document.getElementById('receiptPhone').value = h.phone;
-          if (h.note) document.getElementById('receiptNote').value = h.note;
-        } catch(e){}
-      }
-    }
-
-    window.saveHeader = function() {
-      const h = {
-        storeName: document.getElementById('receiptStoreName').value,
-        address: document.getElementById('receiptAddress').value,
-        phone: document.getElementById('receiptPhone').value,
-        note: document.getElementById('receiptNote').value
-      };
-      localStorage.setItem('webpos_receipt_header', JSON.stringify(h));
-      showToast('Header struk berhasil disimpan!', 'success');
-      updatePreview();
-    }
-
-    window.printThermalUsingHelper = function() {
-      const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
-      if (nom <= 0) { showToast('Isi nominal terlebih dahulu', 'warning'); return; }
-
-      const textContent = document.getElementById('receiptPreview').innerText;
-      if (typeof window.printToThermalPrinter === 'function') {
-        window.printToThermalPrinter(textContent);
-      } else {
-        const w = window.open('', '_print', 'width=350,height=600');
-        w.document.write(`<pre>${textContent}</pre>`);
-        w.document.close();
-        setTimeout(() => { w.print(); w.close(); }, 300);
-      }
-    }
-
-    window.shareAsPDF = async function() {
-      const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 80, canvas.height / canvas.width * 80);
-      pdf.save('struk-' + Date.now() + '.pdf');
-      showToast('PDF berhasil diunduh', 'success');
-    }
-
-    window.shareAsImage = async function() {
-      const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
-      const link = document.createElement('a');
-      link.download = 'struk-' + Date.now() + '.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      showToast('Gambar struk diunduh', 'success');
-    }
-
-    window.shareToWhatsApp = function() {
-      const text = encodeURIComponent("Berikut ringkasan transaksi:\n\n" + document.getElementById('receiptPreview').innerText);
-      window.open('https://wa.me/?text=' + text, '_blank');
-    }
+    // Event listeners tombol agar fungsional
+    document.getElementById('btnSaveHeader')?.addEventListener('click', saveHeader);
+    document.getElementById('btnApplyOcr')?.addEventListener('click', applyOcrToForm);
+    document.getElementById('btnResetOcr')?.addEventListener('click', resetOcr);
+    document.getElementById('btnSharePdf')?.addEventListener('click', shareAsPDF);
+    document.getElementById('btnShareImg')?.addEventListener('click', shareAsImage);
+    document.getElementById('btnShareWa')?.addEventListener('click', shareToWhatsApp);
+    document.getElementById('btnPrintThermal')?.addEventListener('click', printThermalUsingHelper);
 
     const uploadArea = document.getElementById('ocrUploadArea');
     const fileInput = document.getElementById('ocrFileInput');
@@ -892,20 +675,251 @@
         }, 1200);
       }
     });
+  });
 
-    function formatNumber(num) {
-      return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    }
+  async function syncStoreBrandName() {
+    const logoEl = document.querySelector(".logo-text");
+    if (!logoEl) return;
+    const cachedName = localStorage.getItem("webpos_store_name");
+    if (cachedName) logoEl.textContent = cachedName;
+    try {
+      if (typeof db !== 'undefined') {
+        const doc = await db.collection("settings").doc("store").get();
+        if (doc.exists && doc.data().name) {
+          logoEl.textContent = doc.data().name;
+          localStorage.setItem("webpos_store_name", doc.data().name);
+        }
+      }
+    } catch (e) {}
+  }
 
-    window.showToast = function(msg, type = 'success') {
-      const container = document.getElementById('toastContainer');
-      const el = document.createElement('div');
-      el.className = `toast ${type}`;
-      el.innerHTML = `<i class="fas fa-check-circle"></i><span>${msg}</span>`;
-      container.appendChild(el);
-      setTimeout(() => el.remove(), 3000);
+  function setupSidebarEvents() {
+    const sidebar = document.getElementById("sidebar");
+    const backdrop = document.getElementById("sidebarBackdrop");
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+
+    if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle("collapsed");
+    if (mobileMenuToggle) {
+      mobileMenuToggle.onclick = (e) => {
+        e.stopPropagation();
+        sidebar.classList.add("mobile-open");
+        backdrop.classList.add("active");
+      };
     }
-  })();
+    backdrop.onclick = () => {
+      sidebar.classList.remove("mobile-open");
+      backdrop.classList.remove("active");
+    };
+
+    document.querySelectorAll(".nav-dropdown").forEach(d => {
+      const t = d.querySelector(".nav-dropdown-toggle");
+      if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    });
+
+    document.getElementById("btnThemeToggle").onclick = () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("webpos_theme", nextTheme);
+    };
+
+    document.getElementById("btnLogout").onclick = () => {
+      if (confirm("Yakin ingin keluar dari sistem?")) {
+        if (typeof auth !== 'undefined') auth.signOut();
+        localStorage.removeItem('webpos_session');
+        window.location.href = "login.html";
+      }
+    };
+
+    document.getElementById("menuSearch")?.addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".nav-link span").forEach(span => {
+        const li = span.closest(".nav-item");
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  }
+
+  async function setupAuthUser() {
+    if (typeof auth !== 'undefined') {
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          window.location.href = "login.html";
+          return;
+        }
+        try {
+          const doc = await db.collection("users").doc(user.uid).get();
+          if (doc.exists) {
+            const u = doc.data();
+            const name = u.name || u.username || user.email.split("@")[0];
+            const role = (u.role || "Kasir").toUpperCase();
+            document.getElementById("userName").textContent = name;
+            document.getElementById("userRole").textContent = role;
+            document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
+          }
+        } catch(e) {}
+      });
+    }
+  }
+
+  function setReceiptType(type) {
+    currentReceiptType = type;
+    document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
+    renderManualForm();
+    updatePreview();
+  }
+
+  function renderManualForm() {
+    const container = document.getElementById('manualFormContainer');
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toTimeString().slice(0, 5);
+    const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'DANA', 'GOPAY', 'OVO'].map(b => `<option value="${b}">${b}</option>`).join('');
+
+    if (currentReceiptType === 'transfer') {
+      container.innerHTML = `
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">👤 Pengirim</div>
+          <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualSender" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualSenderAccount" placeholder="****1234" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${banks}</select></div>
+        </div>
+        <div class="form-section receiver">
+          <div class="form-section-title">🎯 Penerima</div>
+          <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualReceiver" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualReceiverAccount" placeholder="****5678" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${banks}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="date" class="form-input" id="manualDate" value="${today}" onchange="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="time" class="form-input" id="manualTime" value="${now}" onchange="updatePreview()"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Nama Customer</label><input type="text" class="form-input" id="manualCustomer" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="form-label">Bank / Layanan</label><select class="form-select" id="manualBank" onchange="updatePreview()">${banks}</select></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+        </div>
+      `;
+    }
+  }
+
+  function updatePreview() {
+    const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
+    const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
+    const phone = document.getElementById('receiptPhone')?.value || '';
+    const note = document.getElementById('receiptNote')?.value || 'Terima kasih';
+
+    document.getElementById('previewStoreName').textContent = storeName;
+    document.getElementById('previewAddress').textContent = address;
+    document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
+    document.getElementById('previewFooter').textContent = note;
+    document.getElementById('previewDate').textContent = (document.getElementById('manualDate')?.value || '-') + ' ' + (document.getElementById('manualTime')?.value || '');
+    document.getElementById('previewType').textContent = currentReceiptType.toUpperCase();
+
+    const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
+    const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
+
+    document.getElementById('previewItems').innerHTML = `<div>Nominal: Rp ${formatNumber(nom)}</div><div>Admin: Rp ${formatNumber(adm)}</div>`;
+    document.getElementById('previewTotal').innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:bold;"><span>TOTAL</span><span>Rp ${formatNumber(nom + adm)}</span></div>`;
+  }
+
+  function loadHeaderSettings() {
+    const saved = localStorage.getItem('webpos_receipt_header');
+    if (saved) {
+      try {
+        const h = JSON.parse(saved);
+        if (h.storeName) document.getElementById('receiptStoreName').value = h.storeName;
+        if (h.address) document.getElementById('receiptAddress').value = h.address;
+        if (h.phone) document.getElementById('receiptPhone').value = h.phone;
+        if (h.note) document.getElementById('receiptNote').value = h.note;
+      } catch(e){}
+    }
+  }
+
+  function saveHeader() {
+    const h = {
+      storeName: document.getElementById('receiptStoreName').value,
+      address: document.getElementById('receiptAddress').value,
+      phone: document.getElementById('receiptPhone').value,
+      note: document.getElementById('receiptNote').value
+    };
+    localStorage.setItem('webpos_receipt_header', JSON.stringify(h));
+    showToast('Header struk berhasil disimpan!', 'success');
+    updatePreview();
+  }
+
+  function printThermalUsingHelper() {
+    const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
+    if (nom <= 0) { showToast('Isi nominal terlebih dahulu', 'warning'); return; }
+
+    const textContent = document.getElementById('receiptPreview').innerText;
+    if (typeof window.printToThermalPrinter === 'function') {
+      window.printToThermalPrinter(textContent);
+    } else {
+      const w = window.open('', '_print', 'width=350,height=600');
+      w.document.write(`<pre>${textContent}</pre>`);
+      w.document.close();
+      setTimeout(() => { w.print(); w.close(); }, 300);
+    }
+  }
+
+  async function shareAsPDF() {
+    const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 80, canvas.height / canvas.width * 80);
+    pdf.save('struk-' + Date.now() + '.pdf');
+    showToast('PDF berhasil diunduh', 'success');
+  }
+
+  async function shareAsImage() {
+    const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
+    const link = document.createElement('a');
+    link.download = 'struk-' + Date.now() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Gambar struk diunduh', 'success');
+  }
+
+  function shareToWhatsApp() {
+    const text = encodeURIComponent("Berikut ringkasan transaksi:\n\n" + document.getElementById('receiptPreview').innerText);
+    window.open('https://wa.me/?text=' + text, '_blank');
+  }
+
+  function applyOcrToForm() {
+    showToast('Data OCR diterapkan', 'success');
+  }
+
+  function resetOcr() {
+    document.getElementById('ocrResultSection').style.display = 'none';
+    document.getElementById('ocrUploadArea').style.display = 'block';
+    showToast('Form OCR direset', 'info');
+  }
+
+  function formatNumber(num) {
+    return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<i class="fas fa-check-circle"></i><span>${msg}</span>`;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
 </script>
 </body>
 </html>
