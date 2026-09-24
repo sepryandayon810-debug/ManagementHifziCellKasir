@@ -741,7 +741,7 @@
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top:1rem;font-weight:700;color:#fff;">Memproses...</p>
+    <p style="margin-top:1rem;font-weight:700;color:#fff;" id="loadingText">Memproses...</p>
   </div>
   <div class="toast-container" id="toastContainer"></div>
 
@@ -1653,7 +1653,7 @@ itemsText + '\n' +
         Utils.showToast('Data berhasil diexport', 'success');
       }
 
-      // ================= DOWNLOAD TEMPLATE & IMPORT TRANSAKSI =================
+      // ================= DOWNLOAD TEMPLATE EXCEL =================
       window.downloadTemplateRiwayat = function() {
         const templateData = [
           {
@@ -1680,6 +1680,7 @@ itemsText + '\n' +
         Utils.showToast('Template riwayat berhasil didownload', 'success');
       };
 
+      // ================= IMPORT DENGAN CHUNKING & LOADING INTERAKTIF =================
       async function processImport() {
         const fileInput = document.getElementById('importFile');
         if (!fileInput.files.length) {
@@ -1688,7 +1689,10 @@ itemsText + '\n' +
         }
 
         const file = fileInput.files[0];
-        Utils.showLoading('Memproses import transaksi...');
+        const overlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        overlay.classList.add('active');
+        loadingText.textContent = 'Membaca file...';
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -1713,48 +1717,61 @@ itemsText + '\n' +
               importedData = JSON.parse(e.target.result);
             }
 
-            if (!Array.isArray(importedData)) throw new Error('Format file tidak valid');
-
-            const batch = db.batch();
-            let count = 0;
-            const user = auth.currentUser;
-
-            for (const item of importedData) {
-              const id = item.id || ('TRX_' + Date.now() + '_' + count);
-              const ref = db.collection('transactions').doc(id);
-              
-              const total = Number(item["Total"] || item["Nominal"] || item["total"] || item["amount"] || 0);
-              const typeRaw = String(item["Tipe"] || item["tipe"] || item["type"] || "penjualan").toLowerCase();
-              const type = typeRaw.includes("top") ? "topup" : (typeRaw.includes("tarik") ? "tarik" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "penjualan"))));
-              const date = String(item["Tanggal"] || item["tanggal"] || item["date"] || new Date().toISOString().split('T')[0]);
-              const paymentMethod = String(item["Metode"] || item["metode"] || item["paymentMethod"] || "Tunai");
-              const note = String(item["Keterangan"] || item["keterangan"] || item["note"] || "Import Transaksi");
-              const userName = String(item["Kasir"] || item["kasir"] || (user ? user.email : "Admin"));
-
-              batch.set(ref, {
-                id,
-                total,
-                amount: total,
-                type,
-                paymentMethod,
-                note,
-                date,
-                timestamp: Date.now(),
-                userId: user ? user.uid : 'unknown',
-                userName,
-                status: 'completed',
-                imported: true
-              }, { merge: true });
-              count++;
+            if (!Array.isArray(importedData) || importedData.length === 0) {
+              throw new Error('Format file kosong atau tidak valid');
             }
 
-            await batch.commit();
-            Utils.hideLoading();
-            Utils.showToast(`${count} data transaksi berhasil diimport!`, 'success');
+            const totalRows = importedData.length;
+            let successCount = 0;
+            const user = auth.currentUser;
+
+            // Dipecah per kelompok 400 data agar tidak kena error "Transaction too big"
+            const chunkSize = 400;
+            for (let i = 0; i < totalRows; i += chunkSize) {
+              const chunk = importedData.slice(i, i + chunkSize);
+              const batch = db.batch();
+
+              chunk.forEach((item, index) => {
+                const rowIdx = i + index;
+                const id = item.id || ('TRX_' + Date.now() + '_' + rowIdx);
+                const ref = db.collection('transactions').doc(id);
+                
+                const total = Number(item["Total"] || item["Nominal"] || item["total"] || item["amount"] || 0);
+                const typeRaw = String(item["Tipe"] || item["tipe"] || item["type"] || "penjualan").toLowerCase();
+                const type = typeRaw.includes("top") ? "topup" : (typeRaw.includes("tarik") ? "tarik" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "penjualan"))));
+                const date = String(item["Tanggal"] || item["tanggal"] || item["date"] || new Date().toISOString().split('T')[0]);
+                const paymentMethod = String(item["Metode"] || item["metode"] || item["paymentMethod"] || "Tunai");
+                const note = String(item["Keterangan"] || item["keterangan"] || item["note"] || "Import Transaksi");
+                const userName = String(item["Kasir"] || item["kasir"] || (user ? user.email : "Admin"));
+
+                batch.set(ref, {
+                  id,
+                  total,
+                  amount: total,
+                  type,
+                  paymentMethod,
+                  note,
+                  date,
+                  timestamp: Date.now(),
+                  userId: user ? user.uid : 'unknown',
+                  userName,
+                  status: 'completed',
+                  imported: true
+                }, { merge: true });
+
+                successCount++;
+              });
+
+              await batch.commit();
+              loadingText.textContent = `Mengimpor... (${successCount}/${totalRows} data)`;
+            }
+
+            overlay.classList.remove('active');
+            Utils.showToast(`Berhasil mengimpor ${successCount} data transaksi!`, 'success');
             closeImportModal();
             loadTransactions();
           } catch(err) {
-            Utils.hideLoading();
+            overlay.classList.remove('active');
             console.error('Import error:', err);
             Utils.showToast('Gagal import: ' + err.message, 'error');
           }
