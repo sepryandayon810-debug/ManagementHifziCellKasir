@@ -313,6 +313,44 @@
     .btn-secondary:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    /* CUSTOM DIALOG POPUP (MENGGANTIKAN CONFIRM BROWSER) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.success { background: var(--success-light); color: var(--success); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--primary); color: #fff; }
+    .dialog-btn-primary:hover { filter: brightness(0.95); }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
     /* STRUK MODAL */
     .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
     .struk-modal-overlay.active{opacity:1;visibility:visible}
@@ -320,6 +358,27 @@
     .struk-header{padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
     .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
+
+    /* LOADING OVERLAY RAPI */
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.2s ease;
+    }
+    .loading-overlay.active { opacity: 1; visibility: visible; }
+    .spinner {
+      width: 42px; height: 42px;
+      border: 3.5px solid rgba(255, 255, 255, 0.2); border-top-color: var(--primary);
+      border-radius: 50%; animation: spinOverlay 0.8s linear infinite;
+    }
+    @keyframes spinOverlay { to { transform: rotate(360deg); } }
+
+    .toast-box {
+      position: fixed; bottom: calc(var(--bottom-nav-height) + 1rem);
+      left: 50%; transform: translateX(-50%); z-index: 100000;
+      display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
+    }
 
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -586,6 +645,19 @@
     </nav>
   </div>
 
+  <!-- Modal Konfirmasi Closing Internal (Menggantikan confirm browser) -->
+  <div class="custom-modal-backdrop" id="customConfirmModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap warning" id="confirmDialogIcon"><i class="fas fa-exclamation-triangle"></i></div>
+      <h3 class="dialog-title" id="confirmDialogTitle">Tutup Shift</h3>
+      <p class="dialog-message" id="confirmDialogMessage">Simpan hasil closing dan tutup shift sekarang?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmAction">Ya, Tutup Shift</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Struk Bukti Closing Shift -->
   <div class="struk-modal-overlay" id="strukModal">
     <div class="struk-modal">
@@ -663,6 +735,22 @@
           }
         } catch(e) {}
       }
+
+      // Dialog Konfirmasi Internal
+      window.showCustomConfirm = function(title, message, onConfirm) {
+        document.getElementById("confirmDialogTitle").textContent = title;
+        document.getElementById("confirmDialogMessage").textContent = message;
+        const btnAction = document.getElementById("btnConfirmAction");
+        btnAction.onclick = () => {
+          closeCustomConfirm();
+          if (onConfirm) onConfirm();
+        };
+        document.getElementById("customConfirmModal").classList.add("open");
+      };
+
+      window.closeCustomConfirm = function() {
+        document.getElementById("customConfirmModal").classList.remove("open");
+      };
 
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
@@ -760,7 +848,7 @@
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
-            Utils.confirm('Yakin ingin logout?', () => {
+            showCustomConfirm('Keluar Sistem', 'Apakah Anda yakin ingin logout?', () => {
               auth.signOut().then(() => window.location.href = 'login.html');
             });
           });
@@ -931,27 +1019,27 @@
           Utils.hideLoading();
         }
 
-        // Simpan Hasil Closing
-        document.getElementById('btnSimpanClosing').addEventListener('click', async () => {
+        // Tombol Simpan Closing dengan Modal Pop-up Kustom
+        document.getElementById('btnSimpanClosing').addEventListener('click', () => {
           if (!isShiftOpen) {
             Utils.showToast('Shift sudah ditutup sebelumnya', 'warning');
             return;
           }
 
           const fisikData = ClosingCalculator.calculate();
-          const selisih = fisikData.total - todayStats.uangGlobal;
 
           if (fisikData.total === 0) {
             Utils.showToast('Silakan input uang fisik terlebih dahulu', 'warning');
             return;
           }
 
-          Utils.confirm('Simpan hasil closing dan tutup shift sekarang?', async () => {
+          showCustomConfirm('Tutup Shift', 'Simpan hasil closing dan tutup shift sekarang?', async () => {
             try {
               Utils.showLoading('Menyimpan hasil closing shift...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const timestamp = Date.now();
               const cashierName = document.getElementById('userName').textContent;
+              const selisih = fisikData.total - todayStats.uangGlobal;
 
               const closingData = {
                 timestamp,
@@ -977,7 +1065,6 @@
               Utils.hideLoading();
               Utils.showToast('Closing berhasil disimpan & shift ditutup!', 'success');
 
-              // Tampilkan dialog struk closing
               showStrukModal(closingData);
 
             } catch (error) {
