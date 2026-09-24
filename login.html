@@ -89,13 +89,15 @@
       flex-direction: column;
       justify-content: center;
       background: var(--surface);
+      max-height: 95vh;
+      overflow-y: auto;
     }
 
-    .form-header { margin-bottom: 1.75rem; }
+    .form-header { margin-bottom: 1.5rem; }
     .form-header h3 { font-size: 1.65rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; }
     .form-header p { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem; }
 
-    .form-group { margin-bottom: 1.25rem; }
+    .form-group { margin-bottom: 1.15rem; }
     .form-label { display: block; font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.4rem; }
     .input-wrap { position: relative; }
     .input-wrap i.field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem; }
@@ -107,6 +109,16 @@
       transition: all 0.2s ease; color: var(--text-main); font-weight: 500;
     }
     .form-control:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px var(--primary-light); }
+    
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      background-size: 1rem;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
 
     .btn-submit {
       width: 100%; padding: 0.9rem; background: linear-gradient(135deg, var(--primary), #8b5cf6);
@@ -127,7 +139,7 @@
     .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: var(--warning); }
 
     .auth-footer-link {
-      text-align: center; margin-top: 1.25rem; font-size: 0.82rem;
+      text-align: center; margin-top: 1.25rem; font-size: 0.85rem;
     }
     .auth-footer-link a {
       color: var(--primary); text-decoration: none; font-weight: 700; cursor: pointer;
@@ -144,7 +156,7 @@
 <body>
 
 <div class="auth-wrapper">
-  <!-- Sisi Kiri: Branding Modern & Dinamis -->
+  <!-- Sisi Kiri: Penuh Warna & Modern -->
   <div class="auth-brand-side">
     <div class="brand-logo-wrap">
       <i class="fas fa-cash-register"></i>
@@ -159,7 +171,7 @@
     </div>
   </div>
 
-  <!-- Sisi Kanan: Form Login / Lupa Password -->
+  <!-- Sisi Kanan: Form Dinamis -->
   <div class="auth-form-side">
     <div class="form-header">
       <h3 id="formHeading">Selamat Datang 👋</h3>
@@ -190,8 +202,59 @@
         <span>Masuk ke Sistem</span>
         <i class="fas fa-arrow-right"></i>
       </button>
-      <div class="auth-footer-link">
+      <div class="auth-footer-link" style="display: flex; justify-content: space-between; margin-top: 1rem;">
         <a onclick="switchMode('forgot')">Lupa kata sandi?</a>
+        <a onclick="switchMode('register')" style="color: var(--success);">Daftar Akun Baru</a>
+      </div>
+    </form>
+
+    <!-- FORM PENDAFTARAN (Pengajuan ke Owner/Developer) -->
+    <form id="formRegister" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Nama Lengkap</label>
+        <div class="input-wrap">
+          <i class="fas fa-id-card field-icon"></i>
+          <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepryanda Yon" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="input-wrap">
+          <i class="fas fa-at field-icon"></i>
+          <input type="text" class="form-control" id="regUsername" placeholder="sepry (tanpa spasi)" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Aktif</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope field-icon"></i>
+          <input type="email" class="form-control" id="regEmail" placeholder="admin@toko.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pengajuan Role / Akses</label>
+        <div class="input-wrap">
+          <i class="fas fa-shield-halved field-icon"></i>
+          <select class="form-control" id="regRole">
+            <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
+            <option value="admin">Admin (Operasional & Stok)</option>
+            <option value="owner">Owner (Pemilik Toko)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock field-icon"></i>
+          <input type="password" class="form-control" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
+        </div>
+      </div>
+      <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background: linear-gradient(135deg, #059669, #10b981); box-shadow: 0 6px 20px rgba(5,150,105,0.35);">
+        <span>Ajukan Pendaftaran Akun</span>
+        <i class="fas fa-user-plus"></i>
+      </button>
+      <div class="auth-footer-link">
+        <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
       </div>
     </form>
 
@@ -231,12 +294,17 @@
     const heading = document.getElementById("formHeading");
     
     document.getElementById("formLogin").style.display = "none";
+    document.getElementById("formRegister").style.display = "none";
     document.getElementById("formForgot").style.display = "none";
 
     if (mode === 'login') {
       heading.textContent = "Selamat Datang 👋";
       document.getElementById("formLogin").style.display = "block";
       document.getElementById("brandDesc").textContent = "Silakan masuk untuk melanjutkan transaksi";
+    } else if (mode === 'register') {
+      heading.textContent = "Buat Akun Baru 🚀";
+      document.getElementById("formRegister").style.display = "block";
+      document.getElementById("brandDesc").textContent = "Pendaftaran akun baru memerlukan persetujuan Owner";
     } else if (mode === 'forgot') {
       heading.textContent = "Reset Kata Sandi 🔑";
       document.getElementById("formForgot").style.display = "block";
@@ -312,6 +380,76 @@
       btn.disabled = false;
       btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
       errBox.textContent = "Gagal masuk: " + (err.code === 'auth/wrong-password' ? 'Password salah.' : err.message);
+      errBox.style.display = "block";
+    }
+  };
+
+  document.getElementById("formRegister").onsubmit = async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("regName").value.trim();
+    const username = document.getElementById("regUsername").value.trim().toLowerCase().replace(/\s+/g, '');
+    const email = document.getElementById("regEmail").value.trim();
+    const requestedRole = document.getElementById("regRole").value;
+    const pass = document.getElementById("regPassword").value;
+    const btn = document.getElementById("btnSubmitRegister");
+
+    clearAlerts();
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan akun...';
+
+    try {
+      const checkUsername = await db.collection("users")
+        .where("username", "==", username)
+        .limit(1)
+        .get();
+
+      if (!checkUsername.empty) {
+        throw new Error("Username sudah digunakan. Pilih yang lain.");
+      }
+
+      const allUsersSnap = await db.collection("users").limit(1).get();
+      const isFirstAccount = allUsersSnap.empty;
+
+      let finalStatus = "pending";
+      let finalRole = requestedRole;
+
+      if (isFirstAccount) {
+        finalStatus = "active";
+        finalRole = "developer";
+      }
+
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      const uid = cred.user.uid;
+
+      await db.collection("users").doc(uid).set({
+        name: name,
+        username: username,
+        email: email,
+        role: finalRole,
+        status: finalStatus,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      if (isFirstAccount) {
+        await recordUserLogin(uid);
+        succBox.textContent = "Akun pertama terdeteksi. Masuk sebagai Developer Utama...";
+        succBox.style.display = "block";
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1200);
+      } else {
+        await auth.signOut();
+        warnBox.textContent = `Pendaftaran berhasil! Akun @${username} menunggu persetujuan (approval) dari Owner.`;
+        warnBox.style.display = "block";
+        btn.disabled = false;
+        btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
+        document.getElementById("formRegister").reset();
+      }
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
+      errBox.textContent = "Gagal mendaftar: " + err.message;
       errBox.style.display = "block";
     }
   };
