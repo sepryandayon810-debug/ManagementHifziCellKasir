@@ -91,9 +91,7 @@
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
       --primary-light: rgba(79, 70, 229, 0.2);
-      --success-light: rgba(5, 150, 105, 0.15);
       --danger-light: rgba(220, 38, 38, 0.15);
-      --warning-light: rgba(217, 119, 6, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -297,32 +295,6 @@
     .kas-info-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
     .kas-info-value { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
 
-    .receipt-toggle-box {
-      background: var(--bg-subtle);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.15rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      cursor: pointer;
-    }
-    .receipt-toggle-box input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .receipt-toggle-box label {
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--text-main);
-      user-select: none;
-    }
-
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
       padding: 0.8rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.92rem;
@@ -331,16 +303,41 @@
     .btn-danger { background: var(--danger); color: white; box-shadow: var(--shadow-sm); }
     .btn-danger:hover { filter: brightness(0.95); transform: translateY(-1px); }
     .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.82rem; width: auto; }
 
-    /* STRUK MODAL */
-    .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
-    .struk-modal-overlay.active{opacity:1;visibility:visible}
-    .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
-    .struk-header{padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
-    .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-    .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
+    /* DIALOG MODAL INTERNAL (LOGOUT) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
     /* LOADING & TOAST */
     .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.2s ease; }
@@ -555,12 +552,6 @@
                 <input type="text" class="form-input" id="keluarNote" placeholder="Contoh: Beli bensin motor konter, beli lakban">
               </div>
 
-              <!-- Opsi Cetak Struk -->
-              <div class="receipt-toggle-box">
-                <input type="checkbox" id="printReceiptToggle" checked>
-                <label for="printReceiptToggle">Cetak Struk bukti pengeluaran</label>
-              </div>
-
               <button class="btn btn-danger" id="btnSimpanKeluar">
                 <i class="fas fa-save"></i> Simpan Kas Keluar
               </button>
@@ -579,19 +570,15 @@
     </nav>
   </div>
 
-  <!-- Modal Struk Bukti Kas Keluar -->
-  <div class="struk-modal-overlay" id="strukModal">
-    <div class="struk-modal">
-      <div class="struk-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main);"><i class="fas fa-receipt" style="color:var(--danger);"></i> Bukti Kas Keluar</h3>
-        <button class="btn-icon-box" onclick="closeStrukModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="struk-body" style="background:#f8fafc; padding:1rem; display:flex; justify-content:center;">
-        <div class="struk-paper" id="strukPaper"></div>
-      </div>
-      <div class="struk-footer">
-        <button class="btn btn-secondary btn-sm" onclick="closeStrukModal()" style="flex:1;">Tutup</button>
-        <button class="btn btn-primary btn-sm" onclick="printStrukBluetooth()" style="flex:1;"><i class="fas fa-print"></i> Cetak Thermal</button>
+  <!-- Modal Konfirmasi Logout Internal (Bebas dari pop-up windows browser) -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
       </div>
     </div>
   </div>
@@ -610,7 +597,6 @@
       const auth = firebase.auth();
       const db = firebase.firestore();
 
-      let lastTransactionData = null;
       let storeSettings = {};
       let amount = 0;
       let kasTersedia = 0;
@@ -736,12 +722,17 @@
           });
         }
 
+        // Logout dengan Modal Internal WebPOS
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
-            Utils.confirm('Yakin ingin logout?', () => {
-              auth.signOut().then(() => window.location.href = 'login.html');
-            });
+            const modal = document.getElementById('customLogoutModal');
+            if (modal) {
+              modal.classList.add('open');
+              document.getElementById('btnConfirmLogoutAction').onclick = () => {
+                auth.signOut().then(() => window.location.href = 'login.html');
+              };
+            }
           });
         }
       }
@@ -841,7 +832,7 @@
           });
         });
 
-        // SIMPAN KAS KELUAR
+        // SIMPAN KAS KELUAR LANGSUNG TANPA STRUK PRINT
         const saveBtn = document.getElementById('btnSimpanKeluar');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -863,7 +854,6 @@
             }
 
             const category = document.getElementById('keluarCategory').value;
-            const shouldPrint = document.getElementById('printReceiptToggle').checked;
 
             try {
               Utils.showLoading('Menyimpan kas keluar...');
@@ -893,14 +883,10 @@
               Utils.hideLoading();
               Utils.showToast('Kas keluar berhasil disimpan!', 'success');
 
-              if (shouldPrint) {
-                showStrukModal(transactionData);
+              if (isFromKasir()) {
+                setTimeout(() => goBack(), 800);
               } else {
-                if (isFromKasir()) {
-                  setTimeout(() => goBack(), 800);
-                } else {
-                  resetForm();
-                }
+                resetForm();
               }
 
             } catch (error) {
@@ -917,88 +903,6 @@
           updateDisplay();
           loadKasTersedia();
         }
-
-        // STRUK BUKTI KAS KELUAR
-        function showStrukModal(tx) {
-          lastTransactionData = tx;
-          const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
-          const address = storeSettings.address || '';
-          const phone = storeSettings.phone || '';
-          const date = new Date(tx.timestamp).toLocaleDateString('id-ID');
-          const time = new Date(tx.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-
-          const paper = document.getElementById('strukPaper');
-          paper.textContent = 
-'================================\n' +
-'  ' + storeName.toUpperCase() + '\n' +
-(address ? '  ' + address + '\n' : '') +
-(phone ? '  Telp: ' + phone + '\n' : '') +
-'================================\n' +
-'BUKTI PENGELUARAN KAS\n' +
-'ID     : ' + tx.id + '\n' +
-'Waktu  : ' + date + ' ' + time + '\n' +
-'Kasir  : ' + (tx.userName || '-') + '\n' +
-'Kategori: ' + tx.category.toUpperCase() + '\n' +
-'Keperluan: ' + tx.note + '\n' +
-'--------------------------------\n' +
-'TOTAL KELUAR: ' + Utils.formatRupiah(tx.amount) + '\n' +
-'================================\n' +
-'     Harap Simpan Bukti Ini\n' +
-'          Terima Kasih\n' +
-'================================';
-
-          document.getElementById('strukModal').classList.add('active');
-        }
-
-        window.closeStrukModal = function() {
-          document.getElementById('strukModal').classList.remove('active');
-          if (isFromKasir()) {
-            goBack();
-          } else {
-            resetForm();
-          }
-        };
-
-        window.printStrukBluetooth = async function() {
-          if (!lastTransactionData) return;
-          if (!window.bluetoothSerial) {
-            Utils.showToast('Printer Bluetooth hanya aktif di APK Android', 'info');
-            return;
-          }
-          const mac = localStorage.getItem('webpos_printer_mac');
-          if (!mac) {
-            Utils.showToast('Pilih printer dulu di menu Printer & Struk', 'warning');
-            return;
-          }
-
-          Utils.showLoading('Menghubungkan printer...');
-          try {
-            await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
-            const tx = lastTransactionData;
-            const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
-            const date = new Date(tx.timestamp).toLocaleDateString('id-ID');
-            const time = new Date(tx.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-
-            let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
-            c += 'BUKTI KAS KELUAR\x0A--------------------------------\x0A\x1B\x61\x00';
-            c += 'ID      : ' + tx.id + '\x0A';
-            c += 'Tgl     : ' + date + ' ' + time + '\x0A';
-            c += 'Kasir   : ' + (tx.userName || '-') + '\x0A';
-            c += 'Kategori: ' + tx.category.toUpperCase() + '\x0A';
-            c += 'Catatan : ' + tx.note + '\x0A';
-            c += '--------------------------------\x0A';
-            c += 'TOTAL   : ' + Utils.formatRupiah(tx.amount) + '\x0A';
-            c += '================================\x0A\x1B\x61\x01Pengeluaran Sah\x0A\x0A\x0A\x1D\x56\x41\x03';
-
-            await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
-            await new Promise(res => bluetoothSerial.disconnect(res, res));
-            Utils.hideLoading();
-            Utils.showToast('Struk berhasil dicetak!', 'success');
-          } catch(e) {
-            Utils.hideLoading();
-            Utils.showToast('Gagal mencetak: ' + e, 'error');
-          }
-        };
 
         loadKasTersedia();
       }
