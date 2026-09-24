@@ -232,7 +232,6 @@
       color: var(--text-sub); display: flex; align-items: center; justify-content: center;
       cursor: pointer; flex-shrink: 0;
     }
-    .btn-icon-box:hover { color: var(--primary); border-color: var(--primary); }
 
     .page-content { padding: 1.5rem; flex: 1; }
 
@@ -670,9 +669,7 @@
 <div class="toast-box" id="toastContainer"></div>
 
 <script>
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
+  // Variabel auth & db langsung memanfaatkan inisialisasi dari js/firebase-config.js
   let currentPage = 1;
   let logsPerPage = 20;
   let allLogs = [];
@@ -683,7 +680,7 @@
     syncStoreBrandName();
     setupSidebarEvents();
 
-    auth.onAuthStateChanged(async user => {
+    firebase.auth().onAuthStateChanged(async user => {
       if (!user) {
         window.location.href = "login.html";
         return;
@@ -748,14 +745,14 @@
           modal.classList.add("open");
           document.getElementById("btnConfirmLogoutAction").onclick = () => {
             recordActivity('logout', 'Keluar dari sistem');
-            auth.signOut().then(() => {
+            firebase.auth().signOut().then(() => {
               localStorage.removeItem('webpos_session');
               window.location.href = "login.html";
             });
           };
         } else {
           recordActivity('logout', 'Keluar dari sistem');
-          auth.signOut().then(() => {
+          firebase.auth().signOut().then(() => {
             localStorage.removeItem('webpos_session');
             window.location.href = "login.html";
           });
@@ -774,7 +771,7 @@
 
   async function initUserSession(user) {
     try {
-      const doc = await db.collection("users").doc(user.uid).get();
+      const doc = await firebase.firestore().collection("users").doc(user.uid).get();
       let displayName = user.email.split("@")[0];
       let displayRole = "Kasir";
 
@@ -857,7 +854,7 @@
     select.innerHTML = '<option value="all">Semua Pengguna</option>';
     
     try {
-      const snap = await db.collection("users").get();
+      const snap = await firebase.firestore().collection("users").get();
       snap.forEach(doc => {
         const u = doc.data();
         const name = u.name || u.username || u.email;
