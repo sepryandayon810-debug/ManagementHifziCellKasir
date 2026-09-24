@@ -22,6 +22,7 @@
       --success: #059669;
       --danger: #dc2626;
       --warning: #d97706;
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -68,7 +69,7 @@
       backdrop-filter: blur(10px);
     }
     .brand-logo-wrap {
-      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2; cursor: pointer;
+      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2;
     }
     .brand-logo-wrap i { font-size: 1.6rem; background: rgba(255,255,255,0.2); padding: 12px; border-radius: 14px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
     .brand-hero-text { z-index: 2; margin: 2rem 0; }
@@ -94,7 +95,7 @@
     }
 
     .form-header { margin-bottom: 1.5rem; }
-    .form-header h3 { font-size: 1.65rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; }
+    .form-header h3 { font-size: 1.65rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; cursor: pointer; user-select: none; }
     .form-header p { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem; }
 
     .form-group { margin-bottom: 1.15rem; }
@@ -145,6 +146,36 @@
       color: var(--primary); text-decoration: none; font-weight: 700; cursor: pointer;
     }
     .auth-footer-link a:hover { text-decoration: underline; }
+
+    /* CUSTOM POPUP MODAL INTERNAL (SERAGAM DENGAN APLIKASI) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: #ffffff; border: 1px solid var(--border);
+      border-radius: 20px; width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.success { background: #ecfdf5; color: #059669; }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: #0f172a; }
+    .dialog-message { font-size: 0.85rem; color: #64748b; line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: 12px;
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s; background: var(--primary); color: #fff;
+    }
+    .dialog-btn:hover { background: var(--primary-hover); }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -158,7 +189,7 @@
 <div class="auth-wrapper">
   <!-- Sisi Kiri: Branding Modern & Dinamis -->
   <div class="auth-brand-side">
-    <div class="brand-logo-wrap" id="secretDevTrigger" title="Klik 5x untuk mode khusus">
+    <div class="brand-logo-wrap">
       <i class="fas fa-cash-register"></i>
       <span>And POS</span>
     </div>
@@ -174,7 +205,8 @@
   <!-- Sisi Kanan: Form Dinamis -->
   <div class="auth-form-side">
     <div class="form-header">
-      <h3 id="formHeading">Selamat Datang 👋</h3>
+      <!-- Teks judul ini dapat diklik 5 kali berturut-turut untuk memunculkan opsi Owner & Developer secara rahasia -->
+      <h3 id="formHeading" title="Mode Khusus">Selamat Datang 👋</h3>
       <p id="brandDesc">Silakan masuk menggunakan akun terdaftar</p>
     </div>
 
@@ -208,7 +240,7 @@
       </div>
     </form>
 
-    <!-- FORM PENDAFTARAN (Hanya Kasir & Admin, Opsi Owner/Developer Tersembunyi) -->
+    <!-- FORM PENDAFTARAN -->
     <form id="formRegister" style="display:none;">
       <div class="form-group">
         <label class="form-label">Nama Lengkap</label>
@@ -238,7 +270,7 @@
           <select class="form-control" id="regRole">
             <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
             <option value="admin">Admin (Operasional & Stok)</option>
-            <!-- Opsi Owner & Developer disembunyikan / hanya muncul via klik rahasia -->
+            <!-- Opsi Owner & Developer tersembunyi secara default, muncul jika di-unlock via klik rahasia -->
             <option value="owner" id="optOwner" style="display:none;">Owner (Pemilik Toko)</option>
             <option value="developer" id="optDev" style="display:none;">Developer (Full Akses)</option>
           </select>
@@ -280,6 +312,18 @@
   </div>
 </div>
 
+<!-- CUSTOM MODAL INTERNAL KELAS ATAS -->
+<div class="custom-modal-backdrop" id="customAlertModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap success" id="dialogIcon"><i class="fas fa-shield-halved"></i></div>
+    <h3 class="dialog-title" id="dialogTitle">Mode Khusus</h3>
+    <p class="dialog-message" id="dialogMessage">Opsi Owner & Developer berhasil diaktifkan pada pilihan role.</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn" onclick="closeCustomAlert()">Mengerti</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const errBox = document.getElementById("errorBox");
   const succBox = document.getElementById("successBox");
@@ -290,6 +334,16 @@
     succBox.style.display = "none";
     warnBox.style.display = "none";
   }
+
+  function showInternalAlert(title, message) {
+    document.getElementById("dialogTitle").textContent = title;
+    document.getElementById("dialogMessage").textContent = message;
+    document.getElementById("customAlertModal").classList.add("open");
+  }
+
+  window.closeCustomAlert = function() {
+    document.getElementById("customAlertModal").classList.remove("open");
+  };
 
   function switchMode(mode) {
     clearAlerts();
@@ -314,14 +368,14 @@
     }
   }
 
-  // Tombol Rahasia: Klik logo 5 kali berturut-turut untuk memunculkan opsi Owner & Developer di form pendaftaran
+  // Tombol Rahasia: Klik teks "Selamat Datang" sebanyak 5 kali untuk membuka opsi Owner & Developer
   let clickCount = 0;
-  document.getElementById("secretDevTrigger").addEventListener("click", () => {
+  document.getElementById("formHeading").addEventListener("click", () => {
     clickCount++;
     if (clickCount === 5) {
       document.getElementById("optOwner").style.display = "block";
       document.getElementById("optDev").style.display = "block";
-      alert("Mode khusus Owner & Developer diaktifkan!");
+      showInternalAlert("Mode Khusus Diaktifkan", "Opsi pendaftaran untuk Owner & Developer kini telah terbuka di pilihan role.");
       clickCount = 0;
     }
   });
