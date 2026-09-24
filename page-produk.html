@@ -247,11 +247,11 @@
 
     .page-content { padding: 1.5rem; flex: 1; width: 100%; box-sizing: border-box; padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
 
-    /* TAB NAV KATEGORI / PRODUK */
-    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    /* TAB NAV KATEGORI / PRODUK / EXCEL */
+    .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; overflow-x: auto; }
     .tab-btn {
       padding: 0.6rem 1.25rem; border: none; background: transparent;
-      color: var(--text-muted); font-weight: 700; cursor: pointer; border-radius: var(--radius-md); transition: all 0.15s; font-size: 0.88rem;
+      color: var(--text-muted); font-weight: 700; cursor: pointer; border-radius: var(--radius-md); transition: all 0.15s; font-size: 0.88rem; white-space: nowrap;
     }
     .tab-btn:hover { background: var(--bg-subtle); color: var(--text-main); }
     .tab-btn.active { background: var(--primary); color: #fff; }
@@ -635,24 +635,17 @@
         </div>
       </div>
 
-      <!-- TAB NAV -->
+      <!-- TAB NAV DIJADIKAN SATU BARIS RAPI: Kategori | Produk | Import/Export -->
       <div class="tab-nav" id="mainTabNav">
         <button class="tab-btn active" data-tab="kategori"><i class="fas fa-tags"></i> Kategori</button>
         <button class="tab-btn" data-tab="produk"><i class="fas fa-box"></i> Produk</button>
+        <button class="tab-btn" data-tab="excel"><i class="fas fa-file-excel"></i> Import / Export</button>
       </div>
 
       <!-- KONTEN TAB KATEGORI -->
       <div id="tab-kategori" class="tab-content">
         <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
           <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali</button>
-          
-          <!-- TOMBOL DOWNLOAD & UPLOAD EXCEL POSISI PAS DI SINI -->
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-secondary" onclick="exportProductsExcel()"><i class="fas fa-file-excel" style="color:var(--success);"></i> Download Excel</button>
-            <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
-            <button class="btn btn-secondary" onclick="document.getElementById('importExcelInput').click()"><i class="fas fa-file-upload" style="color:var(--primary);"></i> Upload Excel</button>
-          </div>
-
           <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
             <div class="view-toggle">
               <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
@@ -695,6 +688,24 @@
         <div class="produk-grid" id="produkGrid">
           <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
             <i class="fas fa-spinner fa-spin" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i> Memuat produk...
+          </div>
+        </div>
+      </div>
+
+      <!-- KONTEN TAB IMPORT / EXPORT EXCEL (DIJADIKAN TAB BERSIH) -->
+      <div id="tab-excel" class="tab-content" style="display:none;">
+        <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 2rem; max-width: 600px; margin: 0 auto; text-align: center; box-shadow: var(--shadow-sm);">
+          <div style="width: 64px; height: 64px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1rem;">
+            <i class="fas fa-file-excel"></i>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-main);">Kelola Data Produk via Excel</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.75rem; line-height: 1.5;">
+            Download template atau data produk Anda ke format Excel untuk dicadangkan, atau upload file Excel untuk memasukkan data produk secara massal ke database.
+          </p>
+          <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="exportProductsExcel()" style="padding: 0.8rem 1.5rem;"><i class="fas fa-download" style="color:var(--success);"></i> Download Excel</button>
+            <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
+            <button class="btn btn-primary" onclick="document.getElementById('importExcelInput').click()" style="padding: 0.8rem 1.5rem;"><i class="fas fa-upload"></i> Upload Excel</button>
           </div>
         </div>
       </div>
