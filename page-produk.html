@@ -372,7 +372,7 @@
       width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
     }
     .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .modal-title { font-size: 1.1rem; font-weight: 700; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
     .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
     .modal-body { padding: 1.25rem; }
     .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
@@ -396,7 +396,7 @@
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
     .btn-danger { background: var(--danger-light); color: var(--danger); }
 
-    /* MODAL KONFIRMASI LOGOUT INTERNAL */
+    /* MODAL KONFIRMASI LOGOUT & HAPUS INTERNAL */
     .custom-modal-backdrop {
       position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
@@ -803,6 +803,19 @@
   </div>
 </div>
 
+<!-- MODAL KONFIRMASI HAPUS INTERNAL (PENGGANTI WINDOWS CONFIRM) -->
+<div class="custom-modal-backdrop" id="customConfirmModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-trash-alt"></i></div>
+    <h3 class="dialog-title">Konfirmasi Hapus</h3>
+    <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin ingin menghapus data ini?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Hapus</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-box" id="toastContainer"></div>
 
 <script>
@@ -811,6 +824,27 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+
+  let pendingConfirmCallback = null;
+
+  function showCustomConfirm(msg, callback) {
+    document.getElementById("customConfirmMessage").textContent = msg;
+    pendingConfirmCallback = callback;
+    document.getElementById("customConfirmModal").classList.add("open");
+  }
+
+  window.closeCustomConfirm = function() {
+    document.getElementById("customConfirmModal").classList.remove("open");
+    pendingConfirmCallback = null;
+  };
+
+  document.getElementById("btnCustomConfirmAction").onclick = () => {
+    document.getElementById("customConfirmModal").classList.remove("open");
+    if (typeof pendingConfirmCallback === "function") {
+      pendingConfirmCallback();
+      pendingConfirmCallback = null;
+    }
+  };
 
   function formatRupiah(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -1393,8 +1427,8 @@
     if (p) openProductModal(p);
   };
 
-  window.deleteProd = async function(id) {
-    Utils.confirm("Hapus produk ini dari daftar?", async () => {
+  window.deleteProd = function(id) {
+    showCustomConfirm("Apakah Anda yakin ingin menghapus produk ini dari daftar?", async () => {
       try {
         await db.collection("products").doc(id).delete();
         toast("Produk berhasil dihapus", "success");
@@ -1409,8 +1443,8 @@
     openKategoriModal(id, name, imageUrl);
   };
 
-  window.deleteKat = async function(id) {
-    Utils.confirm("Hapus kategori ini?", async () => {
+  window.deleteKat = function(id) {
+    showCustomConfirm("Apakah Anda yakin ingin menghapus kategori ini?", async () => {
       try {
         await db.collection("categories").doc(id).delete();
         toast("Kategori berhasil dihapus", "success");
