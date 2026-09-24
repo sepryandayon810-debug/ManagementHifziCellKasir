@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>And POS - Produk</title>
+  <title>WebPOS - Produk</title>
 
   <!-- SCRIPT GLOBAL TEMA -->
   <script>
@@ -332,7 +332,6 @@
     .produk-price { font-weight: 800; color: var(--primary); font-size: 0.95rem; margin-top: 0.2rem; }
     .produk-reseller { font-weight: 700; color: var(--warning); font-size: 0.85rem; }
 
-    /* TOMBOL AKSI KARTU PRODUK DIBUAT KOMPAK */
     .produk-actions { display: flex; gap: 0.35rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn {
       flex: 1;
@@ -406,7 +405,6 @@
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
     .btn-danger { background: var(--danger-light); color: var(--danger); }
     .btn-success { background: var(--success); color: #fff; }
-    .btn-success:hover { filter: brightness(0.95); }
 
     /* MODAL KONFIRMASI INTERNAL */
     .custom-modal-backdrop {
@@ -474,7 +472,7 @@
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
-  <!-- Firebase & SheetJS (untuk Excel/CSV Export/Import) -->
+  <!-- Firebase & SheetJS -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -606,11 +604,6 @@
         <h1 class="header-title" id="pageMainTitle">Manajemen Produk</h1>
       </div>
       <div class="header-actions">
-        <!-- TOMBOL EXPORT & IMPORT DATA EXCEL -->
-        <button class="btn btn-secondary" onclick="exportProductsExcel()" title="Download Data Produk"><i class="fas fa-file-excel" style="color:var(--success);"></i> <span class="d-none d-md-inline">Download Excel</span></button>
-        <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
-        <button class="btn btn-secondary" onclick="document.getElementById('importExcelInput').click()" title="Upload Data Produk"><i class="fas fa-file-upload" style="color:var(--primary);"></i> <span class="d-none d-md-inline">Upload Excel</span></button>
-
         <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
@@ -651,13 +644,21 @@
       <!-- KONTEN TAB KATEGORI -->
       <div id="tab-kategori" class="tab-content">
         <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali ke Daftar Kategori</button>
+          <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali</button>
+          
+          <!-- TOMBOL DOWNLOAD & UPLOAD EXCEL POSISI PAS DI SINI -->
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="exportProductsExcel()"><i class="fas fa-file-excel" style="color:var(--success);"></i> Download Excel</button>
+            <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
+            <button class="btn btn-secondary" onclick="document.getElementById('importExcelInput').click()"><i class="fas fa-file-upload" style="color:var(--primary);"></i> Upload Excel</button>
+          </div>
+
           <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
             <div class="view-toggle">
               <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
               <button class="view-btn" id="btnKatListView" title="List View"><i class="fas fa-list"></i></button>
             </div>
-            <button class="btn btn-primary" id="btnAddKategori"><i class="fas fa-plus"></i> Tambah Kategori Baru</button>
+            <button class="btn btn-primary" id="btnAddKategori"><i class="fas fa-plus"></i> Tambah Kategori</button>
           </div>
         </div>
         <div class="kategori-grid" id="kategoriGrid">
