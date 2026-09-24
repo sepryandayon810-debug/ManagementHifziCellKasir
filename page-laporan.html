@@ -426,7 +426,7 @@
           </div>
         </div>
 
-        <!-- Report Content (Chart & Summary) -->
+        <!-- Report Content (Chart & Summary dengan Rincian Metode Pembayaran) -->
         <div class="report-content">
           <div class="card">
             <div class="card-header">
@@ -441,13 +441,13 @@
 
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-list" style="color: var(--primary);"></i> Ringkasan Kategori</h3>
+              <h3 class="card-title"><i class="fas fa-list" style="color: var(--primary);"></i> Ringkasan & Metode Pembayaran</h3>
             </div>
             <div class="card-body" style="padding: 0;">
               <table class="summary-table">
                 <thead>
                   <tr>
-                    <th>Jenis Aktivitas</th>
+                    <th>Metode / Aktivitas</th>
                     <th style="text-align: right;">Total Nilai</th>
                   </tr>
                 </thead>
@@ -612,7 +612,7 @@
           });
         }
 
-        // Logout dengan Modal Internal WebPOS (Bukan confirm windows)
+        // Logout dengan Modal Internal WebPOS
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.onclick = () => {
@@ -785,11 +785,32 @@
         }
       }
 
+      // Memisahkan rincian metode pembayaran (Tunai, QRIS, Transfer, dll.)
       function renderSummary(transactions) {
-        const summary = { penjualan: 0, topup: 0, tarik: 0, kas_masuk: 0, kas_keluar: 0 };
+        const summary = {
+          penjualan: 0,
+          paymentMethods: { tunai: 0, qris: 0, transfer: 0, lainnya: 0 },
+          topup: 0, tarik: 0, kas_masuk: 0, kas_keluar: 0
+        };
+
         transactions.forEach(t => {
-          if (t.status !== 'cancelled') {
-            summary[t.type] = (summary[t.type] || 0) + (t.total || t.amount || 0);
+          if (t.status !== 'cancelled' && t.status !== 'voided') {
+            const val = t.total || t.amount || 0;
+            if (t.type === 'penjualan') {
+              summary.penjualan += val;
+              const method = (t.paymentMethod || t.paymentType || 'tunai').toLowerCase();
+              if (method.includes('cash') || method.includes('tunai')) {
+                summary.paymentMethods.tunai += val;
+              } else if (method.includes('qris')) {
+                summary.paymentMethods.qris += val;
+              } else if (method.includes('transfer') || method.includes('bca') || method.includes('bri')) {
+                summary.paymentMethods.transfer += val;
+              } else {
+                summary.paymentMethods.lainnya += val;
+              }
+            } else {
+              summary[t.type] = (summary[t.type] || 0) + val;
+            }
           }
         });
 
@@ -797,7 +818,11 @@
         
         if (currentReport === 'penjualan') {
           tbody.innerHTML = `
-            <tr><td>Penjualan Produk (Tunai/Kredit)</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.penjualan)}</td></tr>
+            <tr><td>Total Penjualan Keseluruhan</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.penjualan)}</td></tr>
+            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Tunai (Cash)</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.tunai)}</td></tr>
+            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran QRIS</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.qris)}</td></tr>
+            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Transfer / Bank</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.transfer)}</td></tr>
+            ${summary.paymentMethods.lainnya > 0 ? `<tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Lainnya</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.lainnya)}</td></tr>` : ''}
           `;
         } else {
           tbody.innerHTML = `
@@ -835,11 +860,12 @@
           if (t.timestamp) {
             timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
           }
+          const methodLabel = t.paymentMethod ? ` [Metode: ${t.paymentMethod.toUpperCase()}]` : '';
 
           return `
             <div class="transaction-item">
               <div>
-                <div class="transaction-title">${labels[t.type] || t.type} — ${t.note || t.supplier || '-'}</div>
+                <div class="transaction-title">${labels[t.type] || t.type} — ${t.note || t.supplier || '-'}${methodLabel}</div>
                 <div class="transaction-meta">${t.date || ''} ${timeStr} | Kasir: ${t.userName || '-'}</div>
               </div>
               <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
@@ -910,10 +936,10 @@
 
         let csv = '';
         if (currentReport === 'penjualan') {
-          csv = 'ID,Tanggal,Tipe,Jumlah,Keterangan,Kasir\n';
+          csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
           reportData.forEach(t => {
             if (t.type === 'penjualan') {
-              csv += `"${t.id}","${t.date || ''}","${t.type}",${t.total || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || 'tunai'}",${t.total || 0},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         } else {
