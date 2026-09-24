@@ -320,15 +320,26 @@
     .btn-danger:hover { background: var(--danger); color: white; }
     .btn-block { width: 100%; }
 
+    /* CARD ITEM PERANGKAT BLUETOOTH */
     .bt-device-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: 0.75rem 1rem; background: var(--bg-subtle);
       border: 1.5px solid var(--border); border-radius: var(--radius-md);
-      cursor: pointer; transition: all 0.15s;
+      transition: all 0.15s; gap: 0.5rem;
     }
     .bt-device-item:hover { border-color: var(--primary); }
-    .bt-device-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); }
-    .bt-device-mac { font-size: 0.75rem; color: var(--text-muted); }
+    .bt-device-info { flex: 1; min-width: 0; }
+    .bt-device-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bt-device-mac { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; display: block; }
+    .bt-device-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    
+    .btn-icon-action {
+      width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 0.82rem; transition: all 0.15s;
+    }
+    .btn-icon-action.delete { background: var(--danger-light); color: var(--danger); }
+    .btn-icon-action.delete:hover { background: var(--danger); color: #fff; }
 
     /* MODAL POPUP */
     .custom-modal-backdrop {
@@ -619,13 +630,22 @@
                 <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;" id="printerMacText">-</div>
               </div>
 
-              <button type="button" class="btn btn-primary btn-block" id="btnScanBluetooth" style="margin-bottom:1rem;">
+              <button type="button" class="btn btn-primary btn-block" id="btnScanBluetooth" style="margin-bottom:1.25rem;">
                 <i class="fas fa-search"></i> Pindai (Scan) Printer Bluetooth
               </button>
 
-              <div id="bluetoothDeviceList" style="display:none; margin-bottom:1rem;">
-                <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.6rem; color:var(--text-sub);">Perangkat Bluetooth Terpasang / Ditemukan:</div>
+              <div id="bluetoothDeviceList" style="display:none; margin-bottom:1.25rem;">
+                <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.6rem; color:var(--text-sub);">Hasil Pindai Bluetooth:</div>
                 <div id="btDevicesContainer" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+              </div>
+
+              <!-- DAFTAR PRINTER YANG PERNAH TERHUBUNG -->
+              <div id="savedPrintersSection" style="margin-bottom:1.25rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                  <span style="font-weight:700; font-size:0.85rem; color:var(--text-sub);">Riwayat Printer Tersimpan:</span>
+                  <button type="button" class="btn btn-secondary" onclick="clearAllSavedPrinters()" style="padding:0.25rem 0.5rem; font-size:0.72rem;">Bersihkan Semua</button>
+                </div>
+                <div id="savedPrintersContainer" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
               </div>
 
               <div style="display:flex; gap:0.5rem;">
@@ -744,15 +764,15 @@
   </div>
 </div>
 
-<!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
-<div class="custom-modal-backdrop" id="customLogoutModal">
+<!-- MODAL KONFIRMASI INTERNAL (BEBAS DARI DIALOG WINDOWS BROWSER) -->
+<div class="custom-modal-backdrop" id="customConfirmModal">
   <div class="custom-dialog-card">
-    <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
-    <h3 class="dialog-title">Konfirmasi Keluar</h3>
-    <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+    <div class="dialog-icon-wrap danger" id="customConfirmIcon"><i class="fas fa-exclamation-triangle"></i></div>
+    <h3 class="dialog-title" id="customConfirmTitle">Konfirmasi</h3>
+    <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
     <div class="dialog-btn-group">
-      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
-      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Lanjutkan</button>
     </div>
   </div>
 </div>
@@ -773,6 +793,35 @@
     box.appendChild(el);
     setTimeout(() => el.remove(), 3500);
   }
+
+  // Dialog Konfirmasi Internal WebPOS
+  function showCustomConfirm(title, message, iconType, confirmText, onConfirm) {
+    document.getElementById("customConfirmTitle").textContent = title;
+    document.getElementById("customConfirmMessage").textContent = message;
+    
+    const iconWrap = document.getElementById("customConfirmIcon");
+    iconWrap.className = `dialog-icon-wrap ${iconType}`;
+    if (iconType === 'danger') {
+      iconWrap.innerHTML = '<i class="fas fa-trash-alt"></i>';
+    } else {
+      iconWrap.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
+    }
+
+    const btnAction = document.getElementById("btnCustomConfirmAction");
+    btnAction.textContent = confirmText || 'Ya, Lanjutkan';
+    btnAction.style.background = iconType === 'danger' ? 'var(--danger)' : 'var(--primary)';
+
+    btnAction.onclick = () => {
+      closeCustomConfirm();
+      if (typeof onConfirm === 'function') onConfirm();
+    };
+
+    document.getElementById("customConfirmModal").classList.add("open");
+  }
+
+  window.closeCustomConfirm = function() {
+    document.getElementById("customConfirmModal").classList.remove("open");
+  };
 
   // Sinkronisasi Nama Toko di Logo Sidebar
   async function syncStoreBrandName() {
@@ -845,21 +894,12 @@
     
     // Logout internal tanpa confirm windows
     document.getElementById("btnLogout").onclick = () => {
-      const modal = document.getElementById("customLogoutModal");
-      if (modal) {
-        modal.classList.add("open");
-        document.getElementById("btnConfirmLogoutAction").onclick = () => {
-          firebase.auth().signOut().then(() => {
-            localStorage.removeItem('webpos_session');
-            window.location.href = "login.html";
-          });
-        };
-      } else {
+      showCustomConfirm("Konfirmasi Keluar", "Apakah Anda yakin ingin keluar dari sistem WebPOS?", "danger", "Ya, Keluar", () => {
         firebase.auth().signOut().then(() => {
           localStorage.removeItem('webpos_session');
           window.location.href = "login.html";
         });
-      }
+      });
     };
 
     document.getElementById("btnOpenPasswordModal").onclick = () => {
@@ -1061,13 +1101,92 @@
     document.getElementById("passwordModal").classList.remove("open");
   };
 
-  // SISTEM PUSAT PRINTER BLUETOOTH THERMAL (TERINTEGRASI KE SEMUA HALAMAN)
+  // =========================================================================
+  // SISTEM PUSAT PRINTER BLUETOOTH THERMAL + DAFTAR & AKSI HAPUS RIWAYAT
+  // =========================================================================
   function setupPrinterSection() {
     const statusBox = document.getElementById("printerStatusBox");
     const statusText = document.getElementById("printerStatusText");
     const macText = document.getElementById("printerMacText");
     const btnTest = document.getElementById("btnTestPrint");
     const btnDisc = document.getElementById("btnDisconnectPrinter");
+
+    function getSavedPrinters() {
+      try {
+        const raw = localStorage.getItem("webpos_saved_printers");
+        if (raw) return JSON.parse(raw);
+      } catch(e) {}
+      
+      // Seed default dari printer aktif jika belum ada list tersimpan
+      const currentMac = localStorage.getItem("webpos_printer_mac");
+      const currentName = localStorage.getItem("webpos_printer_name");
+      if (currentMac) {
+        return [{ name: currentName || 'Printer Thermal', mac: currentMac }];
+      }
+      return [];
+    }
+
+    function savePrintersList(list) {
+      localStorage.setItem("webpos_saved_printers", JSON.stringify(list));
+      renderSavedPrinters();
+    }
+
+    function renderSavedPrinters() {
+      const container = document.getElementById("savedPrintersContainer");
+      const currentMac = localStorage.getItem("webpos_printer_mac");
+      const printers = getSavedPrinters();
+
+      if (printers.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:0.85rem; color:var(--text-muted); font-size:0.8rem; background:var(--bg-subtle); border-radius:var(--radius-md);">Belum ada riwayat printer tersimpan.</div>`;
+        return;
+      }
+
+      container.innerHTML = printers.map(p => {
+        const isActive = p.mac === currentMac;
+        return `
+          <div class="bt-device-item" style="${isActive ? 'border-color:var(--primary); background:var(--primary-light);' : ''}">
+            <div class="bt-device-info">
+              <span class="bt-device-name">
+                <i class="fas fa-print" style="margin-right:0.35rem; color:${isActive ? 'var(--primary)' : 'var(--text-muted)'};"></i>
+                ${p.name} ${isActive ? '<span style="font-size:0.7rem; color:var(--primary); font-weight:800; margin-left:0.25rem;">(AKTIF)</span>' : ''}
+              </span>
+              <span class="bt-device-mac">${p.mac}</span>
+            </div>
+            <div class="bt-device-actions">
+              ${!isActive ? `<button type="button" class="btn btn-secondary" onclick="window.selectPrinter('${p.name.replace(/'/g, "\\'")}', '${p.mac}')" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>` : ''}
+              <button type="button" class="btn-icon-action delete" onclick="window.deleteSavedPrinter('${p.mac}')" title="Hapus dari riwayat"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.deleteSavedPrinter = function(macToDelete) {
+      showCustomConfirm("Hapus Printer", `Hapus printer dengan alamat MAC ${macToDelete} dari riwayat perangkat?`, "danger", "Ya, Hapus", () => {
+        let list = getSavedPrinters().filter(p => p.mac !== macToDelete);
+        savePrintersList(list);
+
+        // Jika printer yang dihapus adalah printer yang sedang aktif, putuskan koneksinya
+        const activeMac = localStorage.getItem("webpos_printer_mac");
+        if (activeMac === macToDelete) {
+          localStorage.removeItem("webpos_printer_name");
+          localStorage.removeItem("webpos_printer_mac");
+          renderPrinterState();
+        }
+        toast("Printer berhasil dihapus dari riwayat", "info");
+      });
+    };
+
+    window.clearAllSavedPrinters = function() {
+      showCustomConfirm("Hapus Semua Riwayat", "Apakah Anda yakin ingin menghapus seluruh riwayat printer tersimpan?", "danger", "Ya, Bersihkan", () => {
+        localStorage.removeItem("webpos_saved_printers");
+        localStorage.removeItem("webpos_printer_name");
+        localStorage.removeItem("webpos_printer_mac");
+        renderPrinterState();
+        renderSavedPrinters();
+        toast("Semua riwayat printer telah dibersihkan", "info");
+      });
+    };
 
     function renderPrinterState() {
       const mac = localStorage.getItem("webpos_printer_mac");
@@ -1090,6 +1209,7 @@
         btnTest.disabled = true;
         btnDisc.disabled = true;
       }
+      renderSavedPrinters();
     }
 
     renderPrinterState();
@@ -1109,43 +1229,57 @@
           }
 
           list.innerHTML = devices.map(d => `
-            <div class="bt-device-item" onclick="selectPrinter('${d.name.replace(/'/g, "\\'")}', '${d.address}')">
+            <div class="bt-device-item">
               <div class="bt-device-info">
                 <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>${d.name || 'Printer Thermal'}</span>
                 <span class="bt-device-mac">${d.address}</span>
               </div>
-              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              <div class="bt-device-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.selectPrinter('${(d.name || 'Printer Thermal').replace(/'/g, "\\'")}', '${d.address}')" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              </div>
             </div>
           `).join('');
         }, (err) => {
           list.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--danger); font-size:0.85rem;">Gagal scan: ${err}</div>`;
         });
       } else {
-        // Fallback untuk browser desktop / simulasi pengujian
+        // Fallback pengujian desktop jika belum memakai APK Android
         setTimeout(() => {
           list.innerHTML = `
-            <div class="bt-device-item" onclick="selectPrinter('RPP-02N Thermal 58mm', '00:11:22:33:AA:BB')">
+            <div class="bt-device-item">
               <div class="bt-device-info">
                 <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>RPP-02N Thermal 58mm</span>
                 <span class="bt-device-mac">00:11:22:33:AA:BB</span>
               </div>
-              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              <div class="bt-device-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.selectPrinter('RPP-02N Thermal 58mm', '00:11:22:33:AA:BB')" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              </div>
             </div>
-            <div class="bt-device-item" onclick="selectPrinter('POS-58 Bluetooth', '66:55:44:33:22:11')">
+            <div class="bt-device-item">
               <div class="bt-device-info">
                 <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>POS-58 Bluetooth</span>
                 <span class="bt-device-mac">66:55:44:33:22:11</span>
               </div>
-              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              <div class="bt-device-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.selectPrinter('POS-58 Bluetooth', '66:55:44:33:22:11')" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+              </div>
             </div>
           `;
-        }, 600);
+        }, 500);
       }
     };
 
     window.selectPrinter = (name, mac) => {
       localStorage.setItem("webpos_printer_name", name);
       localStorage.setItem("webpos_printer_mac", mac);
+
+      // Simpan juga ke daftar riwayat printer agar bisa diatur dan dihapus
+      let saved = getSavedPrinters();
+      if (!saved.some(p => p.mac === mac)) {
+        saved.unshift({ name, mac });
+        localStorage.setItem("webpos_saved_printers", JSON.stringify(saved));
+      }
+
       toast(`Printer ${name} berhasil disimpan sebagai printer utama!`, "success");
       document.getElementById("bluetoothDeviceList").style.display = "none";
       renderPrinterState();
