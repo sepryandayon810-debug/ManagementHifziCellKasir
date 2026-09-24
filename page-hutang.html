@@ -33,7 +33,7 @@
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- SheetJS for Excel Support -->
@@ -82,7 +82,6 @@
       --header-h: 68px;
       --bottom-nav-height: 60px;
 
-      /* Mapping kompatibilitas variabel */
       --bg-primary: var(--bg-base);
       --bg-secondary: var(--bg-subtle);
       --bg-card: var(--bg-surface);
@@ -92,7 +91,6 @@
       --primary-dark: var(--primary-hover);
     }
 
-    /* KUSTOMISASI WARNA DARI SETTING */
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
@@ -185,7 +183,6 @@
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* Main Header */
     .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; position: sticky; top: 0; z-index: 100; width: 100%; box-sizing: border-box; }
     .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
     .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -261,7 +258,7 @@
     .hutang-info { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
     .hutang-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: white; flex-shrink: 0; }
     .hutang-details { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-    .hutang-name { font-weight: 700; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hutang-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .hutang-amount-section { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; margin-left: 0.5rem; }
     .hutang-amount { font-size: 0.95rem; font-weight: 800; }
@@ -341,7 +338,6 @@
     @media(max-width: 1024px) { .mobile-nav { display: flex; } }
 
     .badge-primary { background: var(--primary-light); color: var(--primary); }
-    .customer-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
@@ -473,7 +469,7 @@
       <!-- Page Content -->
       <div class="page-content">
         <div class="hutang-container">
-          <!-- Top Action Bar ala Penggajian -->
+          <!-- Top Action Bar -->
           <div class="top-action-bar">
             <button class="btn-create-debt" id="btnAddHutang">
               <i class="fas fa-plus"></i> Tambah Hutang/Piutang
@@ -483,19 +479,19 @@
             </button>
           </div>
 
-          <!-- KOTAK TOTAL (2 KOLOM SOLID, NILAI TIDAK TERPOTONG) -->
+          <!-- KOTAK TOTAL -->
           <div class="summary-grid-fixed">
             <div class="summary-box-card piutang">
               <div class="summary-box-head">
                 <i class="fas fa-arrow-up"></i>
-                <span>Total Piutang Aktif</span>
+                <span class="summary-title">Total Piutang Aktif</span>
               </div>
               <div class="summary-box-val" id="totalPiutang">Rp 0</div>
             </div>
             <div class="summary-box-card hutang">
               <div class="summary-box-head">
                 <i class="fas fa-arrow-down"></i>
-                <span>Total Hutang Aktif</span>
+                <span class="summary-title">Total Hutang Aktif</span>
               </div>
               <div class="summary-box-val" id="totalHutang">Rp 0</div>
             </div>
@@ -503,7 +499,6 @@
 
           <!-- Card Daftar Hutang/Piutang -->
           <div class="card">
-            <!-- Search Box -->
             <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--bg-subtle);">
               <div class="search-input-wrapper" style="position: relative; max-width: 400px;">
                 <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
@@ -518,7 +513,6 @@
                   Daftar Hutang/Piutang
                 </h3>
                 
-                <!-- Status Toggle -->
                 <div class="status-toggle-container">
                   <span class="status-toggle-label active" id="labelAktif">Aktif</span>
                   <label class="toggle-switch">
@@ -530,14 +524,12 @@
               </div>
 
               <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-                <!-- Filter Tabs -->
                 <div class="filter-tabs">
                   <button class="filter-tab active" data-filter="all">Semua</button>
                   <button class="filter-tab" data-filter="hutang">Hutang</button>
                   <button class="filter-tab" data-filter="piutang">Piutang</button>
                 </div>
 
-                <!-- Import Export -->
                 <div style="display:flex; gap:0.35rem;">
                   <button class="btn btn-outline btn-sm" id="btnImport"><i class="fas fa-file-import"></i> Import</button>
                   <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
@@ -631,7 +623,6 @@
             <textarea class="form-textarea" id="hutangNote" placeholder="Catatan atau nama barang..."></textarea>
           </div>
 
-          <!-- Kas Option for New Hutang -->
           <div class="kas-card-box" id="kasOptionBoxHutang" style="display: none;">
             <div class="kas-card-header">
               <i class="fas fa-wallet" style="color:var(--primary);"></i>
@@ -667,7 +658,6 @@
           <div class="form-input" id="remainingAmount" style="font-weight: 800; font-size: 1.25rem; color:var(--primary);">Rp 0</div>
         </div>
 
-        <!-- Lunasi Sekaligus Option -->
         <div class="form-group">
           <label class="kas-checkbox-container" style="cursor: pointer; padding: 0.75rem;">
             <input type="checkbox" id="lunasSekaligus" style="accent-color: var(--success);">
@@ -691,7 +681,6 @@
           <input type="text" class="form-input" id="paymentNote" placeholder="Catatan pembayaran...">
         </div>
 
-        <!-- Kas Option -->
         <div class="kas-card-box" id="kasOptionBox">
           <div class="kas-card-header"><i class="fas fa-wallet" style="color:var(--primary);"></i> Pengaruh ke Kas</div>
           <label class="kas-checkbox-container" id="kasCheckboxLabel">
@@ -710,7 +699,7 @@
     </div>
   </div>
 
-  <!-- Customer Modal (Tambah/Edit Pelanggan) -->
+  <!-- Customer Modal -->
   <div class="modal-overlay" id="customerModal">
     <div class="modal-content" style="max-width: 420px;">
       <div class="modal-header">
@@ -767,7 +756,7 @@
     </div>
   </div>
 
-  <!-- MODAL KONFIRMASI HAPUS KUSTOM (MENGGANTIKAN POP-UP WINDOWS) -->
+  <!-- MODAL KONFIRMASI HAPUS KUSTOM -->
   <div class="modal-overlay" id="confirmModal">
     <div class="modal-content" style="max-width: 380px;">
       <div class="modal-header">
@@ -799,7 +788,6 @@
   <script src="js/role-guard.js"></script>
 
   <script>
-    // Utils kustom dialog menggantikan pop-up confirm() bawaan windows
     let pendingConfirmAction = null;
     function customConfirm(msg, callback) {
       document.getElementById('confirmModalMessage').innerHTML = msg;
@@ -845,7 +833,6 @@
         setStorage: (key, val) => localStorage.setItem(key, val)
       };
     } else {
-      // Replace method confirm bawaan utils agar memakai modal kustom kita
       Utils.confirm = (msg, callback) => customConfirm(msg, callback);
     }
 
@@ -867,7 +854,6 @@
       };
     }
 
-    // ===== FIRESTORE COMPATIBILITY LAYER =====
     function createFirestoreCompat() {
       const firestore = firebase.firestore();
 
@@ -946,7 +932,6 @@
 
     const firestoreDb = createFirestoreCompat();
 
-    // Customer Storage - Firestore Only
     const CustomerStorage = {
       getAll: async () => {
         try {
@@ -958,7 +943,6 @@
           return {};
         }
       },
-      
       save: async (id, data) => {
         const customerData = {
           ...data,
@@ -968,7 +952,6 @@
         await firestoreDb.ref('customers/' + id).set(customerData);
         return customerData;
       },
-      
       delete: async (id) => {
         await firestoreDb.ref('customers/' + id).remove();
       }
@@ -1093,7 +1076,6 @@
           document.getElementById('customerAutocomplete').style.display = 'none';
         };
 
-        // Event Modal Kelola Pelanggan
         document.getElementById('btnKelolaCustomer').addEventListener('click', () => {
           renderCustomerManageList();
           document.getElementById('customerManageModal').classList.add('active');
@@ -1282,6 +1264,10 @@
             const hutangSnapshot = await firestoreDb.ref('debts').once('value');
             hutangData = hutangSnapshot.val() || {};
             customerData = await CustomerStorage.getAll();
+
+            // Pindai & cocokkan data kasir untuk produk
+            await lookupMissingProductDetails(hutangData);
+
             updateSummary();
             renderCustomerManageList();
             renderHutangList();
@@ -1290,6 +1276,38 @@
             Utils.showToast('Gagal memuat data', 'error');
           }
           Utils.hideLoading();
+        }
+
+        // FUNGSI KHUSUS: Mengambil nama produk dari koleksi transactions jika note hanya berisi nomor TRX
+        async function lookupMissingProductDetails(debts) {
+          const itemsToLookup = Object.values(debts).filter(item => {
+            const raw = (item.note || item.transactionId || '').trim();
+            return (raw.includes('TRX') || raw.includes('kas_')) && (!item.items || item.items.length === 0);
+          });
+
+          if (itemsToLookup.length === 0) return;
+
+          try {
+            for (const item of itemsToLookup) {
+              const match = (item.note || '').match(/TRX\d+/i) || (item.transactionId || '').match(/TRX\d+/i);
+              const invoiceNum = match ? match[0] : null;
+              
+              if (invoiceNum) {
+                const snap = await firebase.firestore().collection('transactions').where('invoiceNumber', '==', invoiceNum).limit(1).get();
+                if (!snap.empty) {
+                  const trxData = snap.docs[0].data();
+                  if (trxData.items && Array.isArray(trxData.items)) {
+                    item.items = trxData.items;
+                  }
+                  if (!item.name || item.name.trim() === '') {
+                    item.name = trxData.customerName || trxData.customer || trxData.pelanggan || item.name;
+                  }
+                }
+              }
+            }
+          } catch(e) {
+            console.warn('Gagal lookup nama produk:', e);
+          }
         }
 
         window.toggleDetail = function(id) {
@@ -1355,18 +1373,23 @@
         // Helper untuk mendapatkan deskripsi produk/barang dari transaksi
         function getTransactionItemName(item) {
           if (item.items && Array.isArray(item.items) && item.items.length > 0) {
-            return item.items.map(i => `${i.name || i.productName || 'Produk'} (x${i.qty || i.quantity || 1})`).join(', ');
+            return item.items.map(i => `${i.name || i.productName || 'Barang'} (x${i.qty || i.quantity || 1})`).join(', ');
           }
           if (item.productName || item.namaBarang || item.namaProduk) {
             return item.productName || item.namaBarang || item.namaProduk;
           }
-          if (item.note && !item.note.startsWith('TRX') && !item.note.startsWith('kas_')) {
-            return item.note;
+          
+          const rawNote = (item.note || '').trim();
+          if (rawNote && !rawNote.startsWith('TRX') && !rawNote.startsWith('kas_')) {
+            return rawNote;
           }
-          if (item.invoiceNumber) {
-            return 'Nota: ' + item.invoiceNumber;
+          
+          if (item.invoiceNumber || rawNote.includes('TRX')) {
+            const inv = item.invoiceNumber || rawNote;
+            return `Pembelian Produk di Kasir (${inv})`;
           }
-          return item.note || (item.type === 'hutang' ? 'Hutang Kas' : 'Piutang Bon Produk');
+          
+          return item.type === 'hutang' ? 'Pinjaman Kas / Hutang' : 'Bon Pembelian Kasir';
         }
 
         function renderHutangList() {
@@ -1374,7 +1397,12 @@
           let html = '';
           
           let filteredItems = Object.entries(hutangData)
-            .map(([id, data]) => ({ id, ...data }))
+            .map(([id, data]) => {
+              // Pastikan nama tidak pernah kosong
+              let validName = (data.name || data.customerName || data.pelanggan || data.customer || '').trim();
+              if (!validName) validName = 'Pelanggan Umum / Bon Kasir';
+              return { id, ...data, name: validName };
+            })
             .filter(item => {
               if (currentStatus === 'active') return item.status === 'active';
               return item.status === 'paid' || item.status === 'inactive' || item.status === 'deleted';
@@ -1387,6 +1415,7 @@
             );
           }
           
+          // GROUP BY NAMA & TYPE
           const groupedByName = {};
           filteredItems.forEach(item => {
             const key = item.type + ':' + item.name.toLowerCase().trim();
@@ -1438,12 +1467,12 @@
                     </div>
                     <div class="hutang-details">
                       <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="hutang-name" style="font-size: 1rem; font-weight: 600;">${group.displayName}</span>
-                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">
+                        <span class="hutang-name">${group.displayName}</span>
+                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:700;">
                           ${group.items.length} transaksi
                         </span>
                         ${!isPaid ? `
-                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName}', '${group.type}')" title="Proses Semua" style="width: 32px; height: 32px; min-width: 32px; margin-left: auto;">
+                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName.replace(/'/g, "\\'")}', '${group.type}')" title="Proses Semua" style="width: 32px; height: 32px; min-width: 32px; margin-left: auto;">
                             <i class="fas fa-check-double" style="font-size: 0.8rem;"></i>
                           </button>
                         ` : ''}
@@ -1454,7 +1483,7 @@
                       <div style="display: flex; gap: 1rem; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
                         <span>Total: ${Utils.formatRupiah(totalAmount)}</span>
                         <span>•</span>
-                        <span>Sisa: <span style="color: ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-weight: 600;">${Utils.formatRupiah(group.totalRemaining)}</span></span>
+                        <span>Sisa: <span style="color: ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">${Utils.formatRupiah(group.totalRemaining)}</span></span>
                       </div>
                     </div>
                   </div>
@@ -1536,7 +1565,7 @@
         async function saveHutang() {
           const id = document.getElementById('hutangId').value;
           const type = document.getElementById('hutangType').value;
-          const name = document.getElementById('hutangName').value;
+          const name = document.getElementById('hutangName').value.trim();
           const amount = parseInt(document.getElementById('hutangAmount').value.replace(/\./g, '')) || 0;
           const dueDate = document.getElementById('hutangDueDate').value;
           const note = document.getElementById('hutangNote').value;
@@ -1721,11 +1750,11 @@
 
         window.openPaymentBatch = (groupName, groupType) => {
           const normalizedName = String(groupName || '').toLowerCase().trim();
-          const items = Object.values(hutangData).filter(d =>
-            String(d.name || '').toLowerCase().trim() === normalizedName &&
-            d.type === groupType &&
-            d.status === 'active'
-          );
+          const items = Object.values(hutangData).filter(d => {
+            let validName = (d.name || d.customerName || d.pelanggan || d.customer || '').trim();
+            if (!validName) validName = 'Pelanggan Umum / Bon Kasir';
+            return validName.toLowerCase() === normalizedName && d.type === groupType && d.status === 'active';
+          });
           
           if (items.length === 0) {
             Utils.showToast('Tidak ada hutang/piutang aktif untuk dibayar', 'warning');
@@ -1779,7 +1808,7 @@
           document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Edit Hutang/Piutang';
           document.getElementById('hutangId').value = id;
           document.getElementById('hutangType').value = item.type;
-          document.getElementById('hutangName').value = item.name;
+          document.getElementById('hutangName').value = item.name || '';
           document.getElementById('hutangAmount').value = Utils.formatNumberInput(item.amount.toString());
           const dueDateVal = item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '';
           document.getElementById('hutangDueDate').value = dueDateVal;
@@ -1792,20 +1821,17 @@
         window.deleteHutang = (id) => {
           Utils.confirm('Apakah Anda yakin ingin menghapus data ini?', async () => {
             Utils.showLoading();
-            
             try {
               await firestoreDb.ref('debts/' + id).update({
                 status: 'deleted',
                 deletedAt: Date.now()
               });
-              
               Utils.showToast('Data berhasil dihapus', 'success');
               loadAllData();
             } catch (error) {
               console.error('Error deleting hutang:', error);
               Utils.showToast('Gagal menghapus data', 'error');
             }
-            
             Utils.hideLoading();
           });
         };
@@ -1813,21 +1839,18 @@
         window.restoreHutang = (id) => {
           Utils.confirm('Restore data ini ke status aktif?', async () => {
             Utils.showLoading();
-            
             try {
               await firestoreDb.ref('debts/' + id).update({
                 status: 'active',
                 remaining: hutangData[id].amount,
                 restoredAt: Date.now()
               });
-              
               Utils.showToast('Data berhasil direstore', 'success');
               loadAllData();
             } catch (error) {
               console.error('Error restoring hutang:', error);
               Utils.showToast('Gagal restore data', 'error');
             }
-            
             Utils.hideLoading();
           });
         };
@@ -1839,7 +1862,6 @@
           
           if (!currentPaymentId && currentBatchItems && currentBatchItems.length > 0) {
             Utils.showLoading();
-            
             try {
               let totalBayar = 0;
               const type = currentBatchItems[0].type;
@@ -1883,12 +1905,10 @@
                   window.location.href = 'page-kasir.html';
                 }, 800);
               }
-              
             } catch (error) {
               console.error('Error batch payment:', error);
               Utils.showToast('Gagal memproses pembayaran batch', 'error');
             }
-            
             Utils.hideLoading();
             return;
           }
@@ -1952,7 +1972,6 @@
                 window.location.href = 'page-kasir.html';
               }, 800);
             }
-            
           } catch (error) {
             console.error('Error processing payment:', error);
             Utils.showToast('Gagal memproses pembayaran', 'error');
@@ -1988,9 +2007,8 @@
 
             await firestoreDb.ref('transactions/' + today + '/' + kasId).set(transactionData);
             return transactionData;
-            
           } catch (error) {
-            console.error('❌ Gagal:', error);
+            console.error('Gagal mencatat kas:', error);
             Utils.showToast('Gagal mencatat ke kas: ' + error.message, 'error');
             throw error;
           }
