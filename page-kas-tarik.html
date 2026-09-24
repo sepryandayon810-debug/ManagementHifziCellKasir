@@ -384,6 +384,7 @@
     .btn-danger:hover { filter: brightness(0.95); transform: translateY(-1px); }
     .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
     .btn-primary { background: var(--primary); color: white; }
+    .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.82rem; width: auto; }
 
     /* STRUK MODAL */
     .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
@@ -392,6 +393,28 @@
     .struk-header{padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
     .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
+
+    /* MODAL UMUM UNTUK TAMBAH BANK */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+      z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: var(--bg-surface); border-radius: var(--radius-xl);
+      width: 100%; max-width: 360px; box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .modal-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-body { padding: 1.15rem; }
+    .modal-footer {
+      padding: 0.85rem 1.25rem; border-top: 1px solid var(--border);
+      display: flex; gap: 0.5rem; justify-content: flex-end; background: var(--bg-subtle);
+    }
 
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -584,7 +607,7 @@
               <div class="form-group">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
                   <label class="form-label" style="margin-bottom:0;">Bank / E-Wallet Tujuan</label>
-                  <button type="button" class="btn-add-bank-header" onclick="window.addNewBankChip()">
+                  <button type="button" class="btn-add-bank-header" onclick="window.openAddBankModal()">
                     <i class="fas fa-plus-circle"></i> Tambah Bank
                   </button>
                 </div>
@@ -645,7 +668,29 @@
     </nav>
   </div>
 
-  <!-- Modal Struk -->
+  <!-- Modal Tambah Bank Kustom (Menggantikan Prompt Browser) -->
+  <div class="modal-overlay" id="addBankModal" onclick="if(event.target===this) closeAddBankModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:1rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
+          <i class="fas fa-university" style="color:var(--primary);"></i> Tambah Bank / E-Wallet
+        </h3>
+        <button class="btn-icon-box" onclick="closeAddBankModal()" style="width:30px; height:30px;"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Nama Bank / E-Wallet</label>
+          <input type="text" class="form-input" id="customBankInput" placeholder="Contoh: SeaBank, Blu, Jenius">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeAddBankModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" onclick="saveNewBankChip()"><i class="fas fa-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Struk Bukti Tarik Tunai -->
   <div class="struk-modal-overlay" id="strukModal">
     <div class="struk-modal">
       <div class="struk-header">
@@ -679,7 +724,7 @@
       let lastTransactionData = null;
       let storeSettings = {};
 
-      const DEFAULT_CHIPS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'SeBank', 'Jago'];
+      const DEFAULT_CHIPS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'SeaBank', 'Jago'];
       let customChips = [];
 
       function loadSavedChips() {
@@ -716,19 +761,36 @@
         });
       };
 
-      window.addNewBankChip = function() {
-        const name = prompt('Masukkan nama Bank atau E-Wallet baru:');
-        if (!name || !name.trim()) return;
-        const cleanName = name.trim();
-        if (!customChips.includes(cleanName) && !DEFAULT_CHIPS.includes(cleanName)) {
-          customChips.push(cleanName);
+      // Modal Tambah Bank Kustom Internal
+      window.openAddBankModal = function() {
+        const input = document.getElementById('customBankInput');
+        if (input) input.value = '';
+        document.getElementById('addBankModal').classList.add('active');
+        setTimeout(() => input && input.focus(), 150);
+      };
+
+      window.closeAddBankModal = function() {
+        document.getElementById('addBankModal').classList.remove('active');
+      };
+
+      window.saveNewBankChip = function() {
+        const input = document.getElementById('customBankInput');
+        const name = input ? input.value.trim() : '';
+        if (!name) {
+          Utils.showToast('Nama bank atau e-wallet tidak boleh kosong', 'warning');
+          return;
+        }
+
+        if (!customChips.includes(name) && !DEFAULT_CHIPS.includes(name)) {
+          customChips.push(name);
           localStorage.setItem('webpos_custom_bank_chips', JSON.stringify(customChips));
           renderBankChips();
-          window.selectBankChip(cleanName);
-          Utils.showToast(`"${cleanName}" berhasil ditambahkan!`, 'success');
+          window.selectBankChip(name);
+          Utils.showToast(`"${name}" berhasil ditambahkan!`, 'success');
         } else {
-          window.selectBankChip(cleanName);
+          window.selectBankChip(name);
         }
+        closeAddBankModal();
       };
 
       function isFromKasir() {
@@ -972,6 +1034,7 @@
           });
         });
 
+        // Simpan Tarik Tunai
         const saveBtn = document.getElementById('btnSimpanTarik');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -1044,6 +1107,7 @@
           loadKasTersedia();
         }
 
+        // FUNGSI STRUK & CETAK BLUETOOTH
         function showStrukModal(tx) {
           lastTransactionData = tx;
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
