@@ -10,7 +10,7 @@
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      const savedColor = localStorage.getItem("webpos_theme_color") || localStorage.getItem("theme_color") || "indigo";
       document.documentElement.setAttribute("data-theme", savedTheme);
       document.documentElement.setAttribute("data-theme-color", savedColor);
     })();
@@ -28,6 +28,7 @@
       --primary-hover: #4338ca;
       --primary-light: #eef2ff;
       --accent: #0284c7;
+      --accent-light: #e0f2fe;
       --success: #059669;
       --success-light: #ecfdf5;
       --warning: #d97706;
@@ -64,6 +65,10 @@
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
     [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
 
     [data-theme="dark"] {
       --bg-base: #090d16;
@@ -86,7 +91,7 @@
       overflow-x: hidden;
     }
 
-    .app-container { display: flex; min-height: 100vh; position: relative; }
+    .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
 
     .sidebar-backdrop {
       position: fixed; inset: 0;
@@ -95,6 +100,7 @@
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
+    /* SIDEBAR */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -118,7 +124,7 @@
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: bold; font-size: 1.15rem;
+      color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
     }
     .logo-text {
       font-size: 1.25rem; font-weight: 800;
@@ -131,7 +137,7 @@
     .menu-toggle {
       width: 28px; height: 28px; background: var(--primary);
       border: none; border-radius: 50%; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;
     }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
 
@@ -163,19 +169,21 @@
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
-    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary) !important; font-weight: 600; }
+    .nav-link.active i { color: var(--primary) !important; }
     .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
 
     .nav-dropdown { position: relative; }
     .nav-dropdown-toggle { justify-content: space-between; }
-    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
     .nav-submenu {
       list-style: none; max-height: 0; overflow: hidden;
       transition: max-height 0.25s ease; padding-left: 2rem;
     }
-    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
     .sidebar-footer {
@@ -197,10 +205,10 @@
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
-      transition: margin-left 0.25s; min-width: 0;
+      transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden;
     }
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
-    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; width: 100vw !important; } }
 
     .main-header {
       height: var(--header-h); background: var(--bg-surface);
@@ -208,17 +216,17 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 1.25rem; position: sticky; top: 0; z-index: 90;
     }
-    .header-left { display: flex; align-items: center; gap: 0.85rem; }
-    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
-    .btn-icon {
+    .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
       background: var(--bg-subtle); border: 1px solid var(--border);
       color: var(--text-sub); display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
     }
-    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 
     .page-content { padding: 1.5rem; flex: 1; }
 
@@ -274,10 +282,23 @@
       border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);
     }
     .card-header {
-      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
     }
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: .5rem; }
+
+    /* FILTER BAR RIWAYAT KAS */
+    .filter-bar { display: flex; gap: 0.45rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn { padding: 0.4rem 0.85rem; border: 1.5px solid var(--border); border-radius: 99px; background: var(--bg-surface); color: var(--text-sub); font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .date-filter-row { display: grid; grid-template-columns: 1fr; gap: 0.65rem; padding: 0.85rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); align-items: flex-end; }
+    @media(min-width: 480px) {
+      .date-filter-row { grid-template-columns: 1fr 1fr auto; }
+    }
+    .date-range-info { padding: 0.65rem 1.25rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
 
     .table-container { overflow-x: auto; }
     .table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -293,6 +314,48 @@
     .transaction-type-badge.income { background: var(--success-light); color: var(--success); }
     .transaction-type-badge.expense { background: var(--danger-light); color: var(--danger); }
 
+    /* MODAL KONFIRMASI LOGOUT INTERNAL */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-primary:hover { filter: brightness(0.9); }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
+    .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.2s ease; }
+    .loading-overlay.active { opacity: 1; visibility: visible; }
+    .spinner { width: 42px; height: 42px; border: 3.5px solid rgba(255, 255, 255, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spinOverlay 0.8s linear infinite; }
+    @keyframes spinOverlay { to { transform: rotate(360deg); } }
+
+    .toast-box { position: fixed; bottom: calc(var(--bottom-nav-height) + 1rem); left: 50%; transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+    .toast-pill { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem; background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border-left: 4px solid var(--primary); font-size: 0.85rem; font-weight: 600; color: var(--text-main); pointer-events: auto; }
+    .toast-pill.success { border-left-color: var(--success); }
+    .toast-pill.error { border-left-color: var(--danger); }
+
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -304,6 +367,7 @@
     }
     .mobile-nav-item.active { color: var(--primary); }
     .mobile-nav-item i { font-size: 1.1rem; }
+
     @media (max-width: 1024px) {
       .mobile-nav { display: flex; }
       .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
@@ -317,10 +381,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -344,6 +408,7 @@
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -353,6 +418,7 @@
           </ul>
         </div>
 
+        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
@@ -380,6 +446,7 @@
           </ul>
         </div>
 
+        <!-- Laporan -->
         <div class="nav-section">
           <div class="nav-section-title">Laporan</div>
           <ul class="nav-menu">
@@ -389,6 +456,7 @@
           </ul>
         </div>
 
+        <!-- Integrasi -->
         <div class="nav-section">
           <div class="nav-section-title">Integrasi</div>
           <ul class="nav-menu">
@@ -397,6 +465,7 @@
           </ul>
         </div>
 
+        <!-- Penggajian -->
         <div class="nav-section">
           <div class="nav-section-title">Penggajian</div>
           <ul class="nav-menu">
@@ -404,12 +473,15 @@
           </ul>
         </div>
 
+        <!-- Sistem -->
         <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -430,11 +502,12 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
           <h1 class="header-title">Kas Management</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
@@ -466,7 +539,7 @@
 
         <!-- Quick Actions -->
         <div class="kas-actions">
-          <button class="kas-action-btn success" onclick="goToTopup()">
+          <button type="button" class="kas-action-btn success" onclick="window.location.href='page-kas-topup.html'">
             <i class="fas fa-arrow-up"></i> Top Up
           </button>
           <a href="page-kas-tarik.html" class="kas-action-btn danger">
@@ -480,8 +553,34 @@
         <!-- Recent Transactions -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Kas Hari Ini</h3>
+            <h3 class="card-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Kas & Transaksi</h3>
           </div>
+
+          <div class="filter-bar" id="filterBar">
+            <button class="filter-btn active" data-filter="today">Hari Ini</button>
+            <button class="filter-btn" data-filter="yesterday">Kemarin</button>
+            <button class="filter-btn" data-filter="week">Minggu Ini</button>
+            <button class="filter-btn" data-filter="month">Bulan Ini</button>
+            <button class="filter-btn" data-filter="custom">Pilih Tanggal</button>
+            <button class="filter-btn" data-filter="all">Semua</button>
+          </div>
+
+          <div class="date-filter-row" id="dateFilterRow" style="display: none;">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem; display:block;">Dari Tanggal</label>
+              <input type="date" class="search-input" id="dateFrom" style="background:var(--bg-surface); padding: 0.5rem 0.75rem;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem; display:block;">Sampai Tanggal</label>
+              <input type="date" class="search-input" id="dateTo" style="background:var(--bg-surface); padding: 0.5rem 0.75rem;">
+            </div>
+            <div>
+              <button type="button" class="btn btn-primary" id="btnApplyDate" style="width: 100%; height: 38px; padding: 0.4rem 1rem; font-size:0.8rem;"><i class="fas fa-search"></i> Terapkan</button>
+            </div>
+          </div>
+
+          <div class="date-range-info" id="dateRangeInfo"><i class="fas fa-calendar-alt"></i><span>Memuat data...</span></div>
+
           <div class="card-body" style="padding: 0;">
             <div class="table-container">
               <table class="table">
@@ -517,9 +616,22 @@
     </nav>
   </div>
 
+  <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 700;">Memproses...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -527,6 +639,18 @@
   <script>
     (function() {
       "use strict";
+
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      function parseFirestoreDate(val) {
+        if (!val) return null;
+        if (typeof val === 'number') return new Date(val);
+        if (val.seconds !== undefined) return new Date(val.seconds * 1000);
+        if (val.toDate && typeof val.toDate === 'function') return val.toDate();
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      }
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -542,11 +666,6 @@
         } catch(e) {}
       }
 
-      window.goToTopup = function() {
-        localStorage.setItem('fromKasir', 'true');
-        window.location.href = 'page-kas-topup.html';
-      };
-
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
 
@@ -556,20 +675,25 @@
             return;
           }
 
-          let userData = { name: user.email, role: 'kasir' };
+          let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply((userData.role || 'kasir').toLowerCase());
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
           document.getElementById('userName').textContent = dName;
-          document.getElementById('userRole').textContent = (userData.role || 'Kasir').toUpperCase();
+          document.getElementById('userRole').textContent = (userData.role || 'Admin').toUpperCase();
           const avatar = document.getElementById('userAvatar');
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          loadKasData();
+          initKasManagement(user);
         });
       });
 
@@ -606,82 +730,173 @@
           });
         });
 
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
+
+        // Logout dengan Modal Internal WebPOS
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
-          logoutBtn.addEventListener('click', () => {
-            Utils.confirm('Yakin ingin logout?', () => {
-              auth.signOut().then(() => window.location.href = 'login.html');
-            });
+          logoutBtn.onclick = () => {
+            const modal = document.getElementById('customLogoutModal');
+            if (modal) {
+              modal.classList.add('open');
+              document.getElementById('btnConfirmLogoutAction').onclick = () => {
+                auth.signOut().then(() => {
+                  localStorage.removeItem('webpos_session');
+                  window.location.href = 'login.html';
+                });
+              };
+            } else {
+              auth.signOut().then(() => {
+                localStorage.removeItem('webpos_session');
+                window.location.href = 'login.html';
+              });
+            }
+          };
+        }
+      }
+
+      async function initKasManagement(user) {
+        await loadKasSummaryAndHistory(user, 'today');
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            const filterType = e.currentTarget.getAttribute('data-filter');
+            const dateRow = document.getElementById('dateFilterRow');
+            if (filterType === 'custom') {
+              dateRow.style.display = 'grid';
+            } else {
+              dateRow.style.display = 'none';
+              loadKasSummaryAndHistory(user, filterType);
+            }
+          });
+        });
+
+        const applyDateBtn = document.getElementById('btnApplyDate');
+        if (applyDateBtn) {
+          applyDateBtn.addEventListener('click', () => {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            if (!from || !to) {
+              Utils.showToast('Pilih tanggal dari dan sampai', 'warning');
+              return;
+            }
+            loadKasSummaryAndHistory(user, 'custom', from, to);
           });
         }
       }
 
-      async function loadKasData() {
+      async function loadKasSummaryAndHistory(user, filterType = 'today', dateFrom = null, dateTo = null) {
+        Utils.showLoading('Memuat data kas...');
         try {
-          const today = Utils.getTodayString();
-          const snapshot = await db.collection("transactions").where("date", "==", today).get();
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           
-          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, topupAdmin = 0, tarik = 0, tarikAdmin = 0;
-          let historyList = [];
+          // 1. Ambil Modal Awal Hari Ini untuk perhitungan kas di tangan
+          let modalAwal = 0;
+          try {
+            let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+            if (!modalDoc.exists) {
+              modalDoc = await db.collection("modal").doc(today).get();
+            }
+            modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          } catch(e) {}
+
+          const snapshot = await db.collection("transactions").get();
+          
+          let penjualanToday = 0, kasMasukToday = 0, kasKeluarToday = 0, topupToday = 0, topupAdminToday = 0, tarikToday = 0, tarikAdminToday = 0;
+          let allTransactions = [];
 
           snapshot.forEach(doc => {
             const data = doc.data();
             if (data.status === 'cancelled' || data.status === 'voided') return;
 
-            switch (data.type) {
-              case 'penjualan':
-                penjualan += data.paymentMethod === 'hutang'
-                  ? (data.paymentAmount || 0)
-                  : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
-                break;
-              case 'kas_masuk':
-                if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
-                  kasMasuk += data.amount || 0;
-                }
-                break;
-              case 'kas_keluar':
-                kasKeluar += data.amount || data.total || 0;
-                break;
-              case 'topup':
-                topup += data.amount || 0;
-                topupAdmin += data.adminFee || 0;
-                break;
-              case 'tarik':
-                tarik += data.amount || 0;
-                tarikAdmin += data.adminFee || 0;
-                break;
+            const tDate = data.date || today;
+            
+            // Hitung untuk hari ini (Kas di Tangan)
+            if (tDate === today) {
+              switch (data.type) {
+                case 'penjualan':
+                  penjualanToday += data.paymentMethod === 'hutang'
+                    ? (data.paymentAmount || 0)
+                    : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                  break;
+                case 'kas_masuk':
+                  if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
+                    kasMasukToday += data.amount || 0;
+                  }
+                  break;
+                case 'kas_keluar':
+                  kasKeluarToday += data.amount || data.total || 0;
+                  break;
+                case 'topup':
+                  if (data.paymentMethod !== 'hutang') {
+                    topupToday += data.amount || 0;
+                    topupAdminToday += data.adminFee || 0;
+                  }
+                  break;
+                case 'tarik':
+                  tarikToday += data.amount || 0;
+                  tarikAdminToday += data.adminFee || 0;
+                  break;
+              }
             }
 
-            historyList.push({ id: doc.id, ...data });
+            allTransactions.push({ id: doc.id, ...data });
           });
 
-          // Ambil modal harian
-          const modalSnap = await db.collection("modal").where("date", "==", today).get();
-          let modalAwal = 0;
-          modalSnap.forEach(mDoc => {
-            modalAwal += mDoc.data().amount || 0;
-          });
+          const topupKasFisik = topupToday + topupAdminToday;
+          const tarikKasFisik = Math.max(0, tarikToday - tarikAdminToday);
+          
+          const totalKasMasukVal = kasMasukToday + penjualanToday + topupKasFisik;
+          const totalKasKeluarVal = kasKeluarToday + tarikKasFisik;
+          const kasDitangan = modalAwal + totalKasMasukVal - totalKasKeluarVal;
 
-          const topupKasFisik = topup + topupAdmin;
-          const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
-          const kasDitangan = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
-
-          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(kasMasuk + penjualan + topupKasFisik);
-          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(kasKeluar + tarikKasFisik);
+          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(totalKasMasukVal);
+          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(totalKasKeluarVal);
           document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasDitangan);
 
+          // Filter untuk tabel riwayat sesuai tab yang dipilih
+          let filteredTx;
+          if (filterType === 'custom' && dateFrom && dateTo) {
+            filteredTx = filterTransactionsByDateRange(allTransactions, dateFrom, dateTo);
+          } else {
+            filteredTx = filterTransactionsByPeriod(allTransactions, filterType);
+          }
+
+          filteredTx.sort((a, b) => {
+            const timeA = parseFirestoreDate(a.timestamp)?.getTime() || new Date(a.date || 0).getTime();
+            const timeB = parseFirestoreDate(b.timestamp)?.getTime() || new Date(b.date || 0).getTime();
+            return timeB - timeA;
+          });
+
           const tbody = document.getElementById('kasHistory');
-          if (historyList.length === 0) {
+          if (filteredTx.length === 0) {
             tbody.innerHTML = `
               <tr>
                 <td colspan="5" style="text-align: center; padding: 3rem;">
-                  <div style="color: var(--text-muted);">Belum ada transaksi kas hari ini</div>
+                  <div style="color: var(--text-muted);">Tidak ada riwayat transaksi kas untuk periode ini</div>
                 </td>
               </tr>
             `;
           } else {
-            historyList.sort((a, b) => (b.timestamp?.toMillis?.() || b.timestamp || Date.now()) - (a.timestamp?.toMillis?.() || a.timestamp || Date.now()));
-            tbody.innerHTML = historyList.map(t => {
+            tbody.innerHTML = filteredTx.map(t => {
               const isIncome = ['topup', 'kas_masuk', 'penjualan'].includes(t.type);
               const typeLabels = {
                 topup: 'Top Up',
@@ -692,8 +907,8 @@
               };
 
               let timeStr = '-';
-              if (t.timestamp) {
-                const timeVal = typeof t.timestamp === 'object' && t.timestamp.toDate ? t.timestamp.toDate() : new Date(t.timestamp);
+              const timeVal = parseFirestoreDate(t.timestamp);
+              if (timeVal) {
                 timeStr = timeVal.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
               }
 
@@ -715,9 +930,60 @@
               `;
             }).join('');
           }
+
+          updateDateRangeInfo(filterType, filteredTx.length);
         } catch (error) {
-          console.error("Error loading kas data:", error);
+          console.error("Error loading kas management data:", error);
+          Utils.showToast('Gagal memuat data kas', 'error');
+        } finally {
+          Utils.hideLoading();
         }
+      }
+
+      function filterTransactionsByDateRange(transactions, from, to) {
+        const fromDate = new Date(from);
+        fromDate.setHours(0,0,0,0);
+        const toDate = new Date(to);
+        toDate.setHours(23,59,59,999);
+        return transactions.filter(t => {
+          const tDate = parseFirestoreDate(t.timestamp) || new Date(t.date || 0);
+          return tDate.getTime() >= fromDate.getTime() && tDate.getTime() <= toDate.getTime();
+        });
+      }
+
+      function filterTransactionsByPeriod(transactions, filterType) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        return transactions.filter(t => {
+          const tDate = parseFirestoreDate(t.timestamp) || new Date(t.date || 0);
+          tDate.setHours(0, 0, 0, 0);
+
+          switch(filterType) {
+            case 'today': return tDate.getTime() === today.getTime();
+            case 'yesterday': return tDate.getTime() === yesterday.getTime();
+            case 'week': return tDate >= startOfWeek && tDate <= today;
+            case 'month': return tDate >= startOfMonth && tDate <= today;
+            case 'all': default: return true;
+          }
+        });
+      }
+
+      function updateDateRangeInfo(filterType, count) {
+        const infoEl = document.getElementById('dateRangeInfo');
+        let text = `${count} transaksi ditemukan`;
+        if (filterType === 'today') text = `Hari ini - ${count} transaksi`;
+        else if (filterType === 'yesterday') text = `Kemarin - ${count} transaksi`;
+        else if (filterType === 'week') text = `Minggu ini - ${count} transaksi`;
+        else if (filterType === 'month') text = `Bulan ini - ${count} transaksi`;
+        else if (filterType === 'all') text = `Semua periode - ${count} transaksi`;
+        else if (filterType === 'custom') text = `Rentang tanggal terpilih - ${count} transaksi`;
+        infoEl.innerHTML = `<i class="fas fa-calendar-alt"></i><span>${text}</span>`;
       }
     })();
   </script>
