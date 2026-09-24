@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Top Up Kas</title>
+  <title>WebPOS - Closing Shift</title>
 
   <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL -->
   <script>
@@ -46,6 +46,7 @@
       --warning-light: #fffbeb;
       --danger: #dc2626;
       --danger-light: #fef2f2;
+      --info: #0284c7;
       
       --bg-base: #f8fafc;
       --bg-surface: #ffffff;
@@ -90,6 +91,9 @@
       --text-muted: #94a3b8;
       --text-sub: #cbd5e1;
       --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -240,273 +244,75 @@
 
     .page-content { padding: 1.25rem; flex: 1; }
 
-    .topup-card { max-width: 500px; margin: 0 auto; width: 100%; }
+    .closing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    @media(max-width: 1024px) { .closing-grid { grid-template-columns: 1fr; } }
+    
     .card {
       background: var(--bg-surface); border-radius: var(--radius-2xl);
-      border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden;
+      border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 1.25rem;
     }
-    .card-header { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); }
+    .card-header { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
-    .card-body { padding: 1.35rem; }
 
-    .amount-display {
-      font-size: 2.35rem; font-weight: 800; color: var(--success);
-      text-align: center; padding: 1.25rem; background: var(--success-light);
-      border-radius: var(--radius-xl); margin-bottom: 1.15rem;
-      border: 2px solid rgba(5, 150, 105, 0.2);
+    .denomination-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+    .denomination-item {
+      display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem 1rem;
+      background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border);
     }
-    [data-theme="dark"] .amount-display { background: rgba(5, 150, 105, 0.15); color: #34d399; }
+    .denomination-item-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .denomination-label { font-weight: 700; font-size: 0.95rem; color: var(--text-sub); }
+    .denomination-input {
+      width: 100% !important; text-align: left; padding: 0.55rem 0.75rem !important;
+      font-weight: 700; background: var(--bg-surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-main); font-size: 1rem; outline: none;
+    }
+    .denomination-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    .denomination-total { text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--primary); }
 
-    .quick-amounts { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.15rem; }
-    .quick-amount {
-      padding: 0.4rem 0.85rem; background: var(--bg-subtle);
-      border: 1.5px solid var(--border); border-radius: 999px;
-      font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-main);
-      transition: all 0.15s;
+    .system-data-grid { display: flex; flex-direction: column; gap: 0.65rem; }
+    .system-data-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border);
     }
-    .quick-amount:hover { background: var(--success); color: white; border-color: var(--success); }
+    .system-data-item.highlight { background: var(--primary-light); border-color: var(--primary); }
+    .system-data-label { display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-sub); font-weight: 600; }
+    .system-data-value { font-weight: 700; font-size: 0.98rem; color: var(--text-main); }
+    .system-data-value.positive { color: var(--success); }
+    .system-data-value.negative { color: var(--danger); }
 
-    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; margin-bottom: 1.15rem; }
-    .numpad-btn {
-      padding: 1rem; border: 1.5px solid var(--border);
-      background: var(--bg-surface); border-radius: var(--radius-lg);
-      font-size: 1.25rem; font-weight: 700; cursor: pointer; color: var(--text-main);
-      transition: all 0.15s;
+    .result-card {
+      background: var(--bg-surface); border-radius: var(--radius-2xl);
+      border: 2px solid var(--border); padding: 1.75rem; text-align: center; margin-bottom: 1.25rem;
     }
-    .numpad-btn:hover { background: var(--bg-subtle); }
-    .numpad-btn.action { background: var(--success); color: white; border-color: var(--success); }
-    .numpad-btn.action:hover { filter: brightness(0.9); }
+    .result-title { font-size: 0.9rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.85rem; text-transform: uppercase; letter-spacing: .05em; }
+    .selisih-box { font-size: 2.25rem; font-weight: 800; margin-bottom: 0.85rem; padding: 0.85rem; border-radius: var(--radius-xl); }
+    .selisih-box.balance { color: var(--success); background: var(--success-light); }
+    .selisih-box.surplus { color: var(--info); background: rgba(2, 132, 199, 0.15); }
+    .selisih-box.minus { color: var(--danger); background: var(--danger-light); }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1.15rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; }
+    .status-badge.balance { background: var(--success-light); color: var(--success); }
+    .status-badge.surplus { background: rgba(2, 132, 199, 0.15); color: var(--info); }
+    .status-badge.minus { background: var(--danger-light); color: var(--danger); }
 
-    .form-group { margin-bottom: 1.15rem; }
-    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
-    .form-input {
-      width: 100%; padding: 0.7rem 0.95rem; border: 1.5px solid var(--border);
-      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
-      font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.15s;
-    }
-    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
-
-    /* SEGMENTED PAYMENT TOGGLE (TUNAI / HUTANG) */
-    .payment-type-toggle {
-      display: flex;
-      gap: 0.4rem;
-      background: var(--bg-subtle);
-      padding: 4px;
-      border-radius: var(--radius-md);
-      border: 1.5px solid var(--border);
-      margin-bottom: 1.15rem;
-    }
-    .payment-type-btn {
-      flex: 1;
-      padding: 0.55rem;
-      border: none;
-      background: transparent;
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      transition: all 0.2s;
-    }
-    .payment-type-btn.active {
-      background: var(--bg-surface);
-      color: var(--primary);
-      box-shadow: var(--shadow-sm);
-    }
-    .payment-type-btn.active.hutang-active {
-      color: var(--warning);
-    }
-
-    /* AUTOCOMPLETE DROPDOWN PELANGGAN */
-    .customer-autocomplete-wrapper {
-      position: relative;
-      width: 100%;
-    }
-    .customer-results-box {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: var(--bg-surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-lg);
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 1000;
-      display: none;
-      margin-top: 4px;
-    }
-    .customer-results-box.active {
-      display: block;
-    }
-    .customer-result-item {
-      padding: 0.7rem 1rem;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.15s;
-    }
-    .customer-result-item:hover {
-      background: var(--bg-subtle);
-    }
-    .customer-result-item:last-child {
-      border-bottom: none;
-    }
-
-    /* GRID BANK & E-WALLET */
-    .bank-select-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.5rem;
-      margin-top: 0.65rem;
-    }
-    @media (max-width: 480px) {
-      .bank-select-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-    .bank-card-btn {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0.65rem 0.4rem;
-      background: var(--bg-subtle);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-md);
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--text-sub);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      user-select: none;
-      text-align: center;
-    }
-    .bank-card-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: var(--bg-surface);
-    }
-    .bank-card-btn.active {
-      background: var(--primary-light);
-      border-color: var(--primary);
-      color: var(--primary);
-      box-shadow: 0 0 0 2px var(--primary-light);
-    }
-
-    .btn-add-bank-header {
-      background: transparent;
-      border: none;
-      color: var(--primary);
-      font-size: 0.78rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.3rem 0.5rem;
-      border-radius: var(--radius-sm);
-      transition: all 0.15s;
-    }
-    .btn-add-bank-header:hover {
-      background: var(--primary-light);
-    }
-
-    .kas-info {
-      background: var(--bg-subtle); border-radius: var(--radius-lg);
-      padding: 0.85rem 1rem; margin-bottom: 1.15rem; text-align: center; border: 1px solid var(--border);
-    }
-    .kas-info-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
-    .kas-info-value { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
-
-    .receipt-toggle-box {
-      background: var(--bg-subtle);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.15rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      cursor: pointer;
-    }
-    .receipt-toggle-box input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .receipt-toggle-box label {
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--text-main);
-      user-select: none;
-    }
+    .comparison-table { width: 100%; margin-top: 1.25rem; border-collapse: collapse; font-size: 0.9rem; }
+    .comparison-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
+    .comparison-table td:first-child { text-align: left; color: var(--text-sub); font-weight: 600; }
+    .comparison-table td:last-child { text-align: right; font-weight: 700; color: var(--text-main); }
+    .comparison-table tr:last-child td { border-bottom: none; }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.8rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.92rem;
-      font-weight: 700; cursor: pointer; border: none; font-family: inherit; width: 100%; transition: all 0.15s;
+      padding: 0.8rem 1.5rem; border-radius: var(--radius-lg); font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; border: none; font-family: inherit; transition: all 0.15s;
     }
-    .btn-success { background: var(--success); color: white; box-shadow: var(--shadow-sm); }
-    .btn-success:hover { filter: brightness(0.95); transform: translateY(-1px); }
+    .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .btn-primary:hover:not(:disabled) { filter: brightness(0.95); transform: translateY(-1px); }
     .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.82rem; width: auto; }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .btn-icon-sm {
-      width: 28px; height: 28px; border-radius: 6px; border: none;
-      display: inline-flex; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 0.75rem; transition: all 0.15s; flex-shrink: 0;
-    }
-    .btn-icon-sm.btn-danger { background: var(--danger-light); color: var(--danger); }
-    .btn-icon-sm.btn-danger:hover { background: var(--danger); color: #fff; }
-
-    .manage-bank-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.6rem 0.85rem;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(15,23,42,0.65);
-      backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
-      z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
-    }
-    .modal-overlay.active { opacity: 1; visibility: visible; }
-    .modal-content {
-      background: var(--bg-surface); border-radius: var(--radius-xl);
-      width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column;
-    }
-    .modal-header {
-      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .modal-body { padding: 1.15rem; }
-    .modal-footer {
-      padding: 0.85rem 1.25rem; border-top: 1px solid var(--border);
-      display: flex; gap: 0.5rem; justify-content: flex-end; background: var(--bg-subtle);
-    }
-
-    /* MODAL KONFIRMASI LOGOUT INTERNAL */
+    /* CUSTOM DIALOG POPUP */
     .custom-modal-backdrop {
       position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
@@ -516,16 +322,22 @@
     }
     .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
     .custom-dialog-card {
-      background: var(--bg-surface); border: 1px solid var(--border);
-      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
-      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
     }
     .dialog-icon-wrap {
       width: 60px; height: 60px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 1.6rem; margin-bottom: 1rem;
     }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
     .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.success { background: var(--success-light); color: var(--success); }
     .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
     .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
     .dialog-btn-group { display: flex; gap: 0.65rem; }
@@ -534,9 +346,11 @@
       font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
       font-family: inherit; transition: all 0.15s;
     }
-    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-primary { background: var(--primary); color: #fff; }
+    .dialog-btn-primary:hover { filter: brightness(0.95); }
     .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
+    /* STRUK MODAL */
     .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
     .struk-modal-overlay.active{opacity:1;visibility:visible}
     .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
@@ -545,26 +359,34 @@
     .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
 
     .loading-overlay {
-      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(4px); display: flex; flex-direction: column;
-      align-items: center; justify-content: center; z-index: 99999;
-      opacity: 0; visibility: hidden; transition: all 0.2s ease;
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.2s ease;
     }
     .loading-overlay.active { opacity: 1; visibility: visible; }
     .spinner {
-      width: 42px; height: 42px; border: 3.5px solid rgba(255, 255, 255, 0.2);
-      border-top-color: var(--primary); border-radius: 50%;
-      animation: spinOverlay 0.8s linear infinite;
+      width: 42px; height: 42px;
+      border: 3.5px solid rgba(255, 255, 255, 0.2); border-top-color: var(--primary);
+      border-radius: 50%; animation: spinOverlay 0.8s linear infinite;
     }
     @keyframes spinOverlay { to { transform: rotate(360deg); } }
 
     .toast-box {
-      position: fixed; bottom: calc(var(--bottom-nav-height) + 1rem); left: 50%;
-      transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
+      position: fixed; bottom: calc(var(--bottom-nav-height) + 1rem);
+      left: 50%; transform: translateX(-50%); z-index: 100000;
+      display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
     }
 
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
-    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
+    .mobile-nav {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border);
+      z-index: 99; padding: 0 0.5rem;
+    }
+    .mobile-nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600;
+    }
     .mobile-nav-item.active { color: var(--primary); }
     .mobile-nav-item i { font-size: 1.1rem; }
     @media (max-width: 1024px) {
@@ -626,8 +448,8 @@
                 <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
                 <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
                 <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
-                <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
-                <li><a href="page-kas-topup.html" class="nav-link active"><span>Top Up</span></a></li>
+                <li><a href="page-closing.html" class="nav-link active"><span>Closing Shift</span></a></li>
+                <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
                 <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
               </ul>
             </li>
@@ -694,7 +516,7 @@
         <div class="header-left">
           <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
           <button class="btn-icon-box" id="btnBackKasir" style="display: none;" title="Kembali ke Kasir"><i class="fas fa-arrow-left"></i></button>
-          <h1 class="header-title">Top Up Kas</h1>
+          <h1 class="header-title">Closing Shift</h1>
         </div>
         <div class="header-actions">
           <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
@@ -703,128 +525,111 @@
       </header>
 
       <div class="page-content">
-        <div class="topup-card">
-          <div class="card">
-            <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-arrow-up" style="color: var(--success);"></i> Top Up Kas Saldo</h3>
-            </div>
-            <div class="card-body">
-              <div class="kas-info">
-                <div class="kas-info-label">Kas Tersedia di Laci (Uang di Tangan)</div>
-                <div class="kas-info-value" id="kasTersedia">Rp 0</div>
-              </div>
-
-              <div class="amount-display" id="topupAmount">Rp 0</div>
-
-              <div class="quick-amounts">
-                <button class="quick-amount" data-amount="50000">50.000</button>
-                <button class="quick-amount" data-amount="100000">100.000</button>
-                <button class="quick-amount" data-amount="200000">200.000</button>
-                <button class="quick-amount" data-amount="500000">500.000</button>
-                <button class="quick-amount" data-amount="1000000">1.000.000</button>
-              </div>
-
-              <div class="numpad">
-                <button class="numpad-btn" data-num="1">1</button>
-                <button class="numpad-btn" data-num="2">2</button>
-                <button class="numpad-btn" data-num="3">3</button>
-                <button class="numpad-btn" data-num="4">4</button>
-                <button class="numpad-btn" data-num="5">5</button>
-                <button class="numpad-btn" data-num="6">6</button>
-                <button class="numpad-btn" data-num="7">7</button>
-                <button class="numpad-btn" data-num="8">8</button>
-                <button class="numpad-btn" data-num="9">9</button>
-                <button class="numpad-btn" data-num="0">0</button>
-                <button class="numpad-btn" data-num="00">00</button>
-                <button class="numpad-btn" data-num="000">000</button>
-                <button class="numpad-btn action" data-action="clear">C</button>
-                <button class="numpad-btn action" data-action="backspace" style="grid-column: span 2;">
-                  <i class="fas fa-backspace"></i>
-                </button>
-              </div>
-
-              <!-- Pilihan Bank / E-Wallet Bersih & Rapi -->
-              <div class="form-group">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
-                  <label class="form-label" style="margin-bottom:0;">Bank / E-Wallet Tujuan</label>
-                  <button type="button" class="btn-add-bank-header" onclick="window.openManageBankModal()">
-                    <i class="fas fa-cog"></i> Kelola Bank
-                  </button>
-                </div>
-                <input type="text" class="form-input" id="topupNote" placeholder="Pilih tombol di bawah atau ketik manual...">
-                
-                <div class="bank-select-grid" id="bankChipsContainer"></div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Biaya Admin <span style="color: var(--text-muted); font-size: 0.72rem;">(Opsional - Masuk Laba)</span></label>
-                <input type="number" class="form-input" id="adminFee" placeholder="0" min="0">
-                <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.3rem;">
-                  <i class="fas fa-info-circle"></i> Biaya admin dihitung sebagai laba bersih konter.
-                </p>
-              </div>
-
-              <!-- Pilihan Pembayaran: Tunai Langsung vs Hutang (Bon) -->
-              <div class="form-group">
-                <label class="form-label">Metode Pembayaran</label>
-                <div class="payment-type-toggle">
-                  <button type="button" class="payment-type-btn active" id="btnPayTunai" onclick="setPaymentMode('tunai')">
-                    <i class="fas fa-money-bill-wave"></i> Tunai (Lunas)
-                  </button>
-                  <button type="button" class="payment-type-btn" id="btnPayHutang" onclick="setPaymentMode('hutang')">
-                    <i class="fas fa-hand-holding-usd"></i> Hutang (Bon)
-                  </button>
-                </div>
-              </div>
-
-              <!-- Input Pelanggan Autocomplete & Tambah Baru -->
-              <div class="form-group" id="customerDebtWrapper" style="display: none; background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1.5px dashed var(--warning);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                  <label class="form-label" style="color: var(--warning); margin-bottom: 0;"><i class="fas fa-user-clock"></i> Pelanggan Berhutang *</label>
-                  <button type="button" class="btn-add-bank-header" onclick="openAddCustomerModal()" style="color: var(--warning);">
-                    <i class="fas fa-user-plus"></i> Tambah Baru
-                  </button>
-                </div>
-
-                <div class="customer-autocomplete-wrapper">
-                  <input type="text" class="form-input" id="customerSearchInput" placeholder="Ketik nama pelanggan..." autocomplete="off">
-                  <input type="hidden" id="selectedCustomerId">
-                  <div class="customer-results-box" id="customerResultsBox"></div>
-                </div>
-                <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.35rem; display: block;">
-                  <i class="fas fa-info-circle"></i> Pilih dari dropdown atau klik "+ Tambah Baru". Tagihan otomatis masuk ke menu Hutang.
-                </small>
-              </div>
-
-              <!-- Rangkuman Tagihan & Uang Diterima -->
-              <div class="card" style="background: var(--bg-subtle); margin-bottom: 1.15rem; box-shadow: none; border: 1.5px dashed var(--border);">
-                <div class="card-body" style="padding: 0.85rem 1rem;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.82rem;">
-                    <span style="color: var(--text-muted);">Nominal Top Up Saldo</span>
-                    <span id="summaryTopup" style="font-weight: 700;">Rp 0</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.82rem;">
-                    <span style="color: var(--text-muted);">Biaya Admin (Laba)</span>
-                    <span id="summaryAdminFee" style="font-weight: 700; color: var(--success);">Rp 0</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; padding-top: 0.45rem; border-top: 1px solid var(--border); font-size: 0.95rem;">
-                    <span style="font-weight: 700;" id="labelTotalSummary">Total Diterima dari Pelanggan</span>
-                    <span style="font-weight: 800; color: var(--success);" id="summaryTotal">Rp 0</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Opsi Cetak Struk -->
-              <div class="receipt-toggle-box">
-                <input type="checkbox" id="printReceiptToggle" checked>
-                <label for="printReceiptToggle">Cetak Struk setelah transaksi</label>
-              </div>
-
-              <button class="btn btn-success" id="btnSimpanTopup">
-                <i class="fas fa-save"></i> Proses Top Up
-              </button>
+        <!-- Warning jika shift sudah tutup -->
+        <div class="card" id="warningClosed" style="display: none; margin-bottom: 1.25rem; border-left: 4px solid var(--warning);">
+          <div class="card-body" style="display: flex; align-items: center; gap: 1rem; color: var(--warning);">
+            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+            <div>
+              <div style="font-weight: 700;">Shift Sudah Ditutup</div>
+              <div style="font-size: 0.85rem; opacity: 0.85;">Tidak dapat melakukan closing ulang. Shift harus berstatus "Buka" untuk melakukan closing.</div>
             </div>
           </div>
+        </div>
+
+        <div class="closing-grid">
+          <!-- Kiri: Input Uang Fisik -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">
+                <i class="fas fa-money-bill-wave" style="color: var(--success);"></i>
+                Hitung Uang Fisik di Laci
+              </h3>
+              <button class="btn btn-secondary" onclick="ClosingCalculator.resetFisik()" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+                <i class="fas fa-redo"></i> Reset
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="denomination-grid" id="denominationGrid"></div>
+              
+              <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 2px dashed var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-weight: 700; color: var(--text-main);">Total Uang Fisik</span>
+                  <span style="font-size: 1.6rem; font-weight: 800; color: var(--success);" id="totalFisik">Rp 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kanan: Data Sistem -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">
+                <i class="fas fa-database" style="color: var(--primary);"></i>
+                Data Kas Sistem (Sinkron Master)
+              </h3>
+              <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.65rem; border-radius:999px;" id="kasDate">Hari Ini</span>
+            </div>
+            <div class="card-body">
+              <div class="system-data-grid">
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-wallet"></i> Modal Awal</div>
+                  <div class="system-data-value" id="sistemModal">Rp 0</div>
+                </div>
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-arrow-down" style="color: var(--success);"></i> Kas Masuk Lain</div>
+                  <div class="system-data-value positive" id="sistemMasuk">+ Rp 0</div>
+                </div>
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-arrow-up" style="color: var(--danger);"></i> Kas Keluar Toko</div>
+                  <div class="system-data-value negative" id="sistemKeluar">- Rp 0</div>
+                </div>
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-shopping-cart" style="color: var(--success);"></i> Penjualan (Tunai)</div>
+                  <div class="system-data-value positive" id="sistemPenjualan">+ Rp 0</div>
+                </div>
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-plus-circle" style="color: var(--success);"></i> Top Up (Uang Fisik)</div>
+                  <div class="system-data-value positive" id="sistemTopup">+ Rp 0</div>
+                </div>
+                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-minus-circle" style="color: var(--danger);"></i> Tarik Tunai (Fisik Keluar)</div>
+                  <div class="system-data-value negative" id="sistemTarik">- Rp 0</div>
+                </div>
+                <div class="system-data-item highlight">
+                  <div class="system-data-label"><i class="fas fa-calculator"></i> Total Seharusnya di Laci</div>
+                  <div class="system-data-value" id="sistemGlobal" style="color: var(--primary); font-size: 1.15rem; font-weight: 800;">Rp 0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kartu Hasil Selisih Closing -->
+        <div class="result-card" id="resultCard">
+          <div class="result-title">Hasil Perhitungan Selisih Kas</div>
+          <div class="selisih-box balance" id="selisihBox">Rp 0</div>
+          <div class="status-badge balance" id="statusBadge">
+            <i class="fas fa-check-circle"></i> BALANCE (COCOK)
+          </div>
+          
+          <table class="comparison-table">
+            <tr><td>Total Uang Fisik Nyata di Laci</td><td id="tableFisik">Rp 0</td></tr>
+            <tr><td>Total Kas Seharusnya Menurut Sistem</td><td id="tableSistem">Rp 0</td></tr>
+            <tr style="font-size: 1.05rem; background: var(--bg-subtle);">
+              <td style="font-weight: 700;">Status Selisih Kas</td>
+              <td id="tableSelisih" style="font-weight: 800; color: var(--success);">Rp 0</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Tombol Aksi -->
+        <div style="display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="btnSimpanClosing" style="padding: 0.9rem 2rem; font-size: 0.95rem;">
+            <i class="fas fa-save"></i> Simpan & Tutup Shift
+          </button>
+          <button class="btn btn-secondary" onclick="window.location.href='page-kas-shift.html'" style="padding: 0.9rem 1.75rem; font-size: 0.95rem;">
+            <i class="fas fa-arrow-left"></i> Kembali ke Kas & Shift
+          </button>
         </div>
       </div>
     </main>
@@ -838,50 +643,15 @@
     </nav>
   </div>
 
-  <!-- Modal Kelola Bank (Cloud Sync) -->
-  <div class="modal-overlay" id="manageBankModal" onclick="if(event.target===this) closeManageBankModal()">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
-          <i class="fas fa-university" style="color:var(--primary);"></i> Kelola Bank / E-Wallet
-        </h3>
-        <button class="btn-icon-box" onclick="closeManageBankModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <div style="display:flex; gap:0.5rem; margin-bottom: 1.15rem;">
-          <input type="text" class="form-input" id="newBankInput" placeholder="Tambah nama baru..." style="flex:1;">
-          <button type="button" class="btn btn-primary" onclick="addNewBank()" style="width: auto; padding: 0.65rem 1rem;"><i class="fas fa-plus"></i></button>
-        </div>
-        <div id="manageBankList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem;"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="closeManageBankModal()" style="width:100%;">Tutup</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Tambah Pelanggan Baru -->
-  <div class="modal-overlay" id="addCustomerModal" onclick="if(event.target===this) closeAddCustomerModal()">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
-          <i class="fas fa-user-plus" style="color:var(--primary);"></i> Tambah Pelanggan Baru
-        </h3>
-        <button class="btn-icon-box" onclick="closeAddCustomerModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <div class="form-group">
-          <label class="form-label">Nama Lengkap *</label>
-          <input type="text" class="form-input" id="newCustomerName" placeholder="Nama pelanggan">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Nomor Telepon / WhatsApp (Opsional)</label>
-          <input type="text" class="form-input" id="newCustomerPhone" placeholder="08xxxxxxxxxx">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddCustomerModal()">Batal</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveNewCustomer()"><i class="fas fa-save"></i> Simpan Pelanggan</button>
+  <!-- Modal Konfirmasi Closing Internal -->
+  <div class="custom-modal-backdrop" id="customConfirmModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap warning" id="confirmDialogIcon"><i class="fas fa-exclamation-triangle"></i></div>
+      <h3 class="dialog-title" id="confirmDialogTitle">Tutup Shift</h3>
+      <p class="dialog-message" id="confirmDialogMessage">Simpan hasil closing dan tutup shift sekarang?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmAction">Ya, Tutup Shift</button>
       </div>
     </div>
   </div>
@@ -899,11 +669,11 @@
     </div>
   </div>
 
-  <!-- Modal Struk Bukti Top Up -->
+  <!-- Modal Struk Bukti Closing Shift -->
   <div class="struk-modal-overlay" id="strukModal">
     <div class="struk-modal">
       <div class="struk-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main);"><i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Top Up Saldo</h3>
+        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main);"><i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Closing Shift</h3>
         <button class="btn-icon-box" onclick="closeStrukModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
       <div class="struk-body" style="background:#f8fafc; padding:1rem; display:flex; justify-content:center;">
@@ -930,265 +700,35 @@
       const auth = firebase.auth();
       const db = firebase.firestore();
 
-      let lastTransactionData = null;
+      let lastClosingData = null;
       let storeSettings = {};
-      let customersList = [];
-      let paymentMode = 'tunai';
-
-      const INITIAL_BANKS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
-      let bankList = [];
-
-      async function loadBankList() {
-        try {
-          const cached = localStorage.getItem('webpos_bank_list');
-          if (cached) bankList = JSON.parse(cached);
-          else bankList = [...INITIAL_BANKS];
-        } catch(e) {
-          bankList = [...INITIAL_BANKS];
-        }
-        renderBankChips();
-
-        try {
-          const docRef = db.collection("settings").doc("banks");
-          const docSnap = await docRef.get();
-          if (docSnap.exists && Array.isArray(docSnap.data().list) && docSnap.data().list.length > 0) {
-            bankList = docSnap.data().list;
-          } else {
-            await docRef.set({ list: INITIAL_BANKS, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-            bankList = [...INITIAL_BANKS];
-          }
-          localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
-          renderBankChips();
-          if (document.getElementById('manageBankModal').classList.contains('active')) {
-            renderManageBankList();
-          }
-        } catch(err) {
-          console.warn("Gagal memuat list bank dari Cloud:", err);
-        }
-      }
-
-      async function saveBankListToCloud(newList) {
-        bankList = newList;
-        localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
-        renderBankChips();
-        renderManageBankList();
-
-        try {
-          await db.collection("settings").doc("banks").set({
-            list: bankList,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        } catch(e) {
-          console.error("Gagal sinkron bank ke Cloud:", e);
-        }
-      }
-
-      function renderBankChips() {
-        const container = document.getElementById('bankChipsContainer');
-        if (!container) return;
-
-        const currentSelected = (document.getElementById('topupNote')?.value || '').trim();
-
-        container.innerHTML = bankList.map(c => `
-          <div class="bank-card-btn ${currentSelected === c ? 'active' : ''}" onclick="window.selectBankChip('${c.replace(/'/g, "\\'")}')">
-            <span>${c}</span>
-          </div>
-        `).join('');
-      }
-
-      window.renderManageBankList = function() {
-        const listContainer = document.getElementById('manageBankList');
-        if (!listContainer) return;
-        
-        listContainer.innerHTML = bankList.map(c => `
-          <div class="manage-bank-item">
-            <span>${c}</span>
-            <button type="button" class="btn-icon-sm btn-danger" onclick="window.deleteBankItem('${c.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
-          </div>
-        `).join('');
+      let todayStats = {
+        modalAwal: 0,
+        penjualan: 0,
+        topup: 0,
+        topupAdmin: 0,
+        tarik: 0,
+        tarikAdmin: 0,
+        kasMasuk: 0,
+        kasKeluar: 0,
+        uangGlobal: 0
       };
+      let fisikTotal = 0;
+      let isShiftOpen = true;
 
-      window.selectBankChip = function(name) {
-        const noteInput = document.getElementById('topupNote');
-        if (noteInput) {
-          noteInput.value = name;
-        }
-        document.querySelectorAll('.bank-card-btn').forEach(el => {
-          const spanText = el.querySelector('span')?.textContent || el.textContent;
-          el.classList.toggle('active', spanText.trim() === name);
-        });
-      };
-
-      window.openManageBankModal = function() {
-        const input = document.getElementById('newBankInput');
-        if (input) input.value = '';
-        renderManageBankList();
-        document.getElementById('manageBankModal').classList.add('active');
-        setTimeout(() => input && input.focus(), 150);
-      };
-
-      window.closeManageBankModal = function() {
-        document.getElementById('manageBankModal').classList.remove('active');
-      };
-
-      window.addNewBank = async function() {
-        const input = document.getElementById('newBankInput');
-        const name = input ? input.value.trim() : '';
-        if (!name) {
-          Utils.showToast('Nama bank atau e-wallet tidak boleh kosong', 'warning');
-          return;
-        }
-
-        if (!bankList.includes(name)) {
-          const updated = [name, ...bankList];
-          await saveBankListToCloud(updated);
-          window.selectBankChip(name);
-          input.value = '';
-          Utils.showToast(`"${name}" berhasil ditambahkan!`, 'success');
-        } else {
-          Utils.showToast(`"${name}" sudah ada dalam daftar`, 'info');
-        }
-      };
-
-      window.deleteBankItem = async function(name) {
-        bankList = bankList.filter(b => b !== name);
-        await saveBankListToCloud(bankList);
-        
-        const noteInput = document.getElementById('topupNote');
-        if (noteInput && noteInput.value === name) {
-          noteInput.value = '';
-        }
-        Utils.showToast(`"${name}" berhasil dihapus`, 'info');
-      };
-
-      async function loadCustomers() {
-        try {
-          const snap = await db.collection("customers").get();
-          customersList = [];
-          snap.forEach(doc => {
-            const data = doc.data();
-            customersList.push({ id: doc.id, name: data.name || 'Tanpa Nama', phone: data.phone || '-' });
-          });
-          setupCustomerSearch();
-        } catch(e) {
-          console.error("Error load customers:", e);
-        }
-      }
-
-      function setupCustomerSearch() {
-        const input = document.getElementById('customerSearchInput');
-        const box = document.getElementById('customerResultsBox');
-
-        input.addEventListener('input', function() {
-          const q = this.value.toLowerCase().trim();
-          if (!q) {
-            box.classList.remove('active');
-            return;
-          }
-
-          const filtered = customersList.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q));
-          if (filtered.length > 0) {
-            box.innerHTML = filtered.map(c => `
-              <div class="customer-result-item" onclick="window.selectCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
-                <div style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">${c.name}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</div>
-              </div>
-            `).join('');
-            box.classList.add('active');
-          } else {
-            box.innerHTML = `
-              <div class="customer-result-item" style="cursor: default; color: var(--text-muted); font-size: 0.82rem;">
-                Pelanggan tidak ditemukan
-              </div>
-            `;
-            box.classList.add('active');
-          }
-        });
-
-        document.addEventListener('click', (e) => {
-          if (!e.target.closest('.customer-autocomplete-wrapper')) {
-            box.classList.remove('active');
-          }
-        });
-      }
-
-      window.selectCustomer = function(id, name) {
-        document.getElementById('customerSearchInput').value = name;
-        document.getElementById('selectedCustomerId').value = id;
-        document.getElementById('customerResultsBox').classList.remove('active');
-      };
-
-      window.openAddCustomerModal = function() {
-        document.getElementById('newCustomerName').value = document.getElementById('customerSearchInput').value || '';
-        document.getElementById('newCustomerPhone').value = '';
-        document.getElementById('addCustomerModal').classList.add('active');
-        setTimeout(() => document.getElementById('newCustomerName').focus(), 150);
-      };
-
-      window.closeAddCustomerModal = function() {
-        document.getElementById('addCustomerModal').classList.remove('active');
-      };
-
-      window.saveNewCustomer = async function() {
-        const name = document.getElementById('newCustomerName').value.trim();
-        const phone = document.getElementById('newCustomerPhone').value.trim();
-
-        if (!name) {
-          Utils.showToast('Nama pelanggan wajib diisi', 'warning');
-          return;
-        }
-
-        Utils.showLoading('Menyimpan pelanggan...');
-        try {
-          const docRef = await db.collection("customers").add({
-            name,
-            phone: phone || '-',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          const newCustomer = { id: docRef.id, name, phone: phone || '-' };
-          customersList.unshift(newCustomer);
-          window.selectCustomer(docRef.id, name);
-
-          Utils.hideLoading();
-          closeAddCustomerModal();
-          Utils.showToast(`Pelanggan "${name}" berhasil ditambahkan!`, 'success');
-        } catch(e) {
-          Utils.hideLoading();
-          Utils.showToast('Gagal menambah pelanggan: ' + e.message, 'error');
-        }
-      };
-
-      window.setPaymentMode = function(mode) {
-        paymentMode = mode;
-        const btnTunai = document.getElementById('btnPayTunai');
-        const btnHutang = document.getElementById('btnPayHutang');
-        const debtWrapper = document.getElementById('customerDebtWrapper');
-        const labelTotal = document.getElementById('labelTotalSummary');
-
-        if (mode === 'hutang') {
-          btnTunai.classList.remove('active');
-          btnHutang.classList.add('active', 'hutang-active');
-          debtWrapper.style.display = 'block';
-          labelTotal.textContent = 'Total Hutang (Bon Pelanggan)';
-        } else {
-          btnHutang.classList.remove('active', 'hutang-active');
-          btnTunai.classList.add('active');
-          debtWrapper.style.display = 'none';
-          labelTotal.textContent = 'Total Diterima dari Pelanggan';
-        }
-      };
+      const denominations = [
+        { value: 100000, label: '100.000' },
+        { value: 50000, label: '50.000' },
+        { value: 20000, label: '20.000' },
+        { value: 10000, label: '10.000' },
+        { value: 5000, label: '5.000' },
+        { value: 2000, label: '2.000' },
+        { value: 1000, label: '1.000' },
+        { value: 500, label: '500' }
+      ];
 
       function isFromKasir() {
         return localStorage.getItem('fromKasir') === 'true';
-      }
-
-      function goBack() {
-        const dariKasir = isFromKasir();
-        localStorage.removeItem('fromKasir');
-        if (dariKasir) {
-          window.location.replace('page-kasir.html');
-        }
       }
 
       async function syncStoreBrandName() {
@@ -1207,10 +747,23 @@
         } catch(e) {}
       }
 
+      window.showCustomConfirm = function(title, message, onConfirm) {
+        document.getElementById("confirmDialogTitle").textContent = title;
+        document.getElementById("confirmDialogMessage").textContent = message;
+        const btnAction = document.getElementById("btnConfirmAction");
+        btnAction.onclick = () => {
+          closeCustomConfirm();
+          if (onConfirm) onConfirm();
+        };
+        document.getElementById("customConfirmModal").classList.add("open");
+      };
+
+      window.closeCustomConfirm = function() {
+        document.getElementById("customConfirmModal").classList.remove("open");
+      };
+
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
-        loadBankList();
-        loadCustomers();
 
         if (isFromKasir()) {
           const btnBack = document.getElementById('btnBackKasir');
@@ -1235,7 +788,7 @@
             if (doc.exists) {
               userData = doc.data();
               if (typeof RoleGuard !== 'undefined') {
-                RoleGuard.apply(userData.role || 'kasir');
+                RoleGuard.apply((userData.role || 'kasir').toLowerCase());
               }
             }
           } catch(e) {}
@@ -1247,7 +800,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initTopup(user, dName);
+          initClosing(user);
         });
       });
 
@@ -1325,341 +878,311 @@
         }
       }
 
-      async function initTopup(user, userName) {
-        let amount = 0;
-        let adminFee = 0;
-        let kasTersedia = 0;
+      function generateDenominationInputs() {
+        const grid = document.getElementById('denominationGrid');
+        grid.innerHTML = denominations.map(d => `
+          <div class="denomination-item">
+            <div class="denomination-item-top">
+              <span class="denomination-label">${d.label}</span>
+              <span class="denomination-total" id="total_${d.value}">Rp 0</span>
+            </div>
+            <input type="number" class="form-input denomination-input" id="denom_${d.value}" placeholder="Jumlah lembar / keping" min="0" oninput="ClosingCalculator.calculate()">
+          </div>
+        `).join('');
+      }
 
-        function updateSummary() {
-          const feeInput = document.getElementById('adminFee');
-          adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
-          const total = amount + adminFee;
+      window.ClosingCalculator = {
+        calculate() {
+          fisikTotal = 0;
+          const detail = {};
+          denominations.forEach(d => {
+            const qty = parseInt(document.getElementById(`denom_${d.value}`).value) || 0;
+            const subtotal = qty * d.value;
+            fisikTotal += subtotal;
+            detail[d.value] = qty;
+            document.getElementById(`total_${d.value}`).textContent = Utils.formatRupiah(subtotal);
+          });
+          document.getElementById('totalFisik').textContent = Utils.formatRupiah(fisikTotal);
+          this.updateComparison();
+          return { total: fisikTotal, detail };
+        },
+        resetFisik() {
+          denominations.forEach(d => {
+            const el = document.getElementById(`denom_${d.value}`);
+            if (el) el.value = '';
+            const t = document.getElementById(`total_${d.value}`);
+            if (t) t.textContent = 'Rp 0';
+          });
+          this.calculate();
+          Utils.showToast('Input fisik telah direset', 'info');
+        },
+        updateComparison() {
+          const selisih = fisikTotal - todayStats.uangGlobal;
+          const selisihBox = document.getElementById('selisihBox');
+          const statusBadge = document.getElementById('statusBadge');
+          const tableSelisih = document.getElementById('tableSelisih');
 
-          document.getElementById('summaryTopup').textContent = Utils.formatRupiah(amount);
-          document.getElementById('summaryAdminFee').textContent = Utils.formatRupiah(adminFee);
-          document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
-        }
+          document.getElementById('tableFisik').textContent = Utils.formatRupiah(fisikTotal);
+          document.getElementById('tableSistem').textContent = Utils.formatRupiah(todayStats.uangGlobal);
+          document.getElementById('tableSelisih').textContent = (selisih >= 0 ? '+' : '') + Utils.formatRupiah(selisih);
 
-        async function loadKasTersedia() {
-          try {
-            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-            
-            let modalAwal = 0;
-            try {
-              let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-              if (!modalDoc.exists) {
-                modalDoc = await db.collection("modal").doc(today).get();
-              }
-              modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
-            } catch(e) {}
+          selisihBox.className = 'selisih-box';
+          statusBadge.className = 'status-badge';
 
-            const snapshot = await db.collection("transactions").where("date", "==", today).get();
-            
-            let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0;
-            let topupAdminFee = 0, tarikAdminFee = 0;
-
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              if (data.status === 'cancelled' || data.status === 'voided') return;
-
-              switch (data.type) {
-                case 'penjualan':
-                  penjualan += data.paymentMethod === 'hutang'
-                    ? (data.paymentAmount || 0)
-                    : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
-                  break;
-                case 'kas_masuk':
-                  if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
-                    kasMasuk += data.amount || 0;
-                  }
-                  break;
-                case 'kas_keluar':
-                  kasKeluar += data.amount || 0;
-                  break;
-                case 'topup':
-                  if (data.paymentMethod !== 'hutang') {
-                    topup += data.amount || 0;
-                    topupAdminFee += data.adminFee || 0;
-                  }
-                  break;
-                case 'tarik':
-                  tarik += data.amount || 0;
-                  tarikAdminFee += data.adminFee || 0;
-                  break;
-              }
-            });
-
-            const topupKasFisik = topup + topupAdminFee;
-            const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
-            kasTersedia = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
-
-            document.getElementById('kasTersedia').textContent = Utils.formatRupiah(kasTersedia);
-          } catch (error) {
-            console.error("Error loading kas tersedia:", error);
+          if (selisih === 0) {
+            selisihBox.classList.add('balance');
+            statusBadge.classList.add('balance');
+            statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> BALANCE (COCOK)';
+            tableSelisih.style.color = 'var(--success)';
+          } else if (selisih > 0) {
+            selisihBox.classList.add('surplus');
+            statusBadge.classList.add('surplus');
+            statusBadge.innerHTML = '<i class="fas fa-arrow-up"></i> LEBIH (SURPLUS) ' + Utils.formatRupiah(selisih);
+            tableSelisih.style.color = 'var(--info)';
+          } else {
+            selisihBox.classList.add('minus');
+            statusBadge.classList.add('minus');
+            statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> KURANG (MINUS) ' + Utils.formatRupiah(Math.abs(selisih));
+            tableSelisih.style.color = 'var(--danger)';
           }
+          selisihBox.textContent = (selisih >= 0 ? '+' : '') + Utils.formatRupiah(selisih);
         }
+      };
 
-        function updateDisplay() {
-          document.getElementById('topupAmount').textContent = Utils.formatRupiah(amount);
-          updateSummary();
-        }
+      async function initClosing(user) {
+        generateDenominationInputs();
+        Utils.showLoading('Memuat data sistem...');
 
-        const feeField = document.getElementById('adminFee');
-        if (feeField) {
-          feeField.addEventListener('input', updateSummary);
-        }
+        try {
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          document.getElementById('kasDate').textContent = today;
 
-        document.querySelectorAll('.numpad-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const num = btn.dataset.num;
-            const action = btn.dataset.action;
-
-            if (num !== undefined) {
-              if (num === '00') {
-                amount = amount * 100;
-              } else if (num === '000') {
-                amount = amount * 1000;
-              } else {
-                amount = amount * 10 + parseInt(num);
-              }
-            } else if (action === 'clear') {
-              amount = 0;
-            } else if (action === 'backspace') {
-              amount = Math.floor(amount / 10);
+          let modalAwal = 0;
+          try {
+            let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+            if (!modalDoc.exists) {
+              modalDoc = await db.collection("modal").doc(today).get();
             }
-            updateDisplay();
+            modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          } catch(e) {}
+
+          const snapshot = await db.collection("transactions").where("date", "==", today).get();
+          
+          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, topupAdmin = 0, tarik = 0, tarikAdmin = 0;
+
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'cancelled' || data.status === 'voided') return;
+
+            switch (data.type) {
+              case 'penjualan':
+                penjualan += data.paymentMethod === 'hutang'
+                  ? (data.paymentAmount || 0)
+                  : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                break;
+              case 'kas_masuk':
+                if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
+                  kasMasuk += data.amount || 0;
+                }
+                break;
+              case 'kas_keluar':
+                kasKeluar += data.amount || 0;
+                break;
+              case 'topup':
+                if (data.paymentMethod !== 'hutang') {
+                  topup += data.amount || 0;
+                  topupAdmin += data.adminFee || 0;
+                }
+                break;
+              case 'tarik':
+                tarik += data.amount || 0;
+                tarikAdmin += data.adminFee || 0;
+                break;
+            }
           });
-        });
 
-        document.querySelectorAll('.quick-amount').forEach(btn => {
-          btn.addEventListener('click', () => {
-            amount = parseInt(btn.dataset.amount);
-            updateDisplay();
-          });
-        });
+          const topupKasFisik = topup + topupAdmin;
+          const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
+          const uangGlobal = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
 
-        const saveBtn = document.getElementById('btnSimpanTopup');
-        if (saveBtn) {
-          saveBtn.addEventListener('click', async () => {
-            if (amount <= 0) {
-              Utils.showToast('Masukkan jumlah top up terlebih dahulu', 'warning');
-              return;
+          todayStats = {
+            modalAwal, penjualan, topup, topupAdmin, tarik, tarikAdmin, kasMasuk, kasKeluar, uangGlobal
+          };
+
+          document.getElementById('sistemModal').textContent = Utils.formatRupiah(modalAwal);
+          document.getElementById('sistemMasuk').textContent = '+ ' + Utils.formatRupiah(kasMasuk);
+          document.getElementById('sistemKeluar').textContent = '- ' + Utils.formatRupiah(kasKeluar);
+          document.getElementById('sistemPenjualan').textContent = '+ ' + Utils.formatRupiah(penjualan);
+          document.getElementById('sistemTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
+          document.getElementById('sistemTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
+          document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(uangGlobal);
+
+          const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
+          isShiftOpen = shiftDoc.exists && shiftDoc.data().status === 'open';
+
+          if (!isShiftOpen) {
+            document.getElementById('warningClosed').style.display = 'block';
+            document.getElementById('resultCard').style.opacity = '0.6';
+            const btnSimpan = document.getElementById('btnSimpanClosing');
+            if (btnSimpan) {
+              btnSimpan.disabled = true;
+              btnSimpan.innerHTML = '<i class="fas fa-lock"></i> Shift Sudah Ditutup';
             }
+          }
 
-            const adminFeeValue = parseInt(document.getElementById('adminFee').value) || 0;
-            const total = amount + adminFeeValue;
-            const note = document.getElementById('topupNote').value.trim();
-            const shouldPrint = document.getElementById('printReceiptToggle').checked;
+          ClosingCalculator.updateComparison();
+        } catch (error) {
+          console.error("Error loading closing data:", error);
+          Utils.showToast('Gagal memuat data sistem: ' + error.message, 'error');
+        } finally {
+          Utils.hideLoading();
+        }
 
-            let customerId = '';
-            let customerName = '';
+        document.getElementById('btnSimpanClosing').addEventListener('click', () => {
+          if (!isShiftOpen) {
+            Utils.showToast('Shift sudah ditutup sebelumnya', 'warning');
+            return;
+          }
 
-            if (paymentMode === 'hutang') {
-              customerId = document.getElementById('selectedCustomerId').value.trim();
-              customerName = document.getElementById('customerSearchInput').value.trim();
+          const fisikData = ClosingCalculator.calculate();
+          const selisih = fisikData.total - todayStats.uangGlobal;
 
-              if (!customerName) {
-                Utils.showToast('Pilih atau cari nama pelanggan yang berhutang', 'warning');
-                return;
-              }
-            }
+          const pesanKonfirmasi = fisikData.total === 0 
+            ? 'Uang fisik di laci terhitung Rp 0. Tetap simpan dan tutup shift?' 
+            : 'Simpan hasil closing dan tutup shift sekarang?';
 
+          showCustomConfirm('Tutup Shift', pesanKonfirmasi, async () => {
             try {
-              Utils.showLoading('Menyimpan transaksi top up...');
+              Utils.showLoading('Menyimpan hasil closing shift...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const timestamp = Date.now();
-              const transactionId = 'TOP_' + timestamp;
+              const cashierName = document.getElementById('userName').textContent;
 
-              if (paymentMode === 'hutang' && !customerId) {
-                const existing = customersList.find(c => c.name.toLowerCase() === customerName.toLowerCase());
-                if (existing) {
-                  customerId = existing.id;
-                } else {
-                  const newCustRef = await db.collection("customers").add({
-                    name: customerName,
-                    phone: '-',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                  });
-                  customerId = newCustRef.id;
-                  customersList.unshift({ id: customerId, name: customerName, phone: '-' });
-                }
-              }
-
-              const transactionData = {
-                id: transactionId,
-                type: 'topup',
-                amount: amount,
-                adminFee: adminFeeValue,
-                total: total,
-                profit: adminFeeValue,
-                note: note || 'Top Up Saldo',
-                paymentMethod: paymentMode,
-                customerId: customerId || null,
-                customerName: customerName || null,
-                userId: user.uid,
-                userName: userName,
+              const closingData = {
+                timestamp,
                 date: today,
-                timestamp: timestamp,
-                status: 'completed',
-                source: 'kasir_topup'
+                userId: user.uid,
+                userName: cashierName,
+                fisik: { total: fisikData.total, detail: fisikData.detail },
+                sistem: todayStats,
+                selisih,
+                status: selisih === 0 ? 'balance' : (selisih > 0 ? 'surplus' : 'minus')
               };
 
-              await db.collection("transactions").doc(transactionId).set(transactionData);
-
-              if (paymentMode === 'hutang') {
-                const debtId = 'debt_' + timestamp;
-                const noteDescription = 'Top Up: ' + (note || 'Top Up Saldo');
-
-                await db.collection("debts").doc(debtId).set({
-                  id: debtId,
-                  transactionId: transactionId,
-                  type: 'piutang',
-                  name: customerName,
-                  customerName: customerName,
-                  customerId: customerId,
-                  amount: total,
-                  totalDebt: total,
-                  remaining: total,
-                  remainingAmount: total,
-                  paidAmount: 0,
-                  note: noteDescription,
-                  description: noteDescription,
-                  date: today,
-                  createdAt: timestamp,
-                  updatedAt: timestamp,
-                  status: 'active',
-                  affectKas: false,
-                  kasRecorded: false,
-                  source: 'kasir_topup',
-                  userId: user.uid,
-                  userName: userName
-                });
-              }
+              await db.collection("closing").doc(`${today}_${user.uid}`).set(closingData);
+              await db.collection("shifts").doc(`${today}_${user.uid}`).update({
+                status: 'closed',
+                closedAt: timestamp,
+                selisih,
+                closingStatus: closingData.status,
+                kasAkhir: fisikData.total,
+                kasSistem: todayStats.uangGlobal
+              });
 
               Utils.hideLoading();
-              Utils.showToast(paymentMode === 'hutang' ? 'Top up disimpan ke Piutang / Hutang Pelanggan!' : 'Top up kas berhasil disimpan!', 'success');
+              Utils.showToast('Closing berhasil disimpan & shift ditutup!', 'success');
 
-              if (shouldPrint) {
-                showStrukModal(transactionData);
-              } else {
-                if (isFromKasir()) {
-                  setTimeout(() => goBack(), 800);
-                } else {
-                  resetForm();
-                }
-              }
+              showStrukModal(closingData);
 
             } catch (error) {
               Utils.hideLoading();
-              console.error("FIRESTORE TOPUP ERROR:", error);
-              Utils.showToast('Gagal menyimpan top up: ' + error.message, 'error');
+              console.error("Gagal simpan closing:", error);
+              Utils.showToast('Gagal menyimpan closing: ' + error.message, 'error');
             }
           });
-        }
+        });
+      }
 
-        function resetForm() {
-          amount = 0;
-          document.getElementById('adminFee').value = '';
-          document.getElementById('topupNote').value = '';
-          document.getElementById('customerSearchInput').value = '';
-          document.getElementById('selectedCustomerId').value = '';
-          setPaymentMode('tunai');
-          document.querySelectorAll('.bank-card-btn').forEach(el => el.classList.remove('active'));
-          updateDisplay();
-          loadKasTersedia();
-        }
+      function showStrukModal(cData) {
+        lastClosingData = cData;
+        const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
+        const address = storeSettings.address || '';
+        const phone = storeSettings.phone || '';
+        const date = new Date(cData.timestamp).toLocaleDateString('id-ID');
+        const time = new Date(cData.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
 
-        function showStrukModal(tx) {
-          lastTransactionData = tx;
-          const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
-          const address = storeSettings.address || '';
-          const phone = storeSettings.phone || '';
-          const date = new Date(tx.timestamp).toLocaleDateString('id-ID');
-          const time = new Date(tx.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-
-          const paper = document.getElementById('strukPaper');
-          paper.textContent = 
+        const paper = document.getElementById('strukPaper');
+        paper.textContent = 
 '================================\n' +
 '  ' + storeName.toUpperCase() + '\n' +
 (address ? '  ' + address + '\n' : '') +
 (phone ? '  Telp: ' + phone + '\n' : '') +
 '================================\n' +
-'BUKTI TOP UP SALDO\n' +
-'ID     : ' + tx.id + '\n' +
-'Waktu  : ' + date + ' ' + time + '\n' +
-'Kasir  : ' + (tx.userName || '-') + '\n' +
-'Akun/Bk: ' + (tx.note || 'Top Up Saldo') + '\n' +
-'Metode : ' + (tx.paymentMethod === 'hutang' ? 'HUTANG (BON)' : 'TUNAI') + '\n' +
-(tx.customerName ? 'Plg    : ' + tx.customerName + '\n' : '') +
+'BERITA ACARA CLOSING SHIFT\n' +
+'Waktu   : ' + date + ' ' + time + '\n' +
+'Kasir   : ' + (cData.userName || '-') + '\n' +
 '--------------------------------\n' +
-'Nominal Top Up: ' + Utils.formatRupiah(tx.amount) + '\n' +
-'Biaya Admin   : ' + Utils.formatRupiah(tx.adminFee || 0) + '\n' +
+'Modal Awal   : ' + Utils.formatRupiah(cData.sistem.modalAwal) + '\n' +
+'Penjualan    : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\n' +
+'Kas Masuk    : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\n' +
+'Kas Keluar   : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\n' +
+'Top Up Fisik : ' + Utils.formatRupiah(cData.sistem.topup + cData.sistem.topupAdmin) + '\n' +
+'Tarik Tunai  : ' + Utils.formatRupiah(Math.max(0, cData.sistem.tarik - cData.sistem.tarikAdmin)) + '\n' +
 '--------------------------------\n' +
-'TOTAL TAGIHAN : ' + Utils.formatRupiah(tx.total) + '\n' +
+'Kas Sistem   : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\n' +
+'Uang Fisik   : ' + Utils.formatRupiah(cData.fisik.total) + '\n' +
+'Selisih Kas  : ' + (cData.selisih >= 0 ? '+' : '') + Utils.formatRupiah(cData.selisih) + '\n' +
+'Status       : ' + cData.status.toUpperCase() + '\n' +
 '================================\n' +
-'      Harap Simpan Bukti Ini\n' +
-'           Terima Kasih\n' +
+'        Shift Telah Ditutup\n' +
+'            Terima Kasih\n' +
 '================================';
 
-          document.getElementById('strukModal').classList.add('active');
+        document.getElementById('strukModal').classList.add('active');
+      }
+
+      window.closeStrukModal = function() {
+        document.getElementById('strukModal').classList.remove('active');
+        window.location.href = 'index.html';
+      };
+
+      window.printStrukBluetooth = async function() {
+        if (!lastClosingData) return;
+        if (!window.bluetoothSerial) {
+          Utils.showToast('Printer Bluetooth hanya aktif di APK Android', 'info');
+          return;
+        }
+        const mac = localStorage.getItem('webpos_printer_mac');
+        if (!mac) {
+          Utils.showToast('Pilih printer dulu di menu Printer & Struk', 'warning');
+          return;
         }
 
-        window.closeStrukModal = function() {
-          document.getElementById('strukModal').classList.remove('active');
-          if (isFromKasir()) {
-            goBack();
-          } else {
-            resetForm();
-          }
-        };
+        Utils.showLoading('Menghubungkan printer...');
+        try {
+          await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
+          const cData = lastClosingData;
+          const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
+          const date = new Date(cData.timestamp).toLocaleDateString('id-ID');
+          const time = new Date(cData.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
 
-        window.printStrukBluetooth = async function() {
-          if (!lastTransactionData) return;
-          if (!window.bluetoothSerial) {
-            Utils.showToast('Printer Bluetooth hanya aktif di APK Android', 'info');
-            return;
-          }
-          const mac = localStorage.getItem('webpos_printer_mac');
-          if (!mac) {
-            Utils.showToast('Pilih printer dulu di menu Printer & Struk', 'warning');
-            return;
-          }
+          let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
+          c += 'CLOSING SHIFT KASIR\x0A--------------------------------\x0A\x1B\x61\x00';
+          c += 'Tgl   : ' + date + ' ' + time + '\x0A';
+          c += 'Kasir : ' + (cData.userName || '-') + '\x0A';
+          c += '--------------------------------\x0A';
+          c += 'Modal Awal : ' + Utils.formatRupiah(cData.sistem.modalAwal) + '\x0A';
+          c += 'Penjualan  : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\x0A';
+          c += 'Kas Masuk  : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\x0A';
+          c += 'Kas Keluar : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\x0A';
+          c += 'Topup Fisik: ' + Utils.formatRupiah(cData.sistem.topup + cData.sistem.topupAdmin) + '\x0A';
+          c += 'Tarik Fisik: ' + Utils.formatRupiah(Math.max(0, cData.sistem.tarik - cData.sistem.tarikAdmin)) + '\x0A';
+          c += '--------------------------------\x0A';
+          c += 'Kas Sistem : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\x0A';
+          c += 'Fisik Laci : ' + Utils.formatRupiah(cData.fisik.total) + '\x0A';
+          c += 'Selisih    : ' + (cData.selisih >= 0 ? '+' : '') + Utils.formatRupiah(cData.selisih) + '\x0A';
+          c += 'Status     : ' + cData.status.toUpperCase() + '\x0A';
+          c += '================================\x0A\x1B\x61\x01Shift Selesai\x0A\x0A\x0A\x1D\x56\x41\x03';
 
-          Utils.showLoading('Menghubungkan printer...');
-          try {
-            await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
-            const tx = lastTransactionData;
-            const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
-            const date = new Date(tx.timestamp).toLocaleDateString('id-ID');
-            const time = new Date(tx.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-
-            let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
-            c += 'BUKTI TOP UP SALDO\x0A--------------------------------\x0A\x1B\x61\x00';
-            c += 'ID    : ' + tx.id + '\x0A';
-            c += 'Tgl   : ' + date + ' ' + time + '\x0A';
-            c += 'Kasir : ' + (tx.userName || '-') + '\x0A';
-            c += 'Akun  : ' + (tx.note || 'Top Up Saldo') + '\x0A';
-            c += 'Metode: ' + (tx.paymentMethod === 'hutang' ? 'HUTANG (BON)' : 'TUNAI') + '\x0A';
-            if (tx.customerName) c += 'Plg   : ' + tx.customerName + '\x0A';
-            c += '--------------------------------\x0A';
-            c += 'Nominal  : ' + Utils.formatRupiah(tx.amount) + '\x0A';
-            c += 'Admin    : ' + Utils.formatRupiah(tx.adminFee || 0) + '\x0A';
-            c += '--------------------------------\x0A';
-            c += 'TOTAL    : ' + Utils.formatRupiah(tx.total) + '\x0A';
-            c += '================================\x0A\x1B\x61\x01Terima Kasih\x0A\x0A\x0A\x1D\x56\x41\x03';
-
-            await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
-            await new Promise(res => bluetoothSerial.disconnect(res, res));
-            Utils.hideLoading();
-            Utils.showToast('Struk berhasil dicetak!', 'success');
-          } catch(e) {
-            Utils.hideLoading();
-            Utils.showToast('Gagal mencetak: ' + e, 'error');
-          }
-        };
-
-        loadKasTersedia();
-      }
+          await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
+          await new Promise(res => bluetoothSerial.disconnect(res, res));
+          Utils.hideLoading();
+          Utils.showToast('Struk closing berhasil dicetak!', 'success');
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal mencetak: ' + e, 'error');
+        }
+      };
     })();
   </script>
 </body>
