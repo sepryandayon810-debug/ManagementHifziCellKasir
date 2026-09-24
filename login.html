@@ -49,6 +49,7 @@
       border-radius: 12px; display: inline-flex;
       align-items: center; justify-content: center;
       color: #fff; font-size: 1.25rem; margin-bottom: 0.75rem;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
     }
     .brand-title { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
     .brand-desc { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
@@ -67,13 +68,26 @@
     .form-group { margin-bottom: 1.15rem; }
     .form-label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.35rem; }
     .input-wrap { position: relative; }
-    .input-wrap i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
+    .input-wrap i.field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
+    
     .form-control {
       width: 100%; padding: 0.7rem 1rem 0.7rem 2.4rem;
       border: 1.5px solid var(--border); border-radius: 10px;
       font-size: 0.88rem; outline: none; font-family: inherit; background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .form-control:focus { border-color: var(--primary); }
+    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    
+    /* Styling khusus untuk select agar modern */
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      background-size: 1rem;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
 
     .btn-submit {
       width: 100%; padding: 0.8rem; background: var(--primary);
@@ -81,16 +95,25 @@
       font-size: 0.9rem; font-weight: 700; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       gap: 0.5rem; transition: background 0.15s; margin-top: 0.5rem;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
     }
     .btn-submit:hover { background: var(--primary-hover); }
 
     .alert-box {
       padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.8rem;
-      margin-bottom: 1.25rem; display: none; font-weight: 500;
+      margin-bottom: 1.25rem; display: none; font-weight: 500; line-height: 1.4;
     }
     .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--success); }
     .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: var(--warning); }
+
+    .auth-footer-link {
+      text-align: center; margin-top: 1rem; font-size: 0.8rem;
+    }
+    .auth-footer-link a {
+      color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;
+    }
+    .auth-footer-link a:hover { text-decoration: underline; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -105,10 +128,10 @@
   <div class="brand-header">
     <div class="logo-badge"><i class="fas fa-cash-register"></i></div>
     <h1 class="brand-title">WebPOS Hifzi Cell</h1>
-    <p class="brand-desc" id="brandDesc">Masuk menggunakan Username atau Email</p>
+    <p class="brand-desc" id="brandDesc">Silakan masuk untuk melanjutkan transaksi</p>
   </div>
 
-  <div class="tab-switch">
+  <div class="tab-switch" id="tabSwitchContainer">
     <button type="button" class="tab-btn active" id="tabLoginBtn" onclick="switchMode('login')">Masuk</button>
     <button type="button" class="tab-btn" id="tabRegisterBtn" onclick="switchMode('register')">Daftar Baru</button>
   </div>
@@ -122,14 +145,14 @@
     <div class="form-group">
       <label class="form-label">Username atau Email</label>
       <div class="input-wrap">
-        <i class="fas fa-user-tag"></i>
-        <input type="text" class="form-control" id="loginIdentifier" placeholder="sepry atau nama@toko.com" required>
+        <i class="fas fa-user-tag field-icon"></i>
+        <input type="text" class="form-control" id="loginIdentifier" placeholder="Contoh: sepry atau email@toko.com" required>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Password</label>
       <div class="input-wrap">
-        <i class="fas fa-lock"></i>
+        <i class="fas fa-lock field-icon"></i>
         <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
       </div>
     </div>
@@ -137,54 +160,74 @@
       <span>Masuk ke Sistem</span>
       <i class="fas fa-arrow-right"></i>
     </button>
+    <div class="auth-footer-link">
+      <a onclick="switchMode('forgot')">Lupa kata sandi?</a>
+    </div>
   </form>
 
-  <!-- FORM PENDAFTARAN -->
+  <!-- FORM PENDAFTARAN (Tanpa opsi developer demi keamanan) -->
   <form id="formRegister" style="display:none;">
     <div class="form-group">
       <label class="form-label">Nama Lengkap</label>
       <div class="input-wrap">
-        <i class="fas fa-id-card"></i>
+        <i class="fas fa-id-card field-icon"></i>
         <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepryanda Yon" required>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Username</label>
       <div class="input-wrap">
-        <i class="fas fa-at"></i>
+        <i class="fas fa-at field-icon"></i>
         <input type="text" class="form-control" id="regUsername" placeholder="sepry (tanpa spasi)" required>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Email Aktif</label>
       <div class="input-wrap">
-        <i class="fas fa-envelope"></i>
+        <i class="fas fa-envelope field-icon"></i>
         <input type="email" class="form-control" id="regEmail" placeholder="admin@toko.com" required>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Pengajuan Role</label>
+      <label class="form-label">Pengajuan Role / Akses</label>
       <div class="input-wrap">
-        <i class="fas fa-shield-halved"></i>
+        <i class="fas fa-shield-halved field-icon"></i>
         <select class="form-control" id="regRole">
           <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
           <option value="admin">Admin (Operasional & Stok)</option>
           <option value="owner">Owner (Pemilik Toko)</option>
-          <option value="developer">Developer (Full Akses)</option>
         </select>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Password</label>
       <div class="input-wrap">
-        <i class="fas fa-lock"></i>
+        <i class="fas fa-lock field-icon"></i>
         <input type="password" class="form-control" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
       </div>
     </div>
-    <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background:#059669;">
+    <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background:var(--success);">
       <span>Ajukan Pendaftaran Akun</span>
       <i class="fas fa-user-plus"></i>
     </button>
+  </form>
+
+  <!-- FORM LUPA PASSWORD -->
+  <form id="formForgot" style="display:none;">
+    <div class="form-group">
+      <label class="form-label">Email Terdaftar</label>
+      <div class="input-wrap">
+        <i class="fas fa-envelope field-icon"></i>
+        <input type="email" class="form-control" id="forgotEmail" placeholder="Masukkan email akun Anda" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-submit" id="btnSubmitForgot">
+      <span>Kirim Link Reset Password</span>
+      <i class="fas fa-paper-plane"></i>
+    </button>
+    <div class="auth-footer-link">
+      <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
+    </div>
   </form>
 </div>
 
@@ -201,18 +244,28 @@
 
   function switchMode(mode) {
     clearAlerts();
+    const tabContainer = document.getElementById("tabSwitchContainer");
+    
+    document.getElementById("formLogin").style.display = "none";
+    document.getElementById("formRegister").style.display = "none";
+    document.getElementById("formForgot").style.display = "none";
+
     if (mode === 'login') {
+      tabContainer.style.display = "flex";
       document.getElementById("tabLoginBtn").classList.add("active");
       document.getElementById("tabRegisterBtn").classList.remove("active");
       document.getElementById("formLogin").style.display = "block";
-      document.getElementById("formRegister").style.display = "none";
-      document.getElementById("brandDesc").textContent = "Masuk menggunakan Username atau Email";
-    } else {
+      document.getElementById("brandDesc").textContent = "Silakan masuk untuk melanjutkan transaksi";
+    } else if (mode === 'register') {
+      tabContainer.style.display = "flex";
       document.getElementById("tabRegisterBtn").classList.add("active");
       document.getElementById("tabLoginBtn").classList.remove("active");
-      document.getElementById("formLogin").style.display = "none";
       document.getElementById("formRegister").style.display = "block";
-      document.getElementById("brandDesc").textContent = "Pendaftaran staf/kasir memerlukan persetujuan Owner";
+      document.getElementById("brandDesc").textContent = "Pendaftaran staf memerlukan persetujuan Owner";
+    } else if (mode === 'forgot') {
+      tabContainer.style.display = "none";
+      document.getElementById("formForgot").style.display = "block";
+      document.getElementById("brandDesc").textContent = "Reset kata sandi melalui email Anda";
     }
   }
 
@@ -259,7 +312,6 @@
       const userCred = await auth.signInWithEmailAndPassword(targetEmail, pass);
       const uid = userCred.user.uid;
 
-      // Catat riwayat perangkat saat berhasil login
       await recordUserLogin(uid);
 
       const userDoc = await db.collection("users").doc(uid).get();
@@ -268,7 +320,7 @@
 
         if (userData.status === "pending") {
           await auth.signOut();
-          warnBox.textContent = "Akun Anda sedang menunggu persetujuan (approval) dari Owner. Hubungi Owner untuk aktivasi akun.";
+          warnBox.textContent = "Akun Anda sedang menunggu persetujuan (approval) dari Owner. Hubungi Owner untuk aktivasi.";
           warnBox.style.display = "block";
           btn.disabled = false;
           btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
@@ -323,7 +375,7 @@
 
       if (isFirstAccount) {
         finalStatus = "active";
-        finalRole = "developer";
+        finalRole = "developer"; // Akun pertama otomatis menjadi developer/owner utama
       }
 
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
@@ -340,14 +392,14 @@
 
       if (isFirstAccount) {
         await recordUserLogin(uid);
-        succBox.textContent = "Selamat! Anda terdaftar sebagai Pemilik Utama (Developer). Mengalihkan...";
+        succBox.textContent = "Akun pertama terdeteksi. Otomatis masuk sebagai Developer Utama...";
         succBox.style.display = "block";
         setTimeout(() => {
           window.location.href = "index.html";
         }, 1200);
       } else {
         await auth.signOut();
-        warnBox.textContent = `Pendaftaran berhasil diajukan! Akun @${username} menunggu persetujuan (approval) dari Owner sebelum dapat digunakan.`;
+        warnBox.textContent = `Pendaftaran berhasil! Akun @${username} menunggu persetujuan (approval) dari Owner.`;
         warnBox.style.display = "block";
         btn.disabled = false;
         btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
@@ -358,6 +410,31 @@
       btn.disabled = false;
       btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
       errBox.textContent = "Gagal mendaftar: " + err.message;
+      errBox.style.display = "block";
+    }
+  };
+
+  // 3. PROSES LUPA PASSWORD
+  document.getElementById("formForgot").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("forgotEmail").value.trim();
+    const btn = document.getElementById("btnSubmitForgot");
+
+    clearAlerts();
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim link...';
+
+    try {
+      await auth.sendPasswordResetEmail(email);
+      succBox.textContent = "Link pemulihan kata sandi telah dikirim ke email Anda. Silakan cek kotak masuk atau folder spam.";
+      succBox.style.display = "block";
+      btn.disabled = false;
+      btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
+      document.getElementById("formForgot").reset();
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
+      errBox.textContent = "Gagal mengirim link reset: " + err.message;
       errBox.style.display = "block";
     }
   };
