@@ -318,6 +318,38 @@
 
     .modal-footer { padding: 1.1rem 1.35rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
 
+    /* MODAL KONFIRMASI INTERNAL (BERSIH DARI JENDELA WINDOWS) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
     /* Loading & Toast */
     .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; opacity: 0; visibility: hidden; transition: all 0.25s; }
     .loading-overlay.active { opacity: 1; visibility: visible; }
@@ -756,19 +788,28 @@
     </div>
   </div>
 
-  <!-- MODAL KONFIRMASI HAPUS KUSTOM -->
-  <div class="modal-overlay" id="confirmModal">
-    <div class="modal-content" style="max-width: 380px;">
-      <div class="modal-header">
-        <h3 class="modal-title" style="color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus</h3>
-        <button class="modal-close" id="btnCancelConfirmX"><i class="fas fa-times"></i></button>
+  <!-- MODAL KONFIRMASI INTERNAL (PENGGANTI WINDOWS CONFIRM) -->
+  <div class="custom-modal-backdrop" id="customConfirmModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger" id="customConfirmIcon"><i class="fas fa-exclamation-triangle"></i></div>
+      <h3 class="dialog-title" id="customConfirmTitle">Konfirmasi</h3>
+      <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Lanjutkan</button>
       </div>
-      <div class="modal-body">
-        <p id="confirmModalMessage" style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Apakah Anda yakin ingin menghapus data ini?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="btnCancelConfirm">Batal</button>
-        <button class="btn btn-danger" id="btnOkConfirm"><i class="fas fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
       </div>
     </div>
   </div>
@@ -789,27 +830,43 @@
 
   <script>
     let pendingConfirmAction = null;
-    function customConfirm(msg, callback) {
-      document.getElementById('confirmModalMessage').innerHTML = msg;
+
+    function showCustomConfirm(title, message, iconType, confirmText, callback) {
+      document.getElementById('customConfirmTitle').textContent = title;
+      document.getElementById('customConfirmMessage').innerHTML = message;
+      
+      const iconWrap = document.getElementById('customConfirmIcon');
+      iconWrap.className = `dialog-icon-wrap ${iconType}`;
+      if (iconType === 'danger') {
+        iconWrap.innerHTML = '<i class="fas fa-trash-alt"></i>';
+      } else {
+        iconWrap.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+      }
+
+      const btnAction = document.getElementById('btnCustomConfirmAction');
+      btnAction.textContent = confirmText || 'Ya, Lanjutkan';
+      btnAction.style.background = iconType === 'danger' ? 'var(--danger)' : 'var(--primary)';
+
       pendingConfirmAction = callback;
-      document.getElementById('confirmModal').classList.add('active');
+      document.getElementById('customConfirmModal').classList.add('open');
     }
 
-    document.getElementById('btnOkConfirm').onclick = () => {
-      document.getElementById('confirmModal').classList.remove('active');
+    window.closeCustomConfirm = function() {
+      document.getElementById('customConfirmModal').classList.remove('open');
+      pendingConfirmAction = null;
+    };
+
+    document.getElementById('btnCustomConfirmAction').onclick = () => {
+      document.getElementById('customConfirmModal').classList.remove('open');
       if (typeof pendingConfirmAction === 'function') {
         pendingConfirmAction();
         pendingConfirmAction = null;
       }
     };
-    document.getElementById('btnCancelConfirm').onclick = () => {
-      document.getElementById('confirmModal').classList.remove('active');
-      pendingConfirmAction = null;
-    };
-    document.getElementById('btnCancelConfirmX').onclick = () => {
-      document.getElementById('confirmModal').classList.remove('active');
-      pendingConfirmAction = null;
-    };
+
+    // Sembunyikan modal konfirmasi lama jika ikut terpanggil
+    const oldConfirmModal = document.getElementById('confirmModal');
+    if (oldConfirmModal) oldConfirmModal.style.display = 'none';
 
     if (typeof Utils === 'undefined') {
       window.Utils = {
@@ -828,12 +885,12 @@
           container.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         },
-        confirm: (msg, callback) => customConfirm(msg, callback),
+        confirm: (msg, callback) => showCustomConfirm("Konfirmasi", msg, "danger", "Ya, Hapus", callback),
         getStorage: (key) => localStorage.getItem(key),
         setStorage: (key, val) => localStorage.setItem(key, val)
       };
     } else {
-      Utils.confirm = (msg, callback) => customConfirm(msg, callback);
+      Utils.confirm = (msg, callback) => showCustomConfirm("Konfirmasi", msg, "danger", "Ya, Hapus", callback);
     }
 
     if (typeof Utils.formatNumberInput !== 'function') {
@@ -1221,10 +1278,19 @@
           localStorage.setItem('webpos_theme', nextTheme);
         });
 
+        // Logout dengan Modal Internal WebPOS (Bukan confirm windows)
         document.getElementById('btnLogout').addEventListener('click', () => {
-          Utils.confirm('Apakah Anda yakin ingin logout?', () => {
-            Auth.logout();
-          });
+          const modal = document.getElementById('customLogoutModal');
+          if (modal) {
+            modal.classList.add('open');
+            document.getElementById('btnConfirmLogoutAction').onclick = () => {
+              Auth.logout();
+            };
+          } else {
+            Utils.confirm('Apakah Anda yakin ingin logout?', () => {
+              Auth.logout();
+            });
+          }
         });
 
         function closeModal() {
@@ -1267,7 +1333,6 @@
             hutangData = hutangSnapshot.val() || {};
             customerData = await CustomerStorage.getAll();
 
-            // Pindai data transaksi untuk melengkapi nama & detail produk kasir
             await lookupMissingProductDetails(hutangData);
 
             updateSummary();
@@ -1280,7 +1345,6 @@
           Utils.hideLoading();
         }
 
-        // FUNGSI PENCARIAN PRODUK & NAMA JIKA DARI NOTA TRANSAKSI KASIR
         async function lookupMissingProductDetails(debts) {
           const itemsToLookup = Object.values(debts).filter(item => {
             const raw = (item.note || item.transactionId || '').trim();
@@ -1374,7 +1438,6 @@
           container.innerHTML = html;
         }
 
-        // Helper untuk mendapatkan nama barang yang jelas
         function getTransactionItemName(item) {
           if (item.items && Array.isArray(item.items) && item.items.length > 0) {
             return item.items.map(i => `${i.name || i.productName || 'Barang'} (x${i.qty || i.quantity || 1})`).join(', ');
@@ -1400,7 +1463,6 @@
           const list = document.getElementById('hutangList');
           let html = '';
           
-          // 1. Normalisasi nama agar data lama tanpa name tidak kosong di header grup
           let filteredItems = Object.entries(hutangData)
             .map(([id, data]) => {
               let cleanName = (data.name || data.customerName || data.hutangName || data.pelanggan || data.customer || '').trim();
@@ -1421,7 +1483,6 @@
             );
           }
           
-          // 2. Grouping per nama dan tipe
           const groupedByName = {};
           filteredItems.forEach(item => {
             const key = item.type + ':' + item.name.toLowerCase().trim();
@@ -1465,6 +1526,8 @@
               const groupId = 'group_' + group.displayName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
               const totalAmount = group.items.reduce((sum, item) => sum + (item.amount || 0), 0);
               
+              const safeGroupName = group.displayName.replace(/'/g, "\\'");
+
               html += `
                 <div class="hutang-item" onclick="window.toggleDetail('${groupId}')" style="cursor: pointer; border-left: 4px solid ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'};">
                   <div class="hutang-info">
@@ -1480,7 +1543,7 @@
                           ${group.items.length} transaksi
                         </span>
                         ${!isPaid ? `
-                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName.replace(/'/g, "\\'")}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px; margin-left: auto;">
+                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${safeGroupName}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px; margin-left: auto;">
                             <i class="fas fa-check-double" style="font-size: 0.75rem;"></i>
                           </button>
                         ` : ''}
@@ -1505,7 +1568,7 @@
                   </div>
                 </div>
                 
-                <!-- DETAIL PER TANGGAL DENGAN NAMA PRODUK JELAS -->
+                <!-- DETAIL PER TANGGAL -->
                 <div class="hutang-detail-row" id="detail-${groupId}">
                   <div class="hutang-detail-content">
                     <div style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
