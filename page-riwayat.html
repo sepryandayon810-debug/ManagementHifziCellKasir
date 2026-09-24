@@ -10,7 +10,7 @@
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      const savedColor = localStorage.getItem("webpos_theme_color") || localStorage.getItem("theme_color") || "indigo";
       document.documentElement.setAttribute("data-theme", savedTheme);
       document.documentElement.setAttribute("data-theme-color", savedColor);
     })();
@@ -19,13 +19,19 @@
   <!-- Font Awesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- SheetJS for Excel Support -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
   <style>
-    /* ============================================
-       WEBPOS RIWAYAT - TEMA GLOBAL SELARAS DASHBOARD/PENGATURAN
-       ============================================ */
     :root{
       --primary:#4f46e5;
       --primary-hover:#4338ca;
@@ -57,7 +63,7 @@
       --shadow-lg:0 10px 15px -3px rgb(0 0 0 / 0.1);
       --sidebar-width:270px;
       --sidebar-collapsed:76px;
-      --header-h:70px;
+      --header-h:68px;
       --bottom-nav-height:60px;
     }
     [data-theme-color="indigo"]{--primary:#4f46e5;--primary-hover:#4338ca;--primary-light:#eef2ff}
@@ -65,6 +71,9 @@
     [data-theme-color="blue"]{--primary:#2563eb;--primary-hover:#1d4ed8;--primary-light:#eff6ff}
     [data-theme-color="orange"]{--primary:#ea580c;--primary-hover:#c2410c;--primary-light:#ffedd5}
     [data-theme-color="purple"]{--primary:#7c3aed;--primary-hover:#6d28d9;--primary-light:#f5f3ff}
+    [data-theme-color="red"]{--primary:#dc2626;--primary-hover:#b91c1c;--primary-light:#fef2f2}
+    [data-theme-color="pink"]{--primary:#db2777;--primary-hover:#be185d;--primary-light:#fdf2f8}
+    [data-theme-color="teal"]{--primary:#0d9488;--primary-hover:#0f766e;--primary-light:#f0fdfa}
 
     [data-theme="dark"]{
       --bg-base:#090d16;
@@ -108,69 +117,68 @@
     .sidebar.collapsed{width:var(--sidebar-collapsed)}
     @media(max-width:1024px){.sidebar{transform:translateX(-100%)}.sidebar.mobile-open{transform:translateX(0)}}
 
-    .sidebar-header{padding:1.25rem;display:flex;align-items:center;gap:1rem;min-height:var(--header-h)}
-    .logo-container{display:flex;align-items:center;gap:.5rem}
+    .sidebar-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;min-height:var(--header-h)}
+    .logo-container{display:flex;align-items:center;gap:.65rem}
     .logo-icon{
-      width:42px;height:42px;background:linear-gradient(135deg,var(--primary),#8b5cf6);border-radius:.75rem;
-      display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.25rem;
-      box-shadow:none;
+      width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#8b5cf6);border-radius:var(--radius-md);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.15rem;flex-shrink:0;
     }
     .logo-text{
-      font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#8b5cf6);
-      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      font-size:1.25rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;
     }
-    .sidebar.collapsed .logo-text{opacity:0;width:0;overflow:hidden}
+    .sidebar.collapsed .logo-text{display:none}
 
     .menu-toggle{
-      position:absolute;right:-14px;top:24px;width:28px;height:28px;background:var(--primary);
-      border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1001;font-size:.75rem;
+      width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;
     }
     .sidebar.collapsed .menu-toggle{transform:rotate(180deg)}
 
-    .sidebar-search{padding:1rem}
+    .sidebar-search{padding:0.75rem 1rem;border-bottom:1px solid var(--border)}
     .search-input-wrapper{position:relative;display:flex;align-items:center}
-    .search-input-wrapper i{position:absolute;left:1rem;color:var(--text-muted);font-size:.875rem}
+    .search-input-wrapper i{position:absolute;left:0.85rem;color:var(--text-muted);font-size:0.8rem}
     .search-input{
-      width:100%;padding:.5rem 1rem .5rem 2.5rem;border:1.5px solid var(--border);
-      border-radius:.75rem;background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;outline:none;
+      width:100%;padding:.5rem .75rem .5rem 2.2rem;border:1px solid var(--border);
+      border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:0.82rem;outline:none;
     }
 
-    .sidebar-nav{flex:1;overflow-y:auto;padding:1rem}
-    .nav-section{margin-bottom:1.5rem}
-    .nav-section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.5rem 1rem}
+    .sidebar-nav{flex:1;overflow-y:auto;padding:1rem 0.75rem}
+    .nav-section{margin-bottom:1.25rem}
+    .nav-section-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.35rem .75rem;margin-bottom:.2rem}
     .sidebar.collapsed .nav-section-title{display:none}
 
     .nav-menu{list-style:none}
-    .nav-item{margin-bottom:2px}
+    .nav-item{margin-bottom:3px}
     .nav-link{
-      display:flex;align-items:center;gap:1rem;padding:.625rem 1rem;border-radius:.75rem;
-      color:var(--text-sub);text-decoration:none;font-size:.9rem;font-weight:500;transition:all .15s;
+      display:flex;align-items:center;gap:.85rem;padding:.6rem .85rem;border-radius:var(--radius-md);
+      color:var(--text-sub);text-decoration:none;font-size:.88rem;font-weight:600;transition:all .15s;
     }
     .nav-link:hover{background:var(--bg-subtle);color:var(--primary)}
     .nav-link.active{background:var(--primary-light);color:var(--primary) !important;font-weight:600}
     .nav-link.active i{color:var(--primary) !important}
-    .nav-link i{width:22px;text-align:center;font-size:1.05rem}
+    .nav-link i{width:20px;text-align:center;font-size:.95rem}
     .sidebar.collapsed .nav-link span{display:none}
 
     .nav-dropdown{position:relative}
     .nav-dropdown-toggle{justify-content:space-between;cursor:pointer}
     .dropdown-arrow{transition:transform .2s;font-size:.75rem;margin-left:auto}
     .nav-dropdown.open .dropdown-arrow{transform:rotate(180deg)}
-    .nav-submenu{list-style:none;padding-left:2.75rem;max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .nav-submenu{list-style:none;max-height:0;overflow:hidden;transition:max-height .25s ease;padding-left:2rem}
     .sidebar.collapsed .nav-submenu{display:none}
-    .nav-dropdown.open .nav-submenu{max-height:500px}
-    .nav-submenu .nav-link{padding:.5rem 1rem;font-size:.85rem}
+    .nav-dropdown.open .nav-submenu{max-height:450px;margin-top:2px}
+    .nav-submenu .nav-link{padding:.45rem .75rem;font-size:.82rem}
 
-    .sidebar-footer{padding:1rem;border-top:1px solid var(--border);background:var(--bg-subtle)}
-    .user-profile{display:flex;align-items:center;gap:1rem;cursor:pointer}
+    .sidebar-footer{padding:0.85rem 1rem;border-top:1px solid var(--border);background:var(--bg-surface)}
+    .user-profile{display:flex;align-items:center;gap:.75rem;cursor:pointer}
     .user-avatar{
-      width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
-      border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:600;
+      width:38px;height:38px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+      border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0;
     }
     .user-info{flex:1;overflow:hidden}
     .sidebar.collapsed .user-info{display:none}
-    .user-name{font-weight:600;font-size:.9rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .user-role{font-size:.75rem;color:var(--text-muted);text-transform:capitalize}
+    .user-name{font-weight:700;font-size:.88rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .user-role{font-size:.7rem;color:var(--text-muted);text-transform:capitalize}
 
     /* MAIN CONTENT & HEADER */
     .main-content{flex:1;min-width:0;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
@@ -180,31 +188,33 @@
     .main-header{
       height:var(--header-h);background:var(--bg-surface);
       border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
-      padding:0 1.5rem;position:sticky;top:0;z-index:100;
+      padding:0 1.25rem;position:sticky;top:0;z-index:100;width:100%;box-sizing:border-box;
     }
     [data-theme="dark"] .main-header{background:var(--bg-surface);border-bottom-color:var(--border)}
-    .header-left{display:flex;align-items:center;gap:1rem}
-    .header-title{font-size:1.35rem;font-weight:700;color:var(--text-main)}
-    .header-actions{display:flex;align-items:center;gap:.5rem}
+    .header-left{display:flex;align-items:center;gap:.75rem;min-width:0;flex:1}
+    .header-title{font-size:1.15rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .header-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
 
-    .btn-icon{
+    .btn-icon-box{
       width:38px;height:38px;border-radius:var(--radius-md);background:var(--bg-subtle);
-      border:1px solid var(--border);color:var(--text-sub);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;
+      border:1px solid var(--border);color:var(--text-sub);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;
     }
-    .btn-icon:hover{background:var(--primary-light);color:var(--primary)}
+    .btn-icon-box:hover{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
 
-    .page-content{flex:1;min-width:0;padding:1.5rem;overflow-y:auto;overflow-x:hidden}
+    .page-content{flex:1;min-width:0;padding:1.25rem;overflow-y:auto;overflow-x:hidden}
     @media(max-width:768px){.page-content{padding:1rem;padding-bottom:calc(var(--bottom-nav-height) + 1rem)}}
 
     /* BUTTONS */
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.625rem 1.25rem;
-      border-radius:var(--radius-lg);font-size:.875rem;font-weight:600;cursor:pointer;border:none;outline:none;transition:all .2s;
+      border-radius:var(--radius-md);font-size:.875rem;font-weight:700;cursor:pointer;border:none;outline:none;transition:all .15s;font-family:inherit;white-space:nowrap;
     }
-    .btn-primary{background:var(--primary);color:white;box-shadow:none}
-    .btn-primary:hover{background:var(--primary-hover);transform:translateY(-1px)}
-    .btn-secondary{background:var(--bg-subtle);color:var(--text-sub);border:1px solid var(--border)}
-    .btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
+    .btn-primary{background:var(--primary);color:white}
+    .btn-primary:hover{background:var(--primary-hover)}
+    .btn-secondary{background:var(--bg-subtle);color:var(--text-main);border:1px solid var(--border)}
+    .btn-secondary:hover{background:var(--border)}
+    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-sub)}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary)}
     .btn-success{background:var(--success);color:white}
     .btn-warning{background:var(--warning);color:white}
     .btn-danger{background:var(--danger);color:white}
@@ -213,10 +223,10 @@
 
     /* SUMMARY CARDS */
     .summary-cards{
-      display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1.25rem;margin-bottom:1.5rem;min-width:0;
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1rem;margin-bottom:1.25rem;min-width:0;
     }
     .summary-card{
-      background:var(--bg-surface);border-radius:var(--radius-xl);padding:1.25rem 1.5rem;
+      background:var(--bg-surface);border-radius:var(--radius-xl);padding:1.15rem 1.25rem;
       border:1px solid var(--border);box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:1rem;position:relative;overflow:hidden;min-width:0;
     }
     .summary-card::after{
@@ -226,52 +236,69 @@
     .summary-card-trx::after{background:var(--info)}
     .summary-card-laba::after{background:var(--success)}
     .summary-card-icon{
-      width:48px;height:48px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;
+      width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;
     }
     .summary-card-penjualan .summary-card-icon{background:var(--primary-light);color:var(--primary)}
-    .summary-card-trx .summary-card-icon{background:rgba(6,182,212,0.1);color:var(--info)}
+    .summary-card-trx .summary-card-icon{background:rgba(2,132,199,0.12);color:var(--info)}
     .summary-card-laba .summary-card-icon{background:var(--success-light);color:var(--success)}
     .summary-card-content{flex:1;min-width:0}
-    .summary-card-title{font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:.25rem}
-    .summary-card-value{font-size:1.45rem;font-weight:800;color:var(--text-main);line-height:1.2}
-    .summary-card-sub{font-size:.75rem;color:var(--text-muted);margin-top:.2rem}
+    .summary-card-title{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:.2rem}
+    .summary-card-value{font-size:1.3rem;font-weight:800;color:var(--text-main);line-height:1.2}
+    .summary-card-sub{font-size:.72rem;color:var(--text-muted);margin-top:.15rem}
 
-    /* TOOLBAR & FILTER */
-    .quick-filter{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+    /* TOOLBAR FILTER RAPI */
+    .filter-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.15rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .quick-filter{
+      display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;
+    }
+    .quick-filter::-webkit-scrollbar{display:none}
     .quick-filter-btn{
-      padding:.45rem 1rem;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-sub);
-      border-radius:var(--radius-md);cursor:pointer;font-size:.82rem;font-weight:600;transition:all .15s;
+      padding:.4rem .85rem;border:1px solid var(--border);background:var(--bg-subtle);color:var(--text-sub);
+      border-radius:var(--radius-md);cursor:pointer;font-size:.78rem;font-weight:700;transition:all .15s;white-space:nowrap;
     }
     .quick-filter-btn:hover,.quick-filter-btn.active{background:var(--primary);color:white;border-color:var(--primary)}
 
     .category-tabs{
-      display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:2px solid var(--border);padding-bottom:.5rem;overflow-x:auto;scrollbar-width:none;
+      display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px dashed var(--border);padding-top:0.75rem;
     }
+    .category-tabs::-webkit-scrollbar{display:none}
     .category-tab{
-      padding:.5rem 1rem;border:none;background:transparent;color:var(--text-sub);cursor:pointer;font-size:.85rem;font-weight:600;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-.5px;
+      padding:.35rem .75rem;border:1px solid var(--border);background:var(--bg-subtle);color:var(--text-sub);
+      border-radius:var(--radius-md);cursor:pointer;font-size:.78rem;font-weight:700;white-space:nowrap;transition:all .15s;
     }
-    .category-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+    .category-tab:hover,.category-tab.active{background:var(--primary);color:white;border-color:var(--primary)}
 
-    .riwayat-search-toolbar{margin-bottom:1.25rem}
+    .riwayat-search-toolbar{margin-bottom:1.15rem}
     .riwayat-search-box{position:relative;max-width:380px}
-    .riwayat-search-box i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}
+    .riwayat-search-box i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.8rem}
     .riwayat-search-box input{
-      width:100%;padding:.65rem 1rem .65rem 2.5rem;border:1.5px solid var(--border);
-      border-radius:var(--radius-lg);background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;outline:none;
+      width:100%;padding:.6rem 1rem .6rem 2.4rem;border:1.5px solid var(--border);
+      border-radius:var(--radius-md);background:var(--bg-surface);color:var(--text-main);font-size:.85rem;outline:none;
     }
+    .riwayat-search-box input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
 
     /* TRANSACTION TABLE */
-    .card{background:var(--bg-surface);border-radius:var(--radius-2xl);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-sm)}
-    .card-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-    .card-title{font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+    .card{background:var(--bg-surface);border-radius:var(--radius-xl);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-sm)}
+    .card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap}
+    .card-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.5rem;color:var(--text-main)}
 
-    .transaction-table{width:100%;border-collapse:collapse;font-size:.88rem}
-    .transaction-table th,.transaction-table td{padding:.875rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:middle}
-    .transaction-table th{background:var(--bg-subtle);font-weight:700;font-size:.72rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:.05em}
+    .transaction-table{width:100%;border-collapse:collapse;font-size:.85rem}
+    .transaction-table th,.transaction-table td{padding:.8rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:middle}
+    .transaction-table th{background:var(--bg-subtle);font-weight:700;font-size:.7rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:.05em}
     .transaction-table tr:hover{background:var(--bg-subtle)}
 
     .transaction-type{
-      display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .65rem;border-radius:50px;font-size:.72rem;font-weight:700;white-space:nowrap;
+      display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:50px;font-size:.68rem;font-weight:700;white-space:nowrap;text-transform:uppercase;
     }
     .transaction-type.penjualan{background:var(--primary-light);color:var(--primary)}
     .transaction-type.topup{background:var(--success-light);color:var(--success)}
@@ -289,20 +316,20 @@
     .detail-row{display:none}
     .detail-row.open{display:table-row}
     .detail-row td{padding:0!important;background:var(--bg-subtle)!important;border-bottom:2px solid var(--primary)!important}
-    .detail-panel{padding:1.25rem 1.5rem}
-    .detail-panel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;margin-bottom:1rem}
-    .detail-panel-item{background:var(--bg-surface);border-radius:var(--radius-md);padding:.65rem .85rem;border:1px solid var(--border)}
-    .detail-panel-label{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;margin-bottom:.2rem}
-    .detail-panel-value{font-size:.85rem;font-weight:600;color:var(--text-main)}
+    .detail-panel{padding:1.15rem 1.25rem}
+    .detail-panel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.65rem;margin-bottom:0.85rem}
+    .detail-panel-item{background:var(--bg-surface);border-radius:var(--radius-md);padding:.6rem .8rem;border:1px solid var(--border)}
+    .detail-panel-label{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;margin-bottom:.15rem}
+    .detail-panel-value{font-size:.82rem;font-weight:600;color:var(--text-main)}
 
-    .detail-items-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.5rem}
-    .detail-items-table th{background:var(--bg-surface);padding:.45rem .6rem;font-size:.7rem;color:var(--text-muted);border-bottom:1px solid var(--border)}
-    .detail-items-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border);color:var(--text-main)}
+    .detail-items-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.4rem}
+    .detail-items-table th{background:var(--bg-surface);padding:.4rem .6rem;font-size:.68rem;color:var(--text-muted);border-bottom:1px solid var(--border)}
+    .detail-items-table td{padding:.45rem .6rem;border-bottom:1px solid var(--border);color:var(--text-main)}
 
     /* MOBILE NAV */
     .mobile-nav{
       display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);
-      background:var(--bg-surface);border-top:1px solid var(--border);z-index:999;padding:0 0.5rem;
+      background:var(--bg-surface);border-top:1px solid var(--border);z-index:99;padding:0 0.5rem;
     }
     .mobile-nav-item{
       flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
@@ -312,61 +339,50 @@
     .mobile-nav-item.active{color:var(--primary)}
     @media(max-width:1024px){.mobile-nav{display:flex}}
     @media(max-width:1024px){
-      .d-md-none{display:flex}
+      .d-md-none{display:flex !important}
       .sidebar .menu-toggle{display:none}
     }
     @media(max-width:768px){
-      .summary-cards{grid-template-columns:minmax(0,1fr);gap:1rem}
-      .summary-card{width:100%;padding:1rem}
+      .summary-cards{grid-template-columns:minmax(0,1fr);gap:.75rem}
+      .summary-card{width:100%;padding:.85rem 1rem}
     }
 
     /* MODAL */
     .modal-overlay{
-      position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);
-      backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;
+      position:fixed;inset:0;background:rgba(15,23,42,0.65);
+      backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;
       z-index:2000;opacity:0;visibility:hidden;transition:all .25s;padding:1rem;
     }
     .modal-overlay.active{opacity:1;visibility:visible}
-    .modal-content{background:var(--bg-surface);border-radius:var(--radius-2xl);width:100%;max-width:500px;box-shadow:var(--shadow-lg);border:1px solid var(--border)}
-    .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-    .modal-body{padding:1.5rem}
-    .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end;background:var(--bg-subtle)}
-    .form-group{margin-bottom:1rem}
-    .form-label{display:block;font-size:.8rem;font-weight:700;color:var(--text-sub);margin-bottom:.35rem}
+    .modal-content{background:var(--bg-surface);border-radius:var(--radius-xl);width:100%;max-width:480px;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
+    .modal-header{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .modal-title{font-size:1.05rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:0.4rem}
+    .modal-body{padding:1.25rem}
+    .modal-footer{padding:0.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;background:var(--bg-subtle)}
+    .form-group{margin-bottom:0.85rem}
+    .form-label{display:block;font-size:.78rem;font-weight:700;color:var(--text-sub);margin-bottom:.3rem}
     .form-input,.form-select{
-      width:100%;padding:.7rem .85rem;border:1.5px solid var(--border);border-radius:var(--radius-md);
+      width:100%;padding:.65rem .85rem;border:1.5px solid var(--border);border-radius:var(--radius-md);
       background:var(--bg-subtle);color:var(--text-main);font:inherit;font-size:.85rem;outline:none;
     }
     .form-input:focus,.form-select:focus{border-color:var(--primary);background:var(--bg-surface)}
-    .modal-hint{font-size:.75rem;color:var(--text-muted);line-height:1.45;margin-top:.4rem}
+    .modal-hint{font-size:.72rem;color:var(--text-muted);line-height:1.45;margin-top:.35rem}
     .btn-edit{color:var(--primary);border-color:var(--primary-light)}
 
     /* STRUK MODAL */
-    .struk-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
+    .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
     .struk-modal-overlay.active{opacity:1;visibility:visible}
-    .struk-modal{background:var(--bg-surface);border-radius:1rem;max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
-    .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-    .transaction-sequence{display:inline-flex;min-width:2.75rem;justify-content:center;align-items:center;padding:.3rem .45rem;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:800;font-variant-numeric:tabular-nums}
-    .sequence-heading{width:72px;text-align:center !important}
-    @media(max-width:768px){.sequence-heading{width:58px}}
+    .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
+    .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+    .transaction-sequence{display:inline-flex;min-width:2.5rem;justify-content:center;align-items:center;padding:.25rem .45rem;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:800;font-variant-numeric:tabular-nums}
+    .sequence-heading{width:68px;text-align:center !important}
   </style>
-
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-  <script src="js/role-guard.js"></script>
 </head>
 <body>
   <div class="app-container">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR LENGKAP -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-container">
@@ -384,6 +400,7 @@
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -393,6 +410,7 @@
           </ul>
         </div>
 
+        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
@@ -420,6 +438,7 @@
           </ul>
         </div>
 
+        <!-- Laporan -->
         <div class="nav-section">
           <div class="nav-section-title">Laporan</div>
           <ul class="nav-menu">
@@ -429,6 +448,7 @@
           </ul>
         </div>
 
+        <!-- Integrasi -->
         <div class="nav-section">
           <div class="nav-section-title">Integrasi</div>
           <ul class="nav-menu">
@@ -437,6 +457,7 @@
           </ul>
         </div>
 
+        <!-- Penggajian -->
         <div class="nav-section">
           <div class="nav-section-title">Penggajian</div>
           <ul class="nav-menu">
@@ -444,6 +465,7 @@
           </ul>
         </div>
 
+        <!-- Sistem -->
         <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
@@ -472,41 +494,41 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
           <h1 class="header-title">Riwayat Transaksi</h1>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary btn-sm" id="btnExport"><i class="fas fa-file-export"></i><span>Export</span></button>
-          <button class="btn-icon" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
       <div class="page-content">
-        <!-- Quick Date Filter -->
-        <div class="quick-filter">
-          <button class="quick-filter-btn active" data-period="today">Hari Ini</button>
-          <button class="quick-filter-btn" data-period="yesterday">Kemarin</button>
-          <button class="quick-filter-btn" data-period="week">Minggu Ini</button>
-          <button class="quick-filter-btn" data-period="month">Bulan Ini</button>
-          <button class="quick-filter-btn" data-period="custom">Pilih Tanggal</button>
-        </div>
+        <!-- RAPI: Filter Waktu & Kategori dalam 1 Card Bersih -->
+        <div class="filter-wrapper">
+          <div class="quick-filter">
+            <button class="quick-filter-btn active" data-period="today">Hari Ini</button>
+            <button class="quick-filter-btn" data-period="yesterday">Kemarin</button>
+            <button class="quick-filter-btn" data-period="week">Minggu Ini</button>
+            <button class="quick-filter-btn" data-period="month">Bulan Ini</button>
+            <button class="quick-filter-btn" data-period="custom"><i class="fas fa-calendar-alt"></i> Rentang Tanggal</button>
+          </div>
 
-        <!-- Custom Date Filter -->
-        <div class="riwayat-toolbar" id="customDateFilter" style="display:none; gap:0.75rem; align-items:center; margin-bottom:1rem;">
-          <input type="date" id="startDate" class="form-input" style="max-width:180px;">
-          <span>s/d</span>
-          <input type="date" id="endDate" class="form-input" style="max-width:180px;">
-          <button class="btn btn-primary btn-sm" id="btnFilter"><i class="fas fa-filter"></i> Filter</button>
-        </div>
+          <!-- Custom Date Filter -->
+          <div id="customDateFilter" style="display:none; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-top:0.25rem;">
+            <input type="date" id="startDate" class="form-input" style="max-width:160px; padding:0.4rem 0.6rem;">
+            <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">s/d</span>
+            <input type="date" id="endDate" class="form-input" style="max-width:160px; padding:0.4rem 0.6rem;">
+            <button class="btn btn-primary btn-sm" id="btnFilter"><i class="fas fa-filter"></i> Terapkan</button>
+          </div>
 
-        <!-- Category Tabs -->
-        <div class="category-tabs">
-          <button class="category-tab active" data-category="all">Semua</button>
-          <button class="category-tab" data-category="penjualan">Penjualan</button>
-          <button class="category-tab" data-category="kas">Kas</button>
-          <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
-          <button class="category-tab" data-category="pembelian">Pembelian</button>
+          <div class="category-tabs">
+            <button class="category-tab active" data-category="all">Semua</button>
+            <button class="category-tab" data-category="penjualan">Penjualan</button>
+            <button class="category-tab" data-category="kas">Kas</button>
+            <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
+            <button class="category-tab" data-category="pembelian">Pembelian</button>
+          </div>
         </div>
 
         <!-- Search Toolbar -->
@@ -545,11 +567,18 @@
           </div>
         </div>
 
-        <!-- Transactions Table -->
+        <!-- Transactions Table Card -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-list" style="color:var(--primary);"></i> Daftar Transaksi</h3>
-            <span id="trxCount" style="font-size:.85rem;color:var(--text-muted);font-weight:600"></span>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <h3 class="card-title"><i class="fas fa-list" style="color:var(--primary);"></i> Daftar Transaksi</h3>
+              <span id="trxCount" style="font-size:.78rem; color:var(--text-muted); font-weight:700;"></span>
+            </div>
+            <!-- Tombol Export & Import ditaruh di sini secara elegan -->
+            <div style="display:flex; gap:0.35rem; align-items:center;">
+              <button class="btn btn-outline btn-sm" id="btnOpenImportModal"><i class="fas fa-file-import"></i> Import</button>
+              <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
+            </div>
           </div>
           <div style="overflow-x:auto;">
             <table class="transaction-table">
@@ -593,14 +622,14 @@
     <div class="struk-modal">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fas fa-receipt" style="color:var(--success);"></i> Preview Struk</h3>
-        <button class="btn-icon" onclick="closeStrukModal()"><i class="fas fa-times"></i></button>
+        <button class="btn-icon-box" onclick="closeStrukModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
-      <div class="modal-body" style="display:flex;justify-content:center;background:#f8fafc;">
+      <div class="modal-body" style="display:flex;justify-content:center;background:#f8fafc; padding:1rem;">
         <div class="struk-paper" id="strukPaper"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeStrukModal()">Tutup</button>
-        <button class="btn btn-primary" onclick="printStrukBluetooth()"><i class="fas fa-print"></i> Cetak Thermal</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeStrukModal()">Tutup</button>
+        <button class="btn btn-primary btn-sm" onclick="printStrukBluetooth()"><i class="fas fa-print"></i> Cetak Thermal</button>
       </div>
     </div>
   </div>
@@ -610,10 +639,10 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fas fa-pen-to-square" style="color:var(--primary);"></i> Edit Transaksi</h3>
-        <button class="btn-icon" onclick="closeTransactionEditModal()"><i class="fas fa-times"></i></button>
+        <button class="btn-icon-box" onclick="closeTransactionEditModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
-        <div id="editTransactionInfo" class="modal-hint" style="margin-bottom:1rem;"></div>
+        <div id="editTransactionInfo" class="modal-hint" style="margin-bottom:1rem; font-weight:700; color:var(--text-main);"></div>
         <div class="form-group">
           <label class="form-label" for="editNote">Keterangan / Catatan</label>
           <input type="text" class="form-input" id="editNote" placeholder="Keterangan transaksi">
@@ -635,32 +664,53 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeTransactionEditModal()">Batal</button>
-        <button class="btn btn-primary" id="btnSaveTransactionEdit" onclick="saveTransactionEdit()"><i class="fas fa-save"></i> Simpan Perubahan</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeTransactionEditModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" id="btnSaveTransactionEdit" onclick="saveTransactionEdit()"><i class="fas fa-save"></i> Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT DATA MODAL -->
+  <div class="modal-overlay" id="importModal" onclick="if(event.target===this) closeImportModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-file-import" style="color:var(--primary);"></i> Import Transaksi</h3>
+        <button class="btn-icon-box" onclick="closeImportModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Pilih File (JSON / Excel / CSV)</label>
+          <input type="file" class="form-input" id="importFile" accept=".json,.csv,.xls,.xlsx" style="padding:0.5rem;">
+          <div class="modal-hint">Format didukung: File ekspor riwayat .CSV, .JSON, atau spreadsheet Excel .XLSX.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeImportModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" id="btnConfirmImport"><i class="fas fa-file-import"></i> Upload Data</button>
       </div>
     </div>
   </div>
 
   <!-- DELETE CONFIRMATION MODAL -->
   <div class="modal-overlay" id="deleteConfirmModal" onclick="if(event.target===this) closeDeleteConfirmModal()">
-    <div class="modal-content" style="max-width:430px;">
+    <div class="modal-content" style="max-width:400px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i class="fas fa-triangle-exclamation" style="color:var(--danger);"></i> Hapus Transaksi?</h3>
-        <button class="btn-icon" onclick="closeDeleteConfirmModal()"><i class="fas fa-times"></i></button>
+        <h3 class="modal-title" style="color:var(--danger);"><i class="fas fa-triangle-exclamation"></i> Hapus Transaksi?</h3>
+        <button class="btn-icon-box" onclick="closeDeleteConfirmModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
-        <p id="deleteConfirmMessage" style="color:var(--text-sub);font-size:.88rem;line-height:1.55;"></p>
+        <p id="deleteConfirmMessage" style="color:var(--text-sub);font-size:.85rem;line-height:1.5; font-weight:600;"></p>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeDeleteConfirmModal()">Batal</button>
-        <button class="btn btn-danger" onclick="confirmDeleteTransaction()"><i class="fas fa-trash"></i> Ya, Hapus</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeDeleteConfirmModal()">Batal</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteTransaction()"><i class="fas fa-trash"></i> Ya, Hapus</button>
       </div>
     </div>
   </div>
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top:1rem;font-weight:600;color:#fff;">Memuat...</p>
+    <p style="margin-top:1rem;font-weight:700;color:#fff;">Memproses...</p>
   </div>
   <div class="toast-container" id="toastContainer"></div>
 
@@ -675,6 +725,7 @@
       let lastTransactionData = null;
       let pendingDeleteId = null;
       let editingTransactionId = null;
+      let storeSettings = {};
 
       const TYPE_LABELS = {
         penjualan: 'Penjualan',
@@ -696,14 +747,16 @@
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
-        if (!logoEl) return;
         const cached = localStorage.getItem("webpos_store_name");
-        if (cached) logoEl.textContent = cached;
+        if (cached && logoEl) logoEl.textContent = cached;
         try {
           const doc = await db.collection("settings").doc("store").get();
-          if (doc.exists && doc.data().name) {
-            logoEl.textContent = doc.data().name;
-            localStorage.setItem("webpos_store_name", doc.data().name);
+          if (doc.exists && doc.data()) {
+            storeSettings = doc.data();
+            if (storeSettings.name && logoEl) {
+              logoEl.textContent = storeSettings.name;
+              localStorage.setItem("webpos_store_name", storeSettings.name);
+            }
           }
         } catch(e) {}
       }
@@ -844,9 +897,20 @@
         document.getElementById('btnFilter').onclick = loadTransactions;
         document.getElementById('btnExport').onclick = exportData;
 
+        // Modal Import
+        document.getElementById('btnOpenImportModal').onclick = () => {
+          document.getElementById('importModal').classList.add('active');
+        };
+        document.getElementById('btnConfirmImport').onclick = processImport;
+
         setDateRange('today');
         loadTransactions();
       }
+
+      window.closeImportModal = function() {
+        document.getElementById('importModal').classList.remove('active');
+        document.getElementById('importFile').value = '';
+      };
 
       function setDateRange(period) {
         const today = new Date();
@@ -895,7 +959,6 @@
                d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
       }
 
-      // LOAD TRANSACTIONS DILENGKAPI UNTUK MENGGABUNGKAN DATA TRANSAKSI & PEMBELIAN
       async function loadTransactions() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
@@ -906,7 +969,7 @@
           const startStr = startDate;
           const endStr = endDate;
 
-          // 1. Ambil dari koleksi transactions root
+          // 1. Ambil dari koleksi transactions
           const txSnapshot = await db.collection("transactions")
             .where("date", ">=", startStr)
             .where("date", "<=", endStr)
@@ -920,7 +983,7 @@
             }
           });
 
-          // 2. Ambil dari koleksi purchases root
+          // 2. Ambil dari koleksi purchases agar pembelian restock langsung muncul
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -930,7 +993,6 @@
             purSnapshot.forEach(doc => {
               const data = doc.data();
               if (data.status !== 'cancelled') {
-                // Hindari duplikasi jika purchase sudah tercatat di transactions
                 if (!allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) {
                   allTransactions.push({
                     id: doc.id,
@@ -944,11 +1006,8 @@
                 }
               }
             });
-          } catch(e) {
-            console.warn("Gagal load dari koleksi purchases:", e);
-          }
+          } catch(e) {}
 
-          // Urutkan transaksi terbaru di atas
           allTransactions.sort((a, b) => {
             return getTimestampMillis(b) - getTimestampMillis(a) ||
               String(b.id).localeCompare(String(a.id));
@@ -980,7 +1039,7 @@
         if (currentSearch) {
           filtered = filtered.filter(t => {
             const desc = getTransactionDesc(t).toLowerCase();
-            const note = (t.note || '').toLowerCase();
+            const note = (t.note || t.catatan || '').toLowerCase();
             const cashier = (t.userName || '').toLowerCase();
             return desc.includes(currentSearch) || note.includes(currentSearch) || cashier.includes(currentSearch);
           });
@@ -999,7 +1058,7 @@
         if (t.type === 'pembelian') {
           return t.supplier ? `Pembelian (${t.supplier})` : 'Pembelian Restock';
         }
-        return t.note || TYPE_LABELS[t.type] || t.type || '-';
+        return t.note || t.catatan || TYPE_LABELS[t.type] || t.type || '-';
       }
 
       function renderTable(transactions) {
@@ -1056,6 +1115,7 @@
           </div>
         `;
 
+        // PERBAIKAN: Kurung kurawal template yang sebelumnya menyebabkan Syntax Error diperbaiki
         if (t.items && t.items.length > 0) {
           html += `
             <div style="font-weight:700;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">RINCIAN PRODUK</div>
@@ -1108,26 +1168,32 @@
         document.getElementById('totalLaba').textContent = Utils.formatRupiah(totalLaba);
       }
 
+      // PREVIEW STRUK: Menyesuaikan header sesuai nama toko di setting
       window.printTransaction = function(id) {
         const t = allTransactions.find(x => x.id === id);
         if (!t) return;
         lastTransactionData = t;
-        
+
+        const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
+        const address = storeSettings.address || '';
+        const phone = storeSettings.phone || '';
+
         const paper = document.getElementById('strukPaper');
         paper.textContent = `
 ================================
-         STRUK TRANSAKSI       
-================================
+  ${storeName.toUpperCase()}
+${address ? '  ' + address + '\n' : ''}${phone ? '  Telp: ' + phone + '\n' : ''}================================
  No.    : #${String(t.inputSequence || 0).padStart(3, '0')}
  ID     : ${t.id}
-Waktu  : ${formatDateTime(t.timestamp)}
-Petugas: ${t.userName || '-'}
+ Waktu  : ${formatDateTime(t.timestamp)}
+ Kasir  : ${t.userName || '-'}
 --------------------------------
-${t.items ? t.items.map(i => `${i.name \vert{}\vert{} i.productName}\n${i.quantity || i.qty} x ${Utils.formatRupiah(i.price \vert{}\vert{} i.harga)} =${Utils.formatRupiah(i.total)}`).join('\n') : (TYPE_LABELS[t.type] || t.type)}
+${t.items ? t.items.map(i => `${i.name \vert{}\vert{} i.productName}\n${i.quantity || i.qty || 1} x ${Utils.formatRupiah(i.price \vert{}\vert{} i.harga \vert{}\vert{} 0)} =${Utils.formatRupiah(i.total || ((i.price || i.harga || 0) * (i.quantity || i.qty || 1)))}`).join('\n') : (TYPE_LABELS[t.type] || t.type)}
 --------------------------------
 TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
+Metode : ${(t.paymentMethod || 'Tunai').toUpperCase()}
 ================================
- Terima Kasih
+  Terima Kasih Telah Berbelanja
 ================================
         `;
         document.getElementById('strukModal').classList.add('active');
@@ -1135,6 +1201,47 @@ TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
 
       window.closeStrukModal = function() {
         document.getElementById('strukModal').classList.remove('active');
+      };
+
+      window.printStrukBluetooth = async function() {
+        if (!lastTransactionData) return;
+        if (!window.bluetoothSerial) {
+          Utils.showToast('Printer Bluetooth hanya aktif di APK Android', 'info');
+          return;
+        }
+        const mac = localStorage.getItem('webpos_printer_mac');
+        if (!mac) {
+          Utils.showToast('Pilih printer dulu di menu Printer & Struk', 'warning');
+          return;
+        }
+
+        Utils.showLoading('Menghubungkan printer...');
+        try {
+          await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
+          const t = lastTransactionData;
+          const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
+          let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
+          c += '--------------------------------\x0A\x1B\x61\x00';
+          c += 'No   : #' + String(t.inputSequence || 0).padStart(3, '0') + '\x0A';
+          c += 'ID   : ' + t.id + '\x0A';
+          c += 'Tgl  : ' + formatDateTime(t.timestamp) + '\x0A';
+          c += 'Kasir: ' + (t.userName || '-') + '\x0A--------------------------------\x0A';
+          if (t.items) {
+            t.items.forEach(i => {
+              c += (i.name || i.productName) + '\x0A  ' + (i.quantity || i.qty || 1) + ' x ' + Utils.formatRupiah(i.price || i.harga || 0) + ' = ' + Utils.formatRupiah(i.total || 0) + '\x0A';
+            });
+          }
+          c += '--------------------------------\x0A';
+          c += 'TOTAL: ' + Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0) + '\x0A================================\x0A\x1B\x61\x01Terima Kasih\x0A\x0A\x0A\x1D\x56\x41\x03';
+
+          await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
+          await new Promise(res => bluetoothSerial.disconnect(res, res));
+          Utils.hideLoading();
+          Utils.showToast('Struk berhasil dicetak!', 'success');
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal mencetak: ' + e, 'error');
+        }
       };
 
       function getItemProductId(item) {
@@ -1212,8 +1319,8 @@ TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
 
         pendingDeleteId = id;
         const message = transaction.type === 'penjualan'
-          ? 'Transaksi penjualan ini akan dihapus dan jumlah stok setiap item akan dikembalikan ke Produk.'
-          : 'Transaksi ini akan dihapus dari riwayat. Tindakan ini tidak dapat dibatalkan.';
+          ? 'Transaksi penjualan ini akan dihapus dan stok setiap item akan dikembalikan ke data Produk.'
+          : 'Transaksi ini akan dihapus permanen dari riwayat.';
         document.getElementById('deleteConfirmMessage').textContent = message;
         document.getElementById('deleteConfirmModal').classList.add('active');
       };
@@ -1244,7 +1351,7 @@ TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
           Utils.hideLoading();
           Utils.showToast(
             stockResult.restored
-              ? 'Transaksi dihapus dan stok berhasil dikembalikan'
+              ? 'Transaksi dihapus dan stok dikembalikan'
               : 'Transaksi berhasil dihapus',
             'success'
           );
@@ -1331,10 +1438,94 @@ TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'riwayat_transaksi.csv';
+        a.download = `riwayat_transaksi_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
         Utils.showToast('Data berhasil diexport', 'success');
+      }
+
+      // PROSES IMPORT FILE TRANSAKSI
+      async function processImport() {
+        const fileInput = document.getElementById('importFile');
+        if (!fileInput.files.length) {
+          Utils.showToast('Pilih file terlebih dahulu', 'warning');
+          return;
+        }
+
+        const file = fileInput.files[0];
+        Utils.showLoading('Memproses import transaksi...');
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            let importedData = [];
+            if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              importedData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            } else if (file.name.endsWith('.csv')) {
+              const text = e.target.result;
+              const lines = text.split('\n').filter(l => l.trim());
+              const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+              for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const obj = {};
+                headers.forEach((h, idx) => obj[h] = values[idx] || '');
+                importedData.push(obj);
+              }
+            } else {
+              importedData = JSON.parse(e.target.result);
+            }
+
+            if (!Array.isArray(importedData)) throw new Error('Format file tidak valid');
+
+            const batch = db.batch();
+            let count = 0;
+            const user = auth.currentUser;
+
+            for (const item of importedData) {
+              const id = item.id || ('TRX_' + Date.now() + '_' + count);
+              const ref = db.collection('transactions').doc(id);
+              const total = parseInt(item.total || item.amount || 0) || 0;
+              const type = (item.type || item.tipe || 'penjualan').toLowerCase();
+              const date = item.date || item.tanggal || new Date().toISOString().split('T')[0];
+
+              batch.set(ref, {
+                id,
+                total,
+                amount: total,
+                type,
+                paymentMethod: item.metode || item.paymentMethod || 'Tunai',
+                note: item.note || item.keterangan || 'Import Transaksi',
+                date,
+                timestamp: Date.now(),
+                userId: user.uid,
+                userName: item.kasir || user.email,
+                status: 'completed',
+                imported: true
+              });
+              count++;
+            }
+
+            await batch.commit();
+            Utils.hideLoading();
+            Utils.showToast(`${count} data transaksi berhasil diimport!`, 'success');
+            closeImportModal();
+            loadTransactions();
+          } catch(err) {
+            Utils.hideLoading();
+            console.error('Import error:', err);
+            Utils.showToast('Gagal import: ' + err.message, 'error');
+          }
+        };
+
+        if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+          reader.readAsArrayBuffer(file);
+        } else {
+          reader.readAsText(file);
+        }
       }
 
     })();
