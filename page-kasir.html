@@ -13,7 +13,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -92,7 +92,7 @@
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
-html{font-size:16px;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+html{font-size:16px;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif}
 body{
    background:var(--bg-primary);
    color:var(--text-primary);line-height:1.6;min-height:100vh;
@@ -2115,10 +2115,32 @@ html,body{overflow-x:hidden;max-width:100vw}
   border-color:var(--primary) !important;
   color:#fff !important;
 }
+
+/* ===== TAMBAHAN PENYELARASAN DENGAN HALAMAN LAIN ===== */
+.sidebar-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:999;opacity:0;visibility:hidden;transition:all .25s ease}
+.sidebar-backdrop.active{opacity:1;visibility:visible}
+.btn-icon-box{width:40px;height:40px;padding:0;border-radius:.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.btn-icon-box:hover{background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary);border-color:var(--primary)}
+.custom-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:1.25rem;z-index:6000;opacity:0;visibility:hidden;transition:all .2s ease}
+.custom-modal-backdrop.open{opacity:1;visibility:visible}
+.custom-dialog-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-xl);width:100%;max-width:380px;padding:1.75rem 1.5rem;box-shadow:var(--shadow-lg);text-align:center}
+.dialog-icon-wrap{width:60px;height:60px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:1rem}
+.dialog-icon-wrap.danger{background:rgba(239,68,68,.1);color:var(--danger)}
+.dialog-title{font-size:1.15rem;font-weight:700;margin-bottom:.4rem;color:var(--text-primary)}
+.dialog-message{font-size:.85rem;color:var(--text-muted);line-height:1.4;margin-bottom:1.5rem}
+.dialog-btn-group{display:flex;gap:.65rem}
+.dialog-btn{flex:1;padding:.75rem;border-radius:var(--radius-md);font-size:.85rem;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:all .15s}
+.dialog-btn-primary{background:var(--danger);color:#fff}
+.dialog-btn-primary:hover{filter:brightness(.9)}
+.dialog-btn-secondary{background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color)}
 </style>
+<base target="_blank">
 </head>
 <body>
   <div class="app-container">
+    <!-- Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
@@ -2365,13 +2387,10 @@ html,body{overflow-x:hidden;max-width:100vw}
   </div>
 
   <div class="header-actions">
-    <button class="btn-icon" id="btnScan" title="Scan Barcode">
-      <i class="fas fa-barcode"></i>
-    </button>
-    <button class="btn-icon" id="btnTheme" title="Toggle Dark Mode">
+    <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode">
       <i class="fas fa-moon"></i>
     </button>
-    <button class="btn-icon" id="btnLogout" title="Logout">
+    <button class="btn-icon-box" id="btnLogout" title="Logout">
       <i class="fas fa-sign-out-alt"></i>
     </button>
   </div>
@@ -2595,6 +2614,9 @@ html,body{overflow-x:hidden;max-width:100vw}
         <i class="fas fa-search"></i>
         <input type="text" id="productSearch" placeholder="Cari produk...">
       </div>
+      <button class="btn-icon-box" id="btnScan" title="Scan Barcode" style="width:40px;height:40px;flex-shrink:0;">
+        <i class="fas fa-barcode"></i>
+      </button>
       <div class="view-toggle">
         <button class="view-btn" data-view="grid" title="Grid View">
           <i class="fas fa-th-large"></i>
@@ -2843,6 +2865,32 @@ html,body{overflow-x:hidden;max-width:100vw}
     <p style="margin-top:1rem;color:var(--text-secondary);">Loading...</p>
   </div>
 
+  <!-- Modal Konfirmasi Logout (Custom) -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Umum (Custom) -->
+  <div class="custom-modal-backdrop" id="customConfirmModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-trash-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Hapus</h3>
+      <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -2899,6 +2947,7 @@ html,body{overflow-x:hidden;max-width:100vw}
   <script src="js/auth.js"></script>
   <script src="js/db-offline.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 
   <script>
     // ===== FIRESTORE COMPATIBILITY LAYER =====
@@ -2951,10 +3000,18 @@ document.getElementById('menuToggle').addEventListener('click', () => {
   sidebar.classList.toggle('collapsed');
 });
 
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 if (mobileMenuToggle) {
   mobileMenuToggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    sidebar.classList.toggle('mobile-open');
+    sidebar.classList.add('mobile-open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+  });
+}
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener('click', () => {
+    sidebar.classList.remove('mobile-open');
+    sidebarBackdrop.classList.remove('active');
   });
 }
 
@@ -2965,19 +3022,12 @@ document.querySelectorAll('.nav-link').forEach(link => {
     if(link.classList.contains('nav-dropdown-toggle')) return;
     if(window.innerWidth <= 1024){
       sidebar.classList.remove('mobile-open');
+      if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
     }
   });
 });
 
-// Tutup sidebar saat klik overlay (area gelap)
-document.addEventListener('click', (e) => {
-  if (window.innerWidth <= 1024 && 
-      sidebar.classList.contains('mobile-open') &&
-      !sidebar.contains(e.target) && 
-      e.target !== mobileMenuToggle) {
-    sidebar.classList.remove('mobile-open');
-  }
-});
+// Tutup sidebar saat klik overlay (area gelap) - dikelola #sidebarBackdrop
     // ===== DARK MODE =====
     const btnTheme = document.getElementById('btnTheme');
     const savedTheme = localStorage.getItem('webpos_theme') || 'light';
@@ -2996,6 +3046,23 @@ document.addEventListener('click', (e) => {
     function formatRupiah(num) {
       return 'Rp ' + Math.round(num || 0).toLocaleString('id-ID');
     }
+
+    // ===== CUSTOM CONFIRM MODAL (pengganti window.confirm) =====
+    let pendingConfirmCallback = null;
+    function showCustomConfirm(msg, callback) {
+      document.getElementById('customConfirmMessage').textContent = msg;
+      pendingConfirmCallback = callback;
+      document.getElementById('customConfirmModal').classList.add('open');
+    }
+    function closeCustomConfirm() {
+      document.getElementById('customConfirmModal').classList.remove('open');
+      pendingConfirmCallback = null;
+    }
+    document.getElementById('btnCustomConfirmAction').addEventListener('click', () => {
+      document.getElementById('customConfirmModal').classList.remove('open');
+      if (typeof pendingConfirmCallback === 'function') pendingConfirmCallback();
+      pendingConfirmCallback = null;
+    });
 
     // ===== TOAST =====
     function showToast(msg, type = 'info') {
@@ -3230,6 +3297,7 @@ async function loadUangGlobal() {
               document.getElementById('userName').textContent = name;
               document.getElementById('userRole').textContent = role;
               document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+              if (typeof RoleGuard !== 'undefined') RoleGuard.apply(role.toLowerCase());
             });
           }
         });
@@ -3591,14 +3659,14 @@ function renderCart() {
     // ===== CLEAR CART =====
     document.getElementById('btnClearCart').addEventListener('click', () => {
       if (cart.length === 0) return;
-      if (confirm('Yakin ingin mengosongkan keranjang?')) {
+      showCustomConfirm('Yakin ingin mengosongkan keranjang?', () => {
         cart = [];
         discount = 0;
         saveCart();
         renderCart();
         updateSummary();
         showToast('Keranjang dikosongkan', 'info');
-      }
+      });
     });
 
     // ===== PAYMENT MODAL =====
@@ -4224,11 +4292,13 @@ manualModal.addEventListener('click', (e) => {
 
     // ===== LOGOUT =====
     document.getElementById('btnLogout').addEventListener('click', () => {
-      if (confirm('Yakin ingin logout?')) {
-        firebase.auth().signOut().then(() => {
-          window.location.href = 'login.html';
-        });
-      }
+      document.getElementById('customLogoutModal').classList.add('open');
+    });
+    document.getElementById('btnConfirmLogoutAction').addEventListener('click', () => {
+      firebase.auth().signOut().then(() => {
+        localStorage.removeItem('webpos_session');
+        window.location.href = 'login.html';
+      });
     });
 
     /// ===== MOBILE CART TOGGLE =====
