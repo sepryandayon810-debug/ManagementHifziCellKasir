@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- SheetJS for Excel Support -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -32,6 +32,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
   <style>
+    /* ============================================
+       WEBPOS RIWAYAT - TEMA GLOBAL SELARAS DASHBOARD/PENGATURAN
+       ============================================ */
     :root{
       --primary:#4f46e5;
       --primary-hover:#4338ca;
@@ -400,7 +403,6 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -410,7 +412,6 @@
           </ul>
         </div>
 
-        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
@@ -438,7 +439,6 @@
           </ul>
         </div>
 
-        <!-- Laporan -->
         <div class="nav-section">
           <div class="nav-section-title">Laporan</div>
           <ul class="nav-menu">
@@ -448,7 +448,6 @@
           </ul>
         </div>
 
-        <!-- Integrasi -->
         <div class="nav-section">
           <div class="nav-section-title">Integrasi</div>
           <ul class="nav-menu">
@@ -457,7 +456,6 @@
           </ul>
         </div>
 
-        <!-- Penggajian -->
         <div class="nav-section">
           <div class="nav-section-title">Penggajian</div>
           <ul class="nav-menu">
@@ -465,7 +463,6 @@
           </ul>
         </div>
 
-        <!-- Sistem -->
         <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
@@ -504,7 +501,7 @@
       </header>
 
       <div class="page-content">
-        <!-- RAPI: Filter Waktu & Kategori dalam 1 Card Bersih -->
+        <!-- Filter Waktu & Kategori -->
         <div class="filter-wrapper">
           <div class="quick-filter">
             <button class="quick-filter-btn active" data-period="today">Hari Ini</button>
@@ -514,7 +511,6 @@
             <button class="quick-filter-btn" data-period="custom"><i class="fas fa-calendar-alt"></i> Rentang Tanggal</button>
           </div>
 
-          <!-- Custom Date Filter -->
           <div id="customDateFilter" style="display:none; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-top:0.25rem;">
             <input type="date" id="startDate" class="form-input" style="max-width:160px; padding:0.4rem 0.6rem;">
             <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">s/d</span>
@@ -574,7 +570,6 @@
               <h3 class="card-title"><i class="fas fa-list" style="color:var(--primary);"></i> Daftar Transaksi</h3>
               <span id="trxCount" style="font-size:.78rem; color:var(--text-muted); font-weight:700;"></span>
             </div>
-            <!-- Tombol Export & Import ditaruh di sini secara elegan -->
             <div style="display:flex; gap:0.35rem; align-items:center;">
               <button class="btn btn-outline btn-sm" id="btnOpenImportModal"><i class="fas fa-file-import"></i> Import</button>
               <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
@@ -714,9 +709,18 @@
   </div>
   <div class="toast-container" id="toastContainer"></div>
 
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
+
   <script>
     (function() {
       "use strict";
+
+      // INISIALISASI VARIABEL FIREBASE DENGAN AMAN
+      const auth = firebase.auth();
+      const db = firebase.firestore();
 
       let allTransactions = [];
       let currentFilter = 'all';
@@ -983,7 +987,7 @@
             }
           });
 
-          // 2. Ambil dari koleksi purchases agar pembelian restock langsung muncul
+          // 2. Ambil dari koleksi purchases
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -1115,7 +1119,6 @@
           </div>
         `;
 
-        // PERBAIKAN: Kurung kurawal template yang sebelumnya menyebabkan Syntax Error diperbaiki
         if (t.items && t.items.length > 0) {
           html += `
             <div style="font-weight:700;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">RINCIAN PRODUK</div>
@@ -1168,7 +1171,6 @@
         document.getElementById('totalLaba').textContent = Utils.formatRupiah(totalLaba);
       }
 
-      // PREVIEW STRUK: Menyesuaikan header sesuai nama toko di setting
       window.printTransaction = function(id) {
         const t = allTransactions.find(x => x.id === id);
         if (!t) return;
@@ -1178,24 +1180,43 @@
         const address = storeSettings.address || '';
         const phone = storeSettings.phone || '';
 
+        let itemsText = TYPE_LABELS[t.type] || t.type || '-';
+        if (t.items && Array.isArray(t.items) && t.items.length > 0) {
+          itemsText = t.items.map(function(i) {
+            const name = i.name || i.productName || 'Barang';
+            const qty = i.quantity || i.qty || 1;
+            const price = i.price || i.harga || 0;
+            const subtotal = i.total || (price * qty);
+            return name + '\n' + qty + ' x ' + Utils.formatRupiah(price) + ' = ' + Utils.formatRupiah(subtotal);
+          }).join('\n');
+        }
+
+        const totalNominal = Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0);
+        const paymentMethod = (t.paymentMethod || 'Tunai').toUpperCase();
+        const headerStore = storeName.toUpperCase();
+        const addressText = address ? '  ' + address + '\n' : '';
+        const phoneText = phone ? '  Telp: ' + phone + '\n' : '';
+
         const paper = document.getElementById('strukPaper');
-        paper.textContent = `
-================================
-  ${storeName.toUpperCase()}
-${address ? '  ' + address + '\n' : ''}${phone ? '  Telp: ' + phone + '\n' : ''}================================
- No.    : #${String(t.inputSequence || 0).padStart(3, '0')}
- ID     : ${t.id}
- Waktu  : ${formatDateTime(t.timestamp)}
- Kasir  : ${t.userName || '-'}
---------------------------------
-${t.items ? t.items.map(i => `${i.name || i.productName}\n${i.quantity || i.qty || 1} x ${Utils.formatRupiah(i.price || i.harga || 0)} = ${Utils.formatRupiah(i.total || ((i.price || i.harga || 0) * (i.quantity || i.qty || 1)))}`).join('\n') : (TYPE_LABELS[t.type] || t.type)}
---------------------------------
-TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
-Metode : ${(t.paymentMethod || 'Tunai').toUpperCase()}
-================================
-  Terima Kasih Telah Berbelanja
-================================
-        `;
+        paper.textContent = 
+'================================\n' +
+'  ' + headerStore + '\n' +
+addressText +
+phoneText +
+'================================\n' +
+' No.    : #' + String(t.inputSequence || 0).padStart(3, '0') + '\n' +
+' ID     : ' + t.id + '\n' +
+' Waktu  : ' + formatDateTime(t.timestamp) + '\n' +
+' Kasir  : ' + (t.userName || '-') + '\n' +
+'--------------------------------\n' +
+itemsText + '\n' +
+'--------------------------------\n' +
+'TOTAL  : ' + totalNominal + '\n' +
+'Metode : ' + paymentMethod + '\n' +
+'================================\n' +
+'  Terima Kasih Telah Berbelanja\n' +
+'================================';
+
         document.getElementById('strukModal').classList.add('active');
       };
 
@@ -1445,7 +1466,6 @@ Metode : ${(t.paymentMethod || 'Tunai').toUpperCase()}
         Utils.showToast('Data berhasil diexport', 'success');
       }
 
-      // PROSES IMPORT FILE TRANSAKSI
       async function processImport() {
         const fileInput = document.getElementById('importFile');
         if (!fileInput.files.length) {
@@ -1501,8 +1521,8 @@ Metode : ${(t.paymentMethod || 'Tunai').toUpperCase()}
                 note: item.note || item.keterangan || 'Import Transaksi',
                 date,
                 timestamp: Date.now(),
-                userId: user.uid,
-                userName: item.kasir || user.email,
+                userId: user ? user.uid : 'unknown',
+                userName: item.kasir || (user ? user.email : 'Admin'),
                 status: 'completed',
                 imported: true
               });
