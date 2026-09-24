@@ -99,7 +99,7 @@
     }
     [data-theme="dark"] body { background:var(--bg-base) !important; color:var(--text-main) !important; }
 
-    .app-container{display:flex;min-height:100vh;min-width:0}
+    .app-container{display:flex;min-height:100vh;min-width:0;position:relative;width:100%;max-width:100vw;overflow-x:hidden}
 
     .sidebar-backdrop{
       position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);
@@ -142,6 +142,7 @@
       width:100%;padding:.5rem .75rem .5rem 2.2rem;border:1px solid var(--border);
       border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:0.82rem;outline:none;
     }
+    .sidebar.collapsed .sidebar-search{display:none}
 
     .sidebar-nav{flex:1;overflow-y:auto;padding:1rem 0.75rem}
     .nav-section{margin-bottom:1.25rem}
@@ -181,9 +182,9 @@
     .user-role{font-size:.7rem;color:var(--text-muted);text-transform:capitalize}
 
     /* MAIN CONTENT & HEADER */
-    .main-content{flex:1;min-width:0;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
+    .main-content{flex:1;min-width:0;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s;width:100%;max-width:100vw;overflow-x:hidden}
     .sidebar.collapsed ~ .main-content{margin-left:var(--sidebar-collapsed)}
-    @media(max-width:1024px){.main-content{margin-left:0}}
+    @media(max-width:1024px){.main-content{margin-left:0;width:100vw}}
 
     .main-header{
       height:var(--header-h);background:var(--bg-surface);
@@ -219,7 +220,6 @@
     .btn-warning{background:var(--warning);color:white}
     .btn-danger{background:var(--danger);color:white}
     .btn-sm{padding:.35rem .75rem;font-size:.78rem}
-    .d-md-none{display:none}
 
     /* SUMMARY CARDS */
     .summary-cards{
@@ -333,7 +333,7 @@
     }
     .sequence-heading{width:54px;text-align:center !important}
 
-    /* RESPONSIVE KHUSUS MOBILE: TIDAK PERLU SCROLL PANJANG KE SAMPING */
+    /* RESPONSIVE KHUSUS MOBILE */
     @media(max-width:768px){
       .hide-on-mobile{display:none !important}
       .transaction-table th, .transaction-table td{padding:0.65rem 0.5rem}
@@ -344,25 +344,49 @@
     /* MOBILE NAV */
     .mobile-nav{
       display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);
-      background:var(--bg-surface);border-top:1px solid var(--border);z-index:99;padding:0 0.5rem;
+      background:var(--bg-surface);border-top:1px solid var(--border);z-index:99;padding:0 0.5rem;align-items:center;justify-content:space-around;
     }
     .mobile-nav-item{
       flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
       text-decoration:none;color:var(--text-muted);font-size:0.65rem;font-weight:600;
     }
-    .mobile-nav-item i{font-size:1.1rem}
     .mobile-nav-item.active{color:var(--primary)}
+    .mobile-nav-item i{font-size:1.1rem}
     @media(max-width:1024px){.mobile-nav{display:flex}}
-    @media(max-width:1024px){
-      .d-md-none{display:flex !important}
-      .sidebar .menu-toggle{display:none}
-    }
-    @media(max-width:768px){
-      .summary-cards{grid-template-columns:minmax(0,1fr);gap:.75rem}
-      .summary-card{width:100%;padding:.85rem 1rem}
-    }
 
-    /* MODAL */
+    /* MODAL KONFIRMASI LOGOUT INTERNAL */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-primary:hover { filter: brightness(0.9); }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
+    /* MODAL UMUM */
     .modal-overlay{
       position:fixed;inset:0;background:rgba(15,23,42,0.65);
       backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;
@@ -389,6 +413,13 @@
     .struk-modal-overlay.active{opacity:1;visibility:visible}
     .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+
+    .loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.7);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;opacity:0;visibility:hidden;transition:all 0.2s ease}
+    .loading-overlay.active{opacity:1;visibility:visible}
+    .spinner{width:42px;height:42px;border:3.5px solid rgba(255,255,255,0.2);border-top-color:var(--primary);border-radius:50%;animation:spinOverlay 0.8s linear infinite}
+    @keyframes spinOverlay{to{transform:rotate(360deg)}}
+
+    .toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;max-width:360px}
   </style>
 </head>
 <body>
@@ -413,6 +444,7 @@
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -422,6 +454,7 @@
           </ul>
         </div>
 
+        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
@@ -449,6 +482,7 @@
           </ul>
         </div>
 
+        <!-- Laporan -->
         <div class="nav-section">
           <div class="nav-section-title">Laporan</div>
           <ul class="nav-menu">
@@ -458,6 +492,7 @@
           </ul>
         </div>
 
+        <!-- Integrasi -->
         <div class="nav-section">
           <div class="nav-section-title">Integrasi</div>
           <ul class="nav-menu">
@@ -466,6 +501,7 @@
           </ul>
         </div>
 
+        <!-- Penggajian -->
         <div class="nav-section">
           <div class="nav-section-title">Penggajian</div>
           <ul class="nav-menu">
@@ -473,6 +509,7 @@
           </ul>
         </div>
 
+        <!-- Sistem -->
         <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
@@ -528,7 +565,6 @@
             <button class="btn btn-primary btn-sm" id="btnFilter"><i class="fas fa-filter"></i> Terapkan</button>
           </div>
 
-          <!-- Kategori Disesuaikan: Default Tab adalah BUKU KASIR -->
           <div class="category-tabs">
             <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
             <button class="category-tab" data-category="penjualan">Penjualan</button>
@@ -596,6 +632,19 @@
       <a href="page-riwayat.html" class="mobile-nav-item active"><i class="fas fa-history"></i><span>Riwayat</span></a>
       <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
     </nav>
+  </div>
+
+  <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      </div>
+    </div>
   </div>
 
   <!-- Struk Preview Modal -->
@@ -704,7 +753,6 @@
     (function() {
       "use strict";
 
-      // Inisialisasi Firebase Auth & Firestore secara aman
       const auth = firebase.auth();
       const db = firebase.firestore();
 
@@ -843,11 +891,27 @@
           });
         }
 
-        document.getElementById('btnLogout').onclick = () => {
-          Utils.confirm('Yakin ingin logout?', () => {
-            auth.signOut().then(() => window.location.href = 'login.html');
-          });
-        };
+        // Logout dengan Modal Internal WebPOS
+        const logoutBtn = document.getElementById('btnLogout');
+        if (logoutBtn) {
+          logoutBtn.onclick = () => {
+            const modal = document.getElementById('customLogoutModal');
+            if (modal) {
+              modal.classList.add('open');
+              document.getElementById('btnConfirmLogoutAction').onclick = () => {
+                auth.signOut().then(() => {
+                  localStorage.removeItem('webpos_session');
+                  window.location.href = 'login.html';
+                });
+              };
+            } else {
+              auth.signOut().then(() => {
+                localStorage.removeItem('webpos_session');
+                window.location.href = 'login.html';
+              });
+            }
+          };
+        }
       }
 
       function initRiwayat() {
@@ -948,7 +1012,6 @@
           const startStr = startDate;
           const endStr = endDate;
 
-          // 1. Ambil dari transactions
           const txSnapshot = await db.collection("transactions")
             .where("date", ">=", startStr)
             .where("date", "<=", endStr)
@@ -962,7 +1025,6 @@
             }
           });
 
-          // 2. Ambil dari purchases
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -1022,7 +1084,6 @@
           });
         }
 
-        // PENOMORAN URUT DINAMIS SESUAI DAFTAR YANG TAMPIL: 1, 2, 3...
         const chronologicalList = [...filtered].sort((a, b) => {
           return getTimestampMillis(a) - getTimestampMillis(b) ||
             String(a.id).localeCompare(String(b.id));
@@ -1032,7 +1093,6 @@
           transaction.inputSequence = index + 1;
         });
 
-        // Urutkan transaksi terbaru di bagian teratas tabel
         filtered.sort((a, b) => {
           return getTimestampMillis(b) - getTimestampMillis(a) ||
             String(b.id).localeCompare(String(a.id));
@@ -1167,9 +1227,7 @@
           card1Value = Utils.formatRupiah(omset);
           card1Sub = 'penjualan, top up & tarik';
           card1Icon = 'fa-cash-register';
-
           card2Sub = 'transaksi kasir';
-
           card3Title = 'TOTAL LABA BERSIH';
           card3Value = Utils.formatRupiah(laba);
           card3Sub = 'laba produk & fee admin';
@@ -1188,14 +1246,11 @@
           card1Value = Utils.formatRupiah(totalBeli);
           card1Sub = 'belanja restock barang';
           card1Icon = 'fa-truck-loading';
-
           card2Sub = 'transaksi operasional';
-
           card3Title = 'TOTAL KAS KELUAR';
           card3Value = Utils.formatRupiah(totalKasKeluar);
           card3Sub = 'beban pengeluaran kas';
           card3Icon = 'fa-minus-circle';
-          card3Class = 'summary-card-3';
 
         } else if (currentFilter === 'pembelian') {
           let totalBeli = 0;
@@ -1209,9 +1264,7 @@
           card1Value = Utils.formatRupiah(totalBeli);
           card1Sub = 'biaya belanja barang';
           card1Icon = 'fa-truck-loading';
-
           card2Sub = 'transaksi pembelian';
-
           card3Title = 'TOTAL ITEM DIBELI';
           card3Value = totalItemsBeli + ' pcs';
           card3Sub = 'stok produk masuk';
@@ -1229,9 +1282,7 @@
           card1Value = Utils.formatRupiah(totalPenjualan);
           card1Sub = 'penjualan produk';
           card1Icon = 'fa-shopping-cart';
-
           card2Sub = 'transaksi penjualan';
-
           card3Title = 'TOTAL LABA PRODUK';
           card3Value = Utils.formatRupiah(totalLaba);
           card3Sub = 'keuntungan bersih barang';
@@ -1249,16 +1300,13 @@
           card1Value = Utils.formatRupiah(totalNominal);
           card1Sub = 'nominal topup & tarik';
           card1Icon = 'fa-exchange-alt';
-
           card2Sub = 'transaksi topup/tarik';
-
           card3Title = 'LABA FEE ADMIN';
           card3Value = Utils.formatRupiah(totalFee);
           card3Sub = 'pendapatan biaya admin';
           card3Icon = 'fa-coins';
 
         } else {
-          // AUDIT GLOBAL
           let totalMasuk = 0;
           let totalKeluar = 0;
 
@@ -1275,9 +1323,7 @@
           card1Value = Utils.formatRupiah(totalMasuk);
           card1Sub = 'penjualan, topup, kas masuk';
           card1Icon = 'fa-arrow-down';
-
           card2Sub = 'seluruh transaksi terdata';
-
           card3Title = 'TOTAL PENGELUARAN';
           card3Value = Utils.formatRupiah(totalKeluar);
           card3Sub = 'restock, tarik, kas keluar';
@@ -1441,7 +1487,7 @@ itemsText + '\n' +
         });
 
         if (unresolvedItems.length > 0) {
-          throw new Error('ID produk tidak ditemukan untuk: ' + unresolvedItems.join(', ') + '. Transaksi tidak dihapus agar stok tidak salah.');
+          throw new Error('ID produk tidak ditemukan untuk: ' + unresolvedItems.join(', ') + '. Transaksi tidak dihapus.');
         }
         if (quantitiesByProduct.size === 0) return { restored: 0 };
 
@@ -1457,7 +1503,7 @@ itemsText + '\n' +
 
           productSnapshots.forEach((productSnapshot, index) => {
             if (!productSnapshot.exists) {
-              throw new Error('Produk dengan ID ' + productRefs[index].id + ' tidak ditemukan. Transaksi tidak dihapus.');
+              throw new Error('Produk dengan ID ' + productRefs[index].id + ' tidak ditemukan.');
             }
 
             const productData = productSnapshot.data() || {};
