@@ -321,7 +321,7 @@
       color: var(--warning);
     }
 
-    /* AUTOCOMPLETE DROPDOWN PELANGGAN MELAYANG */
+    /* AUTOCOMPLETE DROPDOWN PELANGGAN */
     .customer-autocomplete-wrapper {
       position: relative;
       width: 100%;
@@ -1358,8 +1358,11 @@
                   kasKeluar += data.amount || 0;
                   break;
                 case 'topup':
-                  topup += data.amount || 0;
-                  topupAdminFee += data.adminFee || 0;
+                  // Topup berstatus hutang uang fisiknya belum masuk ke laci kasir
+                  if (data.paymentMethod !== 'hutang') {
+                    topup += data.amount || 0;
+                    topupAdminFee += data.adminFee || 0;
+                  }
                   break;
                 case 'tarik':
                   tarik += data.amount || 0;
