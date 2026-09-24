@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Kas & Shift</title>
 
-  <!-- SKRIP TEMA GLOBAL -->
+  <!-- SKRIP PENERAPAN TEMA & WARNA GLOBAL -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      const savedColor = localStorage.getItem("webpos_theme_color") || localStorage.getItem("theme_color") || "indigo";
       document.documentElement.setAttribute("data-theme", savedTheme);
       document.documentElement.setAttribute("data-theme-color", savedColor);
     })();
@@ -22,155 +22,344 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
+
   <style>
     :root {
-      --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff;
-      --accent: #0284c7; --success: #059669; --success-light: #ecfdf5;
-      --warning: #d97706; --warning-light: #fffbeb; --danger: #dc2626; --danger-light: #fef2f2;
-      --bg-base: #f8fafc; --bg-surface: #ffffff; --bg-subtle: #f1f5f9; --border: #e2e8f0;
-      --text-main: #0f172a; --text-muted: #64748b; --text-sub: #475569;
-      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --info: #0284c7;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-2xl: 24px;
+      
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+      --bottom-nav-height: 60px;
     }
+
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
+
     [data-theme="dark"] {
-      --bg-base: #090d16; --bg-surface: #111827; --bg-subtle: #1e293b; --border: #2e384d;
-      --text-main: #f8fafc; --text-muted: #94a3b8; --text-sub: #cbd5e1;
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
     .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
-    .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
+
+    .sidebar-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+      z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease;
+    }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
-    
-    /* SIDEBAR */
-    .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.25s ease, width 0.25s ease; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-width); height: 100vh;
+      background: var(--bg-surface); border-right: 1px solid var(--border);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: transform 0.25s ease, width 0.25s ease;
+    }
     .sidebar.collapsed { width: var(--sidebar-collapsed); }
-    @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
-    .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); }
+    @media(max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mobile-open { transform: translateX(0); }
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: var(--header-h);
+    }
     .logo-container { display: flex; align-items: center; gap: 0.65rem; }
-    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; }
-    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+    }
     .sidebar.collapsed .logo-text { display: none; }
-    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    .menu-toggle {
+      width: 28px; height: 28px; background: var(--primary);
+      border: none; border-radius: 50%; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;
+    }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
     .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
     .search-input-wrapper { position: relative; display: flex; align-items: center; }
     .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
-    .search-input { width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none; }
+    .search-input {
+      width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none;
+    }
     .sidebar.collapsed .sidebar-search { display: none; }
+
     .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
     .nav-section { margin-bottom: 1.25rem; }
-    .nav-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); padding: 0.35rem 0.75rem; margin-bottom: 0.2rem; }
+    .nav-section-title {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0.35rem 0.75rem; margin-bottom: 0.2rem;
+    }
     .sidebar.collapsed .nav-section-title { display: none; }
+
     .nav-menu { list-style: none; }
     .nav-item { margin-bottom: 3px; }
-    .nav-link { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); color: var(--text-sub); text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.6rem 0.85rem; border-radius: var(--radius-md);
+      color: var(--text-sub); text-decoration: none;
+      font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer;
+    }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
-    .nav-link.active { background: var(--primary-light); color: var(--primary); }
-    .nav-link i { width: 20px; text-align: center; }
+    .nav-link.active { background: var(--primary-light); color: var(--primary) !important; font-weight: 600; }
+    .nav-link.active i { color: var(--primary) !important; }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
+
     .nav-dropdown { position: relative; }
     .nav-dropdown-toggle { justify-content: space-between; }
-    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
-    .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
-    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .nav-submenu {
+      list-style: none; max-height: 0; overflow: hidden;
+      transition: max-height 0.25s ease; padding-left: 2rem;
+    }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
-    .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
-    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: 0.85rem 1rem; border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    .user-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
     .user-info { flex: 1; overflow: hidden; }
     .sidebar.collapsed .user-info { display: none; }
     .user-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
-    /* MAIN CONTENT & HEADER */
-    .main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden; }
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-width);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden;
+    }
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; width: 100vw !important; } }
-    .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; position: sticky; top: 0; z-index: 90; width: 100%; box-sizing: border-box; }
-    .header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
-    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .btn-icon { width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
-    .page-content { padding: 1.25rem; flex: 1; width: 100%; box-sizing: border-box; padding-bottom: calc(var(--bottom-nav-height) + 2rem); }
 
-    /* PAGE SPECIFIC */
-    .shift-container { display: grid; grid-template-columns: 1fr 2fr; gap: 1.25rem; }
+    .main-header {
+      height: var(--header-h); background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.25rem; position: sticky; top: 0; z-index: 90;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .header-stats { display: flex; align-items: center; gap: 1.5rem; }
+    .header-stats .stat-item { display: flex; flex-direction: column; }
+    .header-stats .stat-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .header-stats .stat-value { font-size: 1.05rem; font-weight: 800; color: var(--text-main); }
+    @media(max-width: 768px) { .header-stats { display: none; } }
+
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+
+    .btn-icon-box {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+    }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+    .page-content { padding: 1.25rem; flex: 1; }
+
+    /* LAYOUT KAS & SHIFT */
+    .shift-container { display: grid; grid-template-columns: 1fr 1.8fr; gap: 1.25rem; }
     @media(max-width: 1024px) { .shift-container { grid-template-columns: 1fr; } }
 
-    .status-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.25rem; text-align: center; box-shadow: var(--shadow-sm); }
-    .status-indicator-large { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; }
+    .status-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.5rem 1.25rem; text-align: center; box-shadow: var(--shadow-sm); }
+    .status-indicator-large { width: 75px; height: 75px; border-radius: 50%; margin: 0 auto 0.85rem; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: white; }
     .status-indicator-large.open { background: linear-gradient(135deg, var(--success), #047857); }
     .status-indicator-large.closed { background: linear-gradient(135deg, var(--danger), #b91c1c); }
     .status-text { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem; }
     .status-text.open { color: var(--success); }
     .status-text.closed { color: var(--danger); }
-    .status-time { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.25rem; }
+    .status-time { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.25rem; font-weight: 600; }
     
-    .btn-shift { width: 100%; padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.9rem; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; box-shadow: var(--shadow-sm); }
+    .btn-shift { width: 100%; padding: 0.8rem; border-radius: var(--radius-lg); font-size: 0.92rem; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; box-shadow: var(--shadow-sm); transition: all 0.15s; }
     .btn-shift.open { background: var(--success); }
     .btn-shift.close { background: var(--danger); }
-    .btn-shift:hover { filter: brightness(0.9); }
+    .btn-shift:hover { filter: brightness(0.95); transform: translateY(-1px); }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-top: 1.25rem; text-align: left; }
-    .summary-item { background: var(--bg-subtle); border-radius: var(--radius-md); padding: 0.85rem; border: 1px solid var(--border); }
-    .summary-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
-    .summary-value { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
-    .summary-value.positive { color: var(--success); }
-    .summary-value.negative { color: var(--danger); }
+    /* DETAIL BOX SINKRON PERSIS DENGAN INDEX & CLOSING */
+    .kas-calculation-grid {
+      display: grid; grid-template-columns: 1fr; gap: 0.65rem; margin-top: 1.25rem; text-align: left;
+    }
+    .kas-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 0.9rem; background: var(--bg-subtle);
+      border-radius: var(--radius-md); border: 1px solid var(--border);
+    }
+    .kas-item-info { display: flex; align-items: center; gap: 0.65rem; }
+    .kas-item-icon {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
+    }
+    .kas-item-icon.neutral { background: var(--primary-light); color: var(--primary); }
+    .kas-item-icon.income { background: var(--success-light); color: var(--success); }
+    .kas-item-icon.expense { background: var(--danger-light); color: var(--danger); }
+    .kas-item-icon.warning { background: var(--warning-light); color: var(--warning); }
+    .kas-item-label { font-size: 0.8rem; font-weight: 600; color: var(--text-sub); }
+    .kas-item-value { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
+    .kas-item-value.income { color: var(--success); }
+    .kas-item-value.expense { color: var(--danger); }
 
-    .history-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
-    .filter-bar { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); overflow-x: auto; }
-    .filter-btn { padding: 0.45rem 1rem; border: 1.5px solid var(--border); border-radius: 99px; background: var(--bg-surface); color: var(--text-sub); font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .kas-total-box {
+      margin-top: 1rem; padding: 1rem; border-radius: var(--radius-lg);
+      background: var(--primary-light); border: 1.5px solid var(--primary);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .kas-total-label { font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem; }
+    .kas-total-value { font-size: 1.35rem; font-weight: 800; color: var(--primary); }
+
+    /* CARD RIWAYAT */
+    .history-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+    .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+    
+    .filter-bar { display: flex; gap: 0.45rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn { padding: 0.4rem 0.85rem; border: 1.5px solid var(--border); border-radius: 99px; background: var(--bg-surface); color: var(--text-sub); font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
     .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
     .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-    /* Desain filter tanggal custom yang cantik & profesional */
-    .date-filter-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); align-items: flex-end; }
+    .date-filter-row { display: grid; grid-template-columns: 1fr; gap: 0.65rem; padding: 0.85rem 1rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); align-items: flex-end; }
     @media(min-width: 480px) {
       .date-filter-row { grid-template-columns: 1fr 1fr auto; }
     }
 
-    .date-range-info { padding: 0.65rem 1rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; }
+    .date-range-info { padding: 0.65rem 1.25rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
     
-    .history-list { max-height: 420px; overflow-y: auto; }
-    .shift-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .history-list { max-height: 480px; overflow-y: auto; flex: 1; }
+    .shift-item { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
     .shift-item:hover { background: var(--bg-subtle); }
-    .shift-info { display: flex; flex-direction: column; gap: 0.15rem; }
+    .shift-item:last-child { border-bottom: none; }
+    .shift-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
     .shift-date { font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
-    .shift-time, .shift-user { font-size: 0.75rem; color: var(--text-muted); }
-    .shift-status { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
-    .shift-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .shift-time, .shift-user { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
+    .shift-status { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; }
+    .shift-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
     .shift-badge.open { background: var(--success-light); color: var(--success); }
     .shift-badge.closed { background: var(--danger-light); color: var(--danger); }
-    .shift-duration { font-size: 0.7rem; color: var(--text-muted); }
+    .shift-duration { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
 
-    /* Tombol dan Modal Modern */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
-    .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
-    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-    .btn-sm { padding: 0.45rem 1rem; font-size: 0.82rem; }
-
-    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
+    /* MODAL POPUP */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
-    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
     .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+    .modal-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); }
     .modal-body { padding: 1.25rem; }
-    .modal-actions { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
+    .modal-actions { padding: 0.85rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.65rem; justify-content: flex-end; background: var(--bg-subtle); }
 
     .form-group { margin-bottom: 1rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
     .form-input { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; }
-    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); }
+    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
 
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: all 0.15s; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .btn-primary:hover { filter: brightness(0.95); }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+    .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.82rem; }
+
+    /* LOADING & TOAST */
+    .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.2s ease; }
+    .loading-overlay.active { opacity: 1; visibility: visible; }
+    .spinner { width: 42px; height: 42px; border: 3.5px solid rgba(255, 255, 255, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spinOverlay 0.8s linear infinite; }
+    @keyframes spinOverlay { to { transform: rotate(360deg); } }
+
+    .toast-box { position: fixed; bottom: calc(var(--bottom-nav-height) + 1rem); left: 50%; transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; }
     .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
     .mobile-nav-item.active { color: var(--primary); }
     .mobile-nav-item i { font-size: 1.1rem; }
@@ -181,23 +370,13 @@
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
-
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
   <div class="app-container">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <!-- SIDEBAR LENGKAP -->
+    <!-- SIDEBAR LENGKAP MASTER -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-container">
@@ -287,6 +466,8 @@
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -303,59 +484,93 @@
       </div>
     </aside>
 
+    <!-- MAIN CONTENT -->
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box" id="btnBackKasir" style="display: none;" title="Kembali ke Kasir"><i class="fas fa-arrow-left"></i></button>
           <h1 class="header-title">Kas & Shift</h1>
         </div>
+
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-label">Kas di Laci (Uang di Tangan)</span>
+            <span class="stat-value" id="headerKasLaci" style="color:var(--primary);">Rp 0</span>
+          </div>
+        </div>
+
         <div class="header-actions">
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
       <div class="page-content">
         <div class="shift-container">
-          <!-- Status Shift Card -->
+          <!-- Kiri: Status Shift & Rincian Kas Bersumber Identik Dashboard -->
           <div class="status-card">
             <div class="status-indicator-large closed" id="shiftStatusIcon"><i class="fas fa-store-slash"></i></div>
             <div class="status-text closed" id="shiftStatusText">TUTUP</div>
             <div class="status-time" id="shiftStatusTime">-</div>
             <button class="btn-shift open" id="btnToggleShift"><i class="fas fa-store"></i><span>Buka Shift</span></button>
             
-            <div class="summary-grid">
-              <div class="summary-item">
-                <div class="summary-label">Modal</div>
-                <div class="summary-value" id="summaryModal">Rp 0</div>
+            <div class="kas-calculation-grid">
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon neutral"><i class="fas fa-wallet"></i></div>
+                  <span class="kas-item-label">Modal Awal</span>
+                </div>
+                <span class="kas-item-value" id="summaryModal">Rp 0</span>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">Penjualan</div>
-                <div class="summary-value positive" id="summaryPenjualan">Rp 0</div>
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon income"><i class="fas fa-shopping-cart"></i></div>
+                  <span class="kas-item-label">Penjualan (Tunai)</span>
+                </div>
+                <span class="kas-item-value income" id="summaryPenjualan">+ Rp 0</span>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">Piutang</div>
-                <div class="summary-value negative" id="summaryPiutang">Rp 0</div>
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon income"><i class="fas fa-arrow-down"></i></div>
+                  <span class="kas-item-label">Kas Masuk Lain</span>
+                </div>
+                <span class="kas-item-value income" id="summaryKasMasuk">+ Rp 0</span>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">Kas Masuk</div>
-                <div class="summary-value positive" id="summaryKasMasuk">Rp 0</div>
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon expense"><i class="fas fa-arrow-up"></i></div>
+                  <span class="kas-item-label">Kas Keluar Toko</span>
+                </div>
+                <span class="kas-item-value expense" id="summaryKasKeluar">- Rp 0</span>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">Kas Keluar</div>
-                <div class="summary-value negative" id="summaryKasKeluar">Rp 0</div>
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon income"><i class="fas fa-plus-circle"></i></div>
+                  <span class="kas-item-label">Top Up Fisik</span>
+                </div>
+                <span class="kas-item-value income" id="summaryTopup">+ Rp 0</span>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">Kas Sistem</div>
-                <div class="summary-value" style="color: var(--primary);" id="summaryKasSistem">Rp 0</div>
+              <div class="kas-item">
+                <div class="kas-item-info">
+                  <div class="kas-item-icon expense"><i class="fas fa-minus-circle"></i></div>
+                  <span class="kas-item-label">Tarik Tunai Fisik</span>
+                </div>
+                <span class="kas-item-value expense" id="summaryTarik">- Rp 0</span>
               </div>
+            </div>
+
+            <div class="kas-total-box">
+              <div class="kas-total-label"><i class="fas fa-money-bill-wave"></i> Total Kas Fisik Laci</div>
+              <div class="kas-total-value" id="summaryKasSistem">Rp 0</div>
             </div>
           </div>
 
-          <!-- Riwayat Shift Card -->
+          <!-- Kanan: Riwayat Shift -->
           <div class="history-card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Shift</h3>
-              <span id="totalShiftCount" style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-subtle); padding: 0.25rem 0.75rem; border-radius: 99px;">0 shift</span>
+              <h3 class="card-title"><i class="fas fa-history" style="color: var(--primary);"></i> Riwayat Shift Kerja</h3>
+              <span id="totalShiftCount" style="font-size: 0.75rem; font-weight:700; color: var(--primary); background: var(--primary-light); padding: 0.25rem 0.65rem; border-radius: 99px;">0 shift</span>
             </div>
             
             <div class="filter-bar" id="filterBar">
@@ -367,25 +582,24 @@
               <button class="filter-btn" data-filter="all">Semua</button>
             </div>
 
-            <!-- Baris Filter Tanggal Custom yang Rapi & Menarik -->
-            <div class="date-filter-row d-none" id="dateFilterRow" style="display: none;">
+            <div class="date-filter-row" id="dateFilterRow" style="display: none;">
               <div>
-                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.2rem;">Dari Tanggal</label>
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem;">Dari Tanggal</label>
                 <input type="date" class="form-input" id="dateFrom">
               </div>
               <div>
-                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.2rem;">Sampai Tanggal</label>
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 0.2rem;">Sampai Tanggal</label>
                 <input type="date" class="form-input" id="dateTo">
               </div>
               <div>
-                <button class="btn btn-primary btn-sm" id="btnApplyDate" style="width: 100%; height: 42px;"><i class="fas fa-search"></i> Terapkan</button>
+                <button class="btn btn-primary btn-sm" id="btnApplyDate" style="width: 100%; height: 38px;"><i class="fas fa-search"></i> Terapkan</button>
               </div>
             </div>
 
             <div class="date-range-info" id="dateRangeInfo"><i class="fas fa-calendar-alt"></i><span>Memuat data...</span></div>
             
             <div class="history-list" id="shiftHistory">
-              <!-- Riwayat dimuat dinamis -->
+              <!-- Riwayat di-render via JS -->
             </div>
           </div>
         </div>
@@ -401,33 +615,9 @@
     </nav>
   </div>
 
-  <!-- Modal Tutup Shift -->
-  <div class="modal-overlay" id="closeShiftModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Tutup Shift</h3>
-        <button class="modal-close" onclick="document.getElementById('closeShiftModal').classList.remove('active')" style="background:var(--bg-subtle); border:none; width:36px; height:36px; border-radius:10px; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Kas Akhir Fisik (Rp)</label>
-          <input type="text" class="form-input" id="kasAkhirInput" placeholder="0">
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Catatan Shift (Opsional)</label>
-          <input type="text" class="form-input" id="catatanInput" placeholder="Contoh: Shift berjalan lancar">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" id="btnCancelClose">Batal</button>
-        <button class="btn btn-primary" id="btnConfirmClose">Tutup Shift</button>
-      </div>
-    </div>
-  </div>
-
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: white; font-weight: 600;">Memproses...</p>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 700;">Memproses...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -436,8 +626,25 @@
     (function() {
       "use strict";
 
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
       let isShiftOpen = false;
       let currentShiftId = null;
+
+      function isFromKasir() {
+        return localStorage.getItem('fromKasir') === 'true';
+      }
+
+      // Helper konversi Timestamp / Tanggal Aman (Anti Invalid Date)
+      function parseFirestoreDate(val) {
+        if (!val) return null;
+        if (typeof val === 'number') return new Date(val);
+        if (val.seconds !== undefined) return new Date(val.seconds * 1000);
+        if (val.toDate && typeof val.toDate === 'function') return val.toDate();
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      }
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -456,6 +663,17 @@
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
 
+        if (isFromKasir()) {
+          const btnBack = document.getElementById('btnBackKasir');
+          if (btnBack) {
+            btnBack.style.display = 'flex';
+            btnBack.onclick = () => {
+              localStorage.removeItem('fromKasir');
+              window.location.replace('page-kasir.html');
+            };
+          }
+        }
+
         auth.onAuthStateChanged(async (user) => {
           if (!user) {
             window.location.href = 'login.html';
@@ -465,7 +683,12 @@
           let userData = { name: user.email, role: 'admin' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply((userData.role || 'kasir').toLowerCase());
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -475,7 +698,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initKasShift();
+          initKasShift(user);
         });
       });
 
@@ -512,6 +735,24 @@
           });
         });
 
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
+
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', () => {
@@ -522,43 +763,29 @@
         }
       }
 
-      function initKasShift() {
-        const kasInput = document.getElementById('kasAkhirInput');
-        if (kasInput) {
-          kasInput.addEventListener('input', (e) => {
-            e.target.value = Utils.formatNumberInput(e.target.value);
-          });
-        }
-
-        checkShiftStatus();
+      function initKasShift(user) {
+        checkShiftStatus(user);
         loadShiftHistory('today');
 
+        // Buka Shift atau Tutup Shift (Arahkan ke Closing Shift agar terhitung rapi)
         document.getElementById('btnToggleShift').addEventListener('click', () => {
           if (isShiftOpen) {
-            document.getElementById('closeShiftModal').classList.add('active');
+            window.location.href = 'page-closing.html';
           } else {
-            openShift();
+            openShift(user);
           }
         });
-
-        document.getElementById('btnCancelClose').addEventListener('click', () => {
-          document.getElementById('closeShiftModal').classList.remove('active');
-        });
-
-        document.getElementById('btnConfirmClose').addEventListener('click', closeShift);
 
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            const filterType = e.target.getAttribute('data-filter');
+            e.currentTarget.classList.add('active');
+            const filterType = e.currentTarget.getAttribute('data-filter');
             const dateRow = document.getElementById('dateFilterRow');
             if (filterType === 'custom') {
-              dateRow.classList.remove('d-none');
               dateRow.style.display = 'grid';
             } else {
-              dateRow.classList.add('d-none');
               dateRow.style.display = 'none';
               loadShiftHistory(filterType);
             }
@@ -579,10 +806,8 @@
         }
       }
 
-      async function checkShiftStatus() {
-        const today = Utils.getTodayString();
-        const user = auth.currentUser;
-        if (!user) return;
+      async function checkShiftStatus(user) {
+        const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
         try {
           const docRef = db.collection('shifts').doc(`${today}_${user.uid}`);
@@ -591,13 +816,13 @@
           if (docSnap.exists && docSnap.data().status === 'open') {
             isShiftOpen = true;
             currentShiftId = docSnap.id;
-            updateShiftUI(true, docSnap.data().openTime);
+            updateShiftUI(true, docSnap.data().openTime || docSnap.data().openedAt);
           } else {
             isShiftOpen = false;
             currentShiftId = null;
             updateShiftUI(false);
           }
-          loadTodaySummary();
+          loadKasLaciSummary(user);
         } catch (error) {
           console.error('Error checking shift status:', error);
         }
@@ -614,191 +839,134 @@
           icon.innerHTML = '<i class="fas fa-store"></i>';
           text.className = 'status-text open';
           text.textContent = 'BUKA';
-          time.textContent = openTime ? 'Dibuka: ' + new Date(openTime).toLocaleString('id-ID') : '-';
+          
+          const parsed = parseFirestoreDate(openTime);
+          time.textContent = parsed ? 'Dibuka: ' + parsed.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : 'Shift Sedang Aktif';
+          
           btn.className = 'btn-shift close';
-          btn.innerHTML = '<i class="fas fa-store-slash"></i><span>Tutup Shift</span>';
+          btn.innerHTML = '<i class="fas fa-lock"></i><span>Tutup Shift (Closing)</span>';
         } else {
           icon.className = 'status-indicator-large closed';
           icon.innerHTML = '<i class="fas fa-store-slash"></i>';
           text.className = 'status-text closed';
           text.textContent = 'TUTUP';
-          time.textContent = '-';
+          time.textContent = 'Shift Belum Aktif / Ditutup';
           btn.className = 'btn-shift open';
-          btn.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift</span>';
+          btn.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift Kerja</span>';
         }
       }
 
-      async function openShift() {
-        Utils.showLoading('Membuka shift...');
+      async function openShift(user) {
+        Utils.showLoading('Membuka shift kerja...');
         try {
-          const today = Utils.getTodayString();
-          const user = auth.currentUser;
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           const shiftId = 'shift_' + Date.now();
           
-          const modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
-          const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          let modalAmount = 0;
+          try {
+            let modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
+            if (!modalDoc.exists) {
+              modalDoc = await db.collection('modal').doc(today).get();
+            }
+            modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          } catch(e) {}
 
           await db.collection('shifts').doc(`${today}_${user.uid}`).set({
             id: shiftId,
             status: 'open',
             openTime: Date.now(),
+            openedAt: firebase.firestore.FieldValue.serverTimestamp(),
             userId: user.uid,
-            userName: user.email,
+            userName: document.getElementById('userName').textContent,
             modalAwal: modalAmount,
             date: today
           });
 
           Utils.hideLoading();
-          Utils.showToast('Shift berhasil dibuka', 'success');
-          checkShiftStatus();
+          Utils.showToast('Shift kerja berhasil dibuka!', 'success');
+          checkShiftStatus(user);
         } catch (error) {
           Utils.hideLoading();
           console.error('Error opening shift:', error);
-          Utils.showToast('Gagal membuka shift', 'error');
+          Utils.showToast('Gagal membuka shift: ' + error.message, 'error');
         }
       }
 
-      async function closeShift() {
-        Utils.showLoading('Menutup shift...');
-        try {
-          const today = Utils.getTodayString();
-          const user = auth.currentUser;
-          const kasAkhir = parseInt(document.getElementById('kasAkhirInput').value.replace(/\./g, '')) || 0;
-          const catatan = document.getElementById('catatanInput').value;
-
-          const transSnap = await db.collection('transactions').where('dateString', '==', today).get();
-          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0, topupAdminFee = 0, tarikAdminFee = 0;
-          
-          transSnap.forEach(doc => {
-            const trans = doc.data();
-            if (trans.status !== 'cancelled') {
-              switch(trans.type) {
-                case 'penjualan': penjualan += trans.total || 0; break;
-                case 'kas_masuk': kasMasuk += trans.amount || 0; break;
-                case 'kas_keluar': kasKeluar += trans.amount || 0; break;
-                case 'topup': topup += trans.amount || 0; topupAdminFee += trans.adminFee || 0; break;
-                case 'tarik': tarik += trans.amount || 0; tarikAdminFee += trans.adminFee || 0; break;
-              }
-            }
-          });
-
-          const modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
-          const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
-
-          let totalPiutang = 0;
-          const todayStart = new Date(today + 'T00:00:00').getTime();
-          const todayEnd = todayStart + 86400000;
-          
-          const debtsSnap = await db.collection('debts').get();
-          debtsSnap.forEach(doc => {
-            const d = doc.data();
-            if (d.status === 'active' && d.type === 'piutang') {
-              const createdAt = d.createdAt || 0;
-              if (createdAt >= todayStart && createdAt < todayEnd) {
-                totalPiutang += d.remaining || 0;
-              }
-            }
-          });
-
-          const kasSistem = modalAmount + kasMasuk - kasKeluar + penjualan - totalPiutang + topup + topupAdminFee - tarik + tarikAdminFee;
-          const selisih = kasAkhir - kasSistem;
-          let statusSelisih = 'pas';
-          if (selisih > 0) statusSelisih = 'lebih';
-          if (selisih < 0) statusSelisih = 'kurang';
-
-          await db.collection('shifts').doc(`${today}_${user.uid}`).update({
-            status: 'closed',
-            closeTime: Date.now(),
-            kasAkhir,
-            kasSistem,
-            selisih,
-            statusSelisih,
-            penjualan,
-            kasMasuk,
-            kasKeluar,
-            topup,
-            tarik,
-            topupAdminFee,
-            tarikAdminFee,
-            piutang: totalPiutang,
-            catatan
-          });
-
-          Utils.hideLoading();
-          document.getElementById('closeShiftModal').classList.remove('active');
-          document.getElementById('kasAkhirInput').value = '';
-          document.getElementById('catatanInput').value = '';
-          Utils.showToast('Shift berhasil ditutup', 'success');
-          checkShiftStatus();
-          loadShiftHistory('today');
-        } catch (error) {
-          Utils.hideLoading();
-          console.error('Error closing shift:', error);
-          Utils.showToast('Gagal menutup shift', 'error');
-        }
-      }
-
-      async function loadTodaySummary() {
-        const today = Utils.getTodayString();
-        const user = auth.currentUser;
-        if (!user) return;
+      // PERHITUNGAN SALDO LACI IDENTIK DENGAN INDEX, KASIR, DAN CLOSING
+      async function loadKasLaciSummary(user) {
+        const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
         try {
-          const modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
-          const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          let modalAwal = 0;
+          try {
+            let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+            if (!modalDoc.exists) {
+              modalDoc = await db.collection("modal").doc(today).get();
+            }
+            modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+          } catch(e) {}
 
-          const transSnap = await db.collection('transactions').where('dateString', '==', today).get();
-          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0, topupAdminFee = 0, tarikAdminFee = 0;
-          
-          transSnap.forEach(doc => {
-            const trans = doc.data();
-            if (trans.status !== 'cancelled') {
-              switch(trans.type) {
-                case 'penjualan': penjualan += trans.total || 0; break;
-                case 'kas_masuk': kasMasuk += trans.amount || 0; break;
-                case 'kas_keluar': kasKeluar += trans.amount || 0; break;
-                case 'topup': topup += trans.amount || 0; topupAdminFee += trans.adminFee || 0; break;
-                case 'tarik': tarik += trans.amount || 0; tarikAdminFee += trans.adminFee || 0; break;
-              }
+          const snapshot = await db.collection("transactions").where("date", "==", today).get();
+          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, topupAdmin = 0, tarik = 0, tarikAdmin = 0;
+
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'cancelled' || data.status === 'voided') return;
+
+            switch (data.type) {
+              case 'penjualan':
+                penjualan += data.paymentMethod === 'hutang'
+                  ? (data.paymentAmount || 0)
+                  : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                break;
+              case 'kas_masuk':
+                if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
+                  kasMasuk += data.amount || 0;
+                }
+                break;
+              case 'kas_keluar':
+                kasKeluar += data.amount || 0;
+                break;
+              case 'topup':
+                if (data.paymentMethod !== 'hutang') {
+                  topup += data.amount || 0;
+                  topupAdmin += data.adminFee || 0;
+                }
+                break;
+              case 'tarik':
+                tarik += data.amount || 0;
+                tarikAdmin += data.adminFee || 0;
+                break;
             }
           });
 
-          let totalPiutang = 0;
-          const todayStart = new Date(today + 'T00:00:00').getTime();
-          const todayEnd = todayStart + 86400000;
-          
-          const debtsSnap = await db.collection('debts').get();
-          debtsSnap.forEach(doc => {
-            const d = doc.data();
-            if (d.status === 'active' && d.type === 'piutang') {
-              const createdAt = d.createdAt || 0;
-              if (createdAt >= todayStart && createdAt < todayEnd) {
-                totalPiutang += d.remaining || 0;
-              }
-            }
-          });
+          const topupKasFisik = topup + topupAdmin;
+          const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
+          const kasLaciTotal = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
 
-          const kasSistemSummary = modalAmount + kasMasuk - kasKeluar + penjualan - totalPiutang + topup + topupAdminFee - tarik + tarikAdminFee;
+          document.getElementById('summaryModal').textContent = Utils.formatRupiah(modalAwal);
+          document.getElementById('summaryPenjualan').textContent = '+ ' + Utils.formatRupiah(penjualan);
+          document.getElementById('summaryKasMasuk').textContent = '+ ' + Utils.formatRupiah(kasMasuk);
+          document.getElementById('summaryKasKeluar').textContent = '- ' + Utils.formatRupiah(kasKeluar);
+          document.getElementById('summaryTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
+          document.getElementById('summaryTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
           
-          document.getElementById('summaryModal').textContent = Utils.formatRupiah(modalAmount);
-          document.getElementById('summaryPenjualan').textContent = Utils.formatRupiah(penjualan);
-          document.getElementById('summaryPiutang').textContent = '-' + Utils.formatRupiah(totalPiutang);
-          document.getElementById('summaryKasMasuk').textContent = Utils.formatRupiah(kasMasuk);
-          document.getElementById('summaryKasKeluar').textContent = Utils.formatRupiah(kasKeluar);
-          document.getElementById('summaryKasSistem').textContent = Utils.formatRupiah(kasSistemSummary);
+          document.getElementById('summaryKasSistem').textContent = Utils.formatRupiah(kasLaciTotal);
+          document.getElementById('headerKasLaci').textContent = Utils.formatRupiah(kasLaciTotal);
+
         } catch (error) {
-          console.error('Error loading today summary:', error);
+          console.error('Error loading kas summary:', error);
         }
       }
 
       async function loadShiftHistory(filterType = 'today', dateFrom = null, dateTo = null) {
-        Utils.showLoading();
+        Utils.showLoading('Memuat riwayat shift...');
         try {
           const snap = await db.collection('shifts').get();
           let shiftsArray = [];
           
           snap.forEach(doc => {
-            shiftsArray.push(doc.data());
+            shiftsArray.push({ id: doc.id, ...doc.data() });
           });
 
           let filteredShifts;
@@ -808,36 +976,46 @@
             filteredShifts = filterShiftsByPeriod(shiftsArray, filterType);
           }
 
-          filteredShifts.sort((a, b) => (b.openTime || 0) - (a.openTime || 0));
+          filteredShifts.sort((a, b) => {
+            const timeA = (parseFirestoreDate(a.openTime) || parseFirestoreDate(a.openedAt) || new Date(a.date || 0)).getTime();
+            const timeB = (parseFirestoreDate(b.openTime) || parseFirestoreDate(b.openedAt) || new Date(b.date || 0)).getTime();
+            return timeB - timeA;
+          });
           
           const historyList = document.getElementById('shiftHistory');
           let html = '';
           
           if (filteredShifts.length === 0) {
-            html = '<div class="empty-state" style="padding: 2.5rem; text-align: center;"><i class="fas fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; display:block;"></i><p style="color:var(--text-muted); font-size:0.9rem;">Tidak ada data shift untuk periode ini</p></div>';
+            html = '<div class="empty-state" style="padding: 2.5rem; text-align: center;"><i class="fas fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; display:block;"></i><p style="color:var(--text-muted); font-size:0.9rem;">Tidak ada riwayat shift untuk periode ini</p></div>';
           } else {
             filteredShifts.forEach(shift => {
-              const formattedDate = new Date(shift.openTime || Date.now()).toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-              const openTime = shift.openTime ? new Date(shift.openTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-              const closeTime = shift.closeTime ? new Date(shift.closeTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+              const openDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
+              const closeDate = parseFirestoreDate(shift.closeTime) || parseFirestoreDate(shift.closedAt);
+
+              const formattedDate = openDate 
+                ? openDate.toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+                : (shift.date || 'Hari Ini');
+                
+              const openStr = openDate ? openDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+              const closeStr = closeDate ? closeDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : (shift.status === 'open' ? 'Sekarang' : '-');
               
               let duration = '-';
-              if (shift.openTime && shift.closeTime) {
-                const diff = shift.closeTime - shift.openTime;
+              if (openDate && closeDate) {
+                const diff = closeDate.getTime() - openDate.getTime();
                 const hours = Math.floor(diff / (1000 * 60 * 60));
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 duration = `${hours}j ${minutes}m`;
-              } else if (shift.openTime && shift.status === 'open') {
-                duration = 'Sedang Buka';
+              } else if (shift.status === 'open') {
+                duration = 'Sedang Berjalan';
               }
 
               html += `
                 <div class="shift-item">
                   <div class="shift-info">
                     <span class="shift-date">${formattedDate}</span>
-                    <span class="shift-time"><i class="far fa-clock"></i> ${openTime} - ${closeTime}</span>
-                    <span class="shift-user"><i class="far fa-user"></i> ${shift.userName || 'Admin'}</span>
-                    ${shift.status === 'closed' && shift.kasAkhir ? `<span style="color:var(--success); font-size:0.78rem; font-weight:600; margin-top:2px;">Kas Fisik: ${Utils.formatRupiah(shift.kasAkhir)}</span>` : ''}
+                    <span class="shift-time"><i class="far fa-clock"></i> ${openStr} - ${closeStr}</span>
+                    <span class="shift-user"><i class="far fa-user"></i> ${shift.userName || 'Kasir'}</span>
+                    ${shift.kasAkhir ? `<span style="color:var(--success); font-size:0.78rem; font-weight:700; margin-top:2px;">Fisik Kas: ${Utils.formatRupiah(shift.kasAkhir)}</span>` : ''}
                   </div>
                   <div class="shift-status">
                     <span class="shift-badge ${shift.status}">${shift.status === 'open' ? 'BUKA' : 'TUTUP'}</span>
@@ -865,8 +1043,9 @@
         const toDate = new Date(to);
         toDate.setHours(23,59,59,999);
         return shifts.filter(shift => {
-          const shiftTime = shift.openTime || 0;
-          return shiftTime >= fromDate.getTime() && shiftTime <= toDate.getTime();
+          const shiftDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
+          if (!shiftDate) return false;
+          return shiftDate.getTime() >= fromDate.getTime() && shiftDate.getTime() <= toDate.getTime();
         });
       }
 
@@ -880,8 +1059,8 @@
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
         return shifts.filter(shift => {
-          const shiftTime = shift.openTime || 0;
-          const shiftDate = new Date(shiftTime);
+          const shiftDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
+          if (!shiftDate) return true;
           shiftDate.setHours(0, 0, 0, 0);
 
           switch(filterType) {
