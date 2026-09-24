@@ -239,7 +239,6 @@
     .page-content { padding: 1.5rem; flex: 1; }
 
     /* ===== KHUSUS PAGE RESET DATA ===== */
-
     .warning-card {
       background: var(--warning-light);
       border: 1.5px solid var(--warning);
@@ -324,7 +323,7 @@
     .btn-outline:hover { background: var(--bg-subtle); }
     .btn-block { width: 100%; }
 
-    /* MODAL KONFIRMASI (gaya index) */
+    /* MODAL KONFIRMASI RESET */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
@@ -335,7 +334,7 @@
     .modal-content {
       background: var(--bg-surface); border-radius: var(--radius-xl);
       width: 100%; max-width: 420px; box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border); position: relative;
       transform: scale(0.95); transition: transform 0.25s;
     }
     .modal-overlay.active .modal-content { transform: scale(1); }
@@ -353,7 +352,7 @@
       border-radius: 50%; display: flex; align-items: center; justify-content: center;
       font-size: 1.5rem; color: var(--danger); margin: 0 auto 1rem;
     }
-    .modal-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .modal-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
     .modal-subtitle { color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
     .modal-body { padding: 1.25rem; }
     .modal-footer {
@@ -378,6 +377,41 @@
       letter-spacing: 0.1em; outline: none; font-family: inherit;
     }
     .confirmation-input input:focus { border-color: var(--danger); }
+
+    /* DIALOG MODAL INTERNAL (LOGOUT) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
     /* UNDO BANNER */
     .undo-banner {
@@ -476,22 +510,13 @@
       .reset-card { padding: 1rem; }
     }
   </style>
-
-  <!-- Firebase Compat (Firestore) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-<base target="">
 </head>
 <body>
 
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP (susunan sama dengan index) -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -747,6 +772,19 @@
   </div>
 </div>
 
+<!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+<div class="custom-modal-backdrop" id="customLogoutModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+    <h3 class="dialog-title">Konfirmasi Keluar</h3>
+    <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -776,7 +814,7 @@
     setTimeout(() => el.remove(), 3500);
   }
 
-  // Sinkronisasi nama toko (logo + judul tab) dari Firestore settings/store
+  // Sinkronisasi nama toko dari Firestore settings/store
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     const cachedName = localStorage.getItem("webpos_store_name");
@@ -794,7 +832,7 @@
     } catch (e) {}
   }
 
-  // Hapus seluruh isi satu koleksi Firestore (batch per 400 dokumen)
+  // Hapus seluruh isi satu koleksi Firestore
   async function deleteCollection(collectionName) {
     const snap = await db.collection(collectionName).get();
     if (snap.empty) return;
@@ -818,14 +856,12 @@
   };
 
   async function backupAndDelete(collections, type) {
-    // 1. Buat dokumen induk trash
     const trashRef = await db.collection("resetTrash").add({
       type: type,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       collections: collections
     });
 
-    // 2. Salin semua dokumen ke subkoleksi items (1 dokumen per dokumen asli)
     for (const colName of collections) {
       const snap = await db.collection(colName).get();
       let batch = db.batch();
@@ -840,8 +876,6 @@
         if (n % 400 === 0) { await batch.commit(); batch = db.batch(); }
       }
       if (n % 400 !== 0) await batch.commit();
-
-      // 3. Hapus koleksi asli
       await deleteCollection(colName);
     }
     return trashRef.id;
@@ -908,7 +942,6 @@
     document.getElementById("undoBanner").style.display = "none";
   }
 
-  // Cek apakah ada data trash tersisa (misal user menutup halaman sebelum undo)
   async function checkExistingTrash() {
     try {
       const snap = await db.collection("resetTrash").orderBy("createdAt", "desc").limit(1).get();
@@ -999,7 +1032,6 @@
       backdrop.classList.remove("active");
     };
 
-    // Tutup sidebar saat klik link di mobile
     document.querySelectorAll(".nav-link").forEach(link => {
       link.addEventListener("click", () => {
         if (window.innerWidth <= 1024) {
@@ -1026,7 +1058,6 @@
 
       syncStoreBrandName();
 
-      // Load profil user dari Firestore
       try {
         const doc = await db.collection("users").doc(user.uid).get();
         if (doc.exists) {
@@ -1036,6 +1067,9 @@
           document.getElementById("userName").textContent = name;
           document.getElementById("userRole").textContent = role.toUpperCase();
           document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
+          if (typeof RoleGuard !== "undefined") {
+            RoleGuard.apply(role.toLowerCase());
+          }
         } else {
           document.getElementById("userName").textContent = user.email || "Admin";
           document.getElementById("userRole").textContent = "ADMIN";
@@ -1089,10 +1123,21 @@
       localStorage.setItem("webpos_theme", nextTheme);
     };
 
-    // Logout
-    document.getElementById("btnLogout").onclick = () => {
-      auth.signOut().then(() => { window.location.href = "login.html"; });
-    };
+    // Logout dengan Modal Internal WebPOS
+    const logoutBtn = document.getElementById("btnLogout");
+    if (logoutBtn) {
+      logoutBtn.onclick = () => {
+        const modal = document.getElementById("customLogoutModal");
+        if (modal) {
+          modal.classList.add("open");
+          document.getElementById("btnConfirmLogoutAction").onclick = () => {
+            auth.signOut().then(() => { window.location.href = "login.html"; });
+          };
+        } else {
+          auth.signOut().then(() => { window.location.href = "login.html"; });
+        }
+      };
+    }
   });
 
 })();
