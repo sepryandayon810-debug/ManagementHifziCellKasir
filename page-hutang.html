@@ -33,7 +33,7 @@
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- SheetJS for Excel Support -->
@@ -854,6 +854,7 @@
       };
     }
 
+    // ===== FIRESTORE COMPATIBILITY LAYER =====
     function createFirestoreCompat() {
       const firestore = firebase.firestore();
 
@@ -932,6 +933,7 @@
 
     const firestoreDb = createFirestoreCompat();
 
+    // Customer Storage - Firestore Only
     const CustomerStorage = {
       getAll: async () => {
         try {
@@ -1041,7 +1043,7 @@
             }
             
             const matches = Object.values(customerData).filter(c => 
-              c.name.toLowerCase().includes(val)
+              c.name && c.name.toLowerCase().includes(val)
             );
             
             if (matches.length > 0) {
@@ -1265,7 +1267,7 @@
             hutangData = hutangSnapshot.val() || {};
             customerData = await CustomerStorage.getAll();
 
-            // Pindai & cocokkan data kasir untuk produk
+            // Pindai data transaksi untuk melengkapi nama & detail produk kasir
             await lookupMissingProductDetails(hutangData);
 
             updateSummary();
@@ -1278,11 +1280,13 @@
           Utils.hideLoading();
         }
 
-        // FUNGSI KHUSUS: Mengambil nama produk dari koleksi transactions jika note hanya berisi nomor TRX
+        // FUNGSI PENCARIAN PRODUK & NAMA JIKA DARI NOTA TRANSAKSI KASIR
         async function lookupMissingProductDetails(debts) {
           const itemsToLookup = Object.values(debts).filter(item => {
             const raw = (item.note || item.transactionId || '').trim();
-            return (raw.includes('TRX') || raw.includes('kas_')) && (!item.items || item.items.length === 0);
+            const hasMissingItems = (!item.items || item.items.length === 0);
+            const hasMissingName = (!item.name || item.name.trim() === '');
+            return (raw.includes('TRX') || raw.includes('kas_')) && (hasMissingItems || hasMissingName);
           });
 
           if (itemsToLookup.length === 0) return;
@@ -1300,7 +1304,7 @@
                     item.items = trxData.items;
                   }
                   if (!item.name || item.name.trim() === '') {
-                    item.name = trxData.customerName || trxData.customer || trxData.pelanggan || item.name;
+                    item.name = trxData.customerName || trxData.customer || trxData.pelanggan || trxData.hutangName || item.name;
                   }
                 }
               }
@@ -1370,7 +1374,7 @@
           container.innerHTML = html;
         }
 
-        // Helper untuk mendapatkan deskripsi produk/barang dari transaksi
+        // Helper untuk mendapatkan nama barang yang jelas
         function getTransactionItemName(item) {
           if (item.items && Array.isArray(item.items) && item.items.length > 0) {
             return item.items.map(i => `${i.name || i.productName || 'Barang'} (x${i.qty || i.quantity || 1})`).join(', ');
@@ -1396,12 +1400,14 @@
           const list = document.getElementById('hutangList');
           let html = '';
           
+          // 1. Normalisasi nama agar data lama tanpa name tidak kosong di header grup
           let filteredItems = Object.entries(hutangData)
             .map(([id, data]) => {
-              // Pastikan nama tidak pernah kosong
-              let validName = (data.name || data.customerName || data.pelanggan || data.customer || '').trim();
-              if (!validName) validName = 'Pelanggan Umum / Bon Kasir';
-              return { id, ...data, name: validName };
+              let cleanName = (data.name || data.customerName || data.hutangName || data.pelanggan || data.customer || '').trim();
+              if (!cleanName || cleanName === '-' || cleanName.toLowerCase() === 'null') {
+                cleanName = 'Pelanggan Umum / Bon Kasir';
+              }
+              return { id, ...data, name: cleanName };
             })
             .filter(item => {
               if (currentStatus === 'active') return item.status === 'active';
@@ -1415,7 +1421,7 @@
             );
           }
           
-          // GROUP BY NAMA & TYPE
+          // 2. Grouping per nama dan tipe
           const groupedByName = {};
           filteredItems.forEach(item => {
             const key = item.type + ':' + item.name.toLowerCase().trim();
@@ -1465,15 +1471,17 @@
                     <div class="hutang-avatar" style="background: ${group.type === 'hutang' ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)'};">
                       <i class="fas fa-user"></i>
                     </div>
-                    <div class="hutang-details">
-                      <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="hutang-name">${group.displayName}</span>
-                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:700;">
+                    <div class="hutang-details" style="flex: 1; min-width: 0;">
+                      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="hutang-name" style="font-size: 1rem; font-weight: 700; color: var(--text-main); display: inline-block;">
+                          ${group.displayName}
+                        </span>
+                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">
                           ${group.items.length} transaksi
                         </span>
                         ${!isPaid ? `
-                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName.replace(/'/g, "\\'")}', '${group.type}')" title="Proses Semua" style="width: 32px; height: 32px; min-width: 32px; margin-left: auto;">
-                            <i class="fas fa-check-double" style="font-size: 0.8rem;"></i>
+                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${group.displayName.replace(/'/g, "\\'")}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px; margin-left: auto;">
+                            <i class="fas fa-check-double" style="font-size: 0.75rem;"></i>
                           </button>
                         ` : ''}
                         <button class="expand-btn" id="expand-${groupId}" onclick="event.stopPropagation(); window.toggleDetail('${groupId}')" style="${!isPaid ? '' : 'margin-left: auto;'}">
