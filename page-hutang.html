@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light" data-theme-color="indigo">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,7 +10,7 @@
   <script>
     (function() {
       const savedTheme = localStorage.getItem('webpos_theme') || 'light';
-      const savedColor = localStorage.getItem('webpos_theme_color') || 'indigo';
+      const savedColor = localStorage.getItem('webpos_theme_color') || localStorage.getItem('theme_color') || 'indigo';
       document.documentElement.setAttribute('data-theme', savedTheme);
       document.documentElement.setAttribute('data-theme-color', savedColor);
     })();
@@ -46,273 +46,222 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
   <style>
-    :root{--primary:#4f46e5;--primary-dark:#4338ca;--primary-light:#eef2ff;--secondary:#8b5cf6;--success:#10b981;--success-light:#ecfdf5;--warning:#f59e0b;--warning-light:#fffbeb;--danger:#ef4444;--danger-light:#fef2f2;--info:#3b82f6}
-    [data-theme-color="indigo"]{--primary:#4f46e5;--primary-dark:#4338ca;--primary-light:#eef2ff;--secondary:#8b5cf6}
-    [data-theme-color="blue"]{--primary:#2563eb;--primary-dark:#1d4ed8;--primary-light:#eff6ff;--secondary:#06b6d4}
-    [data-theme-color="green"]{--primary:#059669;--primary-dark:#047857;--primary-light:#ecfdf5;--secondary:#84cc16}
-    [data-theme-color="orange"]{--primary:#ea580c;--primary-dark:#c2410c;--primary-light:#ffedd5;--secondary:#f59e0b}
-    [data-theme-color="purple"]{--primary:#7c3aed;--primary-dark:#6d28d9;--primary-light:#f5f3ff;--secondary:#d946ef}
-    [data-theme-color="red"]{--primary:#dc2626;--primary-dark:#b91c1c;--primary-light:#fef2f2;--secondary:#f97316}
-    [data-theme-color="pink"]{--primary:#db2777;--primary-dark:#be185d;--primary-light:#fce7f3;--secondary:#8b5cf6}
-    [data-theme-color="teal"]{--primary:#0d9488;--primary-dark:#0f766e;--primary-light:#f0fdfa;--secondary:#06b6d4}
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+      --bottom-nav-height: 60px;
 
-    :root{--bg-primary:#f8fafc;--bg-secondary:#f1f5f9;--bg-card:#fff;--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--border-color:#e2e8f0;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 6px rgba(0,0,0,0.1);--shadow-lg:0 10px 15px rgba(0,0,0,0.1);--radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;--radius-xl:1rem;--radius-2xl:1.25rem;--sidebar-width:270px;--sidebar-collapsed:76px;--header-height:68px;--bottom-nav-height:60px}
+      /* Mapping kompatibilitas variabel */
+      --bg-primary: var(--bg-base);
+      --bg-secondary: var(--bg-subtle);
+      --bg-card: var(--bg-surface);
+      --border-color: var(--border);
+      --text-primary: var(--text-main);
+      --text-secondary: var(--text-sub);
+      --primary-dark: var(--primary-hover);
+    }
 
-    [data-theme="dark"]{--bg-primary:#090d16;--bg-secondary:#1e293b;--bg-card:#111827;--text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#94a3b8;--border-color:#2e384d;--primary-light:rgba(79,70,229,.2);--success-light:rgba(16,185,129,.15);--danger-light:rgba(239,68,68,.15);--warning-light:rgba(245,158,11,.15)}
+    /* KUSTOMISASI WARNA DARI SETTING */
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
 
-    *{margin:0;padding:0;box-sizing:border-box}
-    html{font-size:16px;font-family:'Plus Jakarta Sans',sans-serif}
-    body{background:var(--bg-primary);color:var(--text-primary);line-height:1.6;min-height:100vh;overflow-x:hidden}
+    [data-theme="dark"] {
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
+    }
 
-    ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:var(--bg-secondary)}
-    ::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:9999px}
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size: 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg-base); color: var(--text-main); line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
 
-    .app-container{display:flex;min-height:100vh}
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-subtle); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+    .app-container { display: flex; min-height: 100vh; }
 
     /* Sidebar */
-    .sidebar-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);z-index:999;opacity:0;visibility:hidden;transition:all .25s}
-    .sidebar-backdrop.active{opacity:1;visibility:visible}
-    .sidebar{position:fixed;top:0;left:0;width:var(--sidebar-width);height:100vh;background:var(--bg-card);border-right:1px solid var(--border-color);z-index:1000;display:flex;flex-direction:column;transition:transform .25s ease,width .25s ease}
-    .sidebar.collapsed{width:var(--sidebar-collapsed)}
-    @media(max-width:1024px){.sidebar{transform:translateX(-100%)}.sidebar.mobile-open{transform:translateX(0)}}
+    .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s; }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.25s ease, width 0.25s ease; }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
 
-    .sidebar-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:var(--header-height)}
-    .logo-container{display:flex;align-items:center;gap:.65rem}
-    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.15rem;flex-shrink:0}
-    .logo-text{font-size:1.25rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-    .sidebar.collapsed .logo-text{display:none}
+    .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: var(--header-h); }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0; }
+    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .sidebar.collapsed .logo-text { display: none; }
 
-    .menu-toggle{width:28px;height:28px;background:var(--primary);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
-    .menu-toggle:hover{background:var(--primary-dark)}
-    .sidebar.collapsed .menu-toggle{transform:rotate(180deg)}
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+    .menu-toggle:hover { background: var(--primary-hover); }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
 
-    .sidebar-search{padding:.75rem 1rem;border-bottom:1px solid var(--border-color)}
-    .search-input-wrapper{position:relative;display:flex;align-items:center}
-    .search-input-wrapper i{position:absolute;left:.85rem;color:var(--text-muted);font-size:.8rem}
-    .search-input{width:100%;padding:.5rem .75rem .5rem 2.2rem;border:1px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:.82rem;outline:none}
-    .search-input:focus{border-color:var(--primary)}
-    .sidebar.collapsed .sidebar-search{display:none}
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input { width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none; }
+    .search-input:focus { border-color: var(--primary); }
+    .sidebar.collapsed .sidebar-search { display: none; }
 
-    .sidebar-nav{flex:1;overflow-y:auto;padding:1rem .75rem}
-    .nav-section{margin-bottom:1.25rem}
-    .nav-section-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.35rem .75rem;margin-bottom:.2rem}
-    .sidebar.collapsed .nav-section-title{display:none}
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 0.35rem 0.75rem; margin-bottom: 0.2rem; }
+    .sidebar.collapsed .nav-section-title { display: none; }
 
-    .nav-menu{list-style:none}
-    .nav-item{margin-bottom:3px}
-    .nav-link{display:flex;align-items:center;gap:.85rem;padding:.6rem .85rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.88rem;font-weight:600;transition:all .15s}
-    .nav-link:hover{background:var(--bg-secondary);color:var(--primary)}
-    .nav-link.active{background:var(--primary-light);color:var(--primary);font-weight:600}
-    .nav-link i{width:20px;text-align:center;font-size:.95rem}
-    .nav-link span{white-space:nowrap}
-    .sidebar.collapsed .nav-link span{display:none}
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); color: var(--text-sub); text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: all 0.15s; }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
 
-    .nav-dropdown{position:relative}
-    .nav-dropdown-toggle{justify-content:space-between}
-    .nav-dropdown-toggle .dropdown-arrow{transition:transform .2s;font-size:.75rem;margin-left:auto}
-    .nav-dropdown.open .nav-dropdown-toggle .dropdown-arrow{transform:rotate(180deg)}
-    .nav-submenu{list-style:none;max-height:0;overflow:hidden;transition:max-height .25s ease;padding-left:2rem}
-    .sidebar.collapsed .nav-submenu{display:none}
-    .nav-dropdown.open .nav-submenu{max-height:450px;margin-top:2px}
-    .nav-submenu .nav-link{padding:.45rem .75rem;font-size:.82rem}
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
+    .nav-submenu .nav-link { padding: 0.45rem 0.75rem; font-size: 0.82rem; }
 
-    .sidebar-footer{padding:.85rem 1rem;border-top:1px solid var(--border-color);background:var(--bg-card)}
-    .user-profile{display:flex;align-items:center;gap:.75rem;cursor:pointer}
-    .user-avatar{width:38px;height:38px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0}
-    .user-info{flex:1;overflow:hidden}
-    .sidebar.collapsed .user-info{display:none}
-    .user-name{font-weight:700;font-size:.88rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .user-role{font-size:.7rem;color:var(--text-muted);text-transform:capitalize}
+    .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
     /* Main Content */
-    .main-content{flex:1;margin-left:var(--sidebar-width);min-width:0;min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
-    .sidebar.collapsed~.main-content{margin-left:var(--sidebar-collapsed)}
-    @media(max-width:1024px){.main-content{margin-left:0 !important}.sidebar.collapsed~.main-content{margin-left:0}}
+    .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.25s; }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
-    /* Main Header yang Bersih & Rapi */
-    .main-header{height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;position:sticky;top:0;z-index:100;width:100%;box-sizing:border-box}
-    .header-left{display:flex;align-items:center;gap:.75rem;min-width:0;flex:1}
-    .header-title{font-size:1.15rem;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .header-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+    /* Main Header */
+    .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; position: sticky; top: 0; z-index: 100; width: 100%; box-sizing: border-box; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
-    .page-content{flex:1;padding:1.25rem;overflow-y:auto}
-    @media(max-width:768px){.page-content{padding:1rem;padding-bottom:calc(var(--bottom-nav-height) + 1.5rem)}}
+    .page-content { flex: 1; padding: 1.25rem; overflow-y: auto; }
+    @media(max-width: 768px) { .page-content { padding: 1rem; padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); } }
 
     /* Buttons */
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:var(--radius-md);font-size:.875rem;font-weight:700;cursor:pointer;transition:all .15s;border:none;outline:none;white-space:nowrap;font-family:inherit}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .btn-primary{background:var(--primary);color:white}
-    .btn-primary:hover:not(:disabled){background:var(--primary-dark)}
-    .btn-success{background:var(--success);color:white}
-    .btn-success:hover:not(:disabled){filter:brightness(0.9)}
-    .btn-danger{background:var(--danger);color:white}
-    .btn-danger:hover:not(:disabled){filter:brightness(0.9)}
-    .btn-secondary{background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color)}
-    .btn-secondary:hover:not(:disabled){background:var(--border-color)}
-    .btn-outline{background:transparent;border:1.5px solid var(--border-color);color:var(--text-secondary)}
-    .btn-outline:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
-    .btn-sm{padding:.4rem .75rem;font-size:.78rem}
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 700; cursor: pointer; transition: all 0.15s; border: none; outline: none; white-space: nowrap; font-family: inherit; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover:not(:disabled) { filter: brightness(0.9); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover:not(:disabled) { filter: brightness(0.9); }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
+    .btn-outline:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
-    .btn-icon-box{width:38px;height:38px;padding:0;border-radius:var(--radius-md);background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
-    .btn-icon-box:hover{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
+    .btn-icon-box { width: 38px; height: 38px; padding: 0; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 
     /* Cards */
-    .card{background:var(--bg-card);border-radius:var(--radius-xl);border:1px solid var(--border-color);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:1rem}
-    .card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap}
-    .card-title{font-size:1rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:.5rem}
+    .card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+    .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
 
-    /* ACTION BAR ATAS */
-    .top-action-bar {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      margin-bottom: 1.15rem;
-    }
-    .btn-create-debt {
-      width: 100%;
-      padding: 0.85rem 1.25rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: var(--radius-lg);
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-create-debt:hover { background: var(--primary-dark); }
-    .btn-manage-cust {
-      width: 100%;
-      padding: 0.75rem 1.25rem;
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      font-size: 0.88rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-manage-cust:hover { background: var(--bg-secondary); border-color: var(--primary); color: var(--primary); }
+    /* Action Bar Atas */
+    .top-action-bar { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.15rem; }
+    .btn-create-debt { width: 100%; padding: 0.85rem 1.25rem; background: var(--primary); color: white; border: none; border-radius: var(--radius-lg); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm); }
+    .btn-create-debt:hover { background: var(--primary-hover); }
+    .btn-manage-cust { width: 100%; padding: 0.75rem 1.25rem; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: var(--radius-lg); font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm); }
+    .btn-manage-cust:hover { background: var(--bg-subtle); border-color: var(--primary); color: var(--primary); }
 
-    /* KOTAK TOTAL (2 KOLOM SOLID, NILAI TIDAK TERPOTONG) */
-    .summary-grid-fixed {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.85rem;
-      margin-bottom: 1.15rem;
-    }
-    .summary-box-card {
-      background: var(--bg-card);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-color);
-      padding: 1.1rem 1.15rem;
-      box-shadow: var(--shadow-sm);
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      min-width: 0;
-    }
+    /* Kotak Total */
+    .summary-grid-fixed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.15rem; }
+    .summary-box-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.1rem 1.15rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
     .summary-box-card.piutang { border-top: 4px solid var(--warning); }
     .summary-box-card.hutang { border-top: 4px solid var(--danger); }
-    .summary-box-head {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: var(--text-muted);
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
+    .summary-box-head { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
     .summary-box-card.piutang .summary-box-head i { color: var(--warning); }
     .summary-box-card.hutang .summary-box-head i { color: var(--danger); }
-    .summary-box-val {
-      font-size: 1.15rem;
-      font-weight: 800;
-      line-height: 1.25;
-      word-break: break-word;
-    }
+    .summary-box-val { font-size: 1.15rem; font-weight: 800; line-height: 1.25; word-break: break-word; }
     .summary-box-card.piutang .summary-box-val { color: var(--warning); }
     .summary-box-card.hutang .summary-box-val { color: var(--danger); }
 
     /* Toggle Switch */
-    .toggle-switch{position:relative;width:44px;height:24px}
-    .toggle-switch input{opacity:0;width:0;height:0}
-    .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:50px;transition:.25s}
-    .toggle-slider:before{content:"";position:absolute;height:18px;width:18px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.25s;box-shadow:var(--shadow-sm)}
-    input:checked+.toggle-slider{background:var(--primary);border-color:var(--primary)}
-    input:checked+.toggle-slider:before{transform:translateX(20px)}
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 50px; transition: 0.25s; }
+    .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.25s; box-shadow: var(--shadow-sm); }
+    input:checked + .toggle-slider { background: var(--primary); border-color: var(--primary); }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-    .status-toggle-container {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: var(--bg-secondary);
-      padding: 0.35rem 0.75rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border-color);
-    }
-    .status-toggle-label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--text-secondary);
-    }
-    .status-toggle-label.active {
-      color: var(--primary);
-    }
+    .status-toggle-container { display: flex; align-items: center; gap: 0.5rem; background: var(--bg-subtle); padding: 0.35rem 0.75rem; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    .status-toggle-label { font-size: 0.78rem; font-weight: 700; color: var(--text-sub); }
+    .status-toggle-label.active { color: var(--primary); }
 
-    .filter-tabs {
-      display: flex;
-      gap: 0.35rem;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      flex-wrap: nowrap;
-      scrollbar-width: none;
-    }
+    .filter-tabs { display: flex; gap: 0.35rem; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: none; }
     .filter-tabs::-webkit-scrollbar { display: none; }
-    .filter-tab {
-      padding: 0.35rem 0.75rem;
-      border: 1px solid var(--border-color);
-      background: var(--bg-secondary);
-      border-radius: var(--radius-md);
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
+    .filter-tab { padding: 0.35rem 0.75rem; border: 1px solid var(--border); background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 700; color: var(--text-sub); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .filter-tab:hover, .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-    .hutang-list {
-      max-height: min(540px, calc(100vh - 350px));
-      overflow-y: auto;
-    }
-    .hutang-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.85rem 1.25rem;
-      border-bottom: 1px solid var(--border-color);
-      transition: background 0.15s;
-    }
-    .hutang-item:hover { background: var(--bg-secondary); }
+    .hutang-list { max-height: min(540px, calc(100vh - 350px)); overflow-y: auto; }
+    .hutang-item { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    .hutang-item:hover { background: var(--bg-subtle); }
     .hutang-item:last-child { border-bottom: none; }
 
     .hutang-info { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
     .hutang-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: white; flex-shrink: 0; }
     .hutang-details { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-    .hutang-name { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hutang-name { font-weight: 700; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .hutang-amount-section { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; margin-left: 0.5rem; }
     .hutang-amount { font-size: 0.95rem; font-weight: 800; }
@@ -322,12 +271,12 @@
 
     .status-badge { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700; text-transform: uppercase; }
     .status-badge.active { background: var(--success-light); color: var(--success); }
-    .status-badge.inactive { background: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color); }
+    .status-badge.inactive { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
 
     .btn-icon-sm { width: 30px; height: 30px; border: none; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: white; flex-shrink: 0; font-size: 0.75rem; }
     .btn-pay { background: var(--success); }
     .btn-pay:hover { filter: brightness(0.9); }
-    .btn-edit { background: var(--info); }
+    .btn-edit { background: var(--accent); }
     .btn-edit:hover { filter: brightness(0.9); }
     .btn-delete { background: var(--danger); }
     .btn-delete:hover { filter: brightness(0.9); }
@@ -340,111 +289,59 @@
     .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
     .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; display: block; }
 
-    .hutang-detail-row { display: none; background: var(--bg-secondary); border-top: 1px dashed var(--border-color); }
+    .hutang-detail-row { display: none; background: var(--bg-subtle); border-top: 1px dashed var(--border); }
     .hutang-detail-row.show { display: block; }
     .hutang-detail-content { padding: 0.75rem 1rem; }
 
-    /* MODAL FORM YANG LEBIH MODERN & DINAMIS */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.65); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem; }
+    /* Modal Styling */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
-    .modal-content { background: var(--bg-card); border-radius: var(--radius-2xl); width: 100%; max-width: 460px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); max-height: 90vh; overflow-y: auto; }
-    .modal-header { padding: 1.15rem 1.4rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
-    .modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; }
-    .modal-close { width: 34px; height: 34px; border: none; background: var(--bg-secondary); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 460px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1.15rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+    .modal-close { width: 34px; height: 34px; border: none; background: var(--bg-subtle); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
     .modal-close:hover { background: var(--danger-light); color: var(--danger); }
     .modal-body { padding: 1.35rem; }
     
     .form-group { margin-bottom: 1.1rem; }
-    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem; }
-    .form-input, .form-select, .form-textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.2s; }
-    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-card); box-shadow: 0 0 0 3px var(--primary-light); }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.4rem; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.2s; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
     .form-textarea { min-height: 75px; resize: vertical; }
     .input-prefix { position: relative; }
     .input-prefix .prefix { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700; font-size: 0.88rem; }
     .input-prefix input { padding-left: 2.85rem; font-weight: 700; }
     
-    .kas-card-box {
-      margin-top: 1.15rem;
-      padding: 1rem;
-      background: var(--bg-secondary);
-      border-radius: var(--radius-lg);
-      border: 1.5px solid var(--border-color);
-      transition: all 0.2s;
-    }
-    .kas-card-header {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 700;
-      font-size: 0.85rem;
-      color: var(--text-primary);
-      margin-bottom: 0.75rem;
-    }
-    .kas-checkbox-container {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.75rem 0.85rem;
-      background: var(--bg-card);
-      border: 1.5px solid var(--border-color);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-    }
-    .kas-checkbox-container input {
-      width: 18px;
-      height: 18px;
-      margin-top: 2px;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-    .kas-checkbox-title {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      display: block;
-    }
-    .kas-checkbox-desc {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: 0.15rem;
-      display: block;
-      line-height: 1.35;
-    }
+    .kas-card-box { margin-top: 1.15rem; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-lg); border: 1.5px solid var(--border); transition: all 0.2s; }
+    .kas-card-header { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.75rem; }
+    .kas-checkbox-container { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0.85rem; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+    .kas-checkbox-container input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); cursor: pointer; }
+    .kas-checkbox-title { font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; }
+    .kas-checkbox-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; display: block; line-height: 1.35; }
 
-    .modal-footer { padding: 1.1rem 1.35rem; border-top: 1px solid var(--border-color); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-secondary); border-bottom-left-radius: var(--radius-2xl); border-bottom-right-radius: var(--radius-2xl); }
+    .modal-footer { padding: 1.1rem 1.35rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
 
     /* Loading & Toast */
-    .loading-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.65); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; opacity: 0; visibility: hidden; transition: all 0.25s; }
+    .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; opacity: 0; visibility: hidden; transition: all 0.25s; }
     .loading-overlay.active { opacity: 1; visibility: visible; }
-    .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 360px; }
-    .toast { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem; background: var(--bg-card); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border-left: 4px solid; font-size: 0.85rem; font-weight: 600; }
+    .toast { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem; background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border-left: 4px solid; font-size: 0.85rem; font-weight: 600; }
     .toast.success { border-left-color: var(--success); }
     .toast.error { border-left-color: var(--danger); }
     .toast.warning { border-left-color: var(--warning); }
-    .toast.info { border-left-color: var(--info); }
+    .toast.info { border-left-color: var(--accent); }
 
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-card); border-top: 1px solid var(--border-color); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
     .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text-muted); text-decoration: none; font-size: 0.65rem; font-weight: 600; padding: 0.5rem; transition: all 0.15s; }
     .mobile-nav-item i { font-size: 1.1rem; }
     .mobile-nav-item.active { color: var(--primary); }
-    @media(max-width:1024px){.mobile-nav { display: flex; } }
+    @media(max-width: 1024px) { .mobile-nav { display: flex; } }
 
     .badge-primary { background: var(--primary-light); color: var(--primary); }
-
-    /* Customer List di Modal Kelola Pelanggan */
-    .customer-manage-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      background: var(--bg-card);
-      margin-bottom: 0.5rem;
-    }
+    .customer-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
@@ -563,26 +460,20 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu">
-            <i class="fas fa-bars"></i>
-          </button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
           <h1 class="header-title">Hutang/Piutang</h1>
         </div>
         
         <div class="header-actions">
-          <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode">
-            <i class="fas fa-moon"></i>
-          </button>
-          <button class="btn-icon-box" id="btnLogout" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
+          <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
       <!-- Page Content -->
       <div class="page-content">
         <div class="hutang-container">
-          <!-- Top Action Bar ala Penggajian (Gambar 2) -->
+          <!-- Top Action Bar ala Penggajian -->
           <div class="top-action-bar">
             <button class="btn-create-debt" id="btnAddHutang">
               <i class="fas fa-plus"></i> Tambah Hutang/Piutang
@@ -592,31 +483,31 @@
             </button>
           </div>
 
-          <!-- KOTAK TOTAL (2 KOLOM SOLID, NILAI TIDAK TERPOTONG - GAMBAR 1) -->
+          <!-- KOTAK TOTAL (2 KOLOM SOLID, NILAI TIDAK TERPOTONG) -->
           <div class="summary-grid-fixed">
             <div class="summary-box-card piutang">
               <div class="summary-box-head">
                 <i class="fas fa-arrow-up"></i>
-                <span class="summary-title">Total Piutang Aktif</span>
+                <span>Total Piutang Aktif</span>
               </div>
               <div class="summary-box-val" id="totalPiutang">Rp 0</div>
             </div>
             <div class="summary-box-card hutang">
               <div class="summary-box-head">
                 <i class="fas fa-arrow-down"></i>
-                <span class="summary-title">Total Hutang Aktif</span>
+                <span>Total Hutang Aktif</span>
               </div>
               <div class="summary-box-val" id="totalHutang">Rp 0</div>
             </div>
           </div>
 
           <!-- Card Daftar Hutang/Piutang -->
-          <div class="hutang-list-card">
+          <div class="card">
             <!-- Search Box -->
-            <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary);">
+            <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--bg-subtle);">
               <div class="search-input-wrapper" style="position: relative; max-width: 400px;">
                 <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                <input type="text" class="form-input" id="searchHutangName" placeholder="Cari nama pelanggan..." style="padding-left: 2.5rem; background: var(--bg-card);">
+                <input type="text" class="form-input" id="searchHutangName" placeholder="Cari nama pelanggan..." style="padding-left: 2.5rem; background: var(--bg-surface);">
               </div>
             </div>
             
@@ -647,15 +538,9 @@
                 </div>
 
                 <!-- Import Export -->
-                <div class="import-export-group">
-                  <button class="btn btn-outline btn-sm" id="btnImport">
-                    <i class="fas fa-file-import"></i>
-                    Import
-                  </button>
-                  <button class="btn btn-outline btn-sm" id="btnExport">
-                    <i class="fas fa-file-export"></i>
-                    Export
-                  </button>
+                <div style="display:flex; gap:0.35rem;">
+                  <button class="btn btn-outline btn-sm" id="btnImport"><i class="fas fa-file-import"></i> Import</button>
+                  <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
                 </div>
               </div>
             </div>
@@ -680,7 +565,7 @@
     </nav>
   </div>
 
-  <!-- Modal Kelola Pelanggan (Model Penggajian - Gambar 2) -->
+  <!-- Modal Kelola Pelanggan -->
   <div class="modal-overlay" id="customerManageModal">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
@@ -689,12 +574,10 @@
       </div>
       <div class="modal-body">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary);">Daftar Pelanggan Tersimpan</span>
+          <span style="font-size:0.85rem; font-weight:700; color:var(--text-sub);">Daftar Pelanggan Tersimpan</span>
           <button class="btn btn-primary btn-sm" id="btnOpenNewCustomer"><i class="fas fa-plus"></i> Tambah Baru</button>
         </div>
-        <div id="customerListContainer" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;">
-          <!-- List Pelanggan -->
-        </div>
+        <div id="customerListContainer" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCloseCustomerManageBtn">Tutup</button>
@@ -702,14 +585,12 @@
     </div>
   </div>
 
-  <!-- Add/Edit Hutang Modal (Tampilan Menarik Sesuai Gambar 3) -->
+  <!-- Add/Edit Hutang Modal -->
   <div class="modal-overlay" id="hutangModal">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" id="modalTitle"><i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Tambah Hutang/Piutang</h3>
-        <button class="modal-close" id="btnCloseModal">
-          <i class="fas fa-times"></i>
-        </button>
+        <button class="modal-close" id="btnCloseModal"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <form id="hutangForm">
@@ -726,26 +607,7 @@
           <div class="form-group" style="position: relative;">
             <label class="form-label">Nama Pelanggan</label>
             <input type="text" class="form-input" id="hutangName" placeholder="Ketik nama pelanggan..." autocomplete="off" required>
-            
-            <!-- Autocomplete Dropdown -->
-            <div id="customerAutocomplete" style="
-              position: absolute;
-              top: 100%;
-              left: 0;
-              right: 0;
-              background: var(--bg-card);
-              border: 1.5px solid var(--border-color);
-              border-radius: var(--radius-md);
-              border-top: none;
-              max-height: 180px;
-              overflow-y: auto;
-              z-index: 100;
-              display: none;
-              box-shadow: var(--shadow-lg);
-            ">
-              <!-- Items will be injected here -->
-            </div>
-            
+            <div id="customerAutocomplete" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); border-top: none; max-height: 180px; overflow-y: auto; z-index: 100; display: none; box-shadow: var(--shadow-lg);"></div>
             <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.3rem; display: block;">
               <i class="fas fa-info-circle"></i> Ketik minimal 2 huruf untuk mencari, atau nama baru otomatis tersimpan
             </small>
@@ -765,11 +627,11 @@
           </div>
           
           <div class="form-group">
-            <label class="form-label">Catatan</label>
-            <textarea class="form-textarea" id="hutangNote" placeholder="Catatan tambahan..."></textarea>
+            <label class="form-label">Catatan / Detail Produk</label>
+            <textarea class="form-textarea" id="hutangNote" placeholder="Catatan atau nama barang..."></textarea>
           </div>
 
-          <!-- Kas Option for New Hutang (Card Menarik) -->
+          <!-- Kas Option for New Hutang -->
           <div class="kas-card-box" id="kasOptionBoxHutang" style="display: none;">
             <div class="kas-card-header">
               <i class="fas fa-wallet" style="color:var(--primary);"></i>
@@ -787,10 +649,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCancel">Batal</button>
-        <button class="btn btn-primary" id="btnSave">
-          <i class="fas fa-save"></i>
-          Simpan
-        </button>
+        <button class="btn btn-primary" id="btnSave"><i class="fas fa-save"></i> Simpan</button>
       </div>
     </div>
   </div>
@@ -800,9 +659,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fas fa-hand-holding-usd" style="color:var(--success);"></i> Proses Pembayaran</h3>
-        <button class="modal-close" id="btnClosePaymentModal">
-          <i class="fas fa-times"></i>
-        </button>
+        <button class="modal-close" id="btnClosePaymentModal"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -848,10 +705,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCancelPayment">Batal</button>
-        <button class="btn btn-primary" id="btnConfirmPayment">
-          <i class="fas fa-check"></i>
-          Bayar
-        </button>
+        <button class="btn btn-primary" id="btnConfirmPayment"><i class="fas fa-check"></i> Bayar</button>
       </div>
     </div>
   </div>
@@ -861,9 +715,7 @@
     <div class="modal-content" style="max-width: 420px;">
       <div class="modal-header">
         <h3 class="modal-title" id="customerModalTitle">Tambah Pelanggan</h3>
-        <button class="modal-close" id="btnCloseCustomerModal">
-          <i class="fas fa-times"></i>
-        </button>
+        <button class="modal-close" id="btnCloseCustomerModal"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <form id="customerForm">
@@ -880,10 +732,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCancelCustomer">Batal</button>
-        <button class="btn btn-primary" id="btnSaveCustomer">
-          <i class="fas fa-save"></i>
-          Simpan
-        </button>
+        <button class="btn btn-primary" id="btnSaveCustomer"><i class="fas fa-save"></i> Simpan</button>
       </div>
     </div>
   </div>
@@ -893,9 +742,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fas fa-file-import" style="color:var(--primary);"></i> Import Data</h3>
-        <button class="modal-close" id="btnCloseImportModal">
-          <i class="fas fa-times"></i>
-        </button>
+        <button class="modal-close" id="btnCloseImportModal"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -915,21 +762,33 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCancelImport">Batal</button>
-        <button class="btn btn-primary" id="btnConfirmImport">
-          <i class="fas fa-file-import"></i>
-          Import
-        </button>
+        <button class="btn btn-primary" id="btnConfirmImport"><i class="fas fa-file-import"></i> Import</button>
       </div>
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- MODAL KONFIRMASI HAPUS KUSTOM (MENGGANTIKAN POP-UP WINDOWS) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-content" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus</h3>
+        <button class="modal-close" id="btnCancelConfirmX"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage" style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Apakah Anda yakin ingin menghapus data ini?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelConfirm">Batal</button>
+        <button class="btn btn-danger" id="btnOkConfirm"><i class="fas fa-trash"></i> Hapus</button>
+      </div>
+    </div>
+  </div>
+
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
     <p style="margin-top: 1rem; color: #fff; font-weight: 700;">Memproses...</p>
   </div>
 
-  <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
@@ -940,7 +799,30 @@
   <script src="js/role-guard.js"></script>
 
   <script>
-    // Utils fallback if external files not loaded
+    // Utils kustom dialog menggantikan pop-up confirm() bawaan windows
+    let pendingConfirmAction = null;
+    function customConfirm(msg, callback) {
+      document.getElementById('confirmModalMessage').innerHTML = msg;
+      pendingConfirmAction = callback;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    document.getElementById('btnOkConfirm').onclick = () => {
+      document.getElementById('confirmModal').classList.remove('active');
+      if (typeof pendingConfirmAction === 'function') {
+        pendingConfirmAction();
+        pendingConfirmAction = null;
+      }
+    };
+    document.getElementById('btnCancelConfirm').onclick = () => {
+      document.getElementById('confirmModal').classList.remove('active');
+      pendingConfirmAction = null;
+    };
+    document.getElementById('btnCancelConfirmX').onclick = () => {
+      document.getElementById('confirmModal').classList.remove('active');
+      pendingConfirmAction = null;
+    };
+
     if (typeof Utils === 'undefined') {
       window.Utils = {
         formatRupiah: (num) => 'Rp ' + (num || 0).toLocaleString('id-ID'),
@@ -958,12 +840,13 @@
           container.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         },
-        confirm: (msg, callback) => {
-          if (confirm(msg)) callback();
-        },
+        confirm: (msg, callback) => customConfirm(msg, callback),
         getStorage: (key) => localStorage.getItem(key),
         setStorage: (key, val) => localStorage.setItem(key, val)
       };
+    } else {
+      // Replace method confirm bawaan utils agar memakai modal kustom kita
+      Utils.confirm = (msg, callback) => customConfirm(msg, callback);
     }
 
     if (typeof Utils.formatNumberInput !== 'function') {
@@ -1029,7 +912,7 @@
               snap.docs.forEach(function(doc) {
                 values[doc.id] = Object.assign({ id: doc.id }, doc.data());
               });
-              return { val: function() { return values; } };
+              return { val: () => values };
             }
             return {
               val: function() {
@@ -1183,10 +1066,10 @@
                 <div class="autocomplete-item" style="
                   padding: 0.75rem 1rem;
                   cursor: pointer;
-                  border-bottom: 1px solid var(--border-color);
+                  border-bottom: 1px solid var(--border);
                   transition: background 0.2s;
-                " onmouseover="this.style.background='var(--bg-secondary)'" 
-                onmouseout="this.style.background='var(--bg-card)'"
+                " onmouseover="this.style.background='var(--bg-subtle)'" 
+                onmouseout="this.style.background='var(--bg-surface)'"
                 onclick="window.selectCustomer('${c.name.replace(/'/g, "\\'")}')">
                   <div style="font-weight: 700;">${c.name}</div>
                   ${c.phone ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</div>` : ''}
@@ -1210,7 +1093,7 @@
           document.getElementById('customerAutocomplete').style.display = 'none';
         };
 
-        // Event Modal Kelola Pelanggan (Model Penggajian)
+        // Event Modal Kelola Pelanggan
         document.getElementById('btnKelolaCustomer').addEventListener('click', () => {
           renderCustomerManageList();
           document.getElementById('customerManageModal').classList.add('active');
@@ -1263,13 +1146,13 @@
         function updateKasOptionHutang() {
           const type = document.getElementById('hutangType').value;
           const kasBox = document.getElementById('kasOptionBoxHutang');
-          const sublabel = document.getElementById('kasSublabelDynamic');
+          const desc = document.getElementById('kasSublabelDynamic');
           
           kasBox.style.display = 'block';
           if (type === 'hutang') {
-            sublabel.textContent = 'Penerimaan pinjaman: menambah saldo kas dan dicatat sebagai arus hutang';
+            desc.textContent = 'Penerimaan pinjaman: menambah saldo kas dan dicatat sebagai arus hutang';
           } else {
-            sublabel.textContent = 'Pemberian pinjaman: mengurangi saldo kas dan dicatat sebagai arus piutang';
+            desc.textContent = 'Pemberian pinjaman: mengurangi saldo kas dan dicatat sebagai arus piutang';
           }
         }
 
@@ -1352,7 +1235,6 @@
           const nextTheme = isDark ? 'light' : 'dark';
           document.documentElement.setAttribute('data-theme', nextTheme);
           localStorage.setItem('webpos_theme', nextTheme);
-          localStorage.setItem('dark_mode', nextTheme === 'dark');
         });
 
         document.getElementById('btnLogout').addEventListener('click', () => {
@@ -1380,7 +1262,7 @@
           const paymentInput = document.getElementById('paymentAmount');
           if (paymentInput) {
             paymentInput.readOnly = false;
-            paymentInput.style.background = 'var(--bg-secondary)';
+            paymentInput.style.background = 'var(--bg-subtle)';
             paymentInput.style.cursor = 'text';
           }
         }
@@ -1437,7 +1319,6 @@
           document.getElementById('totalPiutang').textContent = Utils.formatRupiah(totalPiutang);
         }
 
-        // Render List Pelanggan di Modal Kelola Pelanggan
         function renderCustomerManageList() {
           const container = document.getElementById('customerListContainer');
           const countBadge = document.getElementById('customerCountBadge');
@@ -1452,11 +1333,11 @@
           } else {
             Object.entries(customerData).forEach(([id, customer]) => {
               html += `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-card);">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-surface);">
                   <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
-                    <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700;"><i class="fas fa-user"></i></div>
+                    <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--primary),#8b5cf6); color:white; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700;"><i class="fas fa-user"></i></div>
                     <div style="min-width:0;">
-                      <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">${customer.name}</div>
+                      <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${customer.name}</div>
                       ${customer.phone ? `<div style="font-size:0.75rem; color:var(--text-muted);">${customer.phone}</div>` : ''}
                     </div>
                   </div>
@@ -1469,6 +1350,23 @@
             });
           }
           container.innerHTML = html;
+        }
+
+        // Helper untuk mendapatkan deskripsi produk/barang dari transaksi
+        function getTransactionItemName(item) {
+          if (item.items && Array.isArray(item.items) && item.items.length > 0) {
+            return item.items.map(i => `${i.name || i.productName || 'Produk'} (x${i.qty || i.quantity || 1})`).join(', ');
+          }
+          if (item.productName || item.namaBarang || item.namaProduk) {
+            return item.productName || item.namaBarang || item.namaProduk;
+          }
+          if (item.note && !item.note.startsWith('TRX') && !item.note.startsWith('kas_')) {
+            return item.note;
+          }
+          if (item.invoiceNumber) {
+            return 'Nota: ' + item.invoiceNumber;
+          }
+          return item.note || (item.type === 'hutang' ? 'Hutang Kas' : 'Piutang Bon Produk');
         }
 
         function renderHutangList() {
@@ -1535,13 +1433,13 @@
               html += `
                 <div class="hutang-item" onclick="window.toggleDetail('${groupId}')" style="cursor: pointer; border-left: 4px solid ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'};">
                   <div class="hutang-info">
-                    <div class="hutang-avatar" style="background: ${group.type === 'hutang' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'};">
+                    <div class="hutang-avatar" style="background: ${group.type === 'hutang' ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)'};">
                       <i class="fas fa-user"></i>
                     </div>
                     <div class="hutang-details">
                       <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span class="hutang-name" style="font-size: 1rem; font-weight: 600;">${group.displayName}</span>
-                        <span style="background: var(--bg-secondary); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">
+                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">
                           ${group.items.length} transaksi
                         </span>
                         ${!isPaid ? `
@@ -1570,28 +1468,28 @@
                   </div>
                 </div>
                 
-                <!-- DETAIL PER TANGGAL -->
-                <div class="hutang-detail-row" id="detail-${groupId}" style="background: var(--bg-secondary);">
+                <!-- DETAIL PER TANGGAL DENGAN NAMA PRODUK JELAS -->
+                <div class="hutang-detail-row" id="detail-${groupId}">
                   <div class="hutang-detail-content">
-                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">
-                      Detail Transaksi
+                    <div style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                      Detail Transaksi / Rincian Produk
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                       ${group.items.map((item, idx) => {
                         const createdDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-';
                         const isItemPaid = item.status === 'paid' || item.status === 'inactive';
-                        const noteText = item.note || (item.type === 'hutang' ? 'Hutang' : 'Piutang');
+                        const itemName = getTransactionItemName(item);
                         
                         return `
-                          <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 0.75rem; background: var(--bg-card); border-radius: 8px; border-left: 3px solid ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; gap: 0.5rem;">
+                          <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 0.75rem; background: var(--bg-surface); border-radius: 8px; border-left: 3px solid ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; gap: 0.5rem;">
                             <div style="flex: 1; min-width: 140px;">
-                              <div style="font-weight: 600; color: var(--text-primary); font-size: 0.85rem;">
-                                ${noteText} #${idx + 1}
+                              <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">
+                                ${itemName}
                               </div>
-                              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">
+                              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
                                 <i class="fas fa-calendar-alt" style="margin-right: 0.25rem;"></i>${createdDate}
+                                ${item.invoiceNumber ? ` | <span style="font-weight:600;">Nota: ${item.invoiceNumber}</span>` : ''}
                               </div>
-                              ${item.note ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;"><i class="fas fa-sticky-note" style="margin-right: 0.25rem;"></i>${item.note}</div>` : ''}
                               <div style="margin-top: 0.25rem;">
                                 <span class="status-badge ${isItemPaid ? 'inactive' : 'active'}" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">
                                   ${isItemPaid ? 'Lunas' : 'Aktif'}
@@ -1600,7 +1498,7 @@
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
                               <div style="text-align: right;">
-                                <div style="font-weight: 600; color: ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-size: 0.9rem;">
+                                <div style="font-weight: 800; color: ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-size: 0.92rem;">
                                   ${Utils.formatRupiah(item.remaining || item.amount || 0)}
                                 </div>
                               </div>
@@ -1680,8 +1578,6 @@
               source: existing?.source || 'hutang_page'
             };
 
-            console.log('📝 Save Hutang:', { name, affectKas, kasRecorded: affectKas === true });
-            
             await firestoreDb.ref('debts/' + hutangId).set(hutangPayload);
             
             let cashTransaction = null;
@@ -1771,12 +1667,12 @@
           if (e.target.checked) {
             paymentInput.value = Utils.formatNumberInput(remaining.toString());
             paymentInput.readOnly = true;
-            paymentInput.style.background = 'var(--bg-secondary)';
+            paymentInput.style.background = 'var(--bg-subtle)';
             paymentInput.style.cursor = 'not-allowed';
           } else {
             paymentInput.value = '';
             paymentInput.readOnly = false;
-            paymentInput.style.background = 'var(--bg-secondary)';
+            paymentInput.style.background = 'var(--bg-subtle)';
             paymentInput.style.cursor = 'text';
             paymentInput.focus();
           }
@@ -1851,7 +1747,7 @@
           const paymentInput = document.getElementById('paymentAmount');
           paymentInput.value = Utils.formatNumberInput(totalRemaining.toString());
           paymentInput.readOnly = true;
-          paymentInput.style.background = 'var(--bg-secondary)';
+          paymentInput.style.background = 'var(--bg-subtle)';
           paymentInput.style.cursor = 'not-allowed';
           
           document.getElementById('paymentNote').value = '';
@@ -1880,7 +1776,7 @@
           const item = hutangData[id];
           if (!item) return;
           
-          document.getElementById('modalTitle').textContent = 'Edit Hutang/Piutang';
+          document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Edit Hutang/Piutang';
           document.getElementById('hutangId').value = id;
           document.getElementById('hutangType').value = item.type;
           document.getElementById('hutangName').value = item.name;
@@ -1941,7 +1837,6 @@
           const note = document.getElementById('paymentNote').value;
           const user = Auth.getCurrentUser();
           
-          // MODE BATCH
           if (!currentPaymentId && currentBatchItems && currentBatchItems.length > 0) {
             Utils.showLoading();
             
@@ -1998,7 +1893,6 @@
             return;
           }
           
-          // MODE SINGLE
           if (!currentPaymentId) return;
           
           const item = hutangData[currentPaymentId];
@@ -2068,8 +1962,6 @@
         }
 
         async function recordToKas(type, amount, description, user, category = 'arus_hutang_piutang', relatedDebtId = null) {
-          console.log('📝 Mencatat ke kas:', { type, amount, description });
-          
           try {
             const kasId = 'kas_' + Date.now();
             const now = new Date();
@@ -2104,7 +1996,6 @@
           }
         }
         
-        // Export Data
         function exportData() {
           const dataToExport = Object.values(hutangData).map(item => ({
             name: item.name,
@@ -2131,7 +2022,6 @@
           Utils.showToast('Data berhasil diexport', 'success');
         }
 
-        // Import Data with Excel Support
         function importData() {
           const fileInput = document.getElementById('importFile');
           const overwrite = document.getElementById('importOverwrite').checked;
