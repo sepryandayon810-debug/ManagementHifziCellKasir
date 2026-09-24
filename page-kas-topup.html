@@ -321,7 +321,7 @@
       color: var(--warning);
     }
 
-    /* AUTOCOMPLETE PELANGGAN KHUSUS HUTANG */
+    /* AUTOCOMPLETE DROPDOWN PELANGGAN MELAYANG */
     .customer-autocomplete-wrapper {
       position: relative;
       width: 100%;
@@ -335,17 +335,17 @@
       border: 1.5px solid var(--border);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-lg);
-      max-height: 180px;
+      max-height: 200px;
       overflow-y: auto;
-      z-index: 500;
+      z-index: 1000;
       display: none;
-      margin-top: 3px;
+      margin-top: 4px;
     }
     .customer-results-box.active {
       display: block;
     }
     .customer-result-item {
-      padding: 0.65rem 0.85rem;
+      padding: 0.7rem 1rem;
       cursor: pointer;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -795,6 +795,9 @@
                   <input type="hidden" id="selectedCustomerId">
                   <div class="customer-results-box" id="customerResultsBox"></div>
                 </div>
+                <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.35rem; display: block;">
+                  <i class="fas fa-info-circle"></i> Pilih dari dropdown atau klik "+ Tambah Baru". Tagihan otomatis masuk ke menu Hutang.
+                </small>
               </div>
 
               <!-- Rangkuman Tagihan & Uang Diterima -->
@@ -875,13 +878,9 @@
           <label class="form-label">Nama Lengkap *</label>
           <input type="text" class="form-input" id="newCustomerName" placeholder="Nama pelanggan">
         </div>
-        <div class="form-group">
-          <label class="form-label">Nomor Telepon / WhatsApp</label>
-          <input type="text" class="form-input" id="newCustomerPhone" placeholder="08xxxxxxxxxx">
-        </div>
         <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Alamat / Keterangan</label>
-          <input type="text" class="form-input" id="newCustomerAddress" placeholder="Alamat rumah / domisili">
+          <label class="form-label">Nomor Telepon / WhatsApp (Opsional)</label>
+          <input type="text" class="form-input" id="newCustomerPhone" placeholder="08xxxxxxxxxx">
         </div>
       </div>
       <div class="modal-footer">
@@ -895,9 +894,7 @@
   <div class="struk-modal-overlay" id="strukModal">
     <div class="struk-modal">
       <div class="struk-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
-          <i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Top Up Saldo
-        </h3>
+        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main);"><i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Top Up Saldo</h3>
         <button class="btn-icon-box" onclick="closeStrukModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
       <div class="struk-body" style="background:#f8fafc; padding:1rem; display:flex; justify-content:center;">
@@ -1117,7 +1114,6 @@
       window.openAddCustomerModal = function() {
         document.getElementById('newCustomerName').value = document.getElementById('customerSearchInput').value || '';
         document.getElementById('newCustomerPhone').value = '';
-        document.getElementById('newCustomerAddress').value = '';
         document.getElementById('addCustomerModal').classList.add('active');
         setTimeout(() => document.getElementById('newCustomerName').focus(), 150);
       };
@@ -1129,7 +1125,6 @@
       window.saveNewCustomer = async function() {
         const name = document.getElementById('newCustomerName').value.trim();
         const phone = document.getElementById('newCustomerPhone').value.trim();
-        const address = document.getElementById('newCustomerAddress').value.trim();
 
         if (!name) {
           Utils.showToast('Nama pelanggan wajib diisi', 'warning');
@@ -1141,7 +1136,6 @@
           const docRef = await db.collection("customers").add({
             name,
             phone: phone || '-',
-            address: address || '-',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
@@ -1326,14 +1320,17 @@
           document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
         }
 
-        // PERHITUNGAN KAS LACI SESUAI DASHBOARD UTAMA
+        // PERHITUNGAN KAS LACI SESUAI DENGAN INDEX, KASIR, DAN TARIK
         async function loadKasTersedia() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
             
             let modalAwal = 0;
             try {
-              const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+              let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+              if (!modalDoc.exists) {
+                modalDoc = await db.collection("modal").doc(today).get();
+              }
               modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
             } catch(e) {}
 
@@ -1361,11 +1358,8 @@
                   kasKeluar += data.amount || 0;
                   break;
                 case 'topup':
-                  // Topup berstatus hutang uang fisiknya belum masuk ke laci kasir
-                  if (data.paymentMethod !== 'hutang') {
-                    topup += data.amount || 0;
-                    topupAdminFee += data.adminFee || 0;
-                  }
+                  topup += data.amount || 0;
+                  topupAdminFee += data.adminFee || 0;
                   break;
                 case 'tarik':
                   tarik += data.amount || 0;
@@ -1440,7 +1434,7 @@
             let customerId = '';
             let customerName = '';
 
-            // Validasi nama pelanggan jika memilih metode Hutang
+            // Validasi pelanggan untuk metode Hutang
             if (paymentMode === 'hutang') {
               customerId = document.getElementById('selectedCustomerId').value.trim();
               customerName = document.getElementById('customerSearchInput').value.trim();
@@ -1457,7 +1451,7 @@
               const timestamp = Date.now();
               const transactionId = 'TOP_' + timestamp;
 
-              // Jika pelanggan baru diinput manual tanpa memilih dari daftar, daftarkan otomatis ke customers
+              // Daftarkan pelanggan baru jika belum tersimpan di Firestore
               if (paymentMode === 'hutang' && !customerId) {
                 const existing = customersList.find(c => c.name.toLowerCase() === customerName.toLowerCase());
                 if (existing) {
@@ -1466,7 +1460,6 @@
                   const newCustRef = await db.collection("customers").add({
                     name: customerName,
                     phone: '-',
-                    address: '-',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                   });
                   customerId = newCustRef.id;
@@ -1496,7 +1489,7 @@
               // 1. Simpan ke koleksi transactions
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
-              // 2. Simpan ke koleksi debts dengan field yang dibaca utuh oleh page-hutang.html
+              // 2. Simpan ke koleksi debts dengan format yang dibaca utuh oleh page-hutang.html
               if (paymentMode === 'hutang') {
                 const debtId = 'debt_' + timestamp;
                 const noteDescription = 'Top Up: ' + (note || 'Top Up Saldo');
@@ -1504,24 +1497,24 @@
                 await db.collection("debts").doc(debtId).set({
                   id: debtId,
                   transactionId: transactionId,
-                  type: 'piutang',              // Dikenali sebagai Piutang oleh page-hutang
-                  name: customerName,           // Field utama nama yang dibaca page-hutang
-                  customerName: customerName,   // Alias pendukung
+                  type: 'piutang',           // Dikenali sebagai Piutang oleh page-hutang.html
+                  name: customerName,        // Field utama nama di page-hutang
+                  customerName: customerName,// Field pendukung
                   customerId: customerId,
-                  amount: total,                // Field nominal yang dibaca page-hutang
-                  totalDebt: total,             // Alias nominal
-                  remaining: total,             // Sisa tagihan aktif
-                  remainingAmount: total,       // Alias sisa tagihan
+                  amount: total,             // Field nominal di page-hutang
+                  totalDebt: total,          // Field pendukung
+                  remaining: total,          // Sisa hutang aktif di page-hutang
+                  remainingAmount: total,    // Field pendukung
                   paidAmount: 0,
-                  note: noteDescription,        // Catatan yang ditampilkan di baris tabel
+                  note: noteDescription,     // Rincian produk / catatan
                   description: noteDescription,
                   date: today,
                   createdAt: timestamp,
                   updatedAt: timestamp,
-                  status: 'active',             // Wajib 'active' agar langsung masuk filter aktif
-                  affectKas: false,             // Uang fisik belum diterima kasir
+                  status: 'active',          // Wajib 'active' agar langsung tampil di tab Aktif page-hutang
+                  affectKas: false,          // Kas tunai belum bertambah karena belum dibayar
                   kasRecorded: false,
-                  source: 'topup_kas',
+                  source: 'kasir_topup',
                   userId: user.uid,
                   userName: userName
                 });
