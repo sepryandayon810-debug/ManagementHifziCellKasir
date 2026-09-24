@@ -299,11 +299,12 @@
       }
     }
     .bank-card-btn {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0.6rem 0.4rem;
+      padding: 0.65rem 0.4rem;
       background: var(--bg-subtle);
       border: 1.5px solid var(--border);
       border-radius: var(--radius-md);
@@ -325,6 +326,29 @@
       color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-light);
     }
+    /* TOMBOL SILANG HAPUS PADA CHIP */
+    .bank-card-btn .btn-remove-chip {
+      position: absolute;
+      top: 2px;
+      right: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(220, 38, 38, 0.15);
+      color: var(--danger);
+      font-size: 11px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .bank-card-btn .btn-remove-chip:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
     .btn-add-bank-header {
       background: transparent;
       border: none;
@@ -668,7 +692,7 @@
     </nav>
   </div>
 
-  <!-- Modal Tambah Bank Kustom (Menggantikan Prompt Browser) -->
+  <!-- Modal Tambah Bank Kustom Internal -->
   <div class="modal-overlay" id="addBankModal" onclick="if(event.target===this) closeAddBankModal()">
     <div class="modal-content">
       <div class="modal-header">
@@ -724,7 +748,7 @@
       let lastTransactionData = null;
       let storeSettings = {};
 
-      const DEFAULT_CHIPS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'SeaBank', 'Jago'];
+      const DEFAULT_CHIPS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
       let customChips = [];
 
       function loadSavedChips() {
@@ -741,14 +765,24 @@
         const container = document.getElementById('bankChipsContainer');
         if (!container) return;
 
-        const allChips = [...new Set([...DEFAULT_CHIPS, ...customChips])];
         const currentSelected = (document.getElementById('tarikNote')?.value || '').trim();
 
-        container.innerHTML = allChips.map(c => `
+        // 1. Render Chip Default Bawaan
+        let html = DEFAULT_CHIPS.map(c => `
           <div class="bank-card-btn ${currentSelected === c ? 'active' : ''}" onclick="window.selectBankChip('${c.replace(/'/g, "\\'")}')">
-            ${c}
+            <span>${c}</span>
           </div>
         `).join('');
+
+        // 2. Render Chip Kustom (dengan tombol silang hapus)
+        html += customChips.map(c => `
+          <div class="bank-card-btn ${currentSelected === c ? 'active' : ''}" onclick="window.selectBankChip('${c.replace(/'/g, "\\'")}')">
+            <span>${c}</span>
+            <span class="btn-remove-chip" onclick="window.removeCustomBankChip(event, '${c.replace(/'/g, "\\'")}')" title="Hapus ${c}">×</span>
+          </div>
+        `).join('');
+
+        container.innerHTML = html;
       }
 
       window.selectBankChip = function(name) {
@@ -757,7 +791,8 @@
           noteInput.value = name;
         }
         document.querySelectorAll('.bank-card-btn').forEach(el => {
-          el.classList.toggle('active', el.textContent.trim() === name);
+          const spanText = el.querySelector('span')?.textContent || el.textContent;
+          el.classList.toggle('active', spanText.trim() === name);
         });
       };
 
@@ -791,6 +826,22 @@
           window.selectBankChip(name);
         }
         closeAddBankModal();
+      };
+
+      // Hapus Bank Kustom
+      window.removeCustomBankChip = function(event, name) {
+        event.stopPropagation();
+        
+        customChips = customChips.filter(c => c !== name);
+        localStorage.setItem('webpos_custom_bank_chips', JSON.stringify(customChips));
+        
+        const noteInput = document.getElementById('tarikNote');
+        if (noteInput && noteInput.value === name) {
+          noteInput.value = '';
+        }
+        
+        renderBankChips();
+        Utils.showToast(`"${name}" berhasil dihapus`, 'info');
       };
 
       function isFromKasir() {
@@ -1034,7 +1085,6 @@
           });
         });
 
-        // Simpan Tarik Tunai
         const saveBtn = document.getElementById('btnSimpanTarik');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -1104,10 +1154,13 @@
           document.getElementById('tarikNote').value = '';
           document.querySelectorAll('.bank-card-btn').forEach(el => el.classList.remove('active'));
           updateDisplay();
+          loadKasirSaldoLaci();
+        }
+
+        function loadKasirSaldoLaci() {
           loadKasTersedia();
         }
 
-        // FUNGSI STRUK & CETAK BLUETOOTH
         function showStrukModal(tx) {
           lastTransactionData = tx;
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
