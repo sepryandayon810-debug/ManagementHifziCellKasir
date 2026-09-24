@@ -313,7 +313,7 @@
     .btn-secondary:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    /* CUSTOM DIALOG POPUP (MENGGANTIKAN CONFIRM BROWSER) */
+    /* CUSTOM DIALOG POPUP */
     .custom-modal-backdrop {
       position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
@@ -723,7 +723,7 @@
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
         const cached = localStorage.getItem("webpos_store_name");
-        if (cached && logoEl) logoEl.textContent = cached;
+        if (cached) logoEl.textContent = cached;
         try {
           const doc = await db.collection("settings").doc("store").get();
           if (doc.exists && doc.data()) {
@@ -736,7 +736,7 @@
         } catch(e) {}
       }
 
-      // Dialog Konfirmasi Internal
+      // Dialog Konfirmasi Internal (Menggantikan confirm browser)
       window.showCustomConfirm = function(title, message, onConfirm) {
         document.getElementById("confirmDialogTitle").textContent = title;
         document.getElementById("confirmDialogMessage").textContent = message;
@@ -968,7 +968,7 @@
                 kasKeluar += data.amount || 0;
                 break;
               case 'topup':
-                // Abaikan jika metode hutang karena uang fisik belum masuk ke laci
+                // Abaikan jika metode hutang karena uang fisik belum masuk ke laci kasir
                 if (data.paymentMethod !== 'hutang') {
                   topup += data.amount || 0;
                   topupAdmin += data.adminFee || 0;
@@ -1019,7 +1019,7 @@
           Utils.hideLoading();
         }
 
-        // Tombol Simpan Closing dengan Modal Pop-up Kustom
+        // Tombol Simpan Closing dengan Modal Pop-up Kustom (Bisa disimpan walau fisik Rp 0)
         document.getElementById('btnSimpanClosing').addEventListener('click', () => {
           if (!isShiftOpen) {
             Utils.showToast('Shift sudah ditutup sebelumnya', 'warning');
@@ -1027,19 +1027,18 @@
           }
 
           const fisikData = ClosingCalculator.calculate();
+          const selisih = fisikData.total - todayStats.uangGlobal;
 
-          if (fisikData.total === 0) {
-            Utils.showToast('Silakan input uang fisik terlebih dahulu', 'warning');
-            return;
-          }
+          const pesanKonfirmasi = fisikData.total === 0 
+            ? 'Uang fisik di laci terhitung Rp 0. Tetap simpan dan tutup shift?' 
+            : 'Simpan hasil closing dan tutup shift sekarang?';
 
-          showCustomConfirm('Tutup Shift', 'Simpan hasil closing dan tutup shift sekarang?', async () => {
+          showCustomConfirm('Tutup Shift', pesanKonfirmasi, async () => {
             try {
               Utils.showLoading('Menyimpan hasil closing shift...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const timestamp = Date.now();
               const cashierName = document.getElementById('userName').textContent;
-              const selisih = fisikData.total - todayStats.uangGlobal;
 
               const closingData = {
                 timestamp,
