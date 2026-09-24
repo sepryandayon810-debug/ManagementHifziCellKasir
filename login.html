@@ -14,7 +14,6 @@
       --primary: #4f46e5;
       --primary-hover: #4338ca;
       --primary-light: #eef2ff;
-      --bg-dark: #090d16;
       --surface: #ffffff;
       --border: #e2e8f0;
       --text-main: #0f172a;
@@ -26,7 +25,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      /* Gradien baru: Elegan, berani, dan maskulin (Dark Slate to Deep Indigo/Teal) */
       background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
       background-attachment: fixed;
       color: var(--text-main);
@@ -38,18 +36,25 @@
     }
 
     .auth-wrapper {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       width: 100%;
       max-width: 960px;
       background: var(--surface);
       border-radius: 28px;
       overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    @media(max-width: 768px) {
+      .auth-wrapper {
+        grid-template-columns: 1fr;
+        max-width: 440px;
+      }
     }
 
     /* Sisi Kiri: Branding Elegan & Berani */
     .auth-brand-side {
-      flex: 1;
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%);
       color: #fff;
       padding: 3.5rem 3rem;
@@ -63,26 +68,30 @@
       content: '';
       position: absolute;
       width: 350px; height: 350px;
-      background: rgba(79, 70, 229, 0.15);
+      background: rgba(79, 70, 229, 0.2);
       border-radius: 50%;
       top: -120px; right: -120px;
       backdrop-filter: blur(15px);
     }
     .brand-logo-wrap {
-      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2;
+      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2; cursor: pointer;
     }
     .brand-logo-wrap i { font-size: 1.6rem; background: rgba(79, 70, 229, 0.4); padding: 12px; border-radius: 14px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); color: #818cf8; }
     .brand-hero-text { z-index: 2; margin: 2rem 0; }
-    .brand-hero-text h2 { font-size: 2.25rem; font-weight: 800; line-height: 1.2; margin-bottom: 1rem; letter-spacing: -0.02em; }
+    .brand-hero-text h2 { font-size: 2.15rem; font-weight: 800; line-height: 1.2; margin-bottom: 1rem; letter-spacing: -0.02em; }
     .brand-hero-text p { font-size: 0.95rem; opacity: 0.85; line-height: 1.6; color: #cbd5e1; }
     .brand-footer-text { font-size: 0.78rem; opacity: 0.6; z-index: 2; font-weight: 500; }
 
-    /* Logo khusus versi mobile agar tetap muncul di HP */
+    @media(max-width: 768px) {
+      .auth-brand-side { display: none; }
+    }
+
+    /* Logo khusus versi mobile */
     .mobile-brand-header {
       display: none;
       align-items: center;
       gap: 0.65rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
     .mobile-brand-header i {
       font-size: 1.25rem;
@@ -96,16 +105,12 @@
       font-weight: 800;
       color: var(--text-main);
     }
-
     @media(max-width: 768px) {
-      .auth-brand-side { display: none; }
       .mobile-brand-header { display: flex; }
-      .auth-wrapper { max-width: 440px; }
     }
 
     /* Sisi Kanan: Form */
     .auth-form-side {
-      flex: 1;
       padding: 3rem 2.5rem;
       display: flex;
       flex-direction: column;
@@ -207,9 +212,9 @@
 <body>
 
 <div class="auth-wrapper">
-  <!-- Sisi Kiri: Branding Elegan & Berani (Desktop) -->
+  <!-- Sisi Kiri: Branding (Desktop) -->
   <div class="auth-brand-side">
-    <div class="brand-logo-wrap">
+    <div class="brand-logo-wrap" id="secretDevTriggerDesktop" title="Mode Khusus">
       <i class="fas fa-cash-register"></i>
       <span>And POS</span>
     </div>
@@ -222,17 +227,15 @@
     </div>
   </div>
 
-  <!-- Sisi Kanan: Form Dinamis -->
+  <!-- Sisi Kanan: Form -->
   <div class="auth-form-side">
-    <!-- Header Logo khusus tampilan Mobile -->
     <div class="mobile-brand-header">
       <i class="fas fa-cash-register"></i>
-      <span>And POS</span>
+      <span id="secretDevTriggerMobile">And POS</span>
     </div>
 
     <div class="form-header">
-      <!-- Teks judul diklik 5 kali berturut-turut untuk mode khusus Owner & Developer -->
-      <h3 id="formHeading" title="Mode Khusus">Selamat Datang 👋</h3>
+      <h3 id="formHeading">Selamat Datang 👋</h3>
       <p id="brandDesc">Silakan masuk menggunakan akun terdaftar</p>
     </div>
 
@@ -392,17 +395,20 @@
     }
   }
 
-  // Tombol rahasia: Klik 5 kali pada teks "Selamat Datang" untuk membuka opsi Owner & Developer
+  // Tombol Rahasia: Klik logo 5 kali di desktop (atau mobile) untuk membuka opsi Owner & Developer
   let clickCount = 0;
-  document.getElementById("formHeading").addEventListener("click", () => {
+  function triggerSecretDev() {
     clickCount++;
-    if (clickCount === 5) {
+    if (clickCount >= 5) {
       document.getElementById("optOwner").style.display = "block";
       document.getElementById("optDev").style.display = "block";
       showInternalAlert("Mode Khusus Diaktifkan", "Opsi pendaftaran untuk Owner & Developer kini telah terbuka di pilihan role.");
       clickCount = 0;
     }
-  });
+  }
+
+  document.getElementById("secretDevTriggerDesktop").addEventListener("click", triggerSecretDev);
+  document.getElementById("secretDevTriggerMobile").addEventListener("click", triggerSecretDev);
 
   async function recordUserLogin(userId) {
     try {
