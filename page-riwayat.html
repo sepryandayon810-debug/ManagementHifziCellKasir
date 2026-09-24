@@ -32,9 +32,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
   <style>
-    /* ============================================
-       WEBPOS RIWAYAT - TEMA GLOBAL SELARAS DASHBOARD/PENGATURAN
-       ============================================ */
     :root{
       --primary:#4f46e5;
       --primary-hover:#4338ca;
@@ -143,7 +140,7 @@
     .search-input-wrapper i{position:absolute;left:0.85rem;color:var(--text-muted);font-size:0.8rem}
     .search-input{
       width:100%;padding:.5rem .75rem .5rem 2.2rem;border:1px solid var(--border);
-      border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:0.82rem;outline:none;
+      border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:.82rem;outline:none;
     }
 
     .sidebar-nav{flex:1;overflow-y:auto;padding:1rem 0.75rem}
@@ -235,15 +232,15 @@
     .summary-card::after{
       content:'';position:absolute;top:0;bottom:0;left:0;width:4px;border-radius:var(--radius-xl) 0 0 var(--radius-xl);
     }
-    .summary-card-penjualan::after{background:var(--primary)}
-    .summary-card-trx::after{background:var(--info)}
-    .summary-card-laba::after{background:var(--success)}
+    .summary-card-1::after{background:var(--primary)}
+    .summary-card-2::after{background:var(--info)}
+    .summary-card-3::after{background:var(--success)}
     .summary-card-icon{
       width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;
     }
-    .summary-card-penjualan .summary-card-icon{background:var(--primary-light);color:var(--primary)}
-    .summary-card-trx .summary-card-icon{background:rgba(2,132,199,0.12);color:var(--info)}
-    .summary-card-laba .summary-card-icon{background:var(--success-light);color:var(--success)}
+    .summary-card-1 .summary-card-icon{background:var(--primary-light);color:var(--primary)}
+    .summary-card-2 .summary-card-icon{background:rgba(2,132,199,0.12);color:var(--info)}
+    .summary-card-3 .summary-card-icon{background:var(--success-light);color:var(--success)}
     .summary-card-content{flex:1;min-width:0}
     .summary-card-title{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:.2rem}
     .summary-card-value{font-size:1.3rem;font-weight:800;color:var(--text-main);line-height:1.2}
@@ -535,32 +532,9 @@
           </div>
         </div>
 
-        <!-- Summary Cards -->
-        <div class="summary-cards">
-          <div class="summary-card summary-card-penjualan">
-            <div class="summary-card-icon"><i class="fas fa-shopping-cart"></i></div>
-            <div class="summary-card-content">
-              <div class="summary-card-title">Total Penjualan</div>
-              <div class="summary-card-value" id="totalPenjualan">Rp 0</div>
-              <div class="summary-card-sub" id="subPenjualan">dari transaksi produk</div>
-            </div>
-          </div>
-          <div class="summary-card summary-card-trx">
-            <div class="summary-card-icon"><i class="fas fa-receipt"></i></div>
-            <div class="summary-card-content">
-              <div class="summary-card-title">Total Transaksi</div>
-              <div class="summary-card-value" id="totalTransaksi">0</div>
-              <div class="summary-card-sub" id="subTransaksi">semua jenis transaksi</div>
-            </div>
-          </div>
-          <div class="summary-card summary-card-laba">
-            <div class="summary-card-icon"><i class="fas fa-chart-line"></i></div>
-            <div class="summary-card-content">
-              <div class="summary-card-title">Total Laba</div>
-              <div class="summary-card-value" id="totalLaba">Rp 0</div>
-              <div class="summary-card-sub" id="subLaba">termasuk fee admin</div>
-            </div>
-          </div>
+        <!-- Summary Cards Dinamis Sesuai Tab Aktif -->
+        <div class="summary-cards" id="summaryCardsContainer">
+          <!-- Diisi via updateSummary() -->
         </div>
 
         <!-- Transactions Table Card -->
@@ -718,7 +692,6 @@
     (function() {
       "use strict";
 
-      // INISIALISASI VARIABEL FIREBASE DENGAN AMAN
       const auth = firebase.auth();
       const db = firebase.firestore();
 
@@ -987,7 +960,7 @@
             }
           });
 
-          // 2. Ambil dari koleksi purchases
+          // 2. Ambil dari koleksi purchases agar pembelian restock langsung muncul
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -1125,14 +1098,19 @@
             <table class="detail-items-table">
               <thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
               <tbody>
-                ${t.items.map(i => `
-                  <tr>
-                    <td>${i.name || i.productName || 'Barang'}</td>
-                    <td>${i.quantity || i.qty || 1}</td>
-                    <td>${Utils.formatRupiah(i.price || i.harga || 0)}</td>
-                    <td>${Utils.formatRupiah(i.total || ((i.price || i.harga || 0) * (i.quantity || i.qty || 1)))}</td>
-                  </tr>
-                `).join('')}
+                ${t.items.map(i => {
+                  const price = i.price || i.harga || 0;
+                  const qty = i.quantity || i.qty || 1;
+                  const subtotal = i.total || (price * qty);
+                  return `
+                    <tr>
+                      <td>${i.name || i.productName || 'Barang'}</td>
+                      <td>${qty}</td>
+                      <td>${Utils.formatRupiah(price)}</td>
+                      <td>${Utils.formatRupiah(subtotal)}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           `;
@@ -1153,22 +1131,127 @@
         }
       };
 
+      // FUNGSI UPDATE SUMMARY DINAMIS BERDASARKAN TAB AKTIF
       function updateSummary(transactions) {
-        let totalPenjualan = 0, totalLaba = 0;
-        transactions.forEach(t => {
-          if (t.status !== 'cancelled') {
+        const container = document.getElementById('summaryCardsContainer');
+        if (!container) return;
+
+        let card1Title = '', card1Value = 0, card1Sub = '', card1Icon = 'fa-shopping-cart', card1Class = 'summary-card-1';
+        let card2Title = 'TOTAL TRANSAKSI', card2Value = transactions.length, card2Sub = 'transaksi terdata', card2Icon = 'fa-receipt', card2Class = 'summary-card-2';
+        let card3Title = '', card3Value = 0, card3Sub = '', card3Icon = 'fa-chart-line', card3Class = 'summary-card-3';
+
+        if (currentFilter === 'pembelian') {
+          let totalBeli = 0;
+          let totalItemsBeli = 0;
+          transactions.forEach(t => {
+            totalBeli += (t.grandTotal || t.total || t.amount || 0);
+            totalItemsBeli += (t.totalItem || (t.items ? t.items.reduce((s, i) => s + (i.qty || i.quantity || 1), 0) : 1));
+          });
+
+          card1Title = 'TOTAL PEMBELIAN';
+          card1Value = Utils.formatRupiah(totalBeli);
+          card1Sub = 'biaya restock / belanja';
+          card1Icon = 'fa-truck-loading';
+
+          card2Sub = 'transaksi pembelian';
+
+          card3Title = 'TOTAL ITEM DIBELI';
+          card3Value = totalItemsBeli + ' pcs';
+          card3Sub = 'stok produk masuk';
+          card3Icon = 'fa-boxes';
+        } else if (currentFilter === 'kas') {
+          let kasMasuk = 0;
+          let kasKeluar = 0;
+          transactions.forEach(t => {
+            if (t.type === 'kas_masuk') kasMasuk += (t.amount || t.total || 0);
+            if (t.type === 'kas_keluar') kasKeluar += (t.amount || t.total || 0);
+          });
+
+          card1Title = 'TOTAL KAS MASUK';
+          card1Value = Utils.formatRupiah(kasMasuk);
+          card1Sub = 'penerimaan kas';
+          card1Icon = 'fa-arrow-down';
+
+          card2Title = 'TOTAL KAS KELUAR';
+          card2Value = Utils.formatRupiah(kasKeluar);
+          card2Sub = 'pengeluaran kas';
+          card2Icon = 'fa-arrow-up';
+
+          card3Title = 'ARUS KAS BERSIH';
+          card3Value = Utils.formatRupiah(kasMasuk - kasKeluar);
+          card3Sub = 'selisih masuk - keluar';
+          card3Icon = 'fa-wallet';
+        } else if (currentFilter === 'topup_tarik') {
+          let totalNominal = 0;
+          let totalFee = 0;
+          transactions.forEach(t => {
+            totalNominal += (t.amount || t.total || 0);
+            totalFee += (t.adminFee || 0);
+          });
+
+          card1Title = 'TOTAL PERPUTARAN';
+          card1Value = Utils.formatRupiah(totalNominal);
+          card1Sub = 'nominal topup & tarik';
+          card1Icon = 'fa-exchange-alt';
+
+          card2Sub = 'transaksi topup/tarik';
+
+          card3Title = 'LABA FEE ADMIN';
+          card3Value = Utils.formatRupiah(totalFee);
+          card3Sub = 'pendapatan biaya admin';
+          card3Icon = 'fa-coins';
+        } else {
+          // Mode 'all' atau 'penjualan'
+          let totalPenjualan = 0;
+          let totalLaba = 0;
+          transactions.forEach(t => {
             if (t.type === 'penjualan') {
-              totalPenjualan += t.total || 0;
-              totalLaba += t.profit || 0;
+              totalPenjualan += (t.total || 0);
+              totalLaba += (t.profit || 0);
             } else if (['topup', 'tarik'].includes(t.type) && t.adminFee) {
               totalLaba += t.adminFee;
             }
-          }
-        });
+          });
 
-        document.getElementById('totalPenjualan').textContent = Utils.formatRupiah(totalPenjualan);
-        document.getElementById('totalTransaksi').textContent = transactions.length;
-        document.getElementById('totalLaba').textContent = Utils.formatRupiah(totalLaba);
+          card1Title = 'TOTAL PENJUALAN';
+          card1Value = Utils.formatRupiah(totalPenjualan);
+          card1Sub = 'dari transaksi produk';
+          card1Icon = 'fa-shopping-cart';
+
+          card2Sub = 'semua jenis transaksi';
+
+          card3Title = 'TOTAL LABA';
+          card3Value = Utils.formatRupiah(totalLaba);
+          card3Sub = 'penjualan & fee admin';
+          card3Icon = 'fa-chart-line';
+        }
+
+        container.innerHTML = `
+          <div class="summary-card ${card1Class}">
+            <div class="summary-card-icon"><i class="fas ${card1Icon}"></i></div>
+            <div class="summary-card-content">
+              <div class="summary-card-title">${card1Title}</div>
+              <div class="summary-card-value">${card1Value}</div>
+              <div class="summary-card-sub">${card1Sub}</div>
+            </div>
+          </div>
+          <div class="summary-card ${card2Class}">
+            <div class="summary-card-icon"><i class="fas ${card2Icon}"></i></div>
+            <div class="summary-card-content">
+              <div class="summary-card-title">${card2Title}</div>
+              <div class="summary-card-value">${card2Value}</div>
+              <div class="summary-card-sub">${card2Sub}</div>
+            </div>
+          </div>
+          <div class="summary-card ${card3Class}">
+            <div class="summary-card-icon"><i class="fas ${card3Icon}"></i></div>
+            <div class="summary-card-content">
+              <div class="summary-card-title">${card3Title}</div>
+              <div class="summary-card-value">${card3Value}</div>
+              <div class="summary-card-sub">${card3Sub}</div>
+            </div>
+          </div>
+        `;
       }
 
       window.printTransaction = function(id) {
