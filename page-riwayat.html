@@ -593,6 +593,7 @@
               <span id="trxCount" style="font-size:.78rem; color:var(--text-muted); font-weight:700;"></span>
             </div>
             <div style="display:flex; gap:0.35rem; align-items:center;">
+              <button class="btn btn-outline btn-sm" onclick="downloadTemplateRiwayat()" title="Download Template Excel"><i class="fas fa-file-excel" style="color:var(--success);"></i> Template</button>
               <button class="btn btn-outline btn-sm" id="btnOpenImportModal"><i class="fas fa-file-import"></i> Import</button>
               <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
             </div>
@@ -711,7 +712,7 @@
         <div class="form-group">
           <label class="form-label">Pilih File (JSON / Excel / CSV)</label>
           <input type="file" class="form-input" id="importFile" accept=".json,.csv,.xls,.xlsx" style="padding:0.5rem;">
-          <div class="modal-hint">Format didukung: File ekspor riwayat .CSV, .JSON, atau spreadsheet Excel .XLSX.</div>
+          <div class="modal-hint">Format didukung: File ekspor riwayat .CSV, .JSON, atau spreadsheet Excel .XLSX sesuai format template.</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -891,7 +892,6 @@
           });
         }
 
-        // Logout dengan Modal Internal WebPOS
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.onclick = () => {
@@ -1653,6 +1653,33 @@ itemsText + '\n' +
         Utils.showToast('Data berhasil diexport', 'success');
       }
 
+      // ================= DOWNLOAD TEMPLATE & IMPORT TRANSAKSI =================
+      window.downloadTemplateRiwayat = function() {
+        const templateData = [
+          {
+            "Tanggal": "2026-09-24",
+            "Tipe": "penjualan",
+            "Total": 50000,
+            "Metode": "Tunai",
+            "Kasir": "Admin",
+            "Keterangan": "Penjualan Aksesoris"
+          },
+          {
+            "Tanggal": "2026-09-24",
+            "Tipe": "topup",
+            "Total": 100000,
+            "Metode": "Transfer",
+            "Kasir": "Admin",
+            "Keterangan": "Top Up Saldo"
+          }
+        ];
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Template Riwayat");
+        XLSX.writeFile(workbook, "Template_Upload_Riwayat_AndPOS.xlsx");
+        Utils.showToast('Template riwayat berhasil didownload', 'success');
+      };
+
       async function processImport() {
         const fileInput = document.getElementById('importFile');
         if (!fileInput.files.length) {
@@ -1695,24 +1722,29 @@ itemsText + '\n' +
             for (const item of importedData) {
               const id = item.id || ('TRX_' + Date.now() + '_' + count);
               const ref = db.collection('transactions').doc(id);
-              const total = parseInt(item.total || item.amount || 0) || 0;
-              const type = (item.type || item.tipe || 'penjualan').toLowerCase();
-              const date = item.date || item.tanggal || new Date().toISOString().split('T')[0];
+              
+              const total = Number(item["Total"] || item["Nominal"] || item["total"] || item["amount"] || 0);
+              const typeRaw = String(item["Tipe"] || item["tipe"] || item["type"] || "penjualan").toLowerCase();
+              const type = typeRaw.includes("top") ? "topup" : (typeRaw.includes("tarik") ? "tarik" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "penjualan"))));
+              const date = String(item["Tanggal"] || item["tanggal"] || item["date"] || new Date().toISOString().split('T')[0]);
+              const paymentMethod = String(item["Metode"] || item["metode"] || item["paymentMethod"] || "Tunai");
+              const note = String(item["Keterangan"] || item["keterangan"] || item["note"] || "Import Transaksi");
+              const userName = String(item["Kasir"] || item["kasir"] || (user ? user.email : "Admin"));
 
               batch.set(ref, {
                 id,
                 total,
                 amount: total,
                 type,
-                paymentMethod: item.metode || item.paymentMethod || 'Tunai',
-                note: item.note || item.keterangan || 'Import Transaksi',
+                paymentMethod,
+                note,
                 date,
                 timestamp: Date.now(),
                 userId: user ? user.uid : 'unknown',
-                userName: item.kasir || (user ? user.email : 'Admin'),
+                userName,
                 status: 'completed',
                 imported: true
-              });
+              }, { merge: true });
               count++;
             }
 
