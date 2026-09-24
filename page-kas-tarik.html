@@ -286,7 +286,7 @@
     }
     .form-input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
 
-    /* GRID BANK & E-WALLET MODERN */
+    /* GRID BANK & E-WALLET */
     .bank-select-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -327,6 +327,7 @@
       color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-light);
     }
+
     .btn-add-bank-header {
       background: transparent;
       border: none;
@@ -693,7 +694,7 @@
     </nav>
   </div>
 
-  <!-- Modal Kelola Bank (Ganti Modal Tambah Kustom) -->
+  <!-- Modal Kelola Bank (Cloud Sync) -->
   <div class="modal-overlay" id="manageBankModal" onclick="if(event.target===this) closeManageBankModal()">
     <div class="modal-content">
       <div class="modal-header">
@@ -708,7 +709,7 @@
           <button class="btn btn-primary" onclick="addNewBank()" style="width: auto; padding: 0.65rem 1rem;"><i class="fas fa-plus"></i></button>
         </div>
         <div id="manageBankList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem;">
-          <!-- List bank item rendered here via JS -->
+          <!-- List bank rendered here via JS -->
         </div>
       </div>
       <div class="modal-footer">
@@ -751,28 +752,54 @@
       let lastTransactionData = null;
       let storeSettings = {};
 
-      // SISTEM BANK LIST TERPADU
       const INITIAL_BANKS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
       let bankList = [];
 
-      function loadBankList() {
+      // 1. LOAD DARI CLOUD FIRESTORE (DENGAN LOCALSTORAGE FALLBACK)
+      async function loadBankList() {
         try {
-          const saved = localStorage.getItem('webpos_bank_list');
-          if (saved) {
-            bankList = JSON.parse(saved);
-          } else {
-            // Coba migrasi data customChips lama jika ada
-            const oldCustom = localStorage.getItem('webpos_custom_bank_chips');
-            if (oldCustom) {
-              const parsedOld = JSON.parse(oldCustom);
-              bankList = [...new Set([...INITIAL_BANKS, ...parsedOld])];
-            } else {
-              bankList = [...INITIAL_BANKS];
-            }
-            localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
-          }
+          const cached = localStorage.getItem('webpos_bank_list');
+          if (cached) bankList = JSON.parse(cached);
+          else bankList = [...INITIAL_BANKS];
         } catch(e) {
           bankList = [...INITIAL_BANKS];
+        }
+        renderBankChips();
+
+        try {
+          const docRef = db.collection("settings").doc("banks");
+          const docSnap = await docRef.get();
+          if (docSnap.exists && Array.isArray(docSnap.data().list) && docSnap.data().list.length > 0) {
+            bankList = docSnap.data().list;
+          } else {
+            await docRef.set({ list: INITIAL_BANKS, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            bankList = [...INITIAL_BANKS];
+          }
+          localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
+          renderBankChips();
+          if (document.getElementById('manageBankModal').classList.contains('active')) {
+            renderManageBankList();
+          }
+        } catch(err) {
+          console.warn("Gagal memuat list bank dari Cloud, menggunakan data lokal:", err);
+        }
+      }
+
+      // 2. SIMPAN KE CLOUD FIRESTORE SAAT ADA PERUBAHAN
+      async function saveBankListToCloud(newList) {
+        bankList = newList;
+        localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
+        renderBankChips();
+        renderManageBankList();
+
+        try {
+          await db.collection("settings").doc("banks").set({
+            list: bankList,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch(e) {
+          console.error("Gagal sinkron bank ke Cloud Firestore:", e);
+          Utils.showToast("Tersimpan lokal, gagal sinkron ke cloud", "warning");
         }
       }
 
@@ -796,7 +823,7 @@
         listContainer.innerHTML = bankList.map(c => `
           <div class="manage-bank-item">
             <span>${c}</span>
-            <button class="btn-icon-sm btn-danger" onclick="window.deleteBankItem('${c.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+            <button type="button" class="btn-icon-sm btn-danger" onclick="window.deleteBankItem('${c.replace(/'/g, "\\'")}')" title="Hapus"><i class="fas fa-trash"></i></button>
           </div>
         `).join('');
       };
@@ -824,7 +851,7 @@
         document.getElementById('manageBankModal').classList.remove('active');
       };
 
-      window.addNewBank = function() {
+      window.addNewBank = async function() {
         const input = document.getElementById('newBankInput');
         const name = input ? input.value.trim() : '';
         if (!name) {
@@ -833,30 +860,25 @@
         }
 
         if (!bankList.includes(name)) {
-          bankList.unshift(name); // Tambahkan ke urutan paling atas
-          localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
-          renderBankChips();
-          renderManageBankList();
+          const updated = [name, ...bankList];
+          await saveBankListToCloud(updated);
           window.selectBankChip(name);
           input.value = '';
-          Utils.showToast(`"${name}" berhasil ditambahkan!`, 'success');
+          Utils.showToast(`"${name}" tersimpan ke Cloud!`, 'success');
         } else {
           Utils.showToast(`"${name}" sudah ada dalam daftar`, 'info');
         }
       };
 
-      window.deleteBankItem = function(name) {
-        bankList = bankList.filter(b => b !== name);
-        localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
-        renderBankChips();
-        renderManageBankList();
+      window.deleteBankItem = async function(name) {
+        const updated = bankList.filter(b => b !== name);
+        await saveBankListToCloud(updated);
         
-        // Kosongkan input jika yang dihapus sedang terpilih
         const noteInput = document.getElementById('tarikNote');
         if (noteInput && noteInput.value === name) {
           noteInput.value = '';
         }
-        Utils.showToast(`"${name}" berhasil dihapus`, 'info');
+        Utils.showToast(`"${name}" berhasil dihapus dari Cloud`, 'info');
       };
 
       function isFromKasir() {
@@ -890,7 +912,6 @@
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
         loadBankList();
-        renderBankChips();
 
         if (isFromKasir()) {
           const btnBack = document.getElementById('btnBackKasir');
