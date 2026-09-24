@@ -232,6 +232,7 @@
       color: var(--text-sub); display: flex; align-items: center; justify-content: center;
       cursor: pointer; flex-shrink: 0;
     }
+    .btn-icon-box:hover { color: var(--primary); border-color: var(--primary); }
 
     .page-content { padding: 1.5rem; flex: 1; }
 
@@ -318,8 +319,44 @@
     .page-btn { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-main); cursor: pointer; }
     .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* MODAL POPUP INTERNAL (LOGOUT & HAPUS LOG) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
     /* TOAST */
-    .toast-box { position: fixed; top: 1rem; right: 1rem; z-index: 3000; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
+    .toast-box { position: fixed; top: 1rem; right: 1rem; z-index: 6000; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
     .toast-pill {
       display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
       background: var(--bg-surface); border-radius: var(--radius-md);
@@ -595,6 +632,32 @@
   </main>
 </div>
 
+<!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+<div class="custom-modal-backdrop" id="customLogoutModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+    <h3 class="dialog-title">Konfirmasi Keluar</h3>
+    <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONFIRMASI HAPUS LOG INTERNAL -->
+<div class="custom-modal-backdrop" id="customClearLogsModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-trash-alt"></i></div>
+    <h3 class="dialog-title">Hapus Riwayat Log</h3>
+    <p class="dialog-message">Yakin ingin menghapus seluruh riwayat log aktivitas? Tindakan ini tidak dapat dibatalkan.</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customClearLogsModal').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmClearLogsAction">Ya, Hapus Semua</button>
+    </div>
+  </div>
+</div>
+
 <!-- MOBILE BOTTOM NAVIGATION -->
 <nav class="mobile-bar">
   <a href="index.html" class="mobile-bar-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
@@ -607,6 +670,9 @@
 <div class="toast-box" id="toastContainer"></div>
 
 <script>
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
   let currentPage = 1;
   let logsPerPage = 20;
   let allLogs = [];
@@ -673,14 +739,29 @@
       localStorage.setItem("webpos_theme", nextTheme);
     };
 
-    document.getElementById("btnLogout").onclick = () => {
-      if (confirm("Yakin ingin keluar dari sistem?")) {
-        recordActivity('logout', 'Keluar dari sistem');
-        if (typeof auth !== 'undefined') auth.signOut();
-        localStorage.removeItem('webpos_session');
-        window.location.href = "login.html";
-      }
-    };
+    // Logout via Modal Pop-Up Internal WebPOS (Bukan confirm windows)
+    const logoutBtn = document.getElementById("btnLogout");
+    if (logoutBtn) {
+      logoutBtn.onclick = () => {
+        const modal = document.getElementById("customLogoutModal");
+        if (modal) {
+          modal.classList.add("open");
+          document.getElementById("btnConfirmLogoutAction").onclick = () => {
+            recordActivity('logout', 'Keluar dari sistem');
+            auth.signOut().then(() => {
+              localStorage.removeItem('webpos_session');
+              window.location.href = "login.html";
+            });
+          };
+        } else {
+          recordActivity('logout', 'Keluar dari sistem');
+          auth.signOut().then(() => {
+            localStorage.removeItem('webpos_session');
+            window.location.href = "login.html";
+          });
+        }
+      };
+    }
 
     document.getElementById("menuSearch")?.addEventListener("input", function() {
       const q = this.value.toLowerCase();
@@ -705,10 +786,12 @@
 
       currentUserRole = displayRole.toLowerCase();
 
-      // ⭐ BATASI HAK AKSES: Hanya Owner dan Developer yang boleh buka halaman ini
+      // Hak Akses: Hanya Owner dan Developer yang boleh buka halaman ini (tanpa alert native window)
       if (currentUserRole !== 'owner' && currentUserRole !== 'developer') {
-        alert("Akses Ditolak: Halaman Log Aktivitas hanya untuk Owner dan Developer.");
-        window.location.href = "index.html";
+        toast("Akses Ditolak: Halaman ini hanya untuk Owner dan Developer.", "error");
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1200);
         return;
       }
 
@@ -721,12 +804,11 @@
       const avatar = document.getElementById("userAvatar");
       if (avatar) avatar.textContent = displayName.slice(0, 2).toUpperCase();
 
-      // ⭐ Catat login multi-sesi secara unik per jam masuk
+      // Catat login baru jika jeda > 10 menit
       const lastLoginKey = `last_login_logged_${user.uid}`;
       const nowTime = Date.now();
       const lastLoginTime = parseInt(localStorage.getItem(lastLoginKey) || '0');
       
-      // Jika jeda login > 10 menit dari sesi sebelumnya, catat sebagai login baru
       if (nowTime - lastLoginTime > 10 * 60 * 1000) {
         localStorage.setItem(lastLoginKey, nowTime.toString());
         recordActivity('login', `Masuk ke dalam sistem (${displayRole.toUpperCase()})`);
@@ -878,18 +960,32 @@
     document.getElementById('statChanges').textContent = todayLogs.filter(l => ['create', 'update', 'delete'].includes(l.action)).length;
   }
 
+  // Hapus semua log via Modal Konfirmasi Internal WebPOS (Bukan confirm windows)
   window.clearAllLogs = function() {
     if (currentUserRole !== 'owner' && currentUserRole !== 'developer') {
       toast('Hanya Owner dan Developer yang dapat menghapus log aktivitas.', 'error');
       return;
     }
-    if (confirm("Yakin ingin menghapus seluruh riwayat log aktivitas?")) {
+
+    const modal = document.getElementById("customClearLogsModal");
+    if (modal) {
+      modal.classList.add("open");
+      document.getElementById("btnConfirmClearLogsAction").onclick = () => {
+        modal.classList.remove("open");
+        localStorage.removeItem('webpos_activity_logs');
+        allLogs = [];
+        filteredLogs = [];
+        renderLogs();
+        calculateStats();
+        toast('Semua log aktivitas berhasil dihapus', 'success');
+      };
+    } else {
       localStorage.removeItem('webpos_activity_logs');
       allLogs = [];
       filteredLogs = [];
       renderLogs();
       calculateStats();
-      toast('Semua log berhasil dihapus', 'success');
+      toast('Semua log aktivitas berhasil dihapus', 'success');
     }
   }
 
