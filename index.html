@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5">
   <title>WebPOS - Dashboard</title>
 
-  <!-- SKRIP PENERAPAN TEMA GLOBAL (DAPAT DIBACA LANGSUNG SAAT HALAMAN DIMUAT) -->
+  <!-- SKRIP PENERAPAN TEMA GLOBAL -->
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
@@ -48,6 +48,7 @@
       --radius-md: 12px;
       --radius-lg: 16px;
       --radius-xl: 20px;
+      --radius-2xl: 24px;
       
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
@@ -56,13 +57,17 @@
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
+      --bottom-nav-height: 60px;
     }
 
-    /* KUSTOMISASI PALET WARNA UTAMA */
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
     [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
 
     [data-theme="dark"] {
       --bg-base: #090d16;
@@ -88,18 +93,16 @@
       overflow-x: hidden;
     }
 
-    .app-container { display: flex; min-height: 100vh; position: relative; }
+    .app-container { display: flex; min-height: 100vh; position: relative; width: 100%; max-width: 100vw; overflow-x: hidden; }
 
-    /* BACKDROP MOBILE */
     .sidebar-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
-      z-index: 999; opacity: 0; visibility: hidden;
-      transition: all 0.25s ease;
+      z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease;
     }
     .sidebar-backdrop.active { opacity: 1; visibility: visible; }
 
-    /* SIDEBAR */
+    /* SIDEBAR LENGKAP & PRESISI */
     .sidebar {
       position: fixed; top: 0; left: 0;
       width: var(--sidebar-width); height: 100vh;
@@ -108,7 +111,6 @@
       transition: transform 0.25s ease, width 0.25s ease;
     }
     .sidebar.collapsed { width: var(--sidebar-collapsed); }
-    
     @media(max-width: 1024px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.mobile-open { transform: translateX(0); }
@@ -119,25 +121,25 @@
       display: flex; align-items: center; justify-content: space-between;
       min-height: var(--header-h);
     }
-    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
     .logo-icon {
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: bold; font-size: 1.15rem;
+      color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
     }
     .logo-text {
-      font-size: 1.25rem; font-weight: 800;
+      font-size: 1.2rem; font-weight: 800;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
     }
     .sidebar.collapsed .logo-text { display: none; }
 
     .menu-toggle {
       width: 28px; height: 28px; background: var(--primary);
       border: none; border-radius: 50%; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;
     }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
 
@@ -170,26 +172,28 @@
       cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
-    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary) !important; font-weight: 600; }
+    .nav-link.active i { color: var(--primary) !important; }
     .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
 
     .nav-dropdown { position: relative; }
-    .nav-dropdown-toggle { justify-content: space-between; }
-    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .nav-dropdown-toggle { justify-content: space-between; cursor: pointer; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
     .nav-submenu {
       list-style: none; max-height: 0; overflow: hidden;
       transition: max-height 0.25s ease; padding-left: 2rem;
     }
-    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
     }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
     .user-avatar {
       width: 38px; height: 38px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
@@ -204,12 +208,11 @@
     .main-content {
       flex: 1; margin-left: var(--sidebar-width);
       min-height: 100vh; display: flex; flex-direction: column;
-      transition: margin-left 0.25s; min-width: 0;
+      transition: margin-left 0.25s; width: 100%; max-width: 100vw; overflow-x: hidden;
     }
     .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
-    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; width: 100vw !important; } }
 
-    /* HEADER AMAN & TIDAK TUMPANG TINDIH */
     .main-header {
       height: var(--header-h); 
       background: var(--bg-surface);
@@ -221,6 +224,7 @@
       position: sticky; 
       top: 0; 
       z-index: 90;
+      width: 100%; box-sizing: border-box;
     }
     .header-left { 
       display: flex; 
@@ -229,27 +233,21 @@
       min-width: 0;
     }
     .header-title { 
-      font-size: 1.2rem; 
+      font-size: 1.15rem; 
       font-weight: 700; 
       color: var(--text-main);
       margin: 0;
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
     .btn-icon-box {
-      width: 38px; 
-      height: 38px; 
-      border-radius: var(--radius-md);
-      background: var(--bg-subtle); 
-      border: 1px solid var(--border);
-      color: var(--text-sub); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--text-sub); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
     }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 
     .header-stats { display: flex; align-items: center; gap: 1.75rem; }
     .header-stats .stat-item { display: flex; flex-direction: column; }
@@ -269,7 +267,7 @@
     .status-indicator.closed { background: var(--danger-light); color: var(--danger); }
     .status-indicator.closed .status-dot { background: var(--danger); }
 
-    .page-content { padding: 1.5rem; flex: 1; }
+    .page-content { padding: 1.5rem; flex: 1; width: 100%; box-sizing: border-box; padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
 
     .shift-master-toggle {
       background: var(--bg-surface);
@@ -334,7 +332,7 @@
     .stat-icon.pink { background: linear-gradient(135deg, #ec4899, #db2777); }
     .stat-content { flex: 1; min-width: 0; }
     .stat-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-    .stat-value { font-size: 1.35rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
+    .stat-value { font-size: 1.35rem; font-weight: 800; line-height: 1.2; margin-top: 2px; color: var(--text-main); }
 
     .kas-calculation {
       background: var(--bg-surface); border: 1px solid var(--border);
@@ -345,7 +343,7 @@
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border);
     }
-    .kas-calculation-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .kas-calculation-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .kas-calculation-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 0.85rem;
@@ -373,7 +371,7 @@
       margin-top: 1.25rem; padding-top: 1.25rem; border-top: 2px dashed var(--border);
       display: flex; align-items: center; justify-content: space-between;
     }
-    .kas-total-label { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .kas-total-label { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .kas-total-value { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
 
     .formula-display {
@@ -397,7 +395,7 @@
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
     }
-    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .card-body { padding: 1.25rem; }
 
     .quick-actions {
@@ -417,32 +415,27 @@
     .quick-action-btn i { font-size: 1.4rem; color: var(--primary); transition: color 0.2s; }
     .quick-action-btn:hover i { color: #fff; }
 
-    /* TABEL LAPORAN KINERJA PER STAF */
     .table-container { overflow-x: auto; }
     .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
     .data-table th {
       padding: 0.85rem 1rem; background: var(--bg-subtle); color: var(--text-muted);
       font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border);
     }
-    .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-main); }
 
-    /* CUSTOM DIALOG POPUP */
+    /* MODAL KONFIRMASI LOGOUT INTERNAL */
     .custom-modal-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
       padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
       transition: all 0.2s ease;
     }
     .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
     .custom-dialog-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      width: 100%; max-width: 380px;
-      padding: 1.75rem 1.5rem;
-      text-align: center;
-      box-shadow: var(--shadow-lg);
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
     }
     .dialog-icon-wrap {
       width: 60px; height: 60px; border-radius: 50%;
@@ -452,7 +445,7 @@
     .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
     .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
     .dialog-icon-wrap.success { background: var(--success-light); color: var(--success); }
-    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
     .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
     .dialog-btn-group { display: flex; gap: 0.65rem; }
     .dialog-btn {
@@ -464,66 +457,24 @@
     .dialog-btn-primary:hover { background: var(--primary-hover); }
     .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
-    /* MODAL TRANSFER SHIFT & TOMBOL MODAL YANG MENARIK */
     .modal-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
       z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
     }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-content {
       background: var(--bg-surface); border-radius: var(--radius-xl);
-      width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+      width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden;
     }
     .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .modal-title { font-size: 1.1rem; font-weight: 700; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
     .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
     .modal-body { padding: 1.25rem; }
-    
     .modal-footer {
-      padding: 1.25rem 1.5rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
-      background: var(--bg-subtle);
-      border-bottom-left-radius: var(--radius-xl);
-      border-bottom-right-radius: var(--radius-xl);
+      padding: 1.25rem 1.5rem; border-top: 1px solid var(--border);
+      display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle);
     }
-    .modal-footer .btn {
-      padding: 0.65rem 1.25rem;
-      font-size: 0.85rem;
-      font-weight: 700;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-family: inherit;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-    .modal-footer .btn-secondary {
-      background: var(--bg-surface);
-      border: 1.5px solid var(--border);
-      color: var(--text-main);
-    }
-    .modal-footer .btn-secondary:hover {
-      background: var(--bg-subtle);
-      border-color: var(--text-muted);
-    }
-    .modal-footer .btn-primary {
-      background: var(--primary);
-      color: #fff;
-      border: 1.5px solid transparent;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-    }
-    .modal-footer .btn-primary:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-    }
-
     .form-select {
       width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem;
@@ -547,9 +498,7 @@
       .page-content { padding-bottom: calc(60px + 1.5rem); }
       .d-md-none { display: flex !important; }
     }
-    @media (min-width: 1025px) {
-      .d-md-none { display: none !important; }
-    }
+    @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
   <!-- Firebase Compat -->
@@ -558,7 +507,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -697,7 +648,7 @@
           <span class="status-dot"></span>
           <span id="shiftText">Tutup</span>
         </div>
-        <button class="btn-icon-box" id="btnThemeToggle" title="Tema Gelap"><i class="fas fa-moon"></i></button>
+        <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
     </header>
@@ -827,7 +778,7 @@
         </div>
       </div>
 
-      <!-- TABEL LAPORAN KINERJA & KAS PER STAF -->
+      <!-- TABEL LAPORAN KINERJA PER STAF -->
       <div class="card" id="cardReportStaff" style="display:none;">
         <div class="card-header">
           <h3 class="card-title"><i class="fas fa-users-viewfinder" style="color:var(--primary);"></i> Laporan Kinerja & Kas Per Staf Hari Ini</h3>
@@ -885,7 +836,7 @@
                 <i class="fas fa-arrow-up" style="color:var(--danger);"></i>
                 <span>Kas Keluar</span>
               </a>
-              <button class="quick-action-btn" id="btnTransferShift" style="background: rgba(99, 102, 241, 0.1); border-color: var(--primary); color: var(--primary);">
+              <button type="button" class="quick-action-btn" id="btnTransferShift" style="background: rgba(99, 102, 241, 0.1); border-color: var(--primary); color: var(--primary);">
                 <i class="fas fa-exchange-alt"></i>
                 <span>Serahkan Shift</span>
               </button>
@@ -899,7 +850,7 @@
           </div>
           <div class="card-body" style="display:flex; flex-direction:column; gap:0.75rem;">
             <div style="padding:0.75rem; background:var(--bg-subtle); border-radius:var(--radius-md); font-size:0.8rem;">
-              <strong style="color:var(--primary);">Akun Aktif:</strong> Terdaftar resmi di sistem Cloud Firestore Hifzi Cell.
+              <strong style="color:var(--primary);">Akun Aktif:</strong> Terdaftar resmi di sistem Cloud Firestore.
             </div>
             <div style="padding:0.75rem; background:var(--bg-subtle); border-radius:var(--radius-md); font-size:0.8rem;">
               <strong style="color:var(--success);">Sinkronisasi:</strong> Seluruh mutasi kas tercatat secara real-time.
@@ -962,9 +913,25 @@
   </div>
 </div>
 
+<!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+<div class="custom-modal-backdrop" id="customLogoutModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+    <h3 class="dialog-title">Konfirmasi Keluar</h3>
+    <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function() {
   "use strict";
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
   function formatRupiah(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -1047,6 +1014,9 @@
       }
 
       currentUserRole = displayRole.toLowerCase();
+      if (typeof RoleGuard !== 'undefined') {
+        RoleGuard.apply(currentUserRole);
+      }
 
       document.getElementById("userName").textContent = displayName;
       document.getElementById("userRole").textContent = displayRole.toUpperCase();
@@ -1082,16 +1052,27 @@
       document.getElementById("modalTransfer").classList.add("active");
     };
 
-    document.getElementById("btnLogout").onclick = () => {
-      showCustomAlert({
-        title: "Konfirmasi Keluar",
-        message: "Keluar dari sistem WebPOS?",
-        iconType: "danger",
-        confirmText: "Ya, Keluar",
-        showCancel: true,
-        onConfirm: () => auth.signOut().then(() => window.location.href = "login.html")
-      });
-    };
+    // Logout dengan Modal Internal WebPOS
+    const logoutBtn = document.getElementById("btnLogout");
+    if (logoutBtn) {
+      logoutBtn.onclick = () => {
+        const modal = document.getElementById("customLogoutModal");
+        if (modal) {
+          modal.classList.add("open");
+          document.getElementById("btnConfirmLogoutAction").onclick = () => {
+            auth.signOut().then(() => {
+              localStorage.removeItem('webpos_session');
+              window.location.href = 'login.html';
+            });
+          };
+        } else {
+          auth.signOut().then(() => {
+            localStorage.removeItem('webpos_session');
+            window.location.href = 'login.html';
+          });
+        }
+      };
+    }
 
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -1120,9 +1101,24 @@
       backdrop.classList.remove("active");
     };
 
-    document.querySelectorAll(".nav-dropdown").forEach(d => {
-      const t = d.querySelector(".nav-dropdown-toggle");
-      if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
+    document.querySelectorAll(".nav-dropdown-toggle").forEach(toggle => {
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = this.closest('.nav-dropdown');
+        document.querySelectorAll('.nav-dropdown.open').forEach(openDropdown => {
+          if (openDropdown !== parent) openDropdown.classList.remove('open');
+        });
+        parent.classList.toggle('open');
+      });
+    });
+
+    document.getElementById("menuSearch")?.addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".nav-link span").forEach(span => {
+        const li = span.closest(".nav-item");
+        if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
     });
   }
 
@@ -1176,13 +1172,13 @@
               if (t.source !== "hutang_page") trxCount++;
               break;
             case "topup": 
-  if (t.paymentMethod !== "hutang") {
-    topup += t.amount || 0; 
-    topupAdminFee += t.adminFee || 0; 
-  }
-  laba += t.adminFee || 0; 
-  trxCount++; 
-  break;
+              if (t.paymentMethod !== "hutang") {
+                topup += t.amount || 0; 
+                topupAdminFee += t.adminFee || 0; 
+              }
+              laba += t.adminFee || 0; 
+              trxCount++; 
+              break;
             case "tarik": tarik += t.amount || 0; tarikAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
             case "kas_masuk":
               if (t.category !== "penjualan_hutang" && t.category !== "penerimaan_piutang_penjualan") {
