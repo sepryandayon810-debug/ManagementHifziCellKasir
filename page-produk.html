@@ -672,7 +672,7 @@
           </div>
           <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-main);">Kelola Data Produk via Excel</h3>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
-            Pastikan file Excel yang di-upload menggunakan format kolom yang benar. Anda dapat mendownload template format khusus di bawah ini.
+            Gunakan format kolom yang benar. Anda dapat mendownload template terlebih dahulu agar data langsung terbaca sempurna di kasir.
           </p>
           <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
             <button class="btn btn-secondary" onclick="downloadTemplateExcel()" style="padding: 0.7rem 1.2rem;"><i class="fas fa-file-download" style="color:var(--accent);"></i> Download Template</button>
@@ -724,11 +724,10 @@
           <input type="number" class="form-input" id="produkStock" placeholder="0">
         </div>
       </div>
-      <!-- Checkbox Stok Unlimited -->
       <div class="form-group" style="margin-top: -0.5rem; margin-bottom: 1rem;">
         <label class="checkbox-wrap">
           <input type="checkbox" id="produkUnlimited" onchange="toggleUnlimitedStock(this)">
-          <span>Stok Unlimited / Tanpa Batas (Cocok untuk pulsa/voucher digital/jasa)</span>
+          <span>Stok Unlimited / Tanpa Batas (Cocok untuk pulsa/voucher/jasa)</span>
         </label>
       </div>
 
@@ -804,7 +803,7 @@
   </div>
 </div>
 
-<!-- MODAL PROGRESS / LOADING INTERAKTIF -->
+<!-- MODAL PROGRESS / LOADING -->
 <div class="custom-modal-backdrop" id="customProgressModal">
   <div class="custom-dialog-card">
     <div class="dialog-icon-wrap"><i class="fas fa-spinner fa-spin"></i></div>
@@ -1574,7 +1573,7 @@
     toast("Data produk berhasil diexport ke Excel!", "success");
   };
 
-  // ================= IMPORT DENGAN PROGRESS & VALIDASI FORMAT =================
+  // ================= IMPORT EXCEL (TERHUBUNG KE KASIR & KATEGORI) =================
   window.importProductsExcel = function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1598,6 +1597,7 @@
 
         let totalRows = rows.length;
         let importedCount = 0;
+        let defaultCatId = categoriesList.length > 0 ? categoriesList[0].id : "";
 
         for (let i = 0; i < totalRows; i++) {
           let row = rows[i];
@@ -1613,8 +1613,13 @@
           
           const stock = isUnlimited ? 0 : (parseInt(row["Stok"] || row["stock"] || 0));
           const code = row["Kode SKU"] || row["code"] || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
-          const statusRaw = String(row["Status"] || row["status"] || "aktif").toLowerCase();
-          const status = statusRaw.includes("non") ? "inactive" : "active";
+          
+          const katNameExcel = String(row["Kategori"] || row["category"] || "").trim();
+          let targetCatId = defaultCatId;
+          if (katNameExcel) {
+            const foundKat = categoriesList.find(c => c.name.toLowerCase() === katNameExcel.toLowerCase());
+            if (foundKat) targetCatId = foundKat.id;
+          }
 
           await db.collection("products").add({
             name,
@@ -1624,8 +1629,8 @@
             resellerPrice,
             stock,
             isUnlimited,
-            status,
-            categoryId: "",
+            status: "active", // Dipaksa aktif agar langsung muncul di halaman Kasir
+            categoryId: targetCatId, // Terhubung langsung ke kategori
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -1637,7 +1642,7 @@
 
         setTimeout(() => {
           hideProgressModal();
-          toast(`Berhasil mengimpor ${importedCount} produk ke database!`, "success");
+          toast(`Berhasil mengimpor ${importedCount} produk ke database & kasir!`, "success");
           document.getElementById("importExcelInput").value = "";
           loadProducts();
         }, 500);
