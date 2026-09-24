@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4f46e5">
-  <title>WebPOS - Produk</title>
+  <title>And POS - Produk</title>
 
   <!-- SCRIPT GLOBAL TEMA -->
   <script>
@@ -332,7 +332,7 @@
     .produk-price { font-weight: 800; color: var(--primary); font-size: 0.95rem; margin-top: 0.2rem; }
     .produk-reseller { font-weight: 700; color: var(--warning); font-size: 0.85rem; }
 
-    /* TOMBOL AKSI KARTU PRODUK DIBUAT KOMPAK (HANYA IKON / IKON + TEKS KECIL) */
+    /* TOMBOL AKSI KARTU PRODUK DIBUAT KOMPAK */
     .produk-actions { display: flex; gap: 0.35rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
     .produk-actions .btn {
       flex: 1;
@@ -405,6 +405,8 @@
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
     .btn-danger { background: var(--danger-light); color: var(--danger); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { filter: brightness(0.95); }
 
     /* MODAL KONFIRMASI INTERNAL */
     .custom-modal-backdrop {
@@ -472,11 +474,12 @@
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
 
-  <!-- Firebase Compat -->
+  <!-- Firebase & SheetJS (untuk Excel/CSV Export/Import) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
@@ -603,6 +606,11 @@
         <h1 class="header-title" id="pageMainTitle">Manajemen Produk</h1>
       </div>
       <div class="header-actions">
+        <!-- TOMBOL EXPORT & IMPORT DATA EXCEL -->
+        <button class="btn btn-secondary" onclick="exportProductsExcel()" title="Download Data Produk"><i class="fas fa-file-excel" style="color:var(--success);"></i> <span class="d-none d-md-inline">Download Excel</span></button>
+        <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
+        <button class="btn btn-secondary" onclick="document.getElementById('importExcelInput').click()" title="Upload Data Produk"><i class="fas fa-file-upload" style="color:var(--primary);"></i> <span class="d-none d-md-inline">Upload Excel</span></button>
+
         <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
         <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
       </div>
@@ -928,7 +936,6 @@
       localStorage.setItem("webpos_theme", nextTheme);
     };
 
-    // Logout dengan Modal Internal WebPOS
     const logoutBtn = document.getElementById("btnLogout");
     if (logoutBtn) {
       logoutBtn.onclick = () => {
@@ -1463,6 +1470,90 @@
         toast("Gagal menghapus: " + err.message, "error");
       }
     });
+  };
+
+  // ================= EXPORT & IMPORT EXCEL/CSV =================
+  window.exportProductsExcel = function() {
+    if (productsList.length === 0) {
+      toast("Tidak ada data produk untuk di-download", "error");
+      return;
+    }
+
+    const exportData = productsList.map(p => {
+      const cat = categoriesList.find(c => c.id === p.categoryId);
+      return {
+        "Kode SKU": p.code || "",
+        "Nama Produk": p.name || "",
+        "Kategori": cat ? cat.name : "Umum",
+        "Harga Modal": p.costPrice || 0,
+        "Harga Jual": p.sellingPrice || 0,
+        "Harga Reseller": p.resellerPrice || 0,
+        "Stok": p.stock || 0,
+        "Status": p.status || "active"
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Produk");
+    XLSX.writeFile(workbook, "AndPOS_Data_Produk.xlsx");
+    toast("File Excel produk berhasil di-download!", "success");
+  };
+
+  window.importProductsExcel = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        if (rows.length === 0) {
+          toast("File Excel kosong atau format tidak sesuai", "error");
+          return;
+        }
+
+        let importedCount = 0;
+        for (let row of rows) {
+          const name = row["Nama Produk"] || row["name"] || "";
+          if (!name) continue;
+
+          const sellPrice = parseInt(row["Harga Jual"] || row["sellingPrice"] || 0);
+          const costPrice = parseInt(row["Harga Modal"] || row["costPrice"] || 0);
+          const resellerPrice = parseInt(row["Harga Reseller"] || row["resellerPrice"] || 0);
+          const stock = parseInt(row["Stok"] || row["stock"] || 0);
+          const code = row["Kode SKU"] || row["code"] || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
+          const status = (row["Status"] || row["status"] || "active").toLowerCase();
+
+          await db.collection("products").add({
+            name,
+            code,
+            costPrice,
+            sellingPrice: sellPrice,
+            resellerPrice,
+            stock,
+            status: status.includes("non") ? "inactive" : "active",
+            categoryId: "",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          importedCount++;
+        }
+
+        toast(`Berhasil mengimpor ${importedCount} produk ke Firestore!`, "success");
+        document.getElementById("importExcelInput").value = "";
+        loadProducts();
+      } catch (err) {
+        console.error(err);
+        toast("Gagal memproses file Excel: " + err.message, "error");
+        document.getElementById("importExcelInput").value = "";
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
 })();
