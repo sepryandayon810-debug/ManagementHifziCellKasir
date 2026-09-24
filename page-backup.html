@@ -287,7 +287,6 @@
     .action-icon.export { background: var(--success); }
     .action-icon.import { background: var(--accent); }
     .action-icon.sync { background: var(--warning); }
-    .action-icon.cloud { background: var(--primary); }
     .action-content { flex: 1; min-width: 0; }
     .action-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.15rem; }
     .action-desc { font-size: 0.75rem; color: var(--text-muted); }
@@ -337,7 +336,7 @@
     /* MODAL */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
       z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem;
     }
@@ -351,6 +350,43 @@
     .modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
     .modal-body { padding: 1.25rem; }
     .modal-footer { padding: 1.1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
+
+    /* DIALOG MODAL INTERNAL (LOGOUT & AKSI UMUM) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-icon-wrap.info { background: var(--accent-light); color: var(--accent); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--primary); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
     /* TOAST */
     .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; }
@@ -566,12 +602,12 @@
       <!-- Auto Backup Card -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-robot"></i>Auto Backup (Google Sheets)</div>
+          <div class="card-title"><i class="fas fa-robot" style="color:var(--primary)"></i> Auto Backup (Google Sheets)</div>
           <span class="badge badge-success" id="autoBadge">Aktif</span>
         </div>
         <div class="card-body">
           <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;margin-bottom:1.25rem">
-            Data otomatis di-backup ke Google Sheets setiap malam pukul 00:00. Tidak perlu klik apa pun — jalan sendiri di background.
+            Data otomatis di-backup ke Google Sheets setiap malam pukul 00:00. Tidak perlu klik apa pun — berjalan sendiri di background.
           </p>
 
           <!-- Sheet ID -->
@@ -610,7 +646,7 @@
       <!-- Export Manual Card -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-file-export"></i>Export Manual (CSV)</div>
+          <div class="card-title"><i class="fas fa-file-export" style="color:var(--success)"></i> Export Manual (CSV)</div>
         </div>
         <div class="card-body">
           <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
@@ -630,7 +666,7 @@
       <!-- Action List Card -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-tools"></i>Tindakan Cepat</div>
+          <div class="card-title"><i class="fas fa-tools" style="color:var(--warning)"></i> Tindakan Cepat</div>
         </div>
         <div class="card-body">
           <div class="action-list">
@@ -665,7 +701,7 @@
       <!-- Log Table Card -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-list-alt"></i>Riwayat Backup</div>
+          <div class="card-title"><i class="fas fa-list-alt" style="color:var(--primary)"></i> Riwayat Backup</div>
           <button class="btn btn-outline btn-sm" onclick="clearHistory()"><i class="fas fa-trash"></i> Hapus</button>
         </div>
         <div class="card-body" style="padding:0">
@@ -698,7 +734,7 @@
 <div class="modal-overlay" id="importModal">
   <div class="modal-content">
     <div class="modal-header">
-      <div class="modal-title"><i class="fas fa-file-import" style="color:var(--primary)"></i>Import Data</div>
+      <div class="modal-title"><i class="fas fa-file-import" style="color:var(--primary)"></i> Import Data</div>
       <button class="modal-close" onclick="document.getElementById('importModal').classList.remove('active')"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body">
@@ -708,11 +744,24 @@
            onclick="document.getElementById('importFile').click()">
         <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:var(--text-muted);margin-bottom:.5rem"></i>
         <p style="color:var(--text-sub);font-size:.9rem">Klik atau drag file JSON ke sini</p>
-        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImportFileSelect(this)">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="document.getElementById('importModal').classList.remove('active')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONFIRMASI INTERNAL (PENGGANTI WINDOWS DIALOG) -->
+<div class="custom-modal-backdrop" id="customConfirmModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger" id="customConfirmIcon"><i class="fas fa-exclamation-triangle"></i></div>
+    <h3 class="dialog-title" id="customConfirmTitle">Konfirmasi</h3>
+    <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Lanjutkan</button>
     </div>
   </div>
 </div>
@@ -733,6 +782,7 @@
 
 <script>
   let currentUser = null;
+  let pendingImportFile = null;
 
   const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
   const savedDbUrl = localStorage.getItem('backup_db_url') || '';
@@ -764,7 +814,38 @@
     if (pct >= 100) setTimeout(() => bar.style.display = 'none', 800);
   }
 
-  // Sinkronisasi Nama Toko di Sidebar menggunakan instance Firestore (`db`)
+  // DIALOG KONFIRMASI INTERNAL (BEBAS DARI DIALOG JENDELA WINDOWS)
+  function showCustomConfirm(title, message, iconType, confirmText, onConfirm) {
+    document.getElementById("customConfirmTitle").textContent = title;
+    document.getElementById("customConfirmMessage").textContent = message;
+    
+    const iconWrap = document.getElementById("customConfirmIcon");
+    iconWrap.className = `dialog-icon-wrap ${iconType}`;
+    if (iconType === 'danger') {
+      iconWrap.innerHTML = '<i class="fas fa-trash-alt"></i>';
+    } else if (iconType === 'warning') {
+      iconWrap.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+    } else {
+      iconWrap.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
+    }
+
+    const btnAction = document.getElementById("btnCustomConfirmAction");
+    btnAction.textContent = confirmText || 'Ya, Lanjutkan';
+    btnAction.style.background = iconType === 'danger' ? 'var(--danger)' : 'var(--primary)';
+
+    btnAction.onclick = () => {
+      closeCustomConfirm();
+      if (typeof onConfirm === 'function') onConfirm();
+    };
+
+    document.getElementById("customConfirmModal").classList.add("open");
+  }
+
+  function closeCustomConfirm() {
+    document.getElementById("customConfirmModal").classList.remove("open");
+  }
+
+  // Sinkronisasi Nama Toko di Sidebar
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
     if (!logoEl) return;
@@ -823,19 +904,13 @@
       localStorage.setItem("webpos_theme", nextTheme);
     });
 
-    document.getElementById("btnTheme")?.addEventListener("click", () => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      const nextTheme = isDark ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", nextTheme);
-      localStorage.setItem("webpos_theme", nextTheme);
-    });
-
+    // LOGOUT MENGGUNAKAN MODAL INTERNAL
     document.getElementById("btnLogout")?.addEventListener("click", () => {
-      if (confirm("Yakin ingin keluar dari sistem?")) {
+      showCustomConfirm("Konfirmasi Keluar", "Apakah Anda yakin ingin keluar dari sistem WebPOS?", "danger", "Ya, Keluar", () => {
         if (typeof auth !== 'undefined') auth.signOut();
         localStorage.removeItem('webpos_session');
         window.location.href = "login.html";
-      }
+      });
     });
 
     document.getElementById("menuSearch")?.addEventListener("input", function() {
@@ -850,7 +925,6 @@
   async function loadStats() {
     document.getElementById('loadingOverlay').classList.add('active');
     try {
-      // Menggunakan Firestore (.collection())
       const paths = ['products','customers','categories','users'];
       let totalRecords = 0;
       for (const p of paths) {
@@ -944,12 +1018,13 @@
   }
 
   function clearSettings() {
-    if (!confirm('Hapus semua setting backup?')) return;
-    localStorage.removeItem('backup_sheet_id');
-    localStorage.removeItem('backup_db_url');
-    document.getElementById('sheetIdInput').value = '';
-    document.getElementById('dbUrlInput').value = '';
-    showToast('Setting dihapus');
+    showCustomConfirm("Hapus Pengaturan", "Hapus semua setting konfigurasi backup dari browser?", "danger", "Ya, Hapus", () => {
+      localStorage.removeItem('backup_sheet_id');
+      localStorage.removeItem('backup_db_url');
+      document.getElementById('sheetIdInput').value = '';
+      document.getElementById('dbUrlInput').value = '';
+      showToast('Setting dihapus');
+    });
   }
 
   function downloadCSV(filename, rows) {
@@ -1045,11 +1120,18 @@
     }
   }
 
-  async function importData(input) {
+  function handleImportFileSelect(input) {
     const file = input.files[0];
     if (!file) return;
-    if (!confirm('Data yang ada akan ditimpa. Lanjutkan import?')) return;
+    pendingImportFile = file;
+    
+    showCustomConfirm("Konfirmasi Import", "Data yang ada pada Firestore akan ditimpa dengan data backup ini. Lanjutkan proses import?", "warning", "Ya, Import", () => {
+      executeImportProcess(pendingImportFile);
+    });
+  }
 
+  async function executeImportProcess(file) {
+    if (!file) return;
     document.getElementById('loadingOverlay').classList.add('active');
     try {
       const text = await file.text();
@@ -1076,7 +1158,8 @@
     } finally {
       document.getElementById('loadingOverlay').classList.remove('active');
       document.getElementById('importModal').classList.remove('active');
-      input.value = '';
+      document.getElementById('importFile').value = '';
+      pendingImportFile = null;
     }
   }
 
@@ -1096,9 +1179,10 @@
   }
 
   function clearHistory() {
-    if (!confirm('Hapus semua riwayat backup?')) return;
-    renderLog([]);
-    showToast('Riwayat berhasil dibersihkan');
+    showCustomConfirm("Hapus Riwayat", "Apakah Anda yakin ingin membersihkan riwayat backup?", "danger", "Ya, Bersihkan", () => {
+      renderLog([]);
+      showToast('Riwayat berhasil dibersihkan');
+    });
   }
 
   auth.onAuthStateChanged(user => {
@@ -1115,6 +1199,10 @@
       document.getElementById('userRole').textContent = role;
       const avatar = document.getElementById('userAvatar');
       if (avatar && data.name) avatar.textContent = data.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      
+      if (typeof RoleGuard !== 'undefined') {
+        RoleGuard.apply((data.role || 'kasir').toLowerCase());
+      }
     });
     loadStats();
   });
