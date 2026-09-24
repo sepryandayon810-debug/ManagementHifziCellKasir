@@ -118,7 +118,7 @@
     .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0; }
     .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .sidebar.collapsed .logo-text { display: none; }
-    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
     .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
     .search-input-wrapper { position: relative; display: flex; align-items: center; }
@@ -133,11 +133,12 @@
     .nav-item { margin-bottom: 3px; }
     .nav-link { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); color: var(--text-sub); text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer; }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
-    .nav-link.active { background: var(--primary-light); color: var(--primary); }
-    .nav-link i { width: 20px; text-align: center; }
+    .nav-link.active { background: var(--primary-light); color: var(--primary) !important; font-weight: 600; }
+    .nav-link.active i { color: var(--primary) !important; }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
     .nav-dropdown { position: relative; }
-    .nav-dropdown-toggle { justify-content: space-between; }
+    .nav-dropdown-toggle { justify-content: space-between; cursor: pointer; }
     .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
     .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
@@ -145,7 +146,7 @@
     .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
     .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
     .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
     .user-info { flex: 1; overflow: hidden; }
     .sidebar.collapsed .user-info { display: none; }
@@ -315,6 +316,7 @@
     .btn-danger { background: var(--danger-light); color: var(--danger); }
     .btn-block { width: 100% !important; }
 
+    /* CARD OPSI KURANGI KAS */
     .kas-toggle-box {
       background: var(--bg-subtle);
       border: 1.5px solid var(--border);
@@ -354,7 +356,6 @@
     .mobile-nav-item i { font-size: 1.1rem; }
     @media (max-width: 1024px) {
       .mobile-nav { display: flex; }
-      .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem) !important; }
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
@@ -376,7 +377,7 @@
   <div class="app-container">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <!-- SIDEBAR LENGKAP -->
+    <!-- SIDEBAR LENGKAP MASTER -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-container">
@@ -466,6 +467,8 @@
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -575,7 +578,6 @@
               <div class="form-grid">
                 <div class="form-group">
                   <label class="form-label">Qty *</label>
-                  <!-- Tidak default angka 1, dan otomatis select saat disentuh -->
                   <input type="number" class="form-input" id="qty" placeholder="0" min="1" onfocus="this.select()">
                 </div>
                 <div class="form-group">
@@ -735,6 +737,9 @@
     (function() {
       "use strict";
 
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
       let productsList = [];
       let categoriesList = [];
       let pembelianList = [];
@@ -816,6 +821,16 @@
               if (openDropdown !== parent) openDropdown.classList.remove('open');
             });
             parent.classList.toggle('open');
+          });
+        });
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+          link.addEventListener('click', () => {
+            if (link.classList.contains('nav-dropdown-toggle')) return;
+            if (window.innerWidth <= 1024) {
+              sidebar.classList.remove('mobile-open');
+              if (backdrop) backdrop.classList.remove('active');
+            }
           });
         });
 
@@ -1149,18 +1164,19 @@
             status: 'completed'
           };
 
-          // Simpan ke struktur dokumen standar purchases/{date}/{id}
+          // Simpan ke purchases (baik subkoleksi maupun root doc)
           await db.collection("purchases").doc(today).collection("items").doc(purchaseId).set(purchaseData);
           await db.collection("purchases").doc(purchaseId).set(purchaseData);
 
-          // Jika opsi kurangi saldo kas dicentang, simpan mutasi ke transactions
+          // Jika opsi kurangi kas aktif, catat ke transactions root
           if (kurangiSaldo) {
             const kasId = 'KASOUT_' + timestamp;
-            await db.collection("transactions").doc(today).collection("items").doc(kasId).set({
+            await db.collection("transactions").doc(kasId).set({
               id: kasId,
               type: 'kas_keluar',
               status: 'completed',
               amount: grandTotal,
+              total: grandTotal,
               note: 'Pembelian: ' + pembelianList.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
               category: 'pembelian',
               source: 'pembelian',
@@ -1214,7 +1230,6 @@
         loadRiwayatCustom(start, end);
       };
 
-      // FUNGSI LOAD RIWAYAT YANG SUDAH MENCOCOKKAN KEDUA FORMAT DOKUMEN (KASIR & FORM INI)
       async function loadRiwayat(filter) {
         const tbody = document.getElementById('tbodyRiwayat');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2.5rem 1rem;"><i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; font-size: 0.82rem;">Memuat riwayat...</p></td></tr>';
@@ -1241,11 +1256,9 @@
 
           let allPurchases = [];
           for (const dStr of dates) {
-            // Cek di subkoleksi
             const snapSub = await db.collection("purchases").doc(dStr).collection("items").get();
             snapSub.forEach(doc => allPurchases.push(doc.data()));
 
-            // Cek juga dokumen langsung jika disimpan via format purchases/{date}/{id}
             const snapDirect = await db.collection("purchases").where("date", "==", dStr).get();
             snapDirect.forEach(doc => {
               if (!allPurchases.some(p => p.id === doc.data().id)) {
