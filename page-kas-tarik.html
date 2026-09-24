@@ -10,7 +10,7 @@
   <script>
     (function() {
       const savedTheme = localStorage.getItem("webpos_theme") || "light";
-      const savedColor = localStorage.getItem("webpos_theme_color") || "indigo";
+      const savedColor = localStorage.getItem("webpos_theme_color") || localStorage.getItem("theme_color") || "indigo";
       document.documentElement.setAttribute("data-theme", savedTheme);
       document.documentElement.setAttribute("data-theme-color", savedColor);
     })();
@@ -20,9 +20,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat (Firestore & Auth & Storage) -->
+  <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -31,6 +31,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 
   <style>
     :root {
@@ -38,6 +39,7 @@
       --primary-hover: #4338ca;
       --primary-light: #eef2ff;
       --accent: #0284c7;
+      --accent-light: #e0f2fe;
       --success: #059669;
       --success-light: #ecfdf5;
       --warning: #d97706;
@@ -74,6 +76,10 @@
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
     [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
 
     [data-theme="dark"] {
       --bg-base: #090d16;
@@ -99,7 +105,7 @@
     .app-container { display: flex; min-height: 100vh; position: relative; }
 
     .sidebar-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
       z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s ease;
     }
@@ -128,7 +134,7 @@
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
       border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: bold; font-size: 1.15rem;
+      color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0;
     }
     .logo-text {
       font-size: 1.25rem; font-weight: 800;
@@ -141,7 +147,7 @@
     .menu-toggle {
       width: 28px; height: 28px; background: var(--primary);
       border: none; border-radius: 50%; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;
     }
     .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
 
@@ -173,26 +179,28 @@
       font-size: 0.88rem; font-weight: 600; transition: all 0.15s; cursor: pointer;
     }
     .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
-    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary) !important; font-weight: 600; }
+    .nav-link.active i { color: var(--primary) !important; }
     .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
     .sidebar.collapsed .nav-link span { display: none; }
 
     .nav-dropdown { position: relative; }
     .nav-dropdown-toggle { justify-content: space-between; }
-    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
     .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
     .nav-submenu {
       list-style: none; max-height: 0; overflow: hidden;
       transition: max-height 0.25s ease; padding-left: 2rem;
     }
-    .nav-dropdown.open .nav-submenu { max-height: 400px; margin-top: 2px; }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
     .nav-submenu .nav-link { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
     .sidebar-footer {
       padding: 0.85rem 1rem; border-top: 1px solid var(--border);
       background: var(--bg-surface);
     }
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
     .user-avatar {
       width: 38px; height: 38px;
       background: linear-gradient(135deg, var(--primary), #8b5cf6);
@@ -218,78 +226,77 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 1.25rem; position: sticky; top: 0; z-index: 90;
     }
-    .header-left { display: flex; align-items: center; gap: 0.85rem; }
-    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin: 0; }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
 
-    .btn-icon {
+    .btn-icon-box {
       width: 38px; height: 38px; border-radius: var(--radius-md);
       background: var(--bg-subtle); border: 1px solid var(--border);
       color: var(--text-sub); display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
     }
-    .btn-icon:hover { background: var(--primary-light); color: var(--primary); }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 
-    .page-content { padding: 1.5rem; flex: 1; }
+    .page-content { padding: 1.25rem; flex: 1; }
 
-    /* TARIK TUNAI SPECIFIC STYLES */
-    .tarik-card { max-width: 500px; margin: 0 auto; }
+    .tarik-card { max-width: 500px; margin: 0 auto; width: 100%; }
     .card {
       background: var(--bg-surface); border-radius: var(--radius-2xl);
       border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden;
     }
-    .card-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .card-header { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); }
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
-    .card-body { padding: 1.5rem; }
+    .card-body { padding: 1.35rem; }
 
     .amount-display {
-      font-size: 2.75rem; font-weight: 800; color: var(--danger);
-      text-align: center; padding: 1.75rem; background: var(--danger-light);
-      border-radius: var(--radius-xl); margin-bottom: 1.25rem;
+      font-size: 2.5rem; font-weight: 800; color: var(--danger);
+      text-align: center; padding: 1.5rem; background: var(--danger-light);
+      border-radius: var(--radius-xl); margin-bottom: 1.15rem;
       border: 2px solid rgba(220, 38, 38, 0.2);
     }
     [data-theme="dark"] .amount-display { background: rgba(220, 38, 38, 0.15); color: #f87171; }
 
-    .quick-amounts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.25rem; }
+    .quick-amounts { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.15rem; }
     .quick-amount {
-      padding: 0.45rem 1rem; background: var(--bg-subtle);
+      padding: 0.4rem 0.85rem; background: var(--bg-subtle);
       border: 1.5px solid var(--border); border-radius: 999px;
-      font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-main);
+      font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-main);
       transition: all 0.15s;
     }
     .quick-amount:hover { background: var(--danger); color: white; border-color: var(--danger); }
 
-    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; margin-bottom: 1.15rem; }
     .numpad-btn {
-      padding: 1.25rem; border: 1.5px solid var(--border);
+      padding: 1rem; border: 1.5px solid var(--border);
       background: var(--bg-surface); border-radius: var(--radius-lg);
-      font-size: 1.35rem; font-weight: 700; cursor: pointer; color: var(--text-main);
+      font-size: 1.25rem; font-weight: 700; cursor: pointer; color: var(--text-main);
       transition: all 0.15s;
     }
     .numpad-btn:hover { background: var(--bg-subtle); }
     .numpad-btn.action { background: var(--danger); color: white; border-color: var(--danger); }
     .numpad-btn.action:hover { filter: brightness(0.9); }
 
-    .form-group { margin-bottom: 1.25rem; }
-    .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
     .form-input {
-      width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
-      border-radius: var(--radius-lg); background: var(--bg-subtle); color: var(--text-main);
-      font-size: 0.95rem; outline: none; font-family: inherit;
+      width: 100%; padding: 0.7rem 0.95rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
+      font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.15s;
     }
-    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); }
+    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
 
     .kas-info {
       background: var(--bg-subtle); border-radius: var(--radius-lg);
-      padding: 1rem; margin-bottom: 1.25rem; text-align: center; border: 1px solid var(--border);
+      padding: 0.85rem 1rem; margin-bottom: 1.15rem; text-align: center; border: 1px solid var(--border);
     }
-    .kas-info-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 700; }
+    .kas-info-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
     .kas-info-value { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.75rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.95rem;
-      font-weight: 700; cursor: pointer; border: none; font-family: inherit; width: 100%;
+      padding: 0.8rem 1.25rem; border-radius: var(--radius-lg); font-size: 0.92rem;
+      font-weight: 700; cursor: pointer; border: none; font-family: inherit; width: 100%; transition: all 0.15s;
     }
     .btn-danger { background: var(--danger); color: white; box-shadow: var(--shadow-sm); }
     .btn-danger:hover { filter: brightness(0.95); transform: translateY(-1px); }
@@ -312,16 +319,6 @@
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
   </style>
-
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
 </head>
 <body>
 
@@ -346,6 +343,7 @@
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Utama -->
         <div class="nav-section">
           <div class="nav-section-title">Utama</div>
           <ul class="nav-menu">
@@ -355,6 +353,7 @@
           </ul>
         </div>
 
+        <!-- Transaksi -->
         <div class="nav-section">
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
@@ -382,6 +381,7 @@
           </ul>
         </div>
 
+        <!-- Laporan -->
         <div class="nav-section">
           <div class="nav-section-title">Laporan</div>
           <ul class="nav-menu">
@@ -391,6 +391,7 @@
           </ul>
         </div>
 
+        <!-- Integrasi -->
         <div class="nav-section">
           <div class="nav-section-title">Integrasi</div>
           <ul class="nav-menu">
@@ -399,6 +400,7 @@
           </ul>
         </div>
 
+        <!-- Penggajian -->
         <div class="nav-section">
           <div class="nav-section-title">Penggajian</div>
           <ul class="nav-menu">
@@ -406,12 +408,15 @@
           </ul>
         </div>
 
+        <!-- Sistem -->
         <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
             <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
             <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
@@ -428,15 +433,17 @@
       </div>
     </aside>
 
-    <!-- MAIN -->
+    <!-- MAIN CONTENT -->
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button class="btn-icon d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <button class="btn-icon-box" id="btnBackKasir" style="display: none;" title="Kembali ke Kasir"><i class="fas fa-arrow-left"></i></button>
           <h1 class="header-title">Tarik Tunai</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+          <button class="btn-icon-box" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
 
@@ -448,7 +455,7 @@
             </div>
             <div class="card-body">
               <div class="kas-info">
-                <div class="kas-info-label">Kas Tersedia di Laci</div>
+                <div class="kas-info-label">Kas Tersedia di Laci (Uang di Tangan)</div>
                 <div class="kas-info-value" id="kasTersedia">Rp 0</div>
               </div>
 
@@ -482,32 +489,32 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Keterangan <span style="color: var(--text-muted); font-size: 0.75rem;">(Opsional)</span></label>
-                <input type="text" class="form-input" id="tarikNote" placeholder="Contoh: Setoran ke bank">
+                <label class="form-label">Keterangan <span style="color: var(--text-muted); font-size: 0.72rem;">(Opsional)</span></label>
+                <input type="text" class="form-input" id="tarikNote" placeholder="Contoh: Tarik tunai saldo DANA / BCA">
               </div>
 
               <div class="form-group">
-                <label class="form-label">Biaya Admin <span style="color: var(--text-muted); font-size: 0.75rem;">(Opsional)</span></label>
+                <label class="form-label">Biaya Admin <span style="color: var(--text-muted); font-size: 0.72rem;">(Opsional)</span></label>
                 <input type="number" class="form-input" id="adminFee" placeholder="0" min="0">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
-                  <i class="fas fa-info-circle"></i> Biaya admin akan masuk ke laba, tidak mengurangi kas
+                <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.3rem;">
+                  <i class="fas fa-info-circle"></i> Biaya admin dihitung sebagai laba bersih konter.
                 </p>
               </div>
 
-              <!-- Summary Card (Total Tagihan yang diterima dari pelanggan) -->
-              <div class="card" style="background: var(--bg-subtle); margin-bottom: 1.25rem; box-shadow: none; border: 1px solid var(--border);">
-                <div class="card-body" style="padding: 1rem;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
-                    <span style="color: var(--text-muted);">Nominal Tarik Tunai</span>
-                    <span id="summaryTarik" style="font-weight: 600;">Rp 0</span>
+              <!-- Rangkuman Tagihan & Uang Keluar Fisik -->
+              <div class="card" style="background: var(--bg-subtle); margin-bottom: 1.25rem; box-shadow: none; border: 1.5px dashed var(--border);">
+                <div class="card-body" style="padding: 0.85rem 1rem;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.82rem;">
+                    <span style="color: var(--text-muted);">Transfer Diterima (Bank/e-Wallet)</span>
+                    <span id="summaryTarik" style="font-weight: 700;">Rp 0</span>
                   </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
-                    <span style="color: var(--text-muted);">Biaya Admin (Masuk Laba)</span>
-                    <span id="summaryAdminFee" style="font-weight: 600;">Rp 0</span>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.82rem;">
+                    <span style="color: var(--text-muted);">Biaya Admin (Laba Konter)</span>
+                    <span id="summaryAdminFee" style="font-weight: 700; color: var(--success);">Rp 0</span>
                   </div>
-                  <div style="display: flex; justify-content: space-between; padding-top: 0.5rem; border-top: 1px dashed var(--border); font-size: 0.95rem;">
-                    <span style="font-weight: 700;">Total Tagihan / Dibayar</span>
-                    <span style="font-weight: 800; color: var(--danger);" id="summaryTotal">Rp 0</span>
+                  <div style="display: flex; justify-content: space-between; padding-top: 0.45rem; border-top: 1px solid var(--border); font-size: 0.95rem;">
+                    <span style="font-weight: 700;">Uang Fisik Diberikan ke Pelanggan</span>
+                    <span style="font-weight: 800; color: var(--danger);" id="summaryTotalFisik">Rp 0</span>
                   </div>
                 </div>
               </div>
@@ -532,7 +539,7 @@
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top: 1rem; color: #fff; font-weight: 600;">Loading...</p>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 700;">Memproses...</p>
   </div>
 
   <div class="toast-box" id="toastContainer"></div>
@@ -540,6 +547,9 @@
   <script>
     (function() {
       "use strict";
+
+      const auth = firebase.auth();
+      const db = firebase.firestore();
 
       function isFromKasir() {
         return localStorage.getItem('fromKasir') === 'true';
@@ -572,6 +582,14 @@
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
 
+        if (isFromKasir()) {
+          const btnBack = document.getElementById('btnBackKasir');
+          if (btnBack) {
+            btnBack.style.display = 'flex';
+            btnBack.onclick = goBack;
+          }
+        }
+
         auth.onAuthStateChanged(async (user) => {
           if (!user) {
             window.location.href = 'login.html';
@@ -583,6 +601,9 @@
             const doc = await db.collection("users").doc(user.uid).get();
             if (doc.exists) {
               userData = doc.data();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(userData.role || 'kasir');
+              }
             }
           } catch(e) {}
 
@@ -618,16 +639,6 @@
           };
         }
 
-        document.querySelectorAll('.nav-link').forEach(link => {
-          link.addEventListener('click', () => {
-            if (link.classList.contains('nav-dropdown-toggle')) return;
-            if (window.innerWidth <= 1024) {
-              sidebar.classList.remove('mobile-open');
-              if (backdrop) backdrop.classList.remove('active');
-            }
-          });
-        });
-
         document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
           toggle.addEventListener('click', function(e) {
             e.preventDefault();
@@ -639,6 +650,24 @@
             parent.classList.toggle('open');
           });
         });
+
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
 
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
@@ -658,36 +687,67 @@
         function updateSummary() {
           const feeInput = document.getElementById('adminFee');
           adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
-          const total = amount + adminFee;
+          
+          // Uang fisik laci yang keluar = Nominal tarik - fee admin yang ditahan di laci
+          const uangFisikKeluar = Math.max(0, amount - adminFee);
 
           document.getElementById('summaryTarik').textContent = Utils.formatRupiah(amount);
           document.getElementById('summaryAdminFee').textContent = Utils.formatRupiah(adminFee);
-          document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
+          document.getElementById('summaryTotalFisik').textContent = Utils.formatRupiah(uangFisikKeluar);
         }
 
+        // PERBAIKAN: Kalkulasi uang laci disamakan persis dengan logika Dashboard & Kasir (loadUangGlobal)
         async function loadKasTersedia() {
           try {
-            const today = Utils.getTodayString();
+            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+            
+            // 1. Modal awal hari ini
+            let modalAwal = 0;
+            try {
+              const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
+              modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+            } catch(e) {}
+
+            // 2. Transaksi hari ini
             const snapshot = await db.collection("transactions").where("date", "==", today).get();
             
-            let kasMasuk = 0;
-            let kasKeluar = 0;
+            let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0;
+            let topupAdminFee = 0, tarikAdminFee = 0;
 
             snapshot.forEach(doc => {
               const data = doc.data();
-              if (data.status === 'cancelled') return;
+              if (data.status === 'cancelled' || data.status === 'voided') return;
 
-              if (data.type === 'topup' || data.type === 'kas_masuk' || data.type === 'penjualan') {
-                kasMasuk += data.total || data.amount || 0;
-              } else if (data.type === 'tarik' || data.type === 'kas_keluar') {
-                kasKeluar += data.total || data.amount || 0;
+              switch (data.type) {
+                case 'penjualan':
+                  penjualan += data.paymentMethod === 'hutang'
+                    ? (data.paymentAmount || 0)
+                    : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                  break;
+                case 'kas_masuk':
+                  if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
+                    kasMasuk += data.amount || 0;
+                  }
+                  break;
+                case 'kas_keluar':
+                  kasKeluar += data.amount || 0;
+                  break;
+                case 'topup':
+                  topup += data.amount || 0;
+                  topupAdminFee += data.adminFee || 0;
+                  break;
+                case 'tarik':
+                  tarik += data.amount || 0;
+                  tarikAdminFee += data.adminFee || 0;
+                  break;
               }
             });
 
-            const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-            const modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
+            // Rumus baku kas laci (identik dengan Dashboard & Kasir):
+            const topupKasFisik = topup + topupAdminFee;
+            const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
+            kasTersedia = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
 
-            kasTersedia = modalAmount + kasMasuk - kasKeluar;
             document.getElementById('kasTersedia').textContent = Utils.formatRupiah(kasTersedia);
           } catch (error) {
             console.error("Error loading kas tersedia:", error);
@@ -734,7 +794,7 @@
           });
         });
 
-        // Save Tarik Tunai ke Cloud Firestore (Menggunakan Date.now() untuk timestamp)
+        // Proses Tarik Tunai
         const saveBtn = document.getElementById('btnSimpanTarik');
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
@@ -743,21 +803,23 @@
               return;
             }
 
-            if (amount > kasTersedia) {
-              Utils.showToast('Jumlah tarik melebihi kas tersedia di laci', 'error');
+            const adminFeeValue = parseInt(document.getElementById('adminFee').value) || 0;
+            const uangFisikKeluar = Math.max(0, amount - adminFeeValue);
+
+            if (uangFisikKeluar > kasTersedia) {
+              Utils.showToast(`Uang fisik laci tidak mencukupi (Tersedia: ${Utils.formatRupiah(kasTersedia)})`, 'error');
               return;
             }
 
             const note = document.getElementById('tarikNote').value.trim();
-            const adminFeeValue = parseInt(document.getElementById('adminFee').value) || 0;
 
             try {
-              Utils.showLoading('Menyimpan tarik tunai...');
-              const today = Utils.getTodayString();
+              Utils.showLoading('Menyimpan transaksi tarik tunai...');
+              const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const transactionId = 'TRK_' + Date.now();
 
-              // Arus kas laci hanya dikurangi oleh 'amount' (nominal tarik), sedangkan adminFeeValue masuk ke profit/laba
-              await db.collection("transactions").add({
+              // Catat ke koleksi transactions
+              await db.collection("transactions").doc(transactionId).set({
                 id: transactionId,
                 type: 'tarik',
                 amount: amount,
@@ -768,16 +830,17 @@
                 userId: user.uid,
                 userName: userName,
                 date: today,
-                timestamp: Date.now(), // ⭐ Aman dari error unsupported field value
-                status: 'completed'
+                timestamp: Date.now(),
+                status: 'completed',
+                source: 'kasir_tarik'
               });
 
               Utils.hideLoading();
-              Utils.showToast('Tarik tunai berhasil disimpan!', 'success');
+              Utils.showToast('Tarik tunai berhasil diproses!', 'success');
 
               setTimeout(() => {
                 goBack();
-              }, 1200);
+              }, 1000);
 
             } catch (error) {
               Utils.hideLoading();
