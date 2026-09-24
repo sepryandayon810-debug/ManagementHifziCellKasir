@@ -704,11 +704,11 @@
     (function() {
       "use strict";
 
+      // Inisialisasi Firebase Auth & Firestore secara aman
       const auth = firebase.auth();
       const db = firebase.firestore();
 
       let allTransactions = [];
-      // Default filter disesuaikan ke 'buku_kasir' (Penjualan, Top Up, Tarik Tunai)
       let currentFilter = 'buku_kasir';
       let currentPeriod = 'today';
       let currentSearch = '';
@@ -887,7 +887,6 @@
         document.getElementById('btnFilter').onclick = loadTransactions;
         document.getElementById('btnExport').onclick = exportData;
 
-        // Modal Import
         document.getElementById('btnOpenImportModal').onclick = () => {
           document.getElementById('importModal').classList.add('active');
         };
@@ -932,17 +931,6 @@
         return 0;
       }
 
-      // Penomoran Urut Input: 1, 2, 3, 4 dst (Murni tanpa # dan nol di depan)
-      function assignInputSequence() {
-        const inputOrder = [...allTransactions].sort((a, b) => {
-          return getTimestampMillis(a) - getTimestampMillis(b) ||
-            String(a.id).localeCompare(String(b.id));
-        });
-        inputOrder.forEach((transaction, index) => {
-          transaction.inputSequence = index + 1;
-        });
-      }
-
       function formatDateTime(ts) {
         if (!ts) return '-';
         const d = typeof ts === 'object' && ts.toDate ? ts.toDate() : new Date(ts);
@@ -960,7 +948,7 @@
           const startStr = startDate;
           const endStr = endDate;
 
-          // 1. Ambil dari koleksi transactions
+          // 1. Ambil dari transactions
           const txSnapshot = await db.collection("transactions")
             .where("date", ">=", startStr)
             .where("date", "<=", endStr)
@@ -974,7 +962,7 @@
             }
           });
 
-          // 2. Ambil dari koleksi purchases agar sinkron
+          // 2. Ambil dari purchases
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -999,12 +987,6 @@
             });
           } catch(e) {}
 
-          allTransactions.sort((a, b) => {
-            return getTimestampMillis(b) - getTimestampMillis(a) ||
-              String(b.id).localeCompare(String(a.id));
-          });
-
-          assignInputSequence();
           filterAndRender();
           Utils.hideLoading();
         } catch (error) {
@@ -1019,13 +1001,11 @@
 
         if (currentFilter !== 'all') {
           filtered = filtered.filter(t => {
-            // Tab Buku Kasir: HANYA Penjualan, Top Up, dan Tarik Tunai
             if (currentFilter === 'buku_kasir') {
               return t.type === 'penjualan' || t.type === 'topup' || t.type === 'tarik';
             }
             if (currentFilter === 'penjualan') return t.type === 'penjualan';
             if (currentFilter === 'topup_tarik') return t.type === 'topup' || t.type === 'tarik';
-            // Tab Operasional: Kas Masuk, Kas Keluar, dan Pembelian Restock
             if (currentFilter === 'operasional') {
               return t.type === 'kas_masuk' || t.type === 'kas_keluar' || t.type === 'pembelian' || t.category === 'pembelian';
             }
@@ -1042,13 +1022,29 @@
           });
         }
 
+        // PENOMORAN URUT DINAMIS SESUAI DAFTAR YANG TAMPIL: 1, 2, 3...
+        const chronologicalList = [...filtered].sort((a, b) => {
+          return getTimestampMillis(a) - getTimestampMillis(b) ||
+            String(a.id).localeCompare(String(b.id));
+        });
+
+        chronologicalList.forEach((transaction, index) => {
+          transaction.inputSequence = index + 1;
+        });
+
+        // Urutkan transaksi terbaru di bagian teratas tabel
+        filtered.sort((a, b) => {
+          return getTimestampMillis(b) - getTimestampMillis(a) ||
+            String(b.id).localeCompare(String(a.id));
+        });
+
         renderTable(filtered);
         updateSummary(filtered);
       }
 
       function getTransactionDesc(t) {
         if (t.type === 'penjualan' && t.items && t.items.length > 0) {
-          const names = t.items.map(i => i.name).filter(Boolean);
+          const names = t.items.map(i => i.name || i.productName).filter(Boolean);
           if (names.length === 1) return names[0];
           return names[0] + ' +' + (names.length - 1) + ' lainnya';
         }
@@ -1077,7 +1073,6 @@
           return `
             <tr class="data-row">
               <td><button class="expand-btn" id="expand-${t.id}" onclick="toggleDetail('${t.id}')"><i class="fas fa-chevron-down"></i></button></td>
-              <!-- NOMOR URUT MURNI: 1, 2, 3... -->
               <td style="text-align:center;"><span class="transaction-sequence">${displaySeq}</span></td>
               <td>
                 <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
@@ -1152,7 +1147,6 @@
         }
       };
 
-      // SUMMARY CARDS ADAPTIF: Otomatis berubah judul & nilainya mengikuti tab aktif
       function updateSummary(transactions) {
         const container = document.getElementById('summaryCardsContainer');
         if (!container) return;
@@ -1162,7 +1156,6 @@
         let card3Title = '', card3Value = 0, card3Sub = '', card3Icon = 'fa-chart-line', card3Class = 'summary-card-3';
 
         if (currentFilter === 'buku_kasir') {
-          // BUKU KASIR TOKO (Penjualan + Top Up + Tarik)
           let omset = 0;
           let laba = 0;
           transactions.forEach(t => {
@@ -1175,7 +1168,7 @@
           card1Sub = 'penjualan, top up & tarik';
           card1Icon = 'fa-cash-register';
 
-          card2Sub = 'transaksi meja kasir';
+          card2Sub = 'transaksi kasir';
 
           card3Title = 'TOTAL LABA BERSIH';
           card3Value = Utils.formatRupiah(laba);
@@ -1183,7 +1176,6 @@
           card3Icon = 'fa-chart-line';
 
         } else if (currentFilter === 'operasional') {
-          // TAB OPERASIONAL (Kas Keluar + Kas Masuk + Pembelian)
           let totalKasKeluar = 0;
           let totalBeli = 0;
           transactions.forEach(t => {
@@ -1194,14 +1186,14 @@
 
           card1Title = 'PENGELUARAN RESTOCK';
           card1Value = Utils.formatRupiah(totalBeli);
-          card1Sub = 'belanja pembelian barang';
+          card1Sub = 'belanja restock barang';
           card1Icon = 'fa-truck-loading';
 
           card2Sub = 'transaksi operasional';
 
           card3Title = 'TOTAL KAS KELUAR';
           card3Value = Utils.formatRupiah(totalKasKeluar);
-          card3Sub = 'beban biaya toko';
+          card3Sub = 'beban pengeluaran kas';
           card3Icon = 'fa-minus-circle';
           card3Class = 'summary-card-3';
 
@@ -1215,7 +1207,7 @@
 
           card1Title = 'TOTAL PEMBELIAN';
           card1Value = Utils.formatRupiah(totalBeli);
-          card1Sub = 'biaya restock / belanja';
+          card1Sub = 'biaya belanja barang';
           card1Icon = 'fa-truck-loading';
 
           card2Sub = 'transaksi pembelian';
@@ -1266,7 +1258,7 @@
           card3Icon = 'fa-coins';
 
         } else {
-          // TAB SEMUA (AUDIT GLOBAL LENGKAP)
+          // AUDIT GLOBAL
           let totalMasuk = 0;
           let totalKeluar = 0;
 
@@ -1284,7 +1276,7 @@
           card1Sub = 'penjualan, topup, kas masuk';
           card1Icon = 'fa-arrow-down';
 
-          card2Sub = 'semua transaksi tercatat';
+          card2Sub = 'seluruh transaksi terdata';
 
           card3Title = 'TOTAL PENGELUARAN';
           card3Value = Utils.formatRupiah(totalKeluar);
