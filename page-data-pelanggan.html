@@ -34,7 +34,6 @@
       --sidebar-width: 270px; --sidebar-collapsed: 76px; --header-h: 68px; --bottom-nav-height: 65px;
     }
 
-    /* KUSTOMISASI PALET WARNA UTAMA GLOBAL */
     [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
     [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
     [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
@@ -151,6 +150,7 @@
     .btn-danger:hover { filter: brightness(0.9); }
     .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
 
+    /* MODAL KUSTOM & DIALOG INTERNAL */
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
@@ -160,12 +160,57 @@
     .modal-close:hover { background: var(--danger-light); color: var(--danger); }
     .modal-body { padding: 1.25rem; }
     .modal-footer { padding: 1.0rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); }
-    
+
+    /* DIALOG MODAL INTERNAL (LOGOUT & AKSI UMUM) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
     .form-group { margin-bottom: 1rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
     .form-input, .form-textarea { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; }
     .form-input:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); }
     .form-textarea { min-height: 120px; resize: vertical; }
+
+    .toast-box {
+      position: fixed; top: 1rem; right: 1rem; z-index: 6000;
+      display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px;
+    }
+    .toast-pill {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
+      background: var(--bg-surface); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md); border-left: 4px solid var(--primary);
+      font-size: 0.85rem; font-weight: 600; color: var(--text-main);
+    }
+    .toast-pill.success { border-left-color: var(--success); }
+    .toast-pill.error { border-left-color: var(--danger); }
 
     .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
     .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
@@ -414,19 +459,28 @@
     </div>
   </div>
 
-  <!-- Modal Konfirmasi Hapus Custom -->
-  <div class="modal-overlay" id="deleteModal">
-    <div class="modal-content" style="max-width: 400px;">
-      <div class="modal-header">
-        <h3 class="modal-title" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus</h3>
-        <button class="modal-close" onclick="closeDeleteModal()"><i class="fas fa-times"></i></button>
+  <!-- MODAL KONFIRMASI HAPUS KUSTOM -->
+  <div class="custom-modal-backdrop" id="deleteModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-trash-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Hapus</h3>
+      <p class="dialog-message">Yakin ingin menghapus <b id="deleteTargetName" style="color: var(--text-main);"></b> dari direktori?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeDeleteModal()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmDelete">Ya, Hapus</button>
       </div>
-      <div class="modal-body">
-        <p style="color: var(--text-sub); font-size: 0.95rem;">Yakin ingin menghapus <b id="deleteTargetName" style="color: var(--text-main);"></b> dari direktori?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
-        <button class="btn btn-danger" id="btnConfirmDelete"><i class="fas fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
       </div>
     </div>
   </div>
@@ -444,7 +498,7 @@
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
             Blok kolom Nama dan Nomor di Google Sheets Anda lalu tekan <b>Ctrl+V</b> di bawah:
           </p>
-          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;TOKEN LIDIA   50210246026"></textarea>
+          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;TOKEN LIDIA    50210246026"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -524,7 +578,7 @@
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.toggle('mobile-open');
+            sidebar.classList.add('mobile-open');
             if (backdrop) backdrop.classList.add('active');
           };
         }
@@ -555,7 +609,7 @@
           });
         });
 
-        // Toggle Dark Mode di Header
+        // Toggle Dark Mode
         const btnHeaderDark = document.getElementById("btnThemeToggle");
         if (btnHeaderDark) {
           btnHeaderDark.onclick = () => {
@@ -563,6 +617,28 @@
             const nextMode = !currentMode;
             document.documentElement.setAttribute("data-theme", nextMode ? "dark" : "light");
             localStorage.setItem("webpos_theme", nextMode ? "dark" : "light");
+          };
+        }
+
+        // Logout dengan Modal Internal WebPOS
+        const logoutBtn = document.getElementById("btnLogout");
+        if (logoutBtn) {
+          logoutBtn.onclick = () => {
+            const modal = document.getElementById("customLogoutModal");
+            if (modal) {
+              modal.classList.add("open");
+              document.getElementById("btnConfirmLogoutAction").onclick = () => {
+                auth.signOut().then(() => {
+                  localStorage.removeItem('webpos_session');
+                  window.location.href = "login.html";
+                });
+              };
+            } else {
+              auth.signOut().then(() => {
+                localStorage.removeItem('webpos_session');
+                window.location.href = "login.html";
+              });
+            }
           };
         }
       }
