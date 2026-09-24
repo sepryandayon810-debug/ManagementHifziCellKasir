@@ -330,9 +330,10 @@
     .bt-device-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); }
     .bt-device-mac { font-size: 0.75rem; color: var(--text-muted); }
 
+    /* MODAL POPUP */
     .custom-modal-backdrop {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
       padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
       transition: all 0.2s ease;
@@ -341,10 +342,24 @@
     .custom-dialog-card {
       background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius-xl); width: 100%; max-width: 400px;
-      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg);
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
     }
-    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; }
-    .dialog-message { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
 
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 6000;
@@ -354,10 +369,11 @@
       display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem;
       background: var(--bg-surface); border-radius: var(--radius-md);
       box-shadow: var(--shadow-md); border-left: 4px solid var(--primary);
-      font-size: 0.85rem; font-weight: 600;
+      font-size: 0.85rem; font-weight: 600; color: var(--text-main);
     }
     .toast-pill.success { border-left-color: var(--success); }
     .toast-pill.error { border-left-color: var(--danger); }
+    .toast-pill.info { border-left-color: var(--accent); }
 
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -394,7 +410,7 @@
 <div class="app-container">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- SIDEBAR LENGKAP SESUAI INDEX -->
+  <!-- SIDEBAR LENGKAP -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-container">
@@ -589,12 +605,12 @@
         </div>
       </div>
 
-      <!-- TAB 3: PRINTER -->
+      <!-- TAB 3: PRINTER THERMAL PUSAT -->
       <div class="tab-panel" id="tab-printer">
         <div class="settings-grid">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-print" style="color:var(--primary);"></i> Konfigurasi Printer Struk</h3>
+              <h3 class="card-title"><i class="fas fa-print" style="color:var(--primary);"></i> Konfigurasi Printer Thermal</h3>
             </div>
             <div class="card-body">
               <div id="printerStatusBox" style="padding:1.25rem; background:var(--bg-subtle); border-radius:var(--radius-lg); margin-bottom:1.25rem; text-align:center;">
@@ -608,7 +624,7 @@
               </button>
 
               <div id="bluetoothDeviceList" style="display:none; margin-bottom:1rem;">
-                <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.6rem; color:var(--text-sub);">Perangkat Terdeteksi:</div>
+                <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.6rem; color:var(--text-sub);">Perangkat Bluetooth Terpasang / Ditemukan:</div>
                 <div id="btDevicesContainer" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
               </div>
 
@@ -722,8 +738,21 @@
     </div>
     
     <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
-      <button type="button" class="btn btn-secondary" style="flex:1" onclick="closePasswordModal()">Batal</button>
-      <button type="button" class="btn btn-primary" style="flex:1" id="btnConfirmChangePassword">Simpan</button>
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closePasswordModal()">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" style="background:var(--primary);" id="btnConfirmChangePassword">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+<div class="custom-modal-backdrop" id="customLogoutModal">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+    <h3 class="dialog-title">Konfirmasi Keluar</h3>
+    <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
     </div>
   </div>
 </div>
@@ -740,7 +769,7 @@
     const box = document.getElementById("toastContainer");
     const el = document.createElement("div");
     el.className = `toast-pill ${type}`;
-    el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'circle-exclamation'}"></i><span>${msg}</span>`;
+    el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : (type === 'error' ? 'circle-exclamation' : 'circle-info')}"></i><span>${msg}</span>`;
     box.appendChild(el);
     setTimeout(() => el.remove(), 3500);
   }
@@ -752,25 +781,26 @@
     const cached = localStorage.getItem("webpos_store_name");
     if (cached) logoEl.textContent = cached;
     try {
-      const doc = await db.collection("settings").doc("store").get();
-      if (doc.exists && doc.data().name) {
-        logoEl.textContent = doc.data().name;
-        localStorage.setItem("webpos_store_name", doc.data().name);
+      if (typeof db !== 'undefined') {
+        const doc = await db.collection("settings").doc("store").get();
+        if (doc.exists && doc.data().name) {
+          logoEl.textContent = doc.data().name;
+          localStorage.setItem("webpos_store_name", doc.data().name);
+        }
       }
     } catch(e) {}
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    auth.onAuthStateChanged(async user => {
+    firebase.auth().onAuthStateChanged(async user => {
       if (!user) {
         window.location.href = "login.html";
         return;
       }
       currentUser = user;
       
-      // Ambil role pengguna dan terapkan RoleGuard agar sidebar sinkron dengan index
       try {
-        const uDoc = await db.collection("users").doc(user.uid).get();
+        const uDoc = await firebase.firestore().collection("users").doc(user.uid).get();
         if (uDoc.exists) {
           const u = uDoc.data();
           const role = (u.role || "kasir").toLowerCase();
@@ -797,7 +827,7 @@
     setupThemePreferences();
 
     try {
-      const uDoc = await db.collection("users").doc(user.uid).get();
+      const uDoc = await firebase.firestore().collection("users").doc(user.uid).get();
       if (uDoc.exists) {
         const u = uDoc.data();
         document.getElementById("userFullName").value = u.name || "";
@@ -812,8 +842,24 @@
 
     document.getElementById("btnSaveStore").onclick = saveStoreSettings;
     document.getElementById("btnSaveProfile").onclick = saveProfileName;
+    
+    // Logout internal tanpa confirm windows
     document.getElementById("btnLogout").onclick = () => {
-      if (confirm("Keluar dari sistem?")) auth.signOut().then(() => window.location.href = "login.html");
+      const modal = document.getElementById("customLogoutModal");
+      if (modal) {
+        modal.classList.add("open");
+        document.getElementById("btnConfirmLogoutAction").onclick = () => {
+          firebase.auth().signOut().then(() => {
+            localStorage.removeItem('webpos_session');
+            window.location.href = "login.html";
+          });
+        };
+      } else {
+        firebase.auth().signOut().then(() => {
+          localStorage.removeItem('webpos_session');
+          window.location.href = "login.html";
+        });
+      }
     };
 
     document.getElementById("btnOpenPasswordModal").onclick = () => {
@@ -826,7 +872,6 @@
     setupPrinterSection();
   }
 
-  // Pengaturan Tema & Warna Global Sesuai Index
   function setupThemePreferences() {
     const darkModeToggle = document.getElementById("darkModeToggle");
     const currentTheme = localStorage.getItem("webpos_theme") || "light";
@@ -912,7 +957,7 @@
 
   async function loadStoreSettings() {
     try {
-      const doc = await db.collection("settings").doc("store").get();
+      const doc = await firebase.firestore().collection("settings").doc("store").get();
       if (doc.exists) {
         const s = doc.data();
         document.getElementById("storeName").value = s.name || "";
@@ -943,7 +988,7 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
     try {
-      await db.collection("settings").doc("store").set({
+      await firebase.firestore().collection("settings").doc("store").set({
         name, address, phone, footerNote,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
@@ -970,7 +1015,7 @@
     }
 
     try {
-      await db.collection("users").doc(currentUser.uid).update({
+      await firebase.firestore().collection("users").doc(currentUser.uid).update({
         name: newName
       });
       document.getElementById("userName").textContent = newName;
@@ -1016,6 +1061,7 @@
     document.getElementById("passwordModal").classList.remove("open");
   };
 
+  // SISTEM PUSAT PRINTER BLUETOOTH THERMAL (TERINTEGRASI KE SEMUA HALAMAN)
   function setupPrinterSection() {
     const statusBox = document.getElementById("printerStatusBox");
     const statusText = document.getElementById("printerStatusText");
@@ -1052,35 +1098,98 @@
       const container = document.getElementById("bluetoothDeviceList");
       const list = document.getElementById("btDevicesContainer");
       container.style.display = "block";
-      list.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Mencari perangkat...</div>`;
+      list.innerHTML = `<div style="text-align:center; padding:1.25rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Mencari perangkat Bluetooth...</div>`;
 
-      setTimeout(() => {
-        list.innerHTML = `
-          <div class="bt-device-item" onclick="selectPrinter('RPP-02N Thermal', '00:11:22:33:AA:BB')">
-            <div class="bt-device-info">
-              <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>RPP-02N Thermal</span>
-              <span class="bt-device-mac">00:11:22:33:AA:BB</span>
+      // Jika dijalankan di APK Android (Cordova/Capacitor dengan plugin bluetoothSerial)
+      if (window.bluetoothSerial && typeof window.bluetoothSerial.list === 'function') {
+        window.bluetoothSerial.list((devices) => {
+          if (!devices || devices.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.85rem;">Tidak ada printer Bluetooth yang dipasangkan (paired). Pasangkan printer terlebih dahulu di setelan Bluetooth HP Anda.</div>`;
+            return;
+          }
+
+          list.innerHTML = devices.map(d => `
+            <div class="bt-device-item" onclick="selectPrinter('${d.name.replace(/'/g, "\\'")}', '${d.address}')">
+              <div class="bt-device-info">
+                <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>${d.name || 'Printer Thermal'}</span>
+                <span class="bt-device-mac">${d.address}</span>
+              </div>
+              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
             </div>
-            <button class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
-          </div>
-        `;
-      }, 1000);
+          `).join('');
+        }, (err) => {
+          list.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--danger); font-size:0.85rem;">Gagal scan: ${err}</div>`;
+        });
+      } else {
+        // Fallback untuk browser desktop / simulasi pengujian
+        setTimeout(() => {
+          list.innerHTML = `
+            <div class="bt-device-item" onclick="selectPrinter('RPP-02N Thermal 58mm', '00:11:22:33:AA:BB')">
+              <div class="bt-device-info">
+                <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>RPP-02N Thermal 58mm</span>
+                <span class="bt-device-mac">00:11:22:33:AA:BB</span>
+              </div>
+              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+            </div>
+            <div class="bt-device-item" onclick="selectPrinter('POS-58 Bluetooth', '66:55:44:33:22:11')">
+              <div class="bt-device-info">
+                <span class="bt-device-name"><i class="fas fa-print" style="margin-right:0.35rem; color:var(--primary);"></i>POS-58 Bluetooth</span>
+                <span class="bt-device-mac">66:55:44:33:22:11</span>
+              </div>
+              <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.75rem;">Pilih</button>
+            </div>
+          `;
+        }, 600);
+      }
     };
 
     window.selectPrinter = (name, mac) => {
       localStorage.setItem("webpos_printer_name", name);
       localStorage.setItem("webpos_printer_mac", mac);
-      toast(`Printer ${name} tersimpan`, "success");
+      toast(`Printer ${name} berhasil disimpan sebagai printer utama!`, "success");
       document.getElementById("bluetoothDeviceList").style.display = "none";
       renderPrinterState();
     };
 
-    btnTest.onclick = () => toast("Simulasi test cetak berhasil!", "success");
+    // TEST PRINT NYATA KE PRINTER THERMAL
+    btnTest.onclick = async () => {
+      const mac = localStorage.getItem("webpos_printer_mac");
+      const storeName = localStorage.getItem("webpos_store_name") || "WEBPOS STORE";
+
+      if (!mac) {
+        toast("Pilih printer terlebih dahulu", "error");
+        return;
+      }
+
+      if (window.bluetoothSerial) {
+        toast("Menghubungkan ke printer...", "info");
+        try {
+          await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
+          
+          let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
+          c += 'TEST PRINT SUKSES\x0A--------------------------------\x0A\x1B\x61\x00';
+          c += 'Waktu  : ' + new Date().toLocaleString('id-ID') + '\x0A';
+          c += 'Status : TERHUBUNG NORMAL\x0A';
+          c += 'Printer: ' + (localStorage.getItem("webpos_printer_name") || "Thermal") + '\x0A';
+          c += '--------------------------------\x0A';
+          c += '\x1B\x61\x01WebPOS Siap Digunakan\x0A\x0A\x0A\x1D\x56\x41\x03';
+
+          await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
+          await new Promise(res => bluetoothSerial.disconnect(res, res));
+          toast("Struk uji coba berhasil dicetak!", "success");
+        } catch(e) {
+          toast("Gagal mencetak: " + e, "error");
+        }
+      } else {
+        toast("Test print berhasil (Mode Web: Driver bluetooth aktif di APK Android)", "success");
+      }
+    };
+
     btnDisc.onclick = () => {
       localStorage.removeItem("webpos_printer_name");
       localStorage.removeItem("webpos_printer_mac");
       renderPrinterState();
-      toast("Printer diputuskan", "info");
+      toast("Printer berhasil diputuskan", "info");
     };
   }
 
