@@ -672,7 +672,7 @@
           </div>
           <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-main);">Kelola Data Produk via Excel</h3>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
-            Gunakan format kolom yang benar. Anda dapat mendownload template terlebih dahulu agar data langsung terbaca sempurna di kasir.
+            Kategori di file Excel akan otomatis dipisahkan atau dibuat baru jika belum ada di database!
           </p>
           <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
             <button class="btn btn-secondary" onclick="downloadTemplateExcel()" style="padding: 0.7rem 1.2rem;"><i class="fas fa-file-download" style="color:var(--accent);"></i> Download Template</button>
@@ -1573,7 +1573,7 @@
     toast("Data produk berhasil diexport ke Excel!", "success");
   };
 
-  // ================= IMPORT EXCEL (TERHUBUNG KE KASIR & KATEGORI) =================
+  // ================= IMPORT EXCEL DENGAN PEMISAHAN KATEGORI OTOMATIS =================
   window.importProductsExcel = function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1597,28 +1597,39 @@
 
         let totalRows = rows.length;
         let importedCount = 0;
-        let defaultCatId = categoriesList.length > 0 ? categoriesList[0].id : "";
 
         for (let i = 0; i < totalRows; i++) {
           let row = rows[i];
-          const name = row["Nama Produk"] || row["name"] || "";
+          const name = row["Nama Produk"] || row["nama produk"] || row["name"] || "";
           if (!name) continue;
 
-          const sellPrice = parseInt(row["Harga Jual"] || row["sellingPrice"] || 0);
-          const costPrice = parseInt(row["Harga Modal"] || row["costPrice"] || 0);
-          const resellerPrice = parseInt(row["Harga Reseller"] || row["resellerPrice"] || 0);
+          const sellPrice = parseInt(row["Harga Jual"] || row["harga jual"] || row["sellingPrice"] || 0);
+          const costPrice = parseInt(row["Harga Modal"] || row["harga modal"] || row["costPrice"] || 0);
+          const resellerPrice = parseInt(row["Harga Reseller"] || row["harga reseller"] || row["resellerPrice"] || 0);
           
-          const isUnlimitedRaw = String(row["Unlimited (Ya/Tidak)"] || row["isUnlimited"] || "").toLowerCase();
+          const isUnlimitedRaw = String(row["Unlimited (Ya/Tidak)"] || row["unlimited"] || row["isUnlimited"] || "").toLowerCase();
           const isUnlimited = isUnlimitedRaw.includes("ya") || isUnlimitedRaw === "true" || isUnlimitedRaw === "1";
           
-          const stock = isUnlimited ? 0 : (parseInt(row["Stok"] || row["stock"] || 0));
-          const code = row["Kode SKU"] || row["code"] || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
+          const stock = isUnlimited ? 0 : (parseInt(row["Stok"] || row["stok"] || row["stock"] || 0));
+          const code = row["Kode SKU"] || row["kode sku"] || row["code"] || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
           
-          const katNameExcel = String(row["Kategori"] || row["category"] || "").trim();
-          let targetCatId = defaultCatId;
+          // Deteksi kategori & buat otomatis jika belum ada di database
+          const katNameExcel = String(row["Kategori"] || row["kategori"] || row["category"] || "Umum").trim();
+          let targetCatId = "";
+
           if (katNameExcel) {
-            const foundKat = categoriesList.find(c => c.name.toLowerCase() === katNameExcel.toLowerCase());
-            if (foundKat) targetCatId = foundKat.id;
+            let foundKat = categoriesList.find(c => c.name.toLowerCase() === katNameExcel.toLowerCase());
+            if (foundKat) {
+              targetCatId = foundKat.id;
+            } else {
+              const newKatRef = await db.collection("categories").add({
+                name: katNameExcel,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              targetCatId = newKatRef.id;
+              categoriesList.push({ id: targetCatId, name: katNameExcel });
+            }
           }
 
           await db.collection("products").add({
@@ -1629,8 +1640,8 @@
             resellerPrice,
             stock,
             isUnlimited,
-            status: "active", // Dipaksa aktif agar langsung muncul di halaman Kasir
-            categoryId: targetCatId, // Terhubung langsung ke kategori
+            status: "active", // Dipaksa aktif agar langsung muncul di Kasir
+            categoryId: targetCatId, // Terhubung ke kategori masing-masing
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -1642,8 +1653,9 @@
 
         setTimeout(() => {
           hideProgressModal();
-          toast(`Berhasil mengimpor ${importedCount} produk ke database & kasir!`, "success");
+          toast(`Berhasil mengimpor ${importedCount} produk & kategori!`, "success");
           document.getElementById("importExcelInput").value = "";
+          loadCategories();
           loadProducts();
         }, 500);
 
