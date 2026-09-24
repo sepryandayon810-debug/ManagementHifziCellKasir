@@ -68,7 +68,7 @@
       backdrop-filter: blur(10px);
     }
     .brand-logo-wrap {
-      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2;
+      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2; cursor: pointer;
     }
     .brand-logo-wrap i { font-size: 1.6rem; background: rgba(255,255,255,0.2); padding: 12px; border-radius: 14px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
     .brand-hero-text { z-index: 2; margin: 2rem 0; }
@@ -156,9 +156,9 @@
 <body>
 
 <div class="auth-wrapper">
-  <!-- Sisi Kiri: Penuh Warna & Modern -->
+  <!-- Sisi Kiri: Branding Modern & Dinamis -->
   <div class="auth-brand-side">
-    <div class="brand-logo-wrap">
+    <div class="brand-logo-wrap" id="secretDevTrigger" title="Klik 5x untuk mode khusus">
       <i class="fas fa-cash-register"></i>
       <span>And POS</span>
     </div>
@@ -204,11 +204,11 @@
       </button>
       <div class="auth-footer-link" style="display: flex; justify-content: space-between; margin-top: 1rem;">
         <a onclick="switchMode('forgot')">Lupa kata sandi?</a>
-        <a onclick="switchMode('register')" style="color: var(--success);">Daftar Akun Baru</a>
+        <a onclick="switchMode('register')" style="color: var(--success);">Daftar Akun Staf</a>
       </div>
     </form>
 
-    <!-- FORM PENDAFTARAN (Pengajuan ke Owner/Developer) -->
+    <!-- FORM PENDAFTARAN (Hanya Kasir & Admin, Opsi Owner/Developer Tersembunyi) -->
     <form id="formRegister" style="display:none;">
       <div class="form-group">
         <label class="form-label">Nama Lengkap</label>
@@ -238,7 +238,9 @@
           <select class="form-control" id="regRole">
             <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
             <option value="admin">Admin (Operasional & Stok)</option>
-            <option value="owner">Owner (Pemilik Toko)</option>
+            <!-- Opsi Owner & Developer disembunyikan / hanya muncul via klik rahasia -->
+            <option value="owner" id="optOwner" style="display:none;">Owner (Pemilik Toko)</option>
+            <option value="developer" id="optDev" style="display:none;">Developer (Full Akses)</option>
           </select>
         </div>
       </div>
@@ -311,6 +313,18 @@
       document.getElementById("brandDesc").textContent = "Masukkan email untuk menerima tautan pemulihan";
     }
   }
+
+  // Tombol Rahasia: Klik logo 5 kali berturut-turut untuk memunculkan opsi Owner & Developer di form pendaftaran
+  let clickCount = 0;
+  document.getElementById("secretDevTrigger").addEventListener("click", () => {
+    clickCount++;
+    if (clickCount === 5) {
+      document.getElementById("optOwner").style.display = "block";
+      document.getElementById("optDev").style.display = "block";
+      alert("Mode khusus Owner & Developer diaktifkan!");
+      clickCount = 0;
+    }
+  });
 
   async function recordUserLogin(userId) {
     try {
@@ -450,30 +464,6 @@
       btn.disabled = false;
       btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
       errBox.textContent = "Gagal mendaftar: " + err.message;
-      errBox.style.display = "block";
-    }
-  };
-
-  document.getElementById("formForgot").onsubmit = async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("forgotEmail").value.trim();
-    const btn = document.getElementById("btnSubmitForgot");
-
-    clearAlerts();
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim link...';
-
-    try {
-      await auth.sendPasswordResetEmail(email);
-      succBox.textContent = "Link pemulihan kata sandi telah dikirim ke email Anda.";
-      succBox.style.display = "block";
-      btn.disabled = false;
-      btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
-      document.getElementById("formForgot").reset();
-    } catch (err) {
-      btn.disabled = false;
-      btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
-      errBox.textContent = "Gagal mengirim link: " + err.message;
       errBox.style.display = "block";
     }
   };
