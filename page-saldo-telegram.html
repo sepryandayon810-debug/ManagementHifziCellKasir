@@ -326,7 +326,6 @@
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); }
     .form-textarea { min-height: 120px; resize: vertical; }
 
-    /* MODAL KUSTOM */
     .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 450px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
@@ -382,13 +381,22 @@
     .toast-pill.success { border-left-color: var(--success); }
     .toast-pill.error { border-left-color: var(--danger); }
 
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
-    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
-    .mobile-nav-item.active { color: var(--primary); }
-    .mobile-nav-item i { font-size: 1.1rem; }
+    .mobile-bar {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      height: 60px; background: var(--bg-surface); border-top: 1px solid var(--border);
+      z-index: 99; padding: 0 0.5rem;
+    }
+    .mobile-bar-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      text-decoration: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 600;
+    }
+    .mobile-bar-item.active { color: var(--primary); }
+    .mobile-bar-item i { font-size: 1.1rem; }
+
     @media (max-width: 1024px) {
-      .mobile-nav { display: flex; }
-      .page-content { padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); }
+      .mobile-bar { display: flex; }
+      .page-content { padding-bottom: calc(60px + 1.5rem); }
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
@@ -443,7 +451,7 @@
           <div class="nav-section-title">Transaksi</div>
           <ul class="nav-menu">
             <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
-            <li class="nav-item nav-dropdown open" id="dropdownKas">
+            <li class="nav-item nav-dropdown" id="dropdownKas">
               <div class="nav-link nav-dropdown-toggle active" data-menu="kas">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
                   <i class="fas fa-wallet"></i><span>Kas Management</span>
@@ -895,7 +903,7 @@
           });
         }
 
-        // Logout via Modal Internal WebPOS (Bukan confirm windows)
+        // Logout dengan Modal Internal WebPOS (Bukan confirm windows)
         const logoutBtn = document.getElementById('btnLogout');
         if (logoutBtn) {
           logoutBtn.onclick = () => {
@@ -1245,17 +1253,20 @@
         }
       };
 
-      window.removeTool = async function(tool) {
+      // TOMBOL HAPUS TOOLS DENGAN MODAL KONFIRMASI INTERNAL WEBACCES
+      window.removeTool = function(tool) {
         if (activeTools.length <= 1) {
           Utils.showToast('Minimal harus ada 1 tools aktif', 'warning');
           return;
         }
-        activeTools = activeTools.filter(t => t !== tool);
-        await saveToolsToDb();
-        renderToolManagerList();
-        renderToolsGrid();
-        updateFilterToolDropdown();
-        Utils.showToast('Tools dihapus', 'success');
+        showCustomConfirm("Hapus Tools", `Apakah Anda yakin ingin menghapus tools <b>${tool}</b> dari daftar aktif?`, "danger", "Ya, Hapus", async () => {
+          activeTools = activeTools.filter(t => t !== tool);
+          await saveToolsToDb();
+          renderToolManagerList();
+          renderToolsGrid();
+          updateFilterToolDropdown();
+          Utils.showToast('Tools dihapus', 'success');
+        });
       };
 
       async function saveToolsToDb() {
