@@ -442,6 +442,50 @@
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
     .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
 
+    /* PERBAIKAN LOADING OVERLAY & SPINNER */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .loading-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border: 3.5px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spinOverlay 0.8s linear infinite;
+    }
+    @keyframes spinOverlay {
+      to { transform: rotate(360deg); }
+    }
+
+    /* TOAST NOTIFIKASI */
+    .toast-box {
+      position: fixed;
+      bottom: calc(var(--bottom-nav-height) + 1rem);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border);
@@ -752,7 +796,7 @@
       let lastTransactionData = null;
       let storeSettings = {};
 
-      const INITIAL_BANKS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
+      const INITIAL_BANKS = [];
       let bankList = [];
 
       // 1. LOAD DARI CLOUD FIRESTORE (DENGAN LOCALSTORAGE FALLBACK)
@@ -785,7 +829,7 @@
         }
       }
 
-      // 2. SIMPAN KE CLOUD FIRESTORE SAAT ADA PERUBAHAN
+      // 2. SIMPAN KE CLOUD SECARA BACKGROUND (TANPA MEMICU LOADING OVERLAY)
       async function saveBankListToCloud(newList) {
         bankList = newList;
         localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
@@ -799,7 +843,6 @@
           });
         } catch(e) {
           console.error("Gagal sinkron bank ke Cloud Firestore:", e);
-          Utils.showToast("Tersimpan lokal, gagal sinkron ke cloud", "warning");
         }
       }
 
@@ -864,7 +907,7 @@
           await saveBankListToCloud(updated);
           window.selectBankChip(name);
           input.value = '';
-          Utils.showToast(`"${name}" tersimpan ke Cloud!`, 'success');
+          Utils.showToast(`"${name}" berhasil ditambahkan!`, 'success');
         } else {
           Utils.showToast(`"${name}" sudah ada dalam daftar`, 'info');
         }
@@ -878,7 +921,7 @@
         if (noteInput && noteInput.value === name) {
           noteInput.value = '';
         }
-        Utils.showToast(`"${name}" berhasil dihapus dari Cloud`, 'info');
+        Utils.showToast(`"${name}" berhasil dihapus`, 'info');
       };
 
       function isFromKasir() {
