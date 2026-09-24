@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Akses Masuk - And POS</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,10 +21,12 @@
       --success: #059669;
       --danger: #dc2626;
       --warning: #d97706;
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
+      /* Gradien gelap elegan bernuansa finansial (Dark Slate to Deep Indigo) */
       background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
       background-attachment: fixed;
       color: var(--text-main);
@@ -32,108 +34,55 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.25rem;
+      padding: 1rem;
     }
 
-    .auth-wrapper {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .auth-container {
       width: 100%;
-      max-width: 960px;
+      max-width: 440px;
       background: var(--surface);
-      border-radius: 28px;
+      border-radius: 24px;
+      box-shadow: var(--shadow-lg);
       overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      padding: 2.25rem 2rem;
     }
 
-    @media(max-width: 768px) {
-      .auth-wrapper {
-        grid-template-columns: 1fr;
-        max-width: 440px;
-      }
+    .brand-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .logo-badge {
+      width: 54px; height: 54px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 16px; display: inline-flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 1.4rem; margin-bottom: 0.75rem;
+      box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+    }
+    .brand-title {
+      font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;
+    }
+    .brand-desc {
+      font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; font-weight: 500;
     }
 
-    /* Sisi Kiri: Branding Elegan & Berani */
-    .auth-brand-side {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%);
-      color: #fff;
-      padding: 3.5rem 3rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      position: relative;
-      overflow: hidden;
+    .form-header { margin-bottom: 1.25rem; }
+    .form-header h3 {
+      font-size: 1.3rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;
+      cursor: pointer; user-select: none; display: inline-block;
     }
-    .auth-brand-side::before {
-      content: '';
-      position: absolute;
-      width: 350px; height: 350px;
-      background: rgba(79, 70, 229, 0.2);
-      border-radius: 50%;
-      top: -120px; right: -120px;
-      backdrop-filter: blur(15px);
-    }
-    .brand-logo-wrap {
-      display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.35rem; z-index: 2; cursor: pointer;
-    }
-    .brand-logo-wrap i { font-size: 1.6rem; background: rgba(79, 70, 229, 0.4); padding: 12px; border-radius: 14px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); color: #818cf8; }
-    .brand-hero-text { z-index: 2; margin: 2rem 0; }
-    .brand-hero-text h2 { font-size: 2.15rem; font-weight: 800; line-height: 1.2; margin-bottom: 1rem; letter-spacing: -0.02em; }
-    .brand-hero-text p { font-size: 0.95rem; opacity: 0.85; line-height: 1.6; color: #cbd5e1; }
-    .brand-footer-text { font-size: 0.78rem; opacity: 0.6; z-index: 2; font-weight: 500; }
+    .form-header p { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem; }
 
-    @media(max-width: 768px) {
-      .auth-brand-side { display: none; }
-    }
-
-    /* Logo khusus versi mobile */
-    .mobile-brand-header {
-      display: none;
-      align-items: center;
-      gap: 0.65rem;
-      margin-bottom: 1.25rem;
-    }
-    .mobile-brand-header i {
-      font-size: 1.25rem;
-      background: var(--primary-light);
-      color: var(--primary);
-      padding: 10px;
-      border-radius: 10px;
-    }
-    .mobile-brand-header span {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: var(--text-main);
-    }
-    @media(max-width: 768px) {
-      .mobile-brand-header { display: flex; }
-    }
-
-    /* Sisi Kanan: Form */
-    .auth-form-side {
-      padding: 3rem 2.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      background: var(--surface);
-      max-height: 95vh;
-      overflow-y: auto;
-    }
-
-    .form-header { margin-bottom: 1.5rem; }
-    .form-header h3 { font-size: 1.65rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; cursor: pointer; user-select: none; }
-    .form-header p { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem; }
-
-    .form-group { margin-bottom: 1.15rem; }
-    .form-label { display: block; font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.4rem; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; }
     .input-wrap { position: relative; }
-    .input-wrap i.field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem; }
+    .input-wrap i.field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
     
     .form-control {
-      width: 100%; padding: 0.8rem 1rem 0.8rem 2.75rem;
-      border: 1.5px solid var(--border); border-radius: 14px;
+      width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem;
+      border: 1.5px solid var(--border); border-radius: 12px;
       font-size: 0.9rem; outline: none; font-family: inherit; background: #f8fafc;
-      transition: all 0.2s ease; color: var(--text-main); font-weight: 500;
+      transition: all 0.15s ease; color: var(--text-main); font-weight: 500;
     }
     .form-control:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px var(--primary-light); }
     
@@ -148,30 +97,34 @@
     }
 
     .btn-submit {
-      width: 100%; padding: 0.9rem; background: linear-gradient(135deg, var(--primary), #6366f1);
-      color: #fff; border: none; border-radius: 14px;
-      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      width: 100%; padding: 0.85rem; background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 0.92rem; font-weight: 700; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      gap: 0.5rem; transition: all 0.2s ease; margin-top: 0.75rem;
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+      gap: 0.5rem; transition: all 0.15s ease; margin-top: 0.75rem;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
     }
     .btn-submit:hover { filter: brightness(1.05); transform: translateY(-1px); }
 
     .alert-box {
-      padding: 0.85rem 1rem; border-radius: 12px; font-size: 0.82rem;
-      margin-bottom: 1.25rem; display: none; font-weight: 600; line-height: 1.4;
+      padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.8rem;
+      margin-bottom: 1.15rem; display: none; font-weight: 600; line-height: 1.4;
     }
     .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--success); }
     .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: var(--warning); }
 
     .auth-footer-link {
-      text-align: center; margin-top: 1.25rem; font-size: 0.85rem;
+      text-align: center; margin-top: 1.15rem; font-size: 0.82rem;
     }
     .auth-footer-link a {
       color: var(--primary); text-decoration: none; font-weight: 700; cursor: pointer;
     }
     .auth-footer-link a:hover { text-decoration: underline; }
+
+    .app-version {
+      text-align: center; font-size: 0.72rem; color: #94a3b8; margin-top: 1.5rem; font-weight: 500;
+    }
 
     /* CUSTOM MODAL INTERNAL */
     .custom-modal-backdrop {
@@ -184,21 +137,20 @@
     .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
     .custom-dialog-card {
       background: #ffffff; border: 1px solid var(--border);
-      border-radius: 20px; width: 100%; max-width: 380px;
+      border-radius: 20px; width: 100%; max-width: 360px;
       padding: 1.75rem 1.5rem; box-shadow: 0 10px 25px -3px rgba(0,0,0,0.1); text-align: center;
     }
     .dialog-icon-wrap {
-      width: 60px; height: 60px; border-radius: 50%;
+      width: 56px; height: 56px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; margin-bottom: 1rem;
+      font-size: 1.4rem; margin-bottom: 1rem; background: #ecfdf5; color: #059669;
     }
-    .dialog-icon-wrap.success { background: #ecfdf5; color: #059669; }
-    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: #0f172a; }
-    .dialog-message { font-size: 0.85rem; color: #64748b; line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.35rem; color: #0f172a; }
+    .dialog-message { font-size: 0.82rem; color: #64748b; line-height: 1.4; margin-bottom: 1.25rem; }
     .dialog-btn {
-      width: 100%; padding: 0.75rem; border-radius: 12px;
+      width: 100%; padding: 0.7rem; border-radius: 10px;
       font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
-      font-family: inherit; transition: all 0.15s; background: var(--primary); color: #fff;
+      font-family: inherit; background: var(--primary); color: #fff;
     }
     .dialog-btn:hover { background: var(--primary-hover); }
   </style>
@@ -211,140 +163,126 @@
 </head>
 <body>
 
-<div class="auth-wrapper">
-  <!-- Sisi Kiri: Branding (Desktop) -->
-  <div class="auth-brand-side">
-    <div class="brand-logo-wrap" id="secretDevTriggerDesktop" title="Mode Khusus">
-      <i class="fas fa-cash-register"></i>
-      <span>And POS</span>
-    </div>
-    <div class="brand-hero-text">
-      <h2>Kelola Transaksi & Toko Jadi Lebih Mudah</h2>
-      <p>Sistem Point of Sales terintegrasi untuk kasir, manajemen stok produk, pencatatan hutang piutang, dan laporan keuangan real-time.</p>
-    </div>
-    <div class="brand-footer-text">
-      &copy; 2026 And POS System. All rights reserved.
-    </div>
+<div class="auth-container">
+  <div class="brand-header">
+    <div class="logo-badge"><i class="fas fa-cash-register"></i></div>
+    <h1 class="brand-title">And POS</h1>
+    <p class="brand-desc">Sistem Kasir & Manajemen Toko Profesional</p>
   </div>
 
-  <!-- Sisi Kanan: Form -->
-  <div class="auth-form-side">
-    <div class="mobile-brand-header">
-      <i class="fas fa-cash-register"></i>
-      <span id="secretDevTriggerMobile">And POS</span>
-    </div>
-
-    <div class="form-header">
-      <h3 id="formHeading">Selamat Datang 👋</h3>
-      <p id="brandDesc">Silakan masuk menggunakan akun terdaftar</p>
-    </div>
-
-    <div class="alert-box alert-error" id="errorBox"></div>
-    <div class="alert-box alert-success" id="successBox"></div>
-    <div class="alert-box alert-warning" id="warningBox"></div>
-
-    <!-- FORM LOGIN -->
-    <form id="formLogin">
-      <div class="form-group">
-        <label class="form-label">Username atau Email</label>
-        <div class="input-wrap">
-          <i class="fas fa-user-tag field-icon"></i>
-          <input type="text" class="form-control" id="loginIdentifier" placeholder="username atau email@toko.com" required>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <div class="input-wrap">
-          <i class="fas fa-lock field-icon"></i>
-          <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
-        </div>
-      </div>
-      <button type="submit" class="btn-submit" id="btnSubmitLogin">
-        <span>Masuk ke Sistem</span>
-        <i class="fas fa-arrow-right"></i>
-      </button>
-      <div class="auth-footer-link" style="display: flex; justify-content: space-between; margin-top: 1rem;">
-        <a onclick="switchMode('forgot')">Lupa kata sandi?</a>
-        <a onclick="switchMode('register')" style="color: var(--success);">Daftar Akun Staf</a>
-      </div>
-    </form>
-
-    <!-- FORM PENDAFTARAN -->
-    <form id="formRegister" style="display:none;">
-      <div class="form-group">
-        <label class="form-label">Nama Lengkap</label>
-        <div class="input-wrap">
-          <i class="fas fa-id-card field-icon"></i>
-          <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepryanda Yon" required>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Username</label>
-        <div class="input-wrap">
-          <i class="fas fa-at field-icon"></i>
-          <input type="text" class="form-control" id="regUsername" placeholder="sepry (tanpa spasi)" required>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email Aktif</label>
-        <div class="input-wrap">
-          <i class="fas fa-envelope field-icon"></i>
-          <input type="email" class="form-control" id="regEmail" placeholder="admin@toko.com" required>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Pengajuan Role / Akses</label>
-        <div class="input-wrap">
-          <i class="fas fa-shield-halved field-icon"></i>
-          <select class="form-control" id="regRole">
-            <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
-            <option value="admin">Admin (Operasional & Stok)</option>
-            <!-- Opsi Owner & Developer terbuka lewat klik rahasia -->
-            <option value="owner" id="optOwner" style="display:none;">Owner (Pemilik Toko)</option>
-            <option value="developer" id="optDev" style="display:none;">Developer (Full Akses)</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <div class="input-wrap">
-          <i class="fas fa-lock field-icon"></i>
-          <input type="password" class="form-control" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
-        </div>
-      </div>
-      <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background: linear-gradient(135deg, #059669, #10b981); box-shadow: 0 6px 20px rgba(5,150,105,0.35);">
-        <span>Ajukan Pendaftaran Akun</span>
-        <i class="fas fa-user-plus"></i>
-      </button>
-      <div class="auth-footer-link">
-        <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
-      </div>
-    </form>
-
-    <!-- FORM LUPA PASSWORD -->
-    <form id="formForgot" style="display:none;">
-      <div class="form-group">
-        <label class="form-label">Email Terdaftar</label>
-        <div class="input-wrap">
-          <i class="fas fa-envelope field-icon"></i>
-          <input type="email" class="form-control" id="forgotEmail" placeholder="Masukkan email akun Anda" required>
-        </div>
-      </div>
-      <button type="submit" class="btn-submit" id="btnSubmitForgot">
-        <span>Kirim Link Reset Password</span>
-        <i class="fas fa-paper-plane"></i>
-      </button>
-      <div class="auth-footer-link">
-        <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
-      </div>
-    </form>
+  <div class="form-header">
+    <!-- Klik 5x pada teks judul ini untuk membuka opsi Owner & Developer secara rahasia -->
+    <h3 id="formHeading" title="Mode Khusus">Selamat Datang 👋</h3>
+    <p id="brandDesc">Silakan masuk menggunakan akun terdaftar</p>
   </div>
+
+  <div class="alert-box alert-error" id="errorBox"></div>
+  <div class="alert-box alert-success" id="successBox"></div>
+  <div class="alert-box alert-warning" id="warningBox"></div>
+
+  <!-- FORM LOGIN -->
+  <form id="formLogin">
+    <div class="form-group">
+      <label class="form-label">Username atau Email</label>
+      <div class="input-wrap">
+        <i class="fas fa-user-tag field-icon"></i>
+        <input type="text" class="form-control" id="loginIdentifier" placeholder="username atau email@toko.com" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <i class="fas fa-lock field-icon"></i>
+        <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-submit" id="btnSubmitLogin">
+      <span>Masuk ke Sistem</span>
+      <i class="fas fa-arrow-right"></i>
+    </button>
+    <div class="auth-footer-link" style="display: flex; justify-content: space-between; margin-top: 1rem;">
+      <a onclick="switchMode('forgot')">Lupa kata sandi?</a>
+      <a onclick="switchMode('register')" style="color: var(--success);">Daftar Akun Staf</a>
+    </div>
+  </form>
+
+  <!-- FORM PENDAFTARAN -->
+  <form id="formRegister" style="display:none;">
+    <div class="form-group">
+      <label class="form-label">Nama Lengkap</label>
+      <div class="input-wrap">
+        <i class="fas fa-id-card field-icon"></i>
+        <input type="text" class="form-control" id="regName" placeholder="Contoh: Sepryanda Yon" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <div class="input-wrap">
+        <i class="fas fa-at field-icon"></i>
+        <input type="text" class="form-control" id="regUsername" placeholder="sepry (tanpa spasi)" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Aktif</label>
+      <div class="input-wrap">
+        <i class="fas fa-envelope field-icon"></i>
+        <input type="email" class="form-control" id="regEmail" placeholder="admin@toko.com" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pengajuan Role / Akses</label>
+      <div class="input-wrap">
+        <i class="fas fa-shield-halved field-icon"></i>
+        <select class="form-control" id="regRole">
+          <option value="kasir" selected>Kasir (Transaksi Penjualan)</option>
+          <option value="admin">Admin (Operasional & Stok)</option>
+          <!-- Opsi Owner & Developer tersembunyi secara default -->
+          <option value="owner" id="optOwner" style="display:none;">Owner (Pemilik Toko)</option>
+          <option value="developer" id="optDev" style="display:none;">Developer (Full Akses)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <i class="fas fa-lock field-icon"></i>
+        <input type="password" class="form-control" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background: linear-gradient(135deg, #059669, #10b981);">
+      <span>Ajukan Pendaftaran Akun</span>
+      <i class="fas fa-user-plus"></i>
+    </button>
+    <div class="auth-footer-link">
+      <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
+    </div>
+  </form>
+
+  <!-- FORM LUPA PASSWORD -->
+  <form id="formForgot" style="display:none;">
+    <div class="form-group">
+      <label class="form-label">Email Terdaftar</label>
+      <div class="input-wrap">
+        <i class="fas fa-envelope field-icon"></i>
+        <input type="email" class="form-control" id="forgotEmail" placeholder="Masukkan email akun Anda" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-submit" id="btnSubmitForgot">
+      <span>Kirim Link Reset Password</span>
+      <i class="fas fa-paper-plane"></i>
+    </button>
+    <div class="auth-footer-link">
+      <a onclick="switchMode('login')"><i class="fas fa-arrow-left"></i> Kembali ke halaman Masuk</a>
+    </div>
+  </form>
+
+  <div class="app-version">&copy; 2026 And POS System. All rights reserved.</div>
 </div>
 
 <!-- CUSTOM MODAL INTERNAL -->
 <div class="custom-modal-backdrop" id="customAlertModal">
   <div class="custom-dialog-card">
-    <div class="dialog-icon-wrap success"><i class="fas fa-shield-halved"></i></div>
+    <div class="dialog-icon-wrap"><i class="fas fa-shield-halved"></i></div>
     <h3 class="dialog-title">Mode Khusus</h3>
     <p class="dialog-message">Opsi Owner & Developer berhasil diaktifkan pada pilihan role.</p>
     <button type="button" class="dialog-btn" onclick="closeCustomAlert()">Mengerti</button>
@@ -395,20 +333,17 @@
     }
   }
 
-  // Tombol Rahasia: Klik logo 5 kali di desktop (atau mobile) untuk membuka opsi Owner & Developer
+  // Tombol rahasia: Klik 5 kali pada teks "Selamat Datang" untuk membuka opsi Owner & Developer
   let clickCount = 0;
-  function triggerSecretDev() {
+  document.getElementById("formHeading").addEventListener("click", () => {
     clickCount++;
-    if (clickCount >= 5) {
+    if (clickCount === 5) {
       document.getElementById("optOwner").style.display = "block";
       document.getElementById("optDev").style.display = "block";
       showInternalAlert("Mode Khusus Diaktifkan", "Opsi pendaftaran untuk Owner & Developer kini telah terbuka di pilihan role.");
       clickCount = 0;
     }
-  }
-
-  document.getElementById("secretDevTriggerDesktop").addEventListener("click", triggerSecretDev);
-  document.getElementById("secretDevTriggerMobile").addEventListener("click", triggerSecretDev);
+  });
 
   async function recordUserLogin(userId) {
     try {
