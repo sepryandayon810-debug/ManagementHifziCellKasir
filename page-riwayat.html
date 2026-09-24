@@ -22,12 +22,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
   <style>
     /* ============================================
        WEBPOS RIWAYAT - TEMA GLOBAL SELARAS DASHBOARD/PENGATURAN
@@ -92,9 +86,9 @@
     body{
       background:var(--bg-base);
       color:var(--text-main);line-height:1.6;min-height:100vh;
+      overflow-x:hidden;
     }
     [data-theme="dark"] body { background:var(--bg-base) !important; color:var(--text-main) !important; }
-    body{overflow-x:hidden}
 
     .app-container{display:flex;min-height:100vh;min-width:0}
 
@@ -107,8 +101,8 @@
     /* SIDEBAR */
     .sidebar{
       position:fixed;top:0;left:0;width:var(--sidebar-width);height:100vh;
-       background:var(--bg-surface);border-right:1px solid var(--border);z-index:1000;
-       display:flex;flex-direction:column;transition:all .25s;box-shadow:none;
+      background:var(--bg-surface);border-right:1px solid var(--border);z-index:1000;
+      display:flex;flex-direction:column;transition:all .25s;box-shadow:none;
     }
     [data-theme="dark"] .sidebar{background:var(--bg-surface);border-right-color:var(--border)}
     .sidebar.collapsed{width:var(--sidebar-collapsed)}
@@ -117,12 +111,12 @@
     .sidebar-header{padding:1.25rem;display:flex;align-items:center;gap:1rem;min-height:var(--header-h)}
     .logo-container{display:flex;align-items:center;gap:.5rem}
     .logo-icon{
-       width:42px;height:42px;background:linear-gradient(135deg,var(--primary),#8b5cf6);border-radius:.75rem;
+      width:42px;height:42px;background:linear-gradient(135deg,var(--primary),#8b5cf6);border-radius:.75rem;
       display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:1.25rem;
-       box-shadow:none
+      box-shadow:none;
     }
     .logo-text{
-       font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+      font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#8b5cf6);
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;
     }
     .sidebar.collapsed .logo-text{opacity:0;width:0;overflow:hidden}
@@ -138,7 +132,7 @@
     .search-input-wrapper i{position:absolute;left:1rem;color:var(--text-muted);font-size:.875rem}
     .search-input{
       width:100%;padding:.5rem 1rem .5rem 2.5rem;border:1.5px solid var(--border);
-      border-radius:.75rem;background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;
+      border-radius:.75rem;background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;outline:none;
     }
 
     .sidebar-nav{flex:1;overflow-y:auto;padding:1rem}
@@ -170,7 +164,7 @@
     .sidebar-footer{padding:1rem;border-top:1px solid var(--border);background:var(--bg-subtle)}
     .user-profile{display:flex;align-items:center;gap:1rem;cursor:pointer}
     .user-avatar{
-       width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+      width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
       border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:600;
     }
     .user-info{flex:1;overflow:hidden}
@@ -184,8 +178,8 @@
     @media(max-width:1024px){.main-content{margin-left:0}}
 
     .main-header{
-       height:var(--header-h);background:var(--bg-surface);
-       border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
+      height:var(--header-h);background:var(--bg-surface);
+      border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
       padding:0 1.5rem;position:sticky;top:0;z-index:100;
     }
     [data-theme="dark"] .main-header{background:var(--bg-surface);border-bottom-color:var(--border)}
@@ -195,7 +189,7 @@
 
     .btn-icon{
       width:38px;height:38px;border-radius:var(--radius-md);background:var(--bg-subtle);
-      border:1px solid var(--border);color:var(--text-sub);display:flex;align-items:center;justify-content:center;cursor:pointer;
+      border:1px solid var(--border);color:var(--text-sub);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;
     }
     .btn-icon:hover{background:var(--primary-light);color:var(--primary)}
 
@@ -207,8 +201,8 @@
       display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.625rem 1.25rem;
       border-radius:var(--radius-lg);font-size:.875rem;font-weight:600;cursor:pointer;border:none;outline:none;transition:all .2s;
     }
-     .btn-primary{background:var(--primary);color:white;box-shadow:none}
-     .btn-primary:hover{background:var(--primary-hover);transform:translateY(-1px)}
+    .btn-primary{background:var(--primary);color:white;box-shadow:none}
+    .btn-primary:hover{background:var(--primary-hover);transform:translateY(-1px)}
     .btn-secondary{background:var(--bg-subtle);color:var(--text-sub);border:1px solid var(--border)}
     .btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
     .btn-success{background:var(--success);color:white}
@@ -263,7 +257,7 @@
     .riwayat-search-box i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}
     .riwayat-search-box input{
       width:100%;padding:.65rem 1rem .65rem 2.5rem;border:1.5px solid var(--border);
-      border-radius:var(--radius-lg);background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;
+      border-radius:var(--radius-lg);background:var(--bg-subtle);color:var(--text-main);font-size:.875rem;outline:none;
     }
 
     /* TRANSACTION TABLE */
@@ -308,7 +302,7 @@
     /* MOBILE NAV */
     .mobile-nav{
       display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-height);
-       background:var(--bg-surface);border-top:1px solid var(--border);z-index:999;padding:0 0.5rem;
+      background:var(--bg-surface);border-top:1px solid var(--border);z-index:999;padding:0 0.5rem;
     }
     .mobile-nav-item{
       flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
@@ -352,10 +346,21 @@
     .struk-modal-overlay.active{opacity:1;visibility:visible}
     .struk-modal{background:var(--bg-surface);border-radius:1rem;max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-     .transaction-sequence{display:inline-flex;min-width:2.75rem;justify-content:center;align-items:center;padding:.3rem .45rem;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:800;font-variant-numeric:tabular-nums}
-     .sequence-heading{width:72px;text-align:center !important}
-     @media(max-width:768px){.sequence-heading{width:58px}}
+    .transaction-sequence{display:inline-flex;min-width:2.75rem;justify-content:center;align-items:center;padding:.3rem .45rem;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:800;font-variant-numeric:tabular-nums}
+    .sequence-heading{width:72px;text-align:center !important}
+    @media(max-width:768px){.sequence-heading{width:58px}}
   </style>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -425,9 +430,29 @@
         </div>
 
         <div class="nav-section">
+          <div class="nav-section-title">Integrasi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+            <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+          </ul>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Penggajian</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+          </ul>
+        </div>
+
+        <div class="nav-section">
           <div class="nav-section-title">Sistem</div>
           <ul class="nav-menu">
+            <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
             <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+            <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+            <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
           </ul>
         </div>
       </nav>
@@ -452,6 +477,7 @@
         </div>
         <div class="header-actions">
           <button class="btn btn-secondary btn-sm" id="btnExport"><i class="fas fa-file-export"></i><span>Export</span></button>
+          <button class="btn-icon" id="btnThemeToggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
           <button class="btn-icon" id="btnLogout" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </header>
@@ -638,16 +664,6 @@
   </div>
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-
   <script>
     (function() {
       "use strict";
@@ -704,7 +720,12 @@
           let userData = { name: user.email, role: 'kasir' };
           try {
             const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) userData = doc.data();
+            if (doc.exists) {
+              userData = doc.data();
+              if (typeof RoleGuard !== 'undefined') {
+                RoleGuard.apply(userData.role || 'kasir');
+              }
+            }
           } catch(e) {}
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
@@ -760,6 +781,24 @@
             parent.classList.toggle('open');
           });
         });
+
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        const themeToggle = document.getElementById('btnThemeToggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const nextTheme = isDark ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            localStorage.setItem("webpos_theme", nextTheme);
+          });
+        }
 
         document.getElementById('btnLogout').onclick = () => {
           Utils.confirm('Yakin ingin logout?', () => {
@@ -824,7 +863,6 @@
         document.getElementById('endDate').value = end.toISOString().split('T')[0];
       }
 
-
       function getTimestampMillis(transaction) {
         const value = transaction && (transaction.timestamp ?? transaction.createdAt ?? transaction.updatedAt);
         if (value && typeof value.toDate === 'function') return value.toDate().getTime();
@@ -857,6 +895,7 @@
                d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
       }
 
+      // LOAD TRANSACTIONS DILENGKAPI UNTUK MENGGABUNGKAN DATA TRANSAKSI & PEMBELIAN
       async function loadTransactions() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
@@ -867,24 +906,54 @@
           const startStr = startDate;
           const endStr = endDate;
 
-          const snapshot = await db.collection("transactions")
+          // 1. Ambil dari koleksi transactions root
+          const txSnapshot = await db.collection("transactions")
             .where("date", ">=", startStr)
             .where("date", "<=", endStr)
             .get();
 
           allTransactions = [];
-          snapshot.forEach(doc => {
+          txSnapshot.forEach(doc => {
             const data = doc.data();
             if (data.status !== 'cancelled') {
               allTransactions.push({ id: doc.id, ...data });
             }
           });
 
-          // Tampilkan transaksi terbaru di atas, tetapi nomor tetap mengikuti urutan input.
+          // 2. Ambil dari koleksi purchases root
+          try {
+            const purSnapshot = await db.collection("purchases")
+              .where("date", ">=", startStr)
+              .where("date", "<=", endStr)
+              .get();
+
+            purSnapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.status !== 'cancelled') {
+                // Hindari duplikasi jika purchase sudah tercatat di transactions
+                if (!allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) {
+                  allTransactions.push({
+                    id: doc.id,
+                    type: 'pembelian',
+                    total: data.grandTotal || data.total || 0,
+                    amount: data.grandTotal || data.total || 0,
+                    note: 'Pembelian: ' + (data.supplier || 'Supplier Umum'),
+                    paymentMethod: 'Kas',
+                    ...data
+                  });
+                }
+              }
+            });
+          } catch(e) {
+            console.warn("Gagal load dari koleksi purchases:", e);
+          }
+
+          // Urutkan transaksi terbaru di atas
           allTransactions.sort((a, b) => {
             return getTimestampMillis(b) - getTimestampMillis(a) ||
               String(b.id).localeCompare(String(a.id));
           });
+
           assignInputSequence();
           filterAndRender();
           Utils.hideLoading();
@@ -903,7 +972,7 @@
             if (currentFilter === 'penjualan') return t.type === 'penjualan';
             if (currentFilter === 'kas') return t.type === 'kas_masuk' || t.type === 'kas_keluar';
             if (currentFilter === 'topup_tarik') return t.type === 'topup' || t.type === 'tarik';
-            if (currentFilter === 'pembelian') return t.type === 'pembelian';
+            if (currentFilter === 'pembelian') return t.type === 'pembelian' || t.category === 'pembelian';
             return true;
           });
         }
@@ -927,6 +996,9 @@
           if (names.length === 1) return names[0];
           return names[0] + ' +' + (names.length - 1) + ' lainnya';
         }
+        if (t.type === 'pembelian') {
+          return t.supplier ? `Pembelian (${t.supplier})` : 'Pembelian Restock';
+        }
         return t.note || TYPE_LABELS[t.type] || t.type || '-';
       }
 
@@ -941,23 +1013,24 @@
 
         tbody.innerHTML = transactions.map(t => {
           const desc = getTransactionDesc(t);
-          const shortId = t.id ? t.id.substring(0, 10) + '...' : '-';
+          const shortId = t.id ? (t.id.length > 15 ? t.id.substring(0, 12) + '...' : t.id) : '-';
           const icon = TYPE_ICONS[t.type] || 'fa-circle';
           const itemsHtml = buildDetailItems(t);
+          const amountValue = t.total ?? t.amount ?? t.grandTotal ?? 0;
 
           return `
             <tr class="data-row">
               <td><button class="expand-btn" id="expand-${t.id}" onclick="toggleDetail('${t.id}')"><i class="fas fa-chevron-down"></i></button></td>
               <td><span class="transaction-sequence">#${String(t.inputSequence || 0).padStart(3, '0')}</span></td>
               <td>
-                <div style="font-weight:600;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
-                <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace;">${shortId}</div>
+                <div style="font-weight:700;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
+                <div style="font-size:.74rem;color:var(--text-muted);font-family:monospace;">${shortId}</div>
               </td>
               <td style="white-space:nowrap">${formatDateTime(t.timestamp)}</td>
               <td><span class="transaction-type ${t.type}">${TYPE_LABELS[t.type] || t.type}</span></td>
               <td>${t.paymentMethod || 'Tunai'}</td>
               <td>${t.userName || '-'}</td>
-              <td style="font-weight:700;color:var(--primary);">${Utils.formatRupiah(t.total || t.amount || 0)}</td>
+              <td style="font-weight:800;color:var(--primary);">${Utils.formatRupiah(amountValue)}</td>
               <td style="text-align:center">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk"><i class="fas fa-print"></i></button>
                 <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit"><i class="fas fa-pen"></i></button>
@@ -977,24 +1050,24 @@
         let html = `
           <div class="detail-panel-grid">
             <div class="detail-panel-item"><div class="detail-panel-label">ID Transaksi</div><div class="detail-panel-value" style="font-family:monospace;">${t.id}</div></div>
-            <div class="detail-panel-item"><div class="detail-panel-label">Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
-            <div class="detail-panel-item"><div class="detail-panel-label">Catatan</div><div class="detail-panel-value">${t.note || '-'}</div></div>
-            <div class="detail-panel-item"><div class="detail-panel-label">Laba / Profit</div><div class="detail-panel-value" style="color:var(--success);">${Utils.formatRupiah(t.profit || t.adminFee || 0)}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">Petugas / Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">${t.type === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${t.type === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(t.profit || t.adminFee || 0)}</div></div>
           </div>
         `;
 
         if (t.items && t.items.length > 0) {
           html += `
-            <div style="font-weight:700;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">ITEM PRODUK</div>
+            <div style="font-weight:700;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">RINCIAN PRODUK</div>
             <table class="detail-items-table">
               <thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
               <tbody>
                 ${t.items.map(i => `
                   <tr>
-                    <td>${i.name}</td>
-                    <td>${i.quantity || i.qty}</td>
-                    <td>${Utils.formatRupiah(i.price)}</td>
-                    <td>${Utils.formatRupiah(i.total)}</td>
+                    <td>${i.name || i.productName || 'Barang'}</td>
+                    <td>${i.quantity || i.qty || 1}</td>
+                    <td>${Utils.formatRupiah(i.price || i.harga || 0)}</td>
+                    <td>${Utils.formatRupiah(i.total || ((i.price || i.harga || 0) * (i.quantity || i.qty || 1)))}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1045,16 +1118,16 @@
 ================================
          STRUK TRANSAKSI       
 ================================
- No.   : #${String(t.inputSequence || 0).padStart(3, '0')}
- ID    : ${t.id}
-Waktu : ${formatDateTime(t.timestamp)}
-Kasir : ${t.userName || '-'}
+ No.    : #${String(t.inputSequence || 0).padStart(3, '0')}
+ ID     : ${t.id}
+Waktu  : ${formatDateTime(t.timestamp)}
+Petugas: ${t.userName || '-'}
 --------------------------------
-${t.items ? t.items.map(i => `${i.name}\n${i.quantity} x ${Utils.formatRupiah(i.price)} =${Utils.formatRupiah(i.total)}`).join('\n') : (TYPE_LABELS[t.type] || t.type)}
+${t.items ? t.items.map(i => `${i.name \vert{}\vert{} i.productName}\n${i.quantity || i.qty} x ${Utils.formatRupiah(i.price \vert{}\vert{} i.harga)} =${Utils.formatRupiah(i.total)}`).join('\n') : (TYPE_LABELS[t.type] || t.type)}
 --------------------------------
-TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
+TOTAL  : ${Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0)}
 ================================
-     Terima Kasih Telah Berbelanja
+ Terima Kasih
 ================================
         `;
         document.getElementById('strukModal').classList.add('active');
@@ -1139,7 +1212,7 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
 
         pendingDeleteId = id;
         const message = transaction.type === 'penjualan'
-          ? 'Transaksi penjualan ini akan dihapus dan jumlah stok setiap item akan dikembalikan ke Produk. Proses tidak dilanjutkan jika ID produk tidak ditemukan.'
+          ? 'Transaksi penjualan ini akan dihapus dan jumlah stok setiap item akan dikembalikan ke Produk.'
           : 'Transaksi ini akan dihapus dari riwayat. Tindakan ini tidak dapat dibatalkan.';
         document.getElementById('deleteConfirmMessage').textContent = message;
         document.getElementById('deleteConfirmModal').classList.add('active');
@@ -1162,7 +1235,12 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
         try {
           Utils.showLoading(transaction.type === 'penjualan' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
           const stockResult = await restoreStockForTransaction(transaction);
+          
+          if (transaction.type === 'pembelian') {
+            await db.collection('purchases').doc(id).delete();
+          }
           await db.collection('transactions').doc(id).delete();
+
           Utils.hideLoading();
           Utils.showToast(
             stockResult.restored
@@ -1185,14 +1263,14 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
         document.getElementById('editTransactionInfo').textContent =
           'No. Input #' + String(transaction.inputSequence || 0).padStart(3, '0') +
           ' • ' + (TYPE_LABELS[transaction.type] || transaction.type);
-        document.getElementById('editNote').value = transaction.note || '';
+        document.getElementById('editNote').value = transaction.note || transaction.catatan || '';
         document.getElementById('editPaymentMethod').value = transaction.paymentMethod || 'Tunai';
 
         const amountGroup = document.getElementById('editAmountGroup');
         const amountInput = document.getElementById('editAmount');
         const isProductSale = transaction.type === 'penjualan';
         amountGroup.style.display = isProductSale ? 'none' : 'block';
-        amountInput.value = transaction.amount ?? transaction.total ?? 0;
+        amountInput.value = transaction.amount ?? transaction.total ?? transaction.grandTotal ?? 0;
         document.getElementById('transactionEditModal').classList.add('active');
       };
 
@@ -1225,7 +1303,11 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
             else updates.total = amount;
           }
 
+          if (transaction.type === 'pembelian') {
+            await db.collection('purchases').doc(id).update(updates);
+          }
           await db.collection('transactions').doc(id).update(updates);
+
           closeTransactionEditModal();
           Utils.showToast('Transaksi berhasil diperbarui', 'success');
           loadTransactions();
@@ -1243,7 +1325,7 @@ TOTAL : ${Utils.formatRupiah(t.total || t.amount || 0)}
         }
         let csv = 'No. Input,ID,Tanggal,Tipe,Metode,Kasir,Total\n';
         allTransactions.forEach(t => {
-          csv += [String(t.inputSequence || 0).padStart(3, '0'), t.id, formatDateTime(t.timestamp), TYPE_LABELS[t.type] || t.type, t.paymentMethod || 'Tunai', t.userName || '-', t.total || t.amount || 0].join(',') + '\n';
+          csv += [String(t.inputSequence || 0).padStart(3, '0'), t.id, formatDateTime(t.timestamp), TYPE_LABELS[t.type] || t.type, t.paymentMethod || 'Tunai', t.userName || '-', t.total || t.amount || t.grandTotal || 0].join(',') + '\n';
         });
         const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
