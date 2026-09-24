@@ -279,12 +279,12 @@
 
     .form-group { margin-bottom: 1.15rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.35rem; }
-    .form-input, .form-select {
+    .form-input {
       width: 100%; padding: 0.7rem 0.95rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
       font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.15s;
     }
-    .form-input:focus, .form-select:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
+    .form-input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
 
     /* SEGMENTED PAYMENT TOGGLE (TUNAI / HUTANG) */
     .payment-type-toggle {
@@ -319,6 +319,45 @@
     }
     .payment-type-btn.active.hutang-active {
       color: var(--warning);
+    }
+
+    /* AUTOCOMPLETE PELANGGAN (SEPERTI KASIR & HUTANG) */
+    .customer-autocomplete-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .customer-results-box {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 500;
+      display: none;
+      margin-top: 3px;
+    }
+    .customer-results-box.active {
+      display: block;
+    }
+    .customer-result-item {
+      padding: 0.65rem 0.85rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .customer-result-item:hover {
+      background: var(--bg-subtle);
+    }
+    .customer-result-item:last-child {
+      border-bottom: none;
     }
 
     /* GRID BANK & E-WALLET */
@@ -719,7 +758,7 @@
                 <input type="text" class="form-input" id="topupNote" placeholder="Pilih tombol di bawah atau ketik manual...">
                 
                 <div class="bank-select-grid" id="bankChipsContainer">
-                  <!-- Tombol rapi diinjeksi via JS -->
+                  <!-- Tombol diinjeksi via JS -->
                 </div>
               </div>
 
@@ -733,7 +772,7 @@
 
               <!-- Pilihan Pembayaran: Tunai Langsung vs Hutang (Bon) -->
               <div class="form-group">
-                <label class="form-label">Status Pembayaran Pelanggan</label>
+                <label class="form-label">Metode Pembayaran</label>
                 <div class="payment-type-toggle">
                   <button type="button" class="payment-type-btn active" id="btnPayTunai" onclick="setPaymentMode('tunai')">
                     <i class="fas fa-money-bill-wave"></i> Tunai (Lunas)
@@ -744,16 +783,19 @@
                 </div>
               </div>
 
-              <!-- Bagian Khusus Hutang: Pilih Pelanggan -->
+              <!-- Input Pelanggan Autocomplete & Tambah Baru (Sesuai Kasir & Hutang) -->
               <div class="form-group" id="customerDebtWrapper" style="display: none; background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1.5px dashed var(--warning);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                  <label class="form-label" style="color: var(--warning); margin-bottom: 0;"><i class="fas fa-user-clock"></i> Data Pelanggan Berhutang *</label>
+                  <label class="form-label" style="color: var(--warning); margin-bottom: 0;"><i class="fas fa-user-clock"></i> Pelanggan Berhutang *</label>
+                  <button type="button" class="btn-add-bank-header" onclick="openAddCustomerModal()" style="color: var(--warning);">
+                    <i class="fas fa-user-plus"></i> Tambah Baru
+                  </button>
                 </div>
-                <select class="form-select" id="customerSelect">
-                  <option value="">-- Pilih Pelanggan Terdaftar --</option>
-                </select>
-                <div style="margin-top: 0.45rem;">
-                  <input type="text" class="form-input" id="customerManualInput" placeholder="Atau ketik nama pelanggan baru..." style="font-size: 0.82rem; padding: 0.5rem 0.75rem;">
+
+                <div class="customer-autocomplete-wrapper">
+                  <input type="text" class="form-input" id="customerSearchInput" placeholder="Ketik nama pelanggan..." autocomplete="off">
+                  <input type="hidden" id="selectedCustomerId">
+                  <div class="customer-results-box" id="customerResultsBox"></div>
                 </div>
               </div>
 
@@ -813,12 +855,40 @@
           <input type="text" class="form-input" id="newBankInput" placeholder="Tambah nama baru..." style="flex:1;">
           <button class="btn btn-primary" onclick="addNewBank()" style="width: auto; padding: 0.65rem 1rem;"><i class="fas fa-plus"></i></button>
         </div>
-        <div id="manageBankList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem;">
-          <!-- List bank rendered here via JS -->
-        </div>
+        <div id="manageBankList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem;"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary btn-sm" onclick="closeManageBankModal()" style="width:100%;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Pelanggan Baru -->
+  <div class="modal-overlay" id="addCustomerModal" onclick="if(event.target===this) closeAddCustomerModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
+          <i class="fas fa-user-plus" style="color:var(--primary);"></i> Tambah Pelanggan Baru
+        </h3>
+        <button class="btn-icon-box" onclick="closeAddCustomerModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap *</label>
+          <input type="text" class="form-input" id="newCustomerName" placeholder="Nama pelanggan">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nomor Telepon / WhatsApp</label>
+          <input type="text" class="form-input" id="newCustomerPhone" placeholder="08xxxxxxxxxx">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Alamat / Keterangan</label>
+          <input type="text" class="form-input" id="newCustomerAddress" placeholder="Alamat rumah / domisili">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeAddCustomerModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" onclick="saveNewCustomer()"><i class="fas fa-save"></i> Simpan Pelanggan</button>
       </div>
     </div>
   </div>
@@ -862,7 +932,7 @@
       const INITIAL_BANKS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
       let bankList = [];
 
-      // 1. LOAD BANK LIST DARI CLOUD FIRESTORE
+      // 1. SINKRONISASI LIST BANK CLOUD FIRESTORE
       async function loadBankList() {
         try {
           const cached = localStorage.getItem('webpos_bank_list');
@@ -888,11 +958,10 @@
             renderManageBankList();
           }
         } catch(err) {
-          console.warn("Gagal memuat list bank dari Cloud, memakai cache lokal:", err);
+          console.warn("Gagal memuat list bank dari Cloud, memakai data lokal:", err);
         }
       }
 
-      // 2. SIMPAN BANK KE CLOUD (BACKGROUND SYNC)
       async function saveBankListToCloud(newList) {
         bankList = newList;
         localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
@@ -977,7 +1046,7 @@
       };
 
       window.deleteBankItem = async function(name) {
-        bankList = bankList.filter(b => b !== name);
+        const updated = bankList.filter(b => b !== name);
         await saveBankListToCloud(updated);
         
         const noteInput = document.getElementById('topupNote');
@@ -987,21 +1056,107 @@
         Utils.showToast(`"${name}" berhasil dihapus`, 'info');
       };
 
-      // 3. LOAD DATA PELANGGAN UNTUK OPSI HUTANG
+      // 2. SISTEM PELANGGAN AUTOCOMPLETE
       async function loadCustomers() {
         try {
           const snap = await db.collection("customers").get();
           customersList = [];
-          const select = document.getElementById('customerSelect');
-          let html = '<option value="">-- Pilih Pelanggan Terdaftar --</option>';
           snap.forEach(doc => {
             const data = doc.data();
-            customersList.push({ id: doc.id, ...data });
-            html += `<option value="${doc.id}">${data.name || 'Tanpa Nama'} (${data.phone || '-'})</option>`;
+            customersList.push({ id: doc.id, name: data.name || 'Tanpa Nama', phone: data.phone || '-' });
           });
-          select.innerHTML = html;
-        } catch(e) {}
+          setupCustomerSearch();
+        } catch(e) {
+          console.error("Error load customers:", e);
+        }
       }
+
+      function setupCustomerSearch() {
+        const input = document.getElementById('customerSearchInput');
+        const box = document.getElementById('customerResultsBox');
+
+        input.addEventListener('input', function() {
+          const q = this.value.toLowerCase().trim();
+          if (!q) {
+            box.classList.remove('active');
+            return;
+          }
+
+          const filtered = customersList.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q));
+          if (filtered.length > 0) {
+            box.innerHTML = filtered.map(c => `
+              <div class="customer-result-item" onclick="window.selectCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">${c.name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</div>
+              </div>
+            `).join('');
+            box.classList.add('active');
+          } else {
+            box.innerHTML = `
+              <div class="customer-result-item" style="cursor: default; color: var(--text-muted); font-size: 0.82rem;">
+                Pelanggan tidak ditemukan
+              </div>
+            `;
+            box.classList.add('active');
+          }
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.customer-autocomplete-wrapper')) {
+            box.classList.remove('active');
+          }
+        });
+      }
+
+      window.selectCustomer = function(id, name) {
+        document.getElementById('customerSearchInput').value = name;
+        document.getElementById('selectedCustomerId').value = id;
+        document.getElementById('customerResultsBox').classList.remove('active');
+      };
+
+      window.openAddCustomerModal = function() {
+        document.getElementById('newCustomerName').value = document.getElementById('customerSearchInput').value || '';
+        document.getElementById('newCustomerPhone').value = '';
+        document.getElementById('newCustomerAddress').value = '';
+        document.getElementById('addCustomerModal').classList.add('active');
+        setTimeout(() => document.getElementById('newCustomerName').focus(), 150);
+      };
+
+      window.closeAddCustomerModal = function() {
+        document.getElementById('addCustomerModal').classList.remove('active');
+      };
+
+      window.saveNewCustomer = async function() {
+        const name = document.getElementById('newCustomerName').value.trim();
+        const phone = document.getElementById('newCustomerPhone').value.trim();
+        const address = document.getElementById('newCustomerAddress').value.trim();
+
+        if (!name) {
+          Utils.showToast('Nama pelanggan wajib diisi', 'warning');
+          return;
+        }
+
+        Utils.showLoading('Menyimpan pelanggan...');
+        try {
+          const docRef = await db.collection("customers").add({
+            name,
+            phone: phone || '-',
+            address: address || '-',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          const newCustomer = { id: docRef.id, name, phone: phone || '-' };
+          customersList.unshift(newCustomer);
+          window.selectCustomer(docRef.id, name);
+
+          Utils.hideLoading();
+          closeAddCustomerModal();
+          Utils.showToast(`Pelanggan "${name}" berhasil ditambahkan!`, 'success');
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal menambah pelanggan: ' + e.message, 'error');
+        }
+      };
 
       window.setPaymentMode = function(mode) {
         paymentMode = mode;
@@ -1171,7 +1326,6 @@
           document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
         }
 
-        // PERHITUNGAN KAS LACI SESUAI DASHBOARD UTAMA
         async function loadKasTersedia() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
@@ -1206,7 +1360,6 @@
                   kasKeluar += data.amount || 0;
                   break;
                 case 'topup':
-                  // Jika top-up hutang, uang tunai belum masuk ke laci kasir
                   if (data.paymentMethod !== 'hutang') {
                     topup += data.amount || 0;
                     topupAdminFee += data.adminFee || 0;
@@ -1285,35 +1438,37 @@
             let customerId = '';
             let customerName = '';
 
-            // Validasi jika memilih Hutang
             if (paymentMode === 'hutang') {
-              const select = document.getElementById('customerSelect');
-              const manual = document.getElementById('customerManualInput').value.trim();
+              customerId = document.getElementById('selectedCustomerId').value.trim();
+              customerName = document.getElementById('customerSearchInput').value.trim();
 
-              if (select.value) {
-                customerId = select.value;
-                customerName = select.options[select.selectedIndex].text.split('(')[0].trim();
-              } else if (manual) {
-                customerName = manual;
-              } else {
-                Utils.showToast('Pilih atau masukkan nama pelanggan untuk bon hutang', 'warning');
+              if (!customerName) {
+                Utils.showToast('Pilih atau cari nama pelanggan yang berhutang', 'warning');
                 return;
               }
             }
 
             try {
-              Utils.showLoading('Menyimpan top up kas...');
+              Utils.showLoading('Menyimpan transaksi top up...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-              const transactionId = 'TOP_' + Date.now();
+              const timestamp = Date.now();
+              const transactionId = 'TOP_' + timestamp;
 
-              // Jika pelanggan baru diinput manual, simpan ke koleksi customers
-              if (paymentMode === 'hutang' && !customerId && customerName) {
-                const newCustRef = await db.collection("customers").add({
-                  name: customerName,
-                  phone: '-',
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                customerId = newCustRef.id;
+              // Simpan otomatis ke customers jika belum ada ID pelanggan
+              if (paymentMode === 'hutang' && !customerId) {
+                const existing = customersList.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+                if (existing) {
+                  customerId = existing.id;
+                } else {
+                  const newCustRef = await db.collection("customers").add({
+                    name: customerName,
+                    phone: '-',
+                    address: '-',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+                  customerId = newCustRef.id;
+                  customersList.unshift({ id: customerId, name: customerName, phone: '-' });
+                }
               }
 
               const transactionData = {
@@ -1330,36 +1485,43 @@
                 userId: user.uid,
                 userName: userName,
                 date: today,
-                timestamp: Date.now(),
+                timestamp: timestamp,
                 status: 'completed',
                 source: 'kasir_topup'
               };
 
-              // Simpan ke transactions
+              // 1. Simpan ke koleksi transactions
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
-              // Jika hutang, catat ke koleksi debts (Piutang Usaha)
+              // 2. Jika metode hutang, simpan dengan skema identik ke debts agar terbaca di page-hutang
               if (paymentMode === 'hutang') {
-                const debtId = 'DEBT_' + Date.now();
+                const debtId = 'DEBT_' + timestamp;
                 await db.collection("debts").doc(debtId).set({
                   id: debtId,
                   transactionId: transactionId,
                   type: 'piutang',
+                  category: 'customer_debt',
                   customerId: customerId,
                   customerName: customerName,
+                  totalDebt: total,
                   amount: total,
+                  paidAmount: 0,
                   remainingAmount: total,
-                  note: 'Bon Top Up Saldo: ' + (note || 'Top Up'),
+                  description: 'Top Up: ' + (note || 'Top Up Saldo'),
+                  note: 'Top Up: ' + (note || 'Top Up Saldo'),
                   date: today,
-                  timestamp: Date.now(),
+                  timestamp: timestamp,
                   status: 'unpaid',
+                  dueDate: null,
                   userId: user.uid,
-                  userName: userName
+                  userName: userName,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
               }
 
               Utils.hideLoading();
-              Utils.showToast(paymentMode === 'hutang' ? 'Top up disimpan sebagai Piutang/Hutang!' : 'Top up kas berhasil disimpan!', 'success');
+              Utils.showToast(paymentMode === 'hutang' ? 'Top up disimpan ke Piutang / Hutang Pelanggan!' : 'Top up kas berhasil disimpan!', 'success');
 
               if (shouldPrint) {
                 showStrukModal(transactionData);
@@ -1383,15 +1545,14 @@
           amount = 0;
           document.getElementById('adminFee').value = '';
           document.getElementById('topupNote').value = '';
-          document.getElementById('customerManualInput').value = '';
-          document.getElementById('customerSelect').value = '';
+          document.getElementById('customerSearchInput').value = '';
+          document.getElementById('selectedCustomerId').value = '';
           setPaymentMode('tunai');
           document.querySelectorAll('.bank-card-btn').forEach(el => el.classList.remove('active'));
           updateDisplay();
           loadKasTersedia();
         }
 
-        // FUNGSI STRUK & CETAK BLUETOOTH
         function showStrukModal(tx) {
           lastTransactionData = tx;
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
