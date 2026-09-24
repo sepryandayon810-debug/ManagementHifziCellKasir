@@ -321,7 +321,7 @@
       color: var(--warning);
     }
 
-    /* AUTOCOMPLETE PELANGGAN (SEPERTI KASIR & HUTANG) */
+    /* AUTOCOMPLETE PELANGGAN KHUSUS HUTANG */
     .customer-autocomplete-wrapper {
       position: relative;
       width: 100%;
@@ -516,7 +516,7 @@
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
     .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
 
-    /* LOADING OVERLAY */
+    /* LOADING OVERLAY RAPI */
     .loading-overlay {
       position: fixed;
       inset: 0;
@@ -757,9 +757,7 @@
                 </div>
                 <input type="text" class="form-input" id="topupNote" placeholder="Pilih tombol di bawah atau ketik manual...">
                 
-                <div class="bank-select-grid" id="bankChipsContainer">
-                  <!-- Tombol diinjeksi via JS -->
-                </div>
+                <div class="bank-select-grid" id="bankChipsContainer"></div>
               </div>
 
               <div class="form-group">
@@ -897,7 +895,9 @@
   <div class="struk-modal-overlay" id="strukModal">
     <div class="struk-modal">
       <div class="struk-header">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main);"><i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Top Up Saldo</h3>
+        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
+          <i class="fas fa-receipt" style="color:var(--success);"></i> Bukti Top Up Saldo
+        </h3>
         <button class="btn-icon-box" onclick="closeStrukModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
       <div class="struk-body" style="background:#f8fafc; padding:1rem; display:flex; justify-content:center;">
@@ -1046,8 +1046,8 @@
       };
 
       window.deleteBankItem = async function(name) {
-        const updated = bankList.filter(b => b !== name);
-        await saveBankListToCloud(updated);
+        bankList = bankList.filter(b => b !== name);
+        await saveBankListToCloud(bankList);
         
         const noteInput = document.getElementById('topupNote');
         if (noteInput && noteInput.value === name) {
@@ -1326,6 +1326,7 @@
           document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
         }
 
+        // PERHITUNGAN KAS LACI SESUAI DASHBOARD UTAMA
         async function loadKasTersedia() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
@@ -1360,6 +1361,7 @@
                   kasKeluar += data.amount || 0;
                   break;
                 case 'topup':
+                  // Topup berstatus hutang uang fisiknya belum masuk ke laci kasir
                   if (data.paymentMethod !== 'hutang') {
                     topup += data.amount || 0;
                     topupAdminFee += data.adminFee || 0;
@@ -1438,6 +1440,7 @@
             let customerId = '';
             let customerName = '';
 
+            // Validasi nama pelanggan jika memilih metode Hutang
             if (paymentMode === 'hutang') {
               customerId = document.getElementById('selectedCustomerId').value.trim();
               customerName = document.getElementById('customerSearchInput').value.trim();
@@ -1454,7 +1457,7 @@
               const timestamp = Date.now();
               const transactionId = 'TOP_' + timestamp;
 
-              // Simpan otomatis ke customers jika belum ada ID pelanggan
+              // Jika pelanggan baru diinput manual tanpa memilih dari daftar, daftarkan otomatis ke customers
               if (paymentMode === 'hutang' && !customerId) {
                 const existing = customersList.find(c => c.name.toLowerCase() === customerName.toLowerCase());
                 if (existing) {
@@ -1493,30 +1496,34 @@
               // 1. Simpan ke koleksi transactions
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
-              // 2. Jika metode hutang, simpan dengan skema identik ke debts agar terbaca di page-hutang
+              // 2. Simpan ke koleksi debts dengan field yang dibaca utuh oleh page-hutang.html
               if (paymentMode === 'hutang') {
-                const debtId = 'DEBT_' + timestamp;
+                const debtId = 'debt_' + timestamp;
+                const noteDescription = 'Top Up: ' + (note || 'Top Up Saldo');
+
                 await db.collection("debts").doc(debtId).set({
                   id: debtId,
                   transactionId: transactionId,
-                  type: 'piutang',
-                  category: 'customer_debt',
+                  type: 'piutang',              // Dikenali sebagai Piutang oleh page-hutang
+                  name: customerName,           // Field utama nama yang dibaca page-hutang
+                  customerName: customerName,   // Alias pendukung
                   customerId: customerId,
-                  customerName: customerName,
-                  totalDebt: total,
-                  amount: total,
+                  amount: total,                // Field nominal yang dibaca page-hutang
+                  totalDebt: total,             // Alias nominal
+                  remaining: total,             // Sisa tagihan aktif
+                  remainingAmount: total,       // Alias sisa tagihan
                   paidAmount: 0,
-                  remainingAmount: total,
-                  description: 'Top Up: ' + (note || 'Top Up Saldo'),
-                  note: 'Top Up: ' + (note || 'Top Up Saldo'),
+                  note: noteDescription,        // Catatan yang ditampilkan di baris tabel
+                  description: noteDescription,
                   date: today,
-                  timestamp: timestamp,
-                  status: 'unpaid',
-                  dueDate: null,
+                  createdAt: timestamp,
+                  updatedAt: timestamp,
+                  status: 'active',             // Wajib 'active' agar langsung masuk filter aktif
+                  affectKas: false,             // Uang fisik belum diterima kasir
+                  kasRecorded: false,
+                  source: 'topup_kas',
                   userId: user.uid,
-                  userName: userName,
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  userName: userName
                 });
               }
 
