@@ -140,7 +140,7 @@
     .search-input-wrapper i{position:absolute;left:0.85rem;color:var(--text-muted);font-size:0.8rem}
     .search-input{
       width:100%;padding:.5rem .75rem .5rem 2.2rem;border:1px solid var(--border);
-      border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:.82rem;outline:none;
+      border-radius:var(--radius-md);background:var(--bg-subtle);color:var(--text-main);font-size:0.82rem;outline:none;
     }
 
     .sidebar-nav{flex:1;overflow-y:auto;padding:1rem 0.75rem}
@@ -287,7 +287,7 @@
     }
     .riwayat-search-box input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
 
-    /* TRANSACTION TABLE */
+    /* TRANSACTION TABLE & MOBILE CARD-ROW */
     .card{background:var(--bg-surface);border-radius:var(--radius-xl);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-sm)}
     .card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap}
     .card-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.5rem;color:var(--text-main)}
@@ -325,6 +325,21 @@
     .detail-items-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.4rem}
     .detail-items-table th{background:var(--bg-surface);padding:.4rem .6rem;font-size:.68rem;color:var(--text-muted);border-bottom:1px solid var(--border)}
     .detail-items-table td{padding:.45rem .6rem;border-bottom:1px solid var(--border);color:var(--text-main)}
+
+    /* NOMOR INPUT MURNI TANPA # */
+    .transaction-sequence{
+      display:inline-flex;min-width:2rem;justify-content:center;align-items:center;padding:.2rem .4rem;
+      border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.8rem;font-weight:800;font-variant-numeric:tabular-nums;
+    }
+    .sequence-heading{width:54px;text-align:center !important}
+
+    /* RESPONSIVE KHUSUS MOBILE: TIDAK PERLU SCROLL PANJANG KE SAMPING */
+    @media(max-width:768px){
+      .hide-on-mobile{display:none !important}
+      .transaction-table th, .transaction-table td{padding:0.65rem 0.5rem}
+      .sequence-heading{width:36px}
+      .transaction-sequence{min-width:1.6rem; font-size:0.75rem; padding:0.15rem 0.3rem}
+    }
 
     /* MOBILE NAV */
     .mobile-nav{
@@ -374,8 +389,6 @@
     .struk-modal-overlay.active{opacity:1;visibility:visible}
     .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
     .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-    .transaction-sequence{display:inline-flex;min-width:2.5rem;justify-content:center;align-items:center;padding:.25rem .45rem;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:800;font-variant-numeric:tabular-nums}
-    .sequence-heading{width:68px;text-align:center !important}
   </style>
 </head>
 <body>
@@ -515,12 +528,13 @@
             <button class="btn btn-primary btn-sm" id="btnFilter"><i class="fas fa-filter"></i> Terapkan</button>
           </div>
 
+          <!-- Kategori Disesuaikan: Default Tab adalah BUKU KASIR -->
           <div class="category-tabs">
-            <button class="category-tab active" data-category="all">Semua</button>
+            <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
             <button class="category-tab" data-category="penjualan">Penjualan</button>
-            <button class="category-tab" data-category="kas">Kas</button>
             <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
-            <button class="category-tab" data-category="pembelian">Pembelian</button>
+            <button class="category-tab" data-category="operasional"><i class="fas fa-wallet"></i> Operasional (Kas & Beli)</button>
+            <button class="category-tab" data-category="all">Semua (Audit)</button>
           </div>
         </div>
 
@@ -532,10 +546,8 @@
           </div>
         </div>
 
-        <!-- Summary Cards Dinamis Sesuai Tab Aktif -->
-        <div class="summary-cards" id="summaryCardsContainer">
-          <!-- Diisi via updateSummary() -->
-        </div>
+        <!-- Summary Cards Dinamis -->
+        <div class="summary-cards" id="summaryCardsContainer"></div>
 
         <!-- Transactions Table Card -->
         <div class="card">
@@ -553,13 +565,13 @@
             <table class="transaction-table">
               <thead>
                 <tr>
-                  <th style="width:36px"></th>
-                  <th class="sequence-heading">No. Input</th>
+                  <th style="width:34px"></th>
+                  <th class="sequence-heading">No</th>
                   <th>ID / Keterangan</th>
                   <th>Tanggal</th>
                   <th>Tipe</th>
-                  <th>Metode</th>
-                  <th>Kasir</th>
+                  <th class="hide-on-mobile">Metode</th>
+                  <th class="hide-on-mobile">Kasir</th>
                   <th>Total</th>
                   <th style="text-align:center">Aksi</th>
                 </tr>
@@ -696,7 +708,8 @@
       const db = firebase.firestore();
 
       let allTransactions = [];
-      let currentFilter = 'all';
+      // Default filter disesuaikan ke 'buku_kasir' (Penjualan, Top Up, Tarik Tunai)
+      let currentFilter = 'buku_kasir';
       let currentPeriod = 'today';
       let currentSearch = '';
       let lastTransactionData = null;
@@ -919,6 +932,7 @@
         return 0;
       }
 
+      // Penomoran Urut Input: 1, 2, 3, 4 dst (Murni tanpa # dan nol di depan)
       function assignInputSequence() {
         const inputOrder = [...allTransactions].sort((a, b) => {
           return getTimestampMillis(a) - getTimestampMillis(b) ||
@@ -932,7 +946,7 @@
       function formatDateTime(ts) {
         if (!ts) return '-';
         const d = typeof ts === 'object' && ts.toDate ? ts.toDate() : new Date(ts);
-        return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) + ' ' +
+        return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + ' ' +
                d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
       }
 
@@ -960,7 +974,7 @@
             }
           });
 
-          // 2. Ambil dari koleksi purchases agar pembelian restock langsung muncul
+          // 2. Ambil dari koleksi purchases agar sinkron
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
@@ -1005,10 +1019,16 @@
 
         if (currentFilter !== 'all') {
           filtered = filtered.filter(t => {
+            // Tab Buku Kasir: HANYA Penjualan, Top Up, dan Tarik Tunai
+            if (currentFilter === 'buku_kasir') {
+              return t.type === 'penjualan' || t.type === 'topup' || t.type === 'tarik';
+            }
             if (currentFilter === 'penjualan') return t.type === 'penjualan';
-            if (currentFilter === 'kas') return t.type === 'kas_masuk' || t.type === 'kas_keluar';
             if (currentFilter === 'topup_tarik') return t.type === 'topup' || t.type === 'tarik';
-            if (currentFilter === 'pembelian') return t.type === 'pembelian' || t.category === 'pembelian';
+            // Tab Operasional: Kas Masuk, Kas Keluar, dan Pembelian Restock
+            if (currentFilter === 'operasional') {
+              return t.type === 'kas_masuk' || t.type === 'kas_keluar' || t.type === 'pembelian' || t.category === 'pembelian';
+            }
             return true;
           });
         }
@@ -1049,28 +1069,28 @@
 
         tbody.innerHTML = transactions.map(t => {
           const desc = getTransactionDesc(t);
-          const shortId = t.id ? (t.id.length > 15 ? t.id.substring(0, 12) + '...' : t.id) : '-';
           const icon = TYPE_ICONS[t.type] || 'fa-circle';
           const itemsHtml = buildDetailItems(t);
           const amountValue = t.total ?? t.amount ?? t.grandTotal ?? 0;
+          const displaySeq = t.inputSequence || '-';
 
           return `
             <tr class="data-row">
               <td><button class="expand-btn" id="expand-${t.id}" onclick="toggleDetail('${t.id}')"><i class="fas fa-chevron-down"></i></button></td>
-              <td><span class="transaction-sequence">#${String(t.inputSequence || 0).padStart(3, '0')}</span></td>
+              <!-- NOMOR URUT MURNI: 1, 2, 3... -->
+              <td style="text-align:center;"><span class="transaction-sequence">${displaySeq}</span></td>
               <td>
-                <div style="font-weight:700;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
-                <div style="font-size:.74rem;color:var(--text-muted);font-family:monospace;">${shortId}</div>
+                <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
               </td>
-              <td style="white-space:nowrap">${formatDateTime(t.timestamp)}</td>
+              <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.timestamp)}</td>
               <td><span class="transaction-type ${t.type}">${TYPE_LABELS[t.type] || t.type}</span></td>
-              <td>${t.paymentMethod || 'Tunai'}</td>
-              <td>${t.userName || '-'}</td>
-              <td style="font-weight:800;color:var(--primary);">${Utils.formatRupiah(amountValue)}</td>
-              <td style="text-align:center">
-                <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk"><i class="fas fa-print"></i></button>
-                <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit"><i class="fas fa-pen"></i></button>
-                <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+              <td class="hide-on-mobile">${t.paymentMethod || 'Tunai'}</td>
+              <td class="hide-on-mobile">${t.userName || '-'}</td>
+              <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
+              <td style="text-align:center; white-space:nowrap;">
+                <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk" style="padding:0.25rem 0.45rem;"><i class="fas fa-print"></i></button>
+                <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit" style="padding:0.25rem 0.45rem;"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus" style="padding:0.25rem 0.45rem;"><i class="fas fa-trash"></i></button>
               </td>
             </tr>
             <tr class="detail-row" id="detail-${t.id}">
@@ -1087,6 +1107,7 @@
           <div class="detail-panel-grid">
             <div class="detail-panel-item"><div class="detail-panel-label">ID Transaksi</div><div class="detail-panel-value" style="font-family:monospace;">${t.id}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Petugas / Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">Metode Bayar</div><div class="detail-panel-value">${t.paymentMethod || 'Tunai'}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">${t.type === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${t.type === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(t.profit || t.adminFee || 0)}</div></div>
           </div>
@@ -1131,7 +1152,7 @@
         }
       };
 
-      // FUNGSI UPDATE SUMMARY DINAMIS BERDASARKAN TAB AKTIF
+      // SUMMARY CARDS ADAPTIF: Otomatis berubah judul & nilainya mengikuti tab aktif
       function updateSummary(transactions) {
         const container = document.getElementById('summaryCardsContainer');
         if (!container) return;
@@ -1140,7 +1161,51 @@
         let card2Title = 'TOTAL TRANSAKSI', card2Value = transactions.length, card2Sub = 'transaksi terdata', card2Icon = 'fa-receipt', card2Class = 'summary-card-2';
         let card3Title = '', card3Value = 0, card3Sub = '', card3Icon = 'fa-chart-line', card3Class = 'summary-card-3';
 
-        if (currentFilter === 'pembelian') {
+        if (currentFilter === 'buku_kasir') {
+          // BUKU KASIR TOKO (Penjualan + Top Up + Tarik)
+          let omset = 0;
+          let laba = 0;
+          transactions.forEach(t => {
+            omset += (t.total || t.amount || 0);
+            laba += (t.profit || t.adminFee || 0);
+          });
+
+          card1Title = 'OMSET BUKU KASIR';
+          card1Value = Utils.formatRupiah(omset);
+          card1Sub = 'penjualan, top up & tarik';
+          card1Icon = 'fa-cash-register';
+
+          card2Sub = 'transaksi meja kasir';
+
+          card3Title = 'TOTAL LABA BERSIH';
+          card3Value = Utils.formatRupiah(laba);
+          card3Sub = 'laba produk & fee admin';
+          card3Icon = 'fa-chart-line';
+
+        } else if (currentFilter === 'operasional') {
+          // TAB OPERASIONAL (Kas Keluar + Kas Masuk + Pembelian)
+          let totalKasKeluar = 0;
+          let totalBeli = 0;
+          transactions.forEach(t => {
+            const nominal = (t.amount || t.grandTotal || t.total || 0);
+            if (t.type === 'kas_keluar') totalKasKeluar += nominal;
+            if (t.type === 'pembelian') totalBeli += nominal;
+          });
+
+          card1Title = 'PENGELUARAN RESTOCK';
+          card1Value = Utils.formatRupiah(totalBeli);
+          card1Sub = 'belanja pembelian barang';
+          card1Icon = 'fa-truck-loading';
+
+          card2Sub = 'transaksi operasional';
+
+          card3Title = 'TOTAL KAS KELUAR';
+          card3Value = Utils.formatRupiah(totalKasKeluar);
+          card3Sub = 'beban biaya toko';
+          card3Icon = 'fa-minus-circle';
+          card3Class = 'summary-card-3';
+
+        } else if (currentFilter === 'pembelian') {
           let totalBeli = 0;
           let totalItemsBeli = 0;
           transactions.forEach(t => {
@@ -1159,28 +1224,27 @@
           card3Value = totalItemsBeli + ' pcs';
           card3Sub = 'stok produk masuk';
           card3Icon = 'fa-boxes';
-        } else if (currentFilter === 'kas') {
-          let kasMasuk = 0;
-          let kasKeluar = 0;
+
+        } else if (currentFilter === 'penjualan') {
+          let totalPenjualan = 0;
+          let totalLaba = 0;
           transactions.forEach(t => {
-            if (t.type === 'kas_masuk') kasMasuk += (t.amount || t.total || 0);
-            if (t.type === 'kas_keluar') kasKeluar += (t.amount || t.total || 0);
+            totalPenjualan += (t.total || 0);
+            totalLaba += (t.profit || 0);
           });
 
-          card1Title = 'TOTAL KAS MASUK';
-          card1Value = Utils.formatRupiah(kasMasuk);
-          card1Sub = 'penerimaan kas';
-          card1Icon = 'fa-arrow-down';
+          card1Title = 'TOTAL PENJUALAN';
+          card1Value = Utils.formatRupiah(totalPenjualan);
+          card1Sub = 'penjualan produk';
+          card1Icon = 'fa-shopping-cart';
 
-          card2Title = 'TOTAL KAS KELUAR';
-          card2Value = Utils.formatRupiah(kasKeluar);
-          card2Sub = 'pengeluaran kas';
-          card2Icon = 'fa-arrow-up';
+          card2Sub = 'transaksi penjualan';
 
-          card3Title = 'ARUS KAS BERSIH';
-          card3Value = Utils.formatRupiah(kasMasuk - kasKeluar);
-          card3Sub = 'selisih masuk - keluar';
-          card3Icon = 'fa-wallet';
+          card3Title = 'TOTAL LABA PRODUK';
+          card3Value = Utils.formatRupiah(totalLaba);
+          card3Sub = 'keuntungan bersih barang';
+          card3Icon = 'fa-chart-line';
+
         } else if (currentFilter === 'topup_tarik') {
           let totalNominal = 0;
           let totalFee = 0;
@@ -1200,30 +1264,32 @@
           card3Value = Utils.formatRupiah(totalFee);
           card3Sub = 'pendapatan biaya admin';
           card3Icon = 'fa-coins';
+
         } else {
-          // Mode 'all' atau 'penjualan'
-          let totalPenjualan = 0;
-          let totalLaba = 0;
+          // TAB SEMUA (AUDIT GLOBAL LENGKAP)
+          let totalMasuk = 0;
+          let totalKeluar = 0;
+
           transactions.forEach(t => {
-            if (t.type === 'penjualan') {
-              totalPenjualan += (t.total || 0);
-              totalLaba += (t.profit || 0);
-            } else if (['topup', 'tarik'].includes(t.type) && t.adminFee) {
-              totalLaba += t.adminFee;
+            const amount = Number(t.total ?? t.amount ?? t.grandTotal ?? 0);
+            if (t.type === 'penjualan' || t.type === 'kas_masuk' || t.type === 'topup') {
+              totalMasuk += amount;
+            } else {
+              totalKeluar += amount;
             }
           });
 
-          card1Title = 'TOTAL PENJUALAN';
-          card1Value = Utils.formatRupiah(totalPenjualan);
-          card1Sub = 'dari transaksi produk';
-          card1Icon = 'fa-shopping-cart';
+          card1Title = 'TOTAL ARUS MASUK';
+          card1Value = Utils.formatRupiah(totalMasuk);
+          card1Sub = 'penjualan, topup, kas masuk';
+          card1Icon = 'fa-arrow-down';
 
-          card2Sub = 'semua jenis transaksi';
+          card2Sub = 'semua transaksi tercatat';
 
-          card3Title = 'TOTAL LABA';
-          card3Value = Utils.formatRupiah(totalLaba);
-          card3Sub = 'penjualan & fee admin';
-          card3Icon = 'fa-chart-line';
+          card3Title = 'TOTAL PENGELUARAN';
+          card3Value = Utils.formatRupiah(totalKeluar);
+          card3Sub = 'restock, tarik, kas keluar';
+          card3Icon = 'fa-arrow-up';
         }
 
         container.innerHTML = `
@@ -1287,7 +1353,7 @@
 addressText +
 phoneText +
 '================================\n' +
-' No.    : #' + String(t.inputSequence || 0).padStart(3, '0') + '\n' +
+' No.    : ' + String(t.inputSequence || '-') + '\n' +
 ' ID     : ' + t.id + '\n' +
 ' Waktu  : ' + formatDateTime(t.timestamp) + '\n' +
 ' Kasir  : ' + (t.userName || '-') + '\n' +
@@ -1326,7 +1392,7 @@ itemsText + '\n' +
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
           let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
           c += '--------------------------------\x0A\x1B\x61\x00';
-          c += 'No   : #' + String(t.inputSequence || 0).padStart(3, '0') + '\x0A';
+          c += 'No   : ' + String(t.inputSequence || '-') + '\x0A';
           c += 'ID   : ' + t.id + '\x0A';
           c += 'Tgl  : ' + formatDateTime(t.timestamp) + '\x0A';
           c += 'Kasir: ' + (t.userName || '-') + '\x0A--------------------------------\x0A';
@@ -1472,7 +1538,7 @@ itemsText + '\n' +
 
         editingTransactionId = id;
         document.getElementById('editTransactionInfo').textContent =
-          'No. Input #' + String(transaction.inputSequence || 0).padStart(3, '0') +
+          'No. ' + String(transaction.inputSequence || '-') +
           ' • ' + (TYPE_LABELS[transaction.type] || transaction.type);
         document.getElementById('editNote').value = transaction.note || transaction.catatan || '';
         document.getElementById('editPaymentMethod').value = transaction.paymentMethod || 'Tunai';
@@ -1534,9 +1600,9 @@ itemsText + '\n' +
           Utils.showToast('Tidak ada data untuk diexport', 'warning');
           return;
         }
-        let csv = 'No. Input,ID,Tanggal,Tipe,Metode,Kasir,Total\n';
+        let csv = 'No,ID,Tanggal,Tipe,Metode,Kasir,Total\n';
         allTransactions.forEach(t => {
-          csv += [String(t.inputSequence || 0).padStart(3, '0'), t.id, formatDateTime(t.timestamp), TYPE_LABELS[t.type] || t.type, t.paymentMethod || 'Tunai', t.userName || '-', t.total || t.amount || t.grandTotal || 0].join(',') + '\n';
+          csv += [String(t.inputSequence || '-'), t.id, formatDateTime(t.timestamp), TYPE_LABELS[t.type] || t.type, t.paymentMethod || 'Tunai', t.userName || '-', t.total || t.amount || t.grandTotal || 0].join(',') + '\n';
         });
         const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
