@@ -314,6 +314,7 @@
       cursor: pointer;
       transition: all 0.15s ease;
       user-select: none;
+      text-align: center;
     }
     .bank-card-btn:hover {
       border-color: var(--primary);
@@ -326,29 +327,6 @@
       color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-light);
     }
-    /* TOMBOL SILANG HAPUS PADA CHIP */
-    .bank-card-btn .btn-remove-chip {
-      position: absolute;
-      top: 2px;
-      right: 3px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: rgba(220, 38, 38, 0.15);
-      color: var(--danger);
-      font-size: 11px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .bank-card-btn .btn-remove-chip:hover {
-      background: var(--danger);
-      color: #fff;
-    }
-
     .btn-add-bank-header {
       background: transparent;
       border: none;
@@ -358,9 +336,10 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
-      padding: 0.2rem 0.4rem;
+      gap: 0.35rem;
+      padding: 0.3rem 0.5rem;
       border-radius: var(--radius-sm);
+      transition: all 0.15s;
     }
     .btn-add-bank-header:hover {
       background: var(--primary-light);
@@ -410,15 +389,29 @@
     .btn-primary { background: var(--primary); color: white; }
     .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.82rem; width: auto; }
 
-    /* STRUK MODAL */
-    .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
-    .struk-modal-overlay.active{opacity:1;visibility:visible}
-    .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
-    .struk-header{padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
-    .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-    .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
+    .btn-icon-sm {
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 0.75rem; transition: all 0.15s; flex-shrink: 0;
+    }
+    .btn-icon-sm.btn-danger { background: var(--danger-light); color: var(--danger); }
+    .btn-icon-sm.btn-danger:hover { background: var(--danger); color: #fff; }
 
-    /* MODAL UMUM UNTUK TAMBAH BANK */
+    /* KELOLA BANK MODAL ITEM */
+    .manage-bank-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0.85rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* MODAL UMUM */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(15,23,42,0.65);
       backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
@@ -427,8 +420,8 @@
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-content {
       background: var(--bg-surface); border-radius: var(--radius-xl);
-      width: 100%; max-width: 360px; box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border); overflow: hidden;
+      width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column;
     }
     .modal-header {
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
@@ -439,6 +432,14 @@
       padding: 0.85rem 1.25rem; border-top: 1px solid var(--border);
       display: flex; gap: 0.5rem; justify-content: flex-end; background: var(--bg-subtle);
     }
+
+    /* STRUK MODAL */
+    .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
+    .struk-modal-overlay.active{opacity:1;visibility:visible}
+    .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
+    .struk-header{padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+    .struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New', monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+    .struk-footer{padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;}
 
     .mobile-nav {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -631,8 +632,8 @@
               <div class="form-group">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
                   <label class="form-label" style="margin-bottom:0;">Bank / E-Wallet Tujuan</label>
-                  <button type="button" class="btn-add-bank-header" onclick="window.openAddBankModal()">
-                    <i class="fas fa-plus-circle"></i> Tambah Bank
+                  <button type="button" class="btn-add-bank-header" onclick="window.openManageBankModal()">
+                    <i class="fas fa-cog"></i> Kelola Bank
                   </button>
                 </div>
                 <input type="text" class="form-input" id="tarikNote" placeholder="Pilih tombol di bawah atau ketik manual...">
@@ -692,24 +693,26 @@
     </nav>
   </div>
 
-  <!-- Modal Tambah Bank Kustom Internal -->
-  <div class="modal-overlay" id="addBankModal" onclick="if(event.target===this) closeAddBankModal()">
+  <!-- Modal Kelola Bank (Ganti Modal Tambah Kustom) -->
+  <div class="modal-overlay" id="manageBankModal" onclick="if(event.target===this) closeManageBankModal()">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size:1rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
-          <i class="fas fa-university" style="color:var(--primary);"></i> Tambah Bank / E-Wallet
+        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
+          <i class="fas fa-university" style="color:var(--primary);"></i> Kelola Bank / E-Wallet
         </h3>
-        <button class="btn-icon-box" onclick="closeAddBankModal()" style="width:30px; height:30px;"><i class="fas fa-times"></i></button>
+        <button class="btn-icon-box" onclick="closeManageBankModal()" style="width:32px; height:32px;"><i class="fas fa-times"></i></button>
       </div>
-      <div class="modal-body">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Nama Bank / E-Wallet</label>
-          <input type="text" class="form-input" id="customBankInput" placeholder="Contoh: SeaBank, Blu, Jenius">
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div style="display:flex; gap:0.5rem; margin-bottom: 1.15rem;">
+          <input type="text" class="form-input" id="newBankInput" placeholder="Tambah nama baru..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addNewBank()" style="width: auto; padding: 0.65rem 1rem;"><i class="fas fa-plus"></i></button>
+        </div>
+        <div id="manageBankList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem;">
+          <!-- List bank item rendered here via JS -->
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary btn-sm" onclick="closeAddBankModal()">Batal</button>
-        <button class="btn btn-primary btn-sm" onclick="saveNewBankChip()"><i class="fas fa-save"></i> Simpan</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeManageBankModal()" style="width:100%;">Tutup</button>
       </div>
     </div>
   </div>
@@ -748,42 +751,55 @@
       let lastTransactionData = null;
       let storeSettings = {};
 
-      const DEFAULT_CHIPS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
-      let customChips = [];
+      // SISTEM BANK LIST TERPADU
+      const INITIAL_BANKS = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'Mandiri', 'BNI', 'BSI'];
+      let bankList = [];
 
-      function loadSavedChips() {
+      function loadBankList() {
         try {
-          const saved = localStorage.getItem('webpos_custom_bank_chips');
-          customChips = saved ? JSON.parse(saved) : [];
+          const saved = localStorage.getItem('webpos_bank_list');
+          if (saved) {
+            bankList = JSON.parse(saved);
+          } else {
+            // Coba migrasi data customChips lama jika ada
+            const oldCustom = localStorage.getItem('webpos_custom_bank_chips');
+            if (oldCustom) {
+              const parsedOld = JSON.parse(oldCustom);
+              bankList = [...new Set([...INITIAL_BANKS, ...parsedOld])];
+            } else {
+              bankList = [...INITIAL_BANKS];
+            }
+            localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
+          }
         } catch(e) {
-          customChips = [];
+          bankList = [...INITIAL_BANKS];
         }
       }
 
       function renderBankChips() {
-        loadSavedChips();
         const container = document.getElementById('bankChipsContainer');
         if (!container) return;
 
         const currentSelected = (document.getElementById('tarikNote')?.value || '').trim();
 
-        // 1. Render Chip Default Bawaan
-        let html = DEFAULT_CHIPS.map(c => `
+        container.innerHTML = bankList.map(c => `
           <div class="bank-card-btn ${currentSelected === c ? 'active' : ''}" onclick="window.selectBankChip('${c.replace(/'/g, "\\'")}')">
             <span>${c}</span>
           </div>
         `).join('');
-
-        // 2. Render Chip Kustom (dengan tombol silang hapus)
-        html += customChips.map(c => `
-          <div class="bank-card-btn ${currentSelected === c ? 'active' : ''}" onclick="window.selectBankChip('${c.replace(/'/g, "\\'")}')">
-            <span>${c}</span>
-            <span class="btn-remove-chip" onclick="window.removeCustomBankChip(event, '${c.replace(/'/g, "\\'")}')" title="Hapus ${c}">×</span>
-          </div>
-        `).join('');
-
-        container.innerHTML = html;
       }
+
+      window.renderManageBankList = function() {
+        const listContainer = document.getElementById('manageBankList');
+        if (!listContainer) return;
+        
+        listContainer.innerHTML = bankList.map(c => `
+          <div class="manage-bank-item">
+            <span>${c}</span>
+            <button class="btn-icon-sm btn-danger" onclick="window.deleteBankItem('${c.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+          </div>
+        `).join('');
+      };
 
       window.selectBankChip = function(name) {
         const noteInput = document.getElementById('tarikNote');
@@ -796,51 +812,50 @@
         });
       };
 
-      // Modal Tambah Bank Kustom Internal
-      window.openAddBankModal = function() {
-        const input = document.getElementById('customBankInput');
+      window.openManageBankModal = function() {
+        const input = document.getElementById('newBankInput');
         if (input) input.value = '';
-        document.getElementById('addBankModal').classList.add('active');
+        renderManageBankList();
+        document.getElementById('manageBankModal').classList.add('active');
         setTimeout(() => input && input.focus(), 150);
       };
 
-      window.closeAddBankModal = function() {
-        document.getElementById('addBankModal').classList.remove('active');
+      window.closeManageBankModal = function() {
+        document.getElementById('manageBankModal').classList.remove('active');
       };
 
-      window.saveNewBankChip = function() {
-        const input = document.getElementById('customBankInput');
+      window.addNewBank = function() {
+        const input = document.getElementById('newBankInput');
         const name = input ? input.value.trim() : '';
         if (!name) {
           Utils.showToast('Nama bank atau e-wallet tidak boleh kosong', 'warning');
           return;
         }
 
-        if (!customChips.includes(name) && !DEFAULT_CHIPS.includes(name)) {
-          customChips.push(name);
-          localStorage.setItem('webpos_custom_bank_chips', JSON.stringify(customChips));
+        if (!bankList.includes(name)) {
+          bankList.unshift(name); // Tambahkan ke urutan paling atas
+          localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
           renderBankChips();
+          renderManageBankList();
           window.selectBankChip(name);
+          input.value = '';
           Utils.showToast(`"${name}" berhasil ditambahkan!`, 'success');
         } else {
-          window.selectBankChip(name);
+          Utils.showToast(`"${name}" sudah ada dalam daftar`, 'info');
         }
-        closeAddBankModal();
       };
 
-      // Hapus Bank Kustom
-      window.removeCustomBankChip = function(event, name) {
-        event.stopPropagation();
+      window.deleteBankItem = function(name) {
+        bankList = bankList.filter(b => b !== name);
+        localStorage.setItem('webpos_bank_list', JSON.stringify(bankList));
+        renderBankChips();
+        renderManageBankList();
         
-        customChips = customChips.filter(c => c !== name);
-        localStorage.setItem('webpos_custom_bank_chips', JSON.stringify(customChips));
-        
+        // Kosongkan input jika yang dihapus sedang terpilih
         const noteInput = document.getElementById('tarikNote');
         if (noteInput && noteInput.value === name) {
           noteInput.value = '';
         }
-        
-        renderBankChips();
         Utils.showToast(`"${name}" berhasil dihapus`, 'info');
       };
 
@@ -874,6 +889,7 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         syncStoreBrandName();
+        loadBankList();
         renderBankChips();
 
         if (isFromKasir()) {
