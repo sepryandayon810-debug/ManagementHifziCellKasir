@@ -61,7 +61,7 @@
 
   function getPaymentMethod(transaction) {
     return String(
-      transaction && (transaction.paymentMethod || transaction.paymentType || 'cash')
+      transaction && (transaction.paymentMethod || transaction.paymentType || '')
     ).toLowerCase();
   }
 
@@ -156,8 +156,8 @@
             summary.totalLabaLayanan += toNumber(transaction.adminFee || transaction.profit);
             summary.totalLaba += toNumber(transaction.adminFee || transaction.profit);
             summary.totalTransaksi += 1;
+            summary.transactionCounts.topup += 1;
           }
-          summary.transactionCounts.topup += 1;
           break;
         case 'tarik':
           summary.tarik += toNumber(transaction.amount);
@@ -225,6 +225,7 @@
       }
       if (docSnap.exists) {
         const data = Object.assign({ id: docSnap.id }, docSnap.data() || {});
+        if (docSnap.id === date && data.userId !== specificId) return items;
         items.push(data);
       }
     } else {

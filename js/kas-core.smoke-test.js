@@ -71,10 +71,12 @@ async function main() {
       c: { date: '2026-09-25', type: 'kas_masuk', amount: 30000, userId: 'u1', status: 'completed' },
       d: { date: '2026-09-25', type: 'penjualan', total: 200000, paymentAmount: 50000, profit: 40000, userId: 'u1', status: 'completed', paymentMethod: 'hutang' },
       e: { date: '2026-09-25', type: 'tarik', amount: 40000, adminFee: 5000, userId: 'u1', status: 'completed' },
-      f: { date: '2026-09-25', type: 'penjualan', total: 999999, profit: 999999, userId: 'u1', status: 'voided', paymentMethod: 'cash' }
+      f: { date: '2026-09-25', type: 'penjualan', total: 999999, profit: 999999, userId: 'u1', status: 'voided', paymentMethod: 'cash' },
+      g: { date: '2026-09-25', type: 'penjualan', total: 75000, profit: 10000, userId: 'u1', status: 'completed', paymentMethod: 'qris' }
     },
     modal: {
-      '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', amount: 150000 }
+      '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', amount: 150000 },
+      '2026-09-25': { date: '2026-09-25', userId: 'u2', amount: 999999 }
     },
     shifts: {
       '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', status: 'open', modalAwal: 150000 }
@@ -98,14 +100,17 @@ async function main() {
   const { KasCore } = sandbox.window;
 
   const period = await KasCore.getPeriodSummary({ startDate: '2026-09-24', endDate: '2026-09-25', userId: 'u1' });
-  assert.strictEqual(period.totalPenjualan, 300000, 'range query should include two valid sales only');
-  assert.strictEqual(period.totalLabaPenjualan, 65000, 'voided sale must be excluded from profit');
-  assert.strictEqual(period.transactionCounts.penjualan, 2, 'voided sale must be excluded from counts');
+  assert.strictEqual(period.totalPenjualan, 375000, 'range query should include three valid sales only');
+  assert.strictEqual(period.totalLabaPenjualan, 75000, 'voided sale must be excluded from profit');
+  assert.strictEqual(period.transactionCounts.penjualan, 3, 'voided sale must be excluded from counts');
 
   const kas = await KasCore.getKasFisikLaci({ date: '2026-09-25', userId: 'u1' });
   assert.strictEqual(kas.modalAwal, 150000, 'modal should come from user-specific modal doc');
   assert.strictEqual(kas.cashPenjualan, 50000, 'credit sale should only add received paymentAmount to cash');
   assert.strictEqual(kas.kasFisik, 195000, 'cash formula should match modal + masuk + penjualan + topup - tarik');
+
+  const kasFallback = await KasCore.getKasFisikLaci({ date: '2026-09-25', userId: 'u9' });
+  assert.strictEqual(kasFallback.modalAwal, 0, 'shared modal fallback should not be attributed to the wrong user');
 
   console.log('KasCore smoke tests passed');
 }
