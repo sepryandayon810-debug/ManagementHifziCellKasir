@@ -203,11 +203,11 @@ if (typeof window.KasCore === 'undefined') {
             if (getPaymentMethod(transaction) !== 'hutang') {
               summary.topup += amount;
               summary.topupAdmin += adminFee;
+              summary.transactionCount += 1;
+              summary.salesServiceTransactionCount += 1;
+              summary.cashMutationCount += 1;
+              summary.cashMutationIncomeCount += 1;
             }
-            summary.transactionCount += 1;
-            summary.salesServiceTransactionCount += 1;
-            summary.cashMutationCount += 1;
-            summary.cashMutationIncomeCount += 1;
             break;
           case 'tarik':
             summary.withdrawal += amount;
@@ -220,10 +220,10 @@ if (typeof window.KasCore === 'undefined') {
           case 'kas_masuk':
             if (EXCLUDED_KAS_MASUK_CATEGORIES.indexOf(transaction.category) === -1) {
               summary.cashIn += amount;
+              summary.transactionCount += 1;
+              summary.cashMutationCount += 1;
+              summary.cashMutationIncomeCount += 1;
             }
-            summary.transactionCount += 1;
-            summary.cashMutationCount += 1;
-            summary.cashMutationIncomeCount += 1;
             break;
           case 'kas_keluar':
             summary.cashOut += amount;
@@ -633,9 +633,14 @@ if (typeof window.KasCore === 'undefined') {
         }
       });
 
-      return Object.keys(staffMap).map(function(userId) {
-        return staffMap[userId];
-      });
+      return Object.keys(staffMap)
+        .map(function(userId) {
+          return staffMap[userId];
+        })
+        .sort(function(a, b) {
+          if (b.penjualan !== a.penjualan) return b.penjualan - a.penjualan;
+          return String(a.name || '').localeCompare(String(b.name || ''), 'id');
+        });
     }
 
     return {
