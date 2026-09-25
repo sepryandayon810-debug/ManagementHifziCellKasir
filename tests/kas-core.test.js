@@ -127,8 +127,8 @@ function loadKasCore(dbMock) {
     assert.strictEqual(summary.topup, 20000);
     assert.strictEqual(summary.cashIn, 4000);
     assert.strictEqual(summary.cashOut, 2500);
-    assert.strictEqual(summary.transactionCount, 6);
-    assert.strictEqual(summary.salesServiceTransactionCount, 4);
+    assert.strictEqual(summary.transactionCount, 5);
+    assert.strictEqual(summary.salesServiceTransactionCount, 3);
     assert.strictEqual(summary.cashMutationCount, 4);
 
     const kasFisik = KasCore.calculateKasFisikLaciFromSummary(50000, summary);
@@ -173,12 +173,13 @@ function loadKasCore(dbMock) {
     const KasCore = loadKasCore(createDbMock({
       failModalDateQuery: true,
       modalDocs: {
-        '2026-09-25': { date: '2026-09-25', amount: 150000 }
+        '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', amount: 100000 },
+        '2026-09-25_u2': { date: '2026-09-25', userId: 'u2', amount: 50000 }
       }
     }));
     const modalSummary = await KasCore.getModalSummary({ date: '2026-09-25' });
     assert.strictEqual(modalSummary.total, 150000);
-    assert.strictEqual(modalSummary.entries.length, 1);
+    assert.strictEqual(modalSummary.entries.length, 2);
   }
 
   console.log('kas-core tests passed');

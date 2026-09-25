@@ -836,14 +836,14 @@
         Utils.showLoading('Memuat data kas...');
         try {
           const range = resolveDateRange(filterType, dateFrom, dateTo);
-          const [summary, modalSummary, transactions] = await Promise.all([
-            KasCore.getPeriodSummary({
-              startDate: range.startDate,
-              endDate: range.endDate,
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          const [currentSummary, currentKasLaci, transactions] = await Promise.all([
+            KasCore.getDailySummary({
+              date: today,
               userId: user.uid
             }),
-            KasCore.getModalSummary({
-              date: range.startDate,
+            KasCore.getKasFisikLaci({
+              date: today,
               userId: user.uid
             }),
             KasCore.getTransactionsByDateRange({
@@ -852,11 +852,10 @@
               userId: user.uid
             })
           ]);
-          const kasLaci = KasCore.calculateKasFisikLaciFromSummary(modalSummary.total, summary);
 
-          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(summary.totalCashInDrawer);
-          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(summary.totalCashOutDrawer);
-          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasLaci.total);
+          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(currentSummary.totalCashInDrawer);
+          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(currentSummary.totalCashOutDrawer);
+          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(currentKasLaci.total);
 
           const filteredTx = transactions.filter(t =>
             KasCore.isValidTransaction(t) &&

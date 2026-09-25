@@ -192,9 +192,11 @@ if (typeof window.KasCore === 'undefined') {
             summary.salesProfit += normalizeNumber(transaction.profit);
             summary.paymentMethods[paymentGroup] =
               (summary.paymentMethods[paymentGroup] || 0) + amount;
-            summary.salesTransactionCount += 1;
-            summary.transactionCount += 1;
-            summary.salesServiceTransactionCount += 1;
+            if (transaction.source !== 'hutang_page') {
+              summary.salesTransactionCount += 1;
+              summary.transactionCount += 1;
+              summary.salesServiceTransactionCount += 1;
+            }
             break;
           }
           case 'topup':
@@ -386,6 +388,27 @@ if (typeof window.KasCore === 'undefined') {
       } catch (error) {
         console.error('kas-core: gagal mengambil ringkasan modal', { date: date, error: error });
         try {
+          const snapshot = await db.collection('modal').get();
+          const entries = [];
+          snapshot.forEach(function(doc) {
+            const entry = Object.assign({ id: doc.id }, doc.data());
+            if (entry.date === date || String(doc.id).indexOf(date + '_') === 0) {
+              entries.push(entry);
+            }
+          });
+          if (entries.length > 0) {
+            return {
+              date: date,
+              entries: entries,
+              total: entries.reduce(function(sum, entry) {
+                return sum + normalizeNumber(entry.amount);
+              }, 0)
+            };
+          }
+        } catch (scanError) {
+          console.error('kas-core: gagal scan modal docs fallback', { date: date, error: scanError });
+        }
+        try {
           const legacyDoc = await db.collection('modal').doc(date).get();
           if (legacyDoc.exists) {
             const legacyEntry = Object.assign({ id: legacyDoc.id }, legacyDoc.data());
@@ -526,7 +549,7 @@ if (typeof window.KasCore === 'undefined') {
           snapshot.forEach(function(doc) {
             if (shift) return;
             const data = Object.assign({ id: doc.id }, doc.data());
-            if (shiftId && data.id !== shiftId && doc.id !== shiftId) return;
+            if (shiftId && data.id !== shiftId && data.shiftId !== shiftId && doc.id !== shiftId) return;
             if (userId && data.userId !== userId) return;
             shift = data;
           });
