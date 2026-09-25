@@ -101,6 +101,21 @@
     });
   }
 
+  function enumerateDates(startDate, endDate) {
+    const dates = [];
+    const cursor = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    while (cursor <= end) {
+      dates.push(
+        cursor.getFullYear() + '-' +
+        String(cursor.getMonth() + 1).padStart(2, '0') + '-' +
+        String(cursor.getDate()).padStart(2, '0')
+      );
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
+  }
+
   function aggregateTransactions(transactions) {
     const summary = {
       totalPenjualan: 0,
@@ -192,22 +207,38 @@
       : null;
     const includeInvalid = !!(options && options.includeInvalid);
 
-    let query = getDb().collection('transactions');
-    if (startDate === endDate) {
-      query = query.where('date', '==', startDate);
-    } else {
-      query = query.where('date', '>=', startDate).where('date', '<=', endDate);
+    const transactions = [];
+    function collect(snapshot) {
+      snapshot.forEach(function(doc) {
+        const data = Object.assign({ id: doc.id }, doc.data() || {});
+        if (userFilter && !matchesUserFilter(data, userFilter)) return;
+        if (typeFilter && !typeFilter.has(String(data.type || '').toLowerCase())) return;
+        if (!includeInvalid && !KasCore.isValidTransaction(data)) return;
+        transactions.push(data);
+      });
     }
 
-    const snapshot = await query.get();
-    const transactions = [];
-    snapshot.forEach(function(doc) {
-      const data = Object.assign({ id: doc.id }, doc.data() || {});
-      if (userFilter && !matchesUserFilter(data, userFilter)) return;
-      if (typeFilter && !typeFilter.has(String(data.type || '').toLowerCase())) return;
-      if (!includeInvalid && !KasCore.isValidTransaction(data)) return;
-      transactions.push(data);
-    });
+    if (startDate === endDate) {
+      const snapshot = await getDb().collection('transactions').where('date', '==', startDate).get();
+      collect(snapshot);
+    } else {
+      try {
+        const snapshot = await getDb().collection('transactions')
+          .where('date', '>=', startDate)
+          .where('date', '<=', endDate)
+          .get();
+        collect(snapshot);
+      } catch (error) {
+        if (!(error && (error.code === 'failed-precondition' || String(error.message || '').toLowerCase().indexOf('index') !== -1))) {
+          throw error;
+        }
+        const dates = enumerateDates(startDate, endDate);
+        for (let i = 0; i < dates.length; i += 1) {
+          const snapshot = await getDb().collection('transactions').where('date', '==', dates[i]).get();
+          collect(snapshot);
+        }
+      }
+    }
 
     return sortTransactionsDesc(transactions);
   }
@@ -232,7 +263,9 @@
       const snapshot = await getDb().collection('modal').where('date', '==', date).get();
       snapshot.forEach(function(doc) {
         const data = Object.assign({ id: doc.id }, doc.data() || {});
-        if (userFilter && !(data.userId && userFilter.has(data.userId))) return;
+        if (userFilter) {
+          if (!data.userId || !userFilter.has(data.userId)) return;
+        }
         items.push(data);
       });
     }
