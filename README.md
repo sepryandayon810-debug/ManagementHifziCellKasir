@@ -14,13 +14,19 @@ Logika perhitungan kas sekarang dipusatkan di `/js/kas-core.js` sebagai single s
 
 Field transaksi yang distandarkan oleh modul ini:
 
+- jenis transaksi: `type`
 - identitas user: `userId`, fallback `cashierId` / `cashierID`
 - metode bayar: `paymentMethod`, fallback `paymentType`
+- nominal kas diterima: `paymentAmount`
 - nominal utama: `total`, fallback `amount`, fallback `grandTotal`
 - laba penjualan: `profit`
 - biaya admin layanan: `adminFee`
+- status transaksi: `status`
+- kategori mutasi kas: `category`
+- sumber transaksi: `source`
 - tanggal: `date` (`YYYY-MM-DD`)
 - waktu: `timestamp`
+- fallback waktu tambahan: `createdAt`
 
 Halaman yang sudah memakai `KasCore`:
 

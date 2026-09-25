@@ -75,6 +75,15 @@
     return 'lainnya';
   }
 
+  function isCashMethod(method) {
+    const value = String(method || '').toLowerCase();
+    return value.indexOf('cash') !== -1 || value.indexOf('tunai') !== -1;
+  }
+
+  function isHutangMethod(method) {
+    return String(method || '').toLowerCase().indexOf('hutang') !== -1;
+  }
+
   function shouldIncludeKasMasuk(transaction) {
     const category = String(transaction && transaction.category || '').toLowerCase();
     return category !== 'penjualan_hutang' && category !== 'penerimaan_piutang_penjualan';
@@ -157,16 +166,17 @@
             summary.totalTransaksi += 1;
           }
           summary.paymentMethods[getPaymentBucket(getPaymentMethod(transaction))] += amount;
-          if (getPaymentMethod(transaction) === 'hutang') {
+          const paymentMethod = getPaymentMethod(transaction);
+          if (isHutangMethod(paymentMethod)) {
             summary.cashPenjualan += toNumber(transaction.paymentAmount);
-          } else if (getPaymentMethod(transaction) === 'cash' || getPaymentMethod(transaction) === 'tunai') {
+          } else if (isCashMethod(paymentMethod)) {
             summary.cashPenjualan += typeof transaction.paymentAmount === 'number'
               ? toNumber(transaction.paymentAmount)
               : amount;
           }
           break;
         case 'topup':
-          if (getPaymentMethod(transaction) !== 'hutang') {
+          if (!isHutangMethod(getPaymentMethod(transaction))) {
             summary.topup += toNumber(transaction.amount);
             summary.topupAdmin += toNumber(transaction.adminFee);
             summary.totalLabaLayanan += toNumber(transaction.adminFee || transaction.profit);
@@ -310,7 +320,7 @@
     },
 
     /**
-     * Mengambil ringkasan transaksi untuk rentang tanggal tanpa loop query per hari.
+     * Mengambil ringkasan transaksi untuk rentang tanggal; memakai query range lalu fallback aman bila index belum tersedia.
      * @param {Object} options
      * @returns {Promise<Object>}
      */
@@ -406,7 +416,10 @@
         shiftId: doc.id,
         modalAwal: shiftData.modalAwal != null ? toNumber(shiftData.modalAwal) : cashSummary.modalAwal,
         kasSistemStored: shiftData.kasSistem != null ? toNumber(shiftData.kasSistem) : null,
-        closingKasFisik: shiftData.kasAkhir != null ? toNumber(shiftData.kasAkhir) : null
+        closingKasFisik: shiftData.kasAkhir != null ? toNumber(shiftData.kasAkhir) : null,
+        kasFisik: String(shiftData.status || '').toLowerCase() === 'closed' && shiftData.kasSistem != null
+          ? toNumber(shiftData.kasSistem)
+          : cashSummary.kasFisik
       });
     },
 
