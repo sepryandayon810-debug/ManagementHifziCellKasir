@@ -2115,10 +2115,43 @@ html,body{overflow-x:hidden;max-width:100vw}
   border-color:var(--primary) !important;
   color:#fff !important;
 }
+
+/* =========================================================
+   PATCH SIDEBAR/HEADER - SELARAS page-kas-tarik & MENU LAIN
+   ========================================================= */
+.sidebar-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);z-index:999;opacity:0;visibility:hidden;transition:all .25s}
+.sidebar-backdrop.active{opacity:1;visibility:visible}
+
+.sidebar{background:var(--bg-card)!important;border-right:1px solid var(--border-color)!important;box-shadow:none!important}
+.sidebar-header{border-bottom:1px solid var(--border-color)!important}
+.menu-toggle{display:flex!important;width:28px;height:28px;background:var(--primary)!important;border:none!important;border-radius:50%!important;color:#fff;cursor:pointer;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
+.menu-toggle:hover{background:var(--primary-dark,#4338ca)!important}
+.sidebar-search{border-bottom:1px solid var(--border-color)!important}
+.search-input{background:var(--bg-secondary)!important;border:1px solid var(--border-color)!important;color:var(--text-primary)!important}
+.search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 15%,transparent)}
+.nav-section-title{color:var(--text-muted)!important}
+.nav-link{color:var(--text-secondary)!important;border-radius:var(--radius-md,.5rem)}
+.nav-link:hover{background:var(--bg-secondary)!important;color:var(--primary)!important;transform:none!important}
+.nav-link.active{background:var(--primary-light,rgba(99,102,241,.12))!important;color:var(--primary)!important;font-weight:600!important;box-shadow:none!important;border-radius:var(--radius-md,.5rem)}
+.nav-link.active i{color:var(--primary)!important}
+.sidebar-footer{background:var(--bg-card)!important;border-top:1px solid var(--border-color)!important}
+[data-theme="dark"] .sidebar,[data-theme="dark"] .sidebar-footer{background:var(--bg-card)!important;border-color:var(--border-color)!important}
+[data-theme="dark"] .nav-link{color:var(--text-secondary)!important}
+[data-theme="dark"] .nav-link:hover{background:var(--bg-secondary)!important;color:var(--primary)!important}
+[data-theme="dark"] .main-header{background:var(--bg-card)!important;border-bottom-color:var(--border-color)!important}
+
+.main-header{background:var(--bg-card)!important;border-bottom:1px solid var(--border-color)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+#mobileMenuToggle{border:1px solid var(--border-color)!important;background:var(--bg-secondary)!important;color:var(--text-secondary)!important}
+
+/* Modal konfirmasi custom */
+#customConfirmModal .modal{border-radius:1rem}
+
 </style>
+<base target="_blank">
 </head>
 <body>
   <div class="app-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
@@ -2365,9 +2398,6 @@ html,body{overflow-x:hidden;max-width:100vw}
   </div>
 
   <div class="header-actions">
-    <button class="btn-icon" id="btnScan" title="Scan Barcode">
-      <i class="fas fa-barcode"></i>
-    </button>
     <button class="btn-icon" id="btnTheme" title="Toggle Dark Mode">
       <i class="fas fa-moon"></i>
     </button>
@@ -2574,7 +2604,12 @@ html,body{overflow-x:hidden;max-width:100vw}
   <div id="layerKategori">
     <div class="layer-header">
       <span class="layer-title"><i class="fas fa-th-large"></i> Pilih Kategori</span>
-      <span class="layer-count" id="categoryCount">— kategori</span>
+      <span style="display:flex;align-items:center;gap:.5rem;">
+        <button class="btn-icon" id="btnScanKategori" title="Scan Barcode" style="width:36px;height:36px;">
+          <i class="fas fa-barcode"></i>
+        </button>
+        <span class="layer-count" id="categoryCount">— kategori</span>
+      </span>
     </div>
     <div class="category-grid" id="categoryGrid">
       <!-- diisi JS -->
@@ -2603,6 +2638,9 @@ html,body{overflow-x:hidden;max-width:100vw}
           <i class="fas fa-list"></i>
         </button>
       </div>
+      <button class="btn-icon" id="btnScan" title="Scan Barcode" style="flex-shrink:0;">
+        <i class="fas fa-barcode"></i>
+      </button>
     </div>
 
     <div class="reseller-toolbar" aria-label="Mode harga">
@@ -2893,10 +2931,28 @@ html,body{overflow-x:hidden;max-width:100vw}
     </div>
   </div>
   
+  <!-- Custom Confirm Modal (pengganti window.confirm) -->
+  <div class="modal-overlay" id="customConfirmModal">
+    <div class="modal" style="max-width:360px;">
+      <div class="modal-body" style="text-align:center;padding:1.75rem 1.5rem;">
+        <div style="width:60px;height:60px;border-radius:50%;background:rgba(239,68,68,.1);color:var(--danger);display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:1rem;">
+          <i class="fas fa-question"></i>
+        </div>
+        <h3 class="modal-title" id="confirmTitle" style="margin-bottom:.5rem;">Konfirmasi</h3>
+        <p id="confirmMessage" style="font-size:.875rem;color:var(--text-secondary);margin-bottom:1.5rem;">Apakah Anda yakin?</p>
+        <div style="display:flex;gap:.65rem;">
+          <button class="btn btn-secondary" id="btnConfirmCancel" style="flex:1;">Batal</button>
+          <button class="btn btn-danger" id="btnConfirmOk" style="flex:1;">Ya, Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/firebase-config.js?v=2"></script>
    <script src="js/utils.js?v=3"></script>
   <script src="js/auth.js"></script>
+  <script src="js/role-guard.js"></script>
   <script src="js/db-offline.js"></script>
   <script src="js/sidebar-filter.js"></script>
 
@@ -2951,10 +3007,18 @@ document.getElementById('menuToggle').addEventListener('click', () => {
   sidebar.classList.toggle('collapsed');
 });
 
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 if (mobileMenuToggle) {
   mobileMenuToggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    sidebar.classList.toggle('mobile-open');
+    sidebar.classList.add('mobile-open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+  });
+}
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener('click', () => {
+    sidebar.classList.remove('mobile-open');
+    sidebarBackdrop.classList.remove('active');
   });
 }
 
@@ -2965,17 +3029,19 @@ document.querySelectorAll('.nav-link').forEach(link => {
     if(link.classList.contains('nav-dropdown-toggle')) return;
     if(window.innerWidth <= 1024){
       sidebar.classList.remove('mobile-open');
+      if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
     }
   });
 });
 
 // Tutup sidebar saat klik overlay (area gelap)
 document.addEventListener('click', (e) => {
-  if (window.innerWidth <= 1024 && 
+  if (window.innerWidth <= 1024 &&
       sidebar.classList.contains('mobile-open') &&
-      !sidebar.contains(e.target) && 
+      !sidebar.contains(e.target) &&
       e.target !== mobileMenuToggle) {
     sidebar.classList.remove('mobile-open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
   }
 });
     // ===== DARK MODE =====
@@ -3006,6 +3072,30 @@ document.addEventListener('click', (e) => {
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3500);
     }
+
+    // ===== CUSTOM CONFIRM MODAL (pengganti window.confirm) =====
+    let confirmCallback = null;
+    function showCustomConfirm(title, message, onConfirm) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('customConfirmModal').classList.add('active');
+    }
+    document.getElementById('btnConfirmOk').addEventListener('click', () => {
+      document.getElementById('customConfirmModal').classList.remove('active');
+      if (typeof confirmCallback === 'function') confirmCallback();
+      confirmCallback = null;
+    });
+    document.getElementById('btnConfirmCancel').addEventListener('click', () => {
+      document.getElementById('customConfirmModal').classList.remove('active');
+      confirmCallback = null;
+    });
+    document.getElementById('customConfirmModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('customConfirmModal')) {
+        document.getElementById('customConfirmModal').classList.remove('active');
+        confirmCallback = null;
+      }
+    });
 
     // ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
 async function loadUangGlobal() {
@@ -3043,11 +3133,14 @@ async function loadUangGlobal() {
       if (tx.status !== 'cancelled' && tx.status !== 'voided') {
         switch (tx.type) {
           case 'penjualan':
-            // Penjualan kredit tidak langsung menjadi uang kas.
-            // Yang masuk ke kas hanya pembayaran aktualnya.
-            penjualan += tx.paymentMethod === 'hutang'
-              ? (tx.paymentAmount || 0)
-              : (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
+            // Hanya pembayaran TUNAI yang menjadi uang fisik di laci.
+            // Transfer/QRIS TIDAK tercapture di "Kas di Tangan".
+            // Piutang: hanya pembayaran aktual (tunai) yang masuk kas.
+            if (tx.paymentMethod === 'hutang') {
+              penjualan += tx.paymentAmount || 0;
+            } else if (!tx.paymentMethod || tx.paymentMethod === 'cash') {
+              penjualan += (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
+            }
             break;
           case 'kas_masuk':
             if (tx.category !== 'penjualan_hutang' && tx.category !== 'penerimaan_piutang_penjualan') {
@@ -3058,11 +3151,12 @@ async function loadUangGlobal() {
             kasKeluar += tx.amount || 0;
             break;
           case 'topup':
-  if (tx.paymentMethod !== 'hutang') {
-    topup += tx.amount || 0;
-    topupAdminFee += tx.adminFee || 0;
-  }
-  break;
+            // Hanya top up berbayar TUNAI yang menambah uang fisik laci.
+            if (tx.paymentMethod !== 'hutang' && (!tx.paymentMethod || tx.paymentMethod === 'cash')) {
+              topup += tx.amount || 0;
+              topupAdminFee += tx.adminFee || 0;
+            }
+            break;
           case 'tarik':
             tarik += tx.amount || 0;
             tarikAdminFee += tx.adminFee || 0;
@@ -3230,6 +3324,7 @@ async function loadUangGlobal() {
               document.getElementById('userName').textContent = name;
               document.getElementById('userRole').textContent = role;
               document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+              if (typeof RoleGuard !== 'undefined') RoleGuard.apply(role);
             });
           }
         });
@@ -3591,14 +3686,14 @@ function renderCart() {
     // ===== CLEAR CART =====
     document.getElementById('btnClearCart').addEventListener('click', () => {
       if (cart.length === 0) return;
-      if (confirm('Yakin ingin mengosongkan keranjang?')) {
+      showCustomConfirm('Kosongkan Keranjang', 'Yakin ingin mengosongkan semua item di keranjang?', () => {
         cart = [];
         discount = 0;
         saveCart();
         renderCart();
         updateSummary();
         showToast('Keranjang dikosongkan', 'info');
-      }
+      });
     });
 
     // ===== PAYMENT MODAL =====
@@ -4224,11 +4319,11 @@ manualModal.addEventListener('click', (e) => {
 
     // ===== LOGOUT =====
     document.getElementById('btnLogout').addEventListener('click', () => {
-      if (confirm('Yakin ingin logout?')) {
+      showCustomConfirm('Konfirmasi Keluar', 'Apakah Anda yakin ingin keluar dari sistem WebPOS?', () => {
         firebase.auth().signOut().then(() => {
           window.location.href = 'login.html';
         });
-      }
+      });
     });
 
     /// ===== MOBILE CART TOGGLE =====
@@ -5136,6 +5231,10 @@ async function saveBeliBarang() {
       loadUangGlobal();
       applyCurrentView();
       initLongPressOnProducts();
+      ['btnScan','btnScanKategori'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', () => showToast('Fitur scan barcode segera hadir', 'info'));
+      });
       // ⭐ Safety: matikan loading overlay
       document.getElementById('loadingOverlay').classList.remove('active');
     }
