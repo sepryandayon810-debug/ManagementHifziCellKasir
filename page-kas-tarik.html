@@ -1105,23 +1105,22 @@
             const snapshot = await db.collection("transactions").where("date", "==", today).get();
             
             let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0;
-            let topupAdminFee = 0, tarikAdminFee = 0;
+    let topupAdminFee = 0, tarikAdminFee = 0;
 
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              if (data.status === 'cancelled' || data.status === 'voided') return;
-
-              switch (data.type) {
-                case 'penjualan':
-                  penjualan += data.paymentMethod === 'hutang'
-                    ? (data.paymentAmount || 0)
-                    : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
-                  break;
-                case 'kas_masuk':
-                  if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
-                    kasMasuk += data.amount || 0;
-                  }
-                  break;
+    Object.values(txData).forEach(tx => {
+      if (tx.status !== 'cancelled' && tx.status !== 'voided') {
+        switch (tx.type) {
+          case 'penjualan':
+            // Hanya Tunai (uang fisik) yang masuk ke kas.
+            // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
+            // Hutang: hanya DP yang diterima masuk kas.
+            if (tx.paymentMethod === 'cash') {
+              penjualan += typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0);
+            } else if (tx.paymentMethod === 'hutang') {
+              penjualan += tx.paymentAmount || 0;
+            }
+            // Transfer & QRIS: tidak masuk perhitungan kas fisik
+            break;
                 case 'kas_keluar':
                   kasKeluar += data.amount || 0;
                   break;
