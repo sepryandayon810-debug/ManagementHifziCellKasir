@@ -79,7 +79,8 @@ async function main() {
       '2026-09-25': { date: '2026-09-25', userId: 'u2', amount: 999999 }
     },
     shifts: {
-      '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', status: 'open', modalAwal: 150000 }
+      '2026-09-25_u1': { date: '2026-09-25', userId: 'u1', status: 'open', modalAwal: 150000 },
+      '2026-09-24_u1': { date: '2026-09-24', userId: 'u1', status: 'closed', modalAwal: 100000, kasSistem: 152000, kasAkhir: 151000 }
     },
     users: {
       u1: { name: 'Kasir 1', role: 'kasir' }
@@ -111,6 +112,17 @@ async function main() {
 
   const kasFallback = await KasCore.getKasFisikLaci({ date: '2026-09-25', userId: 'u9' });
   assert.strictEqual(kasFallback.modalAwal, 0, 'shared modal fallback should not be attributed to the wrong user');
+
+  const openShift = await KasCore.getShiftSummary({ date: '2026-09-25', userId: 'u1' });
+  assert.strictEqual(openShift.status, 'open', 'open shift should preserve its status');
+  assert.strictEqual(openShift.kasFisik, 195000, 'open shift should expose current computed system cash');
+  assert.strictEqual(openShift.kasSistemStored, null, 'open shift should not invent stored closing totals');
+
+  const closedShift = await KasCore.getShiftSummary({ date: '2026-09-24', userId: 'u1' });
+  assert.strictEqual(closedShift.status, 'closed', 'closed shift should preserve its status');
+  assert.strictEqual(closedShift.kasFisik, 152000, 'closed shift should keep the computed system total intact');
+  assert.strictEqual(closedShift.kasSistemStored, 152000, 'closed shift should expose stored system total separately');
+  assert.strictEqual(closedShift.closingKasFisik, 151000, 'closed shift should expose counted closing cash separately');
 
   console.log('KasCore smoke tests passed');
 }

@@ -95,9 +95,10 @@
 
   function sortTransactionsDesc(items) {
     return items.slice().sort(function(a, b) {
-      const timeB = normalizeTimestamp(b.timestamp) || Date.parse((b.date || '') + 'T00:00:00') || 0;
-      const timeA = normalizeTimestamp(a.timestamp) || Date.parse((a.date || '') + 'T00:00:00') || 0;
-      return timeB - timeA;
+      const timeB = normalizeTimestamp(b.timestamp) || normalizeTimestamp(b.createdAt) || Date.parse((b.date || '') + 'T00:00:00') || 0;
+      const timeA = normalizeTimestamp(a.timestamp) || normalizeTimestamp(a.createdAt) || Date.parse((a.date || '') + 'T00:00:00') || 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return String(b.id || '').localeCompare(String(a.id || ''));
     });
   }
 
@@ -401,12 +402,11 @@
         userId: shiftData.userId || settings.userId
       });
 
-      const isClosed = String(shiftData.status || '').toLowerCase() === 'closed';
       return Object.assign({}, cashSummary, shiftData, {
         shiftId: doc.id,
         modalAwal: shiftData.modalAwal != null ? toNumber(shiftData.modalAwal) : cashSummary.modalAwal,
-        kasSistem: shiftData.kasSistem != null ? toNumber(shiftData.kasSistem) : cashSummary.kasFisik,
-        kasFisik: isClosed && shiftData.kasAkhir != null ? toNumber(shiftData.kasAkhir) : cashSummary.kasFisik
+        kasSistemStored: shiftData.kasSistem != null ? toNumber(shiftData.kasSistem) : null,
+        closingKasFisik: shiftData.kasAkhir != null ? toNumber(shiftData.kasAkhir) : null
       });
     },
 
