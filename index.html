@@ -1142,10 +1142,9 @@
         usersMap[doc.id] = { id: doc.id, ...doc.data() };
       });
 
-      const [modalSummary, allTransactions, staffPerformance, debtsSnapshot] = await Promise.all([
+      const [modalSummary, allTransactions, debtsSnapshot] = await Promise.all([
         KasCore.getModalSummary({ date: today }),
         KasCore.getTransactionsByDateRange({ startDate: today, endDate: today }),
-        KasCore.getStaffPerformanceToday({ date: today }),
         db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get()
       ]);
 
@@ -1189,7 +1188,7 @@
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
       document.getElementById("totalPenjualan").textContent = formatRupiah(scopedSummary.totalSales);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("totalTransaksi").textContent = scopedSummary.transactionCount.toString();
+      document.getElementById("totalTransaksi").textContent = scopedSummary.salesServiceTransactionCount.toString();
       document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit);
 
       document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
@@ -1202,7 +1201,11 @@
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
       if (isBoss || isAdmin) {
-        renderStaffReportTable(staffPerformance.staff, isBoss, isAdmin);
+        renderStaffReportTable(
+          KasCore.buildStaffPerformance(modalSummary.entries, allTransactions, usersMap),
+          isBoss,
+          isAdmin
+        );
       }
 
     } catch (err) {

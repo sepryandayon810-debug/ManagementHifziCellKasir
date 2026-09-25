@@ -136,6 +136,18 @@ if (typeof window.KasCore === 'undefined') {
       return true;
     }
 
+    function buildDateRangeList(startDate, endDate) {
+      const dates = [];
+      const current = parseDateValue(startDate + 'T00:00:00');
+      const last = parseDateValue(endDate + 'T00:00:00');
+      if (!current || !last) return dates;
+      while (current.getTime() <= last.getTime()) {
+        dates.push(formatDateKey(current));
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
+
     function createSummary(transactions) {
       const summary = {
         transactions: Array.isArray(transactions) ? transactions.slice() : [],
@@ -145,6 +157,7 @@ if (typeof window.KasCore === 'undefined') {
         salesProfit: 0,
         totalProfit: 0,
         transactionCount: 0,
+        salesServiceTransactionCount: 0,
         salesTransactionCount: 0,
         cashMutationCount: 0,
         cashMutationIncomeCount: 0,
@@ -182,6 +195,7 @@ if (typeof window.KasCore === 'undefined') {
             if (transaction.source !== 'hutang_page') {
               summary.salesTransactionCount += 1;
               summary.transactionCount += 1;
+              summary.salesServiceTransactionCount += 1;
             }
             break;
           }
@@ -191,6 +205,7 @@ if (typeof window.KasCore === 'undefined') {
               summary.topupAdmin += adminFee;
             }
             summary.transactionCount += 1;
+            summary.salesServiceTransactionCount += 1;
             summary.cashMutationCount += 1;
             summary.cashMutationIncomeCount += 1;
             break;
@@ -198,6 +213,7 @@ if (typeof window.KasCore === 'undefined') {
             summary.withdrawal += amount;
             summary.withdrawalAdmin += adminFee;
             summary.transactionCount += 1;
+            summary.salesServiceTransactionCount += 1;
             summary.cashMutationCount += 1;
             summary.cashMutationExpenseCount += 1;
             break;
@@ -205,11 +221,13 @@ if (typeof window.KasCore === 'undefined') {
             if (EXCLUDED_KAS_MASUK_CATEGORIES.indexOf(transaction.category) === -1) {
               summary.cashIn += amount;
             }
+            summary.transactionCount += 1;
             summary.cashMutationCount += 1;
             summary.cashMutationIncomeCount += 1;
             break;
           case 'kas_keluar':
             summary.cashOut += amount;
+            summary.transactionCount += 1;
             summary.cashMutationCount += 1;
             summary.cashMutationExpenseCount += 1;
             break;
@@ -250,20 +268,19 @@ if (typeof window.KasCore === 'undefined') {
         });
         return transactions;
       } catch (error) {
-        console.error('kas-core: query range transactions gagal, pakai fallback lokal', {
+        console.error('kas-core: query range transactions gagal, pakai fallback per tanggal', {
           startDate: startDate,
           endDate: endDate,
           error: error
         });
-        const snapshot = await db.collection('transactions').get();
         const transactions = [];
-        snapshot.forEach(function(doc) {
-          const data = Object.assign({ id: doc.id }, doc.data());
-          const dateKey = getTransactionDate(data);
-          if (dateKey && dateKey >= startDate && dateKey <= endDate) {
-            transactions.push(data);
-          }
-        });
+        const dates = buildDateRangeList(startDate, endDate);
+        for (let index = 0; index < dates.length; index += 1) {
+          const dailySnapshot = await db.collection('transactions').where('date', '==', dates[index]).get();
+          dailySnapshot.forEach(function(doc) {
+            transactions.push(Object.assign({ id: doc.id }, doc.data()));
+          });
+        }
         return transactions;
       }
     }
@@ -370,6 +387,19 @@ if (typeof window.KasCore === 'undefined') {
         };
       } catch (error) {
         console.error('kas-core: gagal mengambil ringkasan modal', { date: date, error: error });
+        try {
+          const legacyDoc = await db.collection('modal').doc(date).get();
+          if (legacyDoc.exists) {
+            const legacyEntry = Object.assign({ id: legacyDoc.id }, legacyDoc.data());
+            return {
+              date: date,
+              entries: [legacyEntry],
+              total: normalizeNumber(legacyEntry.amount)
+            };
+          }
+        } catch (legacyError) {
+          console.error('kas-core: gagal fallback modal legacy', { date: date, error: legacyError });
+        }
         return { date: date, entries: [], total: 0 };
       }
     }
@@ -549,10 +579,21 @@ if (typeof window.KasCore === 'undefined') {
         console.error('kas-core: gagal mengambil users untuk staff performance', { date: date, error: error });
       }
 
-      modalSummary.entries.forEach(function(entry) {
+      const staff = buildStaffPerformance(modalSummary.entries, transactions, usersMap);
+
+      return {
+        date: date,
+        staff: staff
+      };
+    }
+
+    function buildStaffPerformance(modalEntries, transactions, usersMap) {
+      const staffMap = {};
+
+      (modalEntries || []).forEach(function(entry) {
         const userId = entry.userId || null;
         if (!userId) return;
-        const userData = usersMap[userId] || {};
+        const userData = (usersMap && usersMap[userId]) || {};
         if (!staffMap[userId]) {
           staffMap[userId] = {
             userId: userId,
@@ -566,11 +607,11 @@ if (typeof window.KasCore === 'undefined') {
         staffMap[userId].modal += normalizeNumber(entry.amount);
       });
 
-      transactions.forEach(function(transaction) {
+      (transactions || []).forEach(function(transaction) {
         if (!isValidTransaction(transaction) || transaction.type !== 'penjualan') return;
         const transactionUserId = getUserId(transaction);
         if (!transactionUserId) return;
-        const userData = usersMap[transactionUserId] || {};
+        const userData = (usersMap && usersMap[transactionUserId]) || {};
         if (!staffMap[transactionUserId]) {
           staffMap[transactionUserId] = {
             userId: transactionUserId,
@@ -592,12 +633,9 @@ if (typeof window.KasCore === 'undefined') {
         }
       });
 
-      return {
-        date: date,
-        staff: Object.keys(staffMap).map(function(userId) {
-          return staffMap[userId];
-        })
-      };
+      return Object.keys(staffMap).map(function(userId) {
+        return staffMap[userId];
+      });
     }
 
     return {
@@ -616,7 +654,8 @@ if (typeof window.KasCore === 'undefined') {
       getPeriodSummary: getPeriodSummary,
       getKasFisikLaci: getKasFisikLaci,
       getShiftSummary: getShiftSummary,
-      getStaffPerformanceToday: getStaffPerformanceToday
+      getStaffPerformanceToday: getStaffPerformanceToday,
+      buildStaffPerformance: buildStaffPerformance
     };
   })();
 }
