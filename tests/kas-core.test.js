@@ -111,6 +111,7 @@ function loadKasCore(dbMock) {
     const KasCore = loadKasCore(createDbMock());
     const summary = KasCore.summarizeTransactions([
       { type: 'penjualan', total: 10000, profit: 2000, paymentMethod: 'cash', status: 'completed' },
+      { type: 'penjualan', total: 6000, profit: 1200, paymentMethod: 'cash', status: 'completed', source: 'hutang_page' },
       { type: 'penjualan', total: 5000, profit: 500, paymentMethod: 'cash', status: 'cancelled' },
       { type: 'penjualan', total: 7000, profit: 700, paymentMethod: 'cash', status: 'voided' },
       { type: 'topup', amount: 20000, adminFee: 1000, paymentMethod: 'cash', status: 'completed' },
@@ -121,19 +122,19 @@ function loadKasCore(dbMock) {
       { type: 'kas_keluar', total: 2500, status: 'completed' }
     ]);
 
-    assert.strictEqual(summary.totalSales, 10000);
-    assert.strictEqual(summary.totalProfit, 4000);
+    assert.strictEqual(summary.totalSales, 16000);
+    assert.strictEqual(summary.totalProfit, 5200);
     assert.strictEqual(summary.topup, 20000);
     assert.strictEqual(summary.cashIn, 4000);
     assert.strictEqual(summary.cashOut, 2500);
-    assert.strictEqual(summary.transactionCount, 5);
-    assert.strictEqual(summary.salesServiceTransactionCount, 3);
+    assert.strictEqual(summary.transactionCount, 6);
+    assert.strictEqual(summary.salesServiceTransactionCount, 4);
     assert.strictEqual(summary.cashMutationCount, 4);
 
     const kasFisik = KasCore.calculateKasFisikLaciFromSummary(50000, summary);
     assert.strictEqual(kasFisik.topupKasFisik, 21000);
     assert.strictEqual(kasFisik.tarikKasFisik, 9000);
-    assert.strictEqual(kasFisik.total, 73500);
+    assert.strictEqual(kasFisik.total, 79500);
   }
 
   {

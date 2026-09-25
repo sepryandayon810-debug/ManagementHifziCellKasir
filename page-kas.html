@@ -836,14 +836,14 @@
         Utils.showLoading('Memuat data kas...');
         try {
           const range = resolveDateRange(filterType, dateFrom, dateTo);
-          const [summary, kasLaci, transactions] = await Promise.all([
+          const [summary, modalSummary, transactions] = await Promise.all([
             KasCore.getPeriodSummary({
               startDate: range.startDate,
               endDate: range.endDate,
               userId: user.uid
             }),
-            KasCore.getKasFisikLaci({
-              date: Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0],
+            KasCore.getModalSummary({
+              date: range.startDate,
               userId: user.uid
             }),
             KasCore.getTransactionsByDateRange({
@@ -852,6 +852,7 @@
               userId: user.uid
             })
           ]);
+          const kasLaci = KasCore.calculateKasFisikLaciFromSummary(modalSummary.total, summary);
 
           document.getElementById('kasMasuk').textContent = Utils.formatRupiah(summary.totalCashInDrawer);
           document.getElementById('kasKeluar').textContent = Utils.formatRupiah(summary.totalCashOutDrawer);

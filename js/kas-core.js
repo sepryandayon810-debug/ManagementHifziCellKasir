@@ -192,11 +192,9 @@ if (typeof window.KasCore === 'undefined') {
             summary.salesProfit += normalizeNumber(transaction.profit);
             summary.paymentMethods[paymentGroup] =
               (summary.paymentMethods[paymentGroup] || 0) + amount;
-            if (transaction.source !== 'hutang_page') {
-              summary.salesTransactionCount += 1;
-              summary.transactionCount += 1;
-              summary.salesServiceTransactionCount += 1;
-            }
+            summary.salesTransactionCount += 1;
+            summary.transactionCount += 1;
+            summary.salesServiceTransactionCount += 1;
             break;
           }
           case 'topup':
@@ -628,9 +626,7 @@ if (typeof window.KasCore === 'undefined') {
           };
         }
         staffMap[transactionUserId].penjualan += getAmount(transaction);
-        if (transaction.source !== 'hutang_page') {
-          staffMap[transactionUserId].count += 1;
-        }
+        staffMap[transactionUserId].count += 1;
       });
 
       return Object.keys(staffMap)
