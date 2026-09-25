@@ -1172,9 +1172,13 @@
           switch (t.type) {
             case "penjualan":
               penjualan += t.total || 0;
-              cashPenjualan += t.paymentMethod === "hutang"
-                ? (t.paymentAmount || 0)
-                : (typeof t.paymentAmount === "number" ? t.paymentAmount : (t.total || 0));
+              // Hanya Tunai & Hutang (uang fisik) yang masuk ke kas.
+              // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
+              if (t.paymentMethod === "cash") {
+                cashPenjualan += typeof t.paymentAmount === "number" ? t.paymentAmount : (t.total || 0);
+              } else if (t.paymentMethod === "hutang") {
+                cashPenjualan += t.paymentAmount || 0;
+              }
               laba += t.profit || 0;
               if (t.source !== "hutang_page") trxCount++;
               break;
