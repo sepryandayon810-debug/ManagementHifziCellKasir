@@ -153,10 +153,10 @@
           if (getPaymentMethod(transaction) !== 'hutang') {
             summary.topup += toNumber(transaction.amount);
             summary.topupAdmin += toNumber(transaction.adminFee);
+            summary.totalLabaLayanan += toNumber(transaction.adminFee || transaction.profit);
+            summary.totalLaba += toNumber(transaction.adminFee || transaction.profit);
+            summary.totalTransaksi += 1;
           }
-          summary.totalLabaLayanan += toNumber(transaction.adminFee || transaction.profit);
-          summary.totalLaba += toNumber(transaction.adminFee || transaction.profit);
-          summary.totalTransaksi += 1;
           summary.transactionCounts.topup += 1;
           break;
         case 'tarik':
@@ -225,7 +225,6 @@
       }
       if (docSnap.exists) {
         const data = Object.assign({ id: docSnap.id }, docSnap.data() || {});
-        if (!data.userId) data.userId = specificId;
         items.push(data);
       }
     } else {
@@ -368,8 +367,12 @@
         userId: shiftData.userId || settings.userId
       });
 
-      return Object.assign({}, shiftData, cashSummary, {
-        shiftId: doc.id
+      const isClosed = String(shiftData.status || '').toLowerCase() === 'closed';
+      return Object.assign({}, cashSummary, shiftData, {
+        shiftId: doc.id,
+        modalAwal: shiftData.modalAwal != null ? toNumber(shiftData.modalAwal) : cashSummary.modalAwal,
+        kasSistem: shiftData.kasSistem != null ? toNumber(shiftData.kasSistem) : cashSummary.kasFisik,
+        kasFisik: isClosed && shiftData.kasAkhir != null ? toNumber(shiftData.kasAkhir) : cashSummary.kasFisik
       });
     },
 

@@ -808,6 +808,11 @@
         Utils.showLoading('Memuat data kas...');
         try {
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          const toLocalDateString = (value) => {
+            return value.getFullYear() + '-' +
+              String(value.getMonth() + 1).padStart(2, '0') + '-' +
+              String(value.getDate()).padStart(2, '0');
+          };
           const kasSummary = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
           const totalKasMasukVal = kasSummary.kasMasuk + kasSummary.cashPenjualan + kasSummary.topupKasFisik;
           const totalKasKeluarVal = kasSummary.kasKeluar + kasSummary.tarikKasFisik;
@@ -824,11 +829,11 @@
           } else if (filterType === 'week') {
             const start = new Date();
             start.setDate(start.getDate() - 7);
-            rangeStart = start.toISOString().split('T')[0];
+            rangeStart = toLocalDateString(start);
           } else if (filterType === 'month') {
             const start = new Date();
             start.setDate(1);
-            rangeStart = start.toISOString().split('T')[0];
+            rangeStart = toLocalDateString(start);
           }
 
           const filteredTx = await KasCore.getTransactions({
