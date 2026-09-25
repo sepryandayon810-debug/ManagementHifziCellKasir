@@ -833,9 +833,14 @@
             if (tDate === today) {
               switch (data.type) {
                 case 'penjualan':
-                  penjualanToday += data.paymentMethod === 'hutang'
-                    ? (data.paymentAmount || 0)
-                    : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
+                  // Hanya Tunai (uang fisik) yang masuk ke kas.
+                  // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
+                  if (data.paymentMethod === 'cash') {
+                    penjualanToday += typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0);
+                  } else if (data.paymentMethod === 'hutang') {
+                    penjualanToday += data.paymentAmount || 0;
+                  }
+                  // Transfer & QRIS: tidak masuk perhitungan kas fisik
                   break;
                 case 'kas_masuk':
                   if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {

@@ -2617,6 +2617,12 @@ html,body{overflow-x:hidden;max-width:100vw}
       <button class="btn-icon-box" id="btnScan" title="Scan Barcode" style="width:40px;height:40px;flex-shrink:0;">
         <i class="fas fa-barcode"></i>
       </button>
+      <div class="sort-toggle">
+        <button class="sort-btn active" data-sort="az" title="Urutkan A-Z"><i class="fas fa-sort-alpha-down"></i><span>A-Z</span></button>
+        <button class="sort-btn" data-sort="za" title="Urutkan Z-A"><i class="fas fa-sort-alpha-up"></i><span>Z-A</span></button>
+        <button class="sort-btn" data-sort="price-low" title="Harga Termurah"><i class="fas fa-sort-numeric-down"></i><span>Murah</span></button>
+        <button class="sort-btn" data-sort="price-high" title="Harga Termahal"><i class="fas fa-sort-numeric-up"></i><span>Mahal</span></button>
+      </div>
       <div class="view-toggle">
         <button class="view-btn" data-view="grid" title="Grid View">
           <i class="fas fa-th-large"></i>
@@ -3110,11 +3116,15 @@ async function loadUangGlobal() {
       if (tx.status !== 'cancelled' && tx.status !== 'voided') {
         switch (tx.type) {
           case 'penjualan':
-            // Penjualan kredit tidak langsung menjadi uang kas.
-            // Yang masuk ke kas hanya pembayaran aktualnya.
-            penjualan += tx.paymentMethod === 'hutang'
-              ? (tx.paymentAmount || 0)
-              : (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
+            // Hanya Tunai (uang fisik) yang masuk ke kas.
+            // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
+            // Hutang: hanya DP yang diterima masuk kas.
+            if (tx.paymentMethod === 'cash') {
+              penjualan += typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0);
+            } else if (tx.paymentMethod === 'hutang') {
+              penjualan += tx.paymentAmount || 0;
+            }
+            // Transfer & QRIS: tidak masuk perhitungan kas fisik
             break;
           case 'kas_masuk':
             if (tx.category !== 'penjualan_hutang' && tx.category !== 'penerimaan_piutang_penjualan') {
@@ -3422,6 +3432,10 @@ function renderProducts() {
     filtered.sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }));
   } else if (currentSort === 'za') {
     filtered.sort((a, b) => b.name.localeCompare(a.name, 'id', { sensitivity: 'base' }));
+  } else if (currentSort === 'price-low') {
+    filtered.sort((a, b) => toMoney(a.sellingPrice) - toMoney(b.sellingPrice));
+  } else if (currentSort === 'price-high') {
+    filtered.sort((a, b) => toMoney(b.sellingPrice) - toMoney(a.sellingPrice));
   }
   // Kalau 'default', urutan sesuai array asli (Firebase order)
 
@@ -4519,6 +4533,42 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === editCartModal) closeEditCartModal();
     });
   }
+
+  // ===== SCAN BARCODE — HOOK UNTUK ANDROID WEBVIEW =====
+  // Tombol scan: panggil Android jika ada, jika tidak fallback ke input manual
+  const btnScan = document.getElementById('btnScan');
+  if (btnScan) {
+    btnScan.addEventListener('click', () => {
+      if (window.AndroidBridge && typeof window.AndroidBridge.scanBarcode === 'function') {
+        // Dipanggil dari Android Studio (WebView.addJavascriptInterface)
+        window.AndroidBridge.scanBarcode();
+      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scanBarcode) {
+        // iOS WKWebView
+        window.webkit.messageHandlers.scanBarcode.postMessage({ action: 'scan' });
+      } else {
+        // Fallback web: input manual kode barcode
+        const code = prompt('Masukkan kode barcode produk:');
+        if (code) window.handleScanResult(code);
+      }
+    });
+  }
+
+  // Fungsi ini dipanggil oleh Android setelah scan selesai
+  // Android side: webView.evaluateJavascript("handleScanResult('123456')", null)
+  window.handleScanResult = function(barcode) {
+    barcode = String(barcode || '').trim();
+    if (!barcode) return;
+    // Cari produk berdasarkan code/barcode
+    const product = (window.products || []).find(function(p) {
+      return p.code === barcode || p.barcode === barcode || p.sku === barcode;
+    });
+    if (product) {
+      addToCart(product.id);
+      showToast('Scan: ' + product.name, 'success');
+    } else {
+      showToast('Produk dengan barcode "' + barcode + '" tidak ditemukan', 'warning');
+    }
+  };
 });
 
       // ⭐ AUTO-SYNC SAAT ONLINE
@@ -4779,6 +4829,7 @@ function openProductQuickModal(productId) {
   document.getElementById('quickEditName').value = p.name || '';
   document.getElementById('quickEditCost').value = p.costPrice || 0;
   document.getElementById('quickEditPrice').value = p.sellingPrice || 0;
+  document.getElementById('quickEditResellerPrice').value = getResellerPrice(p) || '';
   
   const isUnlimited = p.isUnlimited === true;
   const stockInput = document.getElementById('quickEditStock');
@@ -4804,6 +4855,7 @@ async function saveProductQuickEdit() {
   if (!currentQuickEditId) return;
   const cost = parseInt(document.getElementById('quickEditCost').value) || 0;
   const price = parseInt(document.getElementById('quickEditPrice').value) || 0;
+  const resellerPrice = parseInt(document.getElementById('quickEditResellerPrice').value) || 0;
   const stock = parseInt(document.getElementById('quickEditStock').value) || 0;
     const name = document.getElementById('quickEditName').value.trim();
 
@@ -4813,14 +4865,14 @@ async function saveProductQuickEdit() {
   try {
     document.getElementById('loadingOverlay').classList.add('active');
     const db = createFirestoreCompat();
-    const updates = { name: name, costPrice: cost, sellingPrice: price, updatedAt: Date.now() };
+    const updates = { name: name, costPrice: cost, sellingPrice: price, resellerPrice: resellerPrice, updatedAt: Date.now() };
     
     const p = products.find(x => x.id === currentQuickEditId);
     if (p && p.isUnlimited !== true) updates.stock = stock;
     
     await db.ref('products/' + currentQuickEditId).update(updates);
     
-    if (p) { p.name = name; p.costPrice = cost; p.sellingPrice = price; if (p.isUnlimited !== true) p.stock = stock; }
+    if (p) { p.name = name; p.costPrice = cost; p.sellingPrice = price; p.resellerPrice = resellerPrice; if (p.isUnlimited !== true) p.stock = stock; }
     
     renderProducts(); closeProductQuickModal();
     document.getElementById('loadingOverlay').classList.remove('active');
@@ -5385,6 +5437,10 @@ async function saveBeliBarang() {
       <div class="form-group">
         <label class="form-label">Harga Jual</label>
         <input type="number" class="form-input" id="quickEditPrice" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Harga Reseller</label>
+        <input type="number" class="form-input" id="quickEditResellerPrice" placeholder="0 (opsional)">
       </div>
       <div class="form-group">
         <label class="form-label">Sisa Stok</label>
