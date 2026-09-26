@@ -4913,7 +4913,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
       setTimeout(() => toast.remove(), 3500);
     }
 
-   // ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
+// ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
 async function loadUangGlobal() {
   const today = new Date();
   const todayStr = today.getFullYear() + '-' +
@@ -4922,25 +4922,28 @@ async function loadUangGlobal() {
 
   try {
     const user = firebase.auth().currentUser;
-    const kasLaci = await KasCore.getKasFisikLaci({
-      date: todayStr,
-      userId: user ? user.uid : null
-    });
-    // Langsung tampilkan hasil perhitungan real-time dari KasCore
-    document.getElementById('headerUangGlobal').textContent = formatRupiah(kasLaci.total);
+    const userId = user ? user.uid : null;
+
+    // Ambil ringkasan harian dan modal secara paralel persis seperti modul kas fisik
+    const [modalSummary, summary] = await Promise.all([
+      KasCore.getModalSummary({ date: todayStr, userId: userId }),
+      KasCore.getDailySummary({ date: todayStr, userId: userId })
+    ]);
+
+    const kasFisik = KasCore.calculateKasFisikLaciFromSummary(modalSummary.total, summary);
+    
+    document.getElementById('headerUangGlobal').textContent = formatRupiah(kasFisik.total);
     try {
-      localStorage.setItem('header_uang_global', formatRupiah(kasLaci.total));
+      localStorage.setItem('header_uang_global', formatRupiah(kasFisik.total));
     } catch(e) {}
   } catch (err) {
     console.error('kasir: gagal memuat uang global', err);
-    // Fallback ke cache jika gagal koneksi/offline
     if (!navigator.onLine) {
       const saved = localStorage.getItem('header_uang_global');
       if (saved) document.getElementById('headerUangGlobal').textContent = saved;
     }
   }
 }
-
     // ===== LOAD HEADER STATS DARI FIREBASE =====
        async function loadHeaderStats() {
   // ⭐ OFFLINE: pakai data tersimpan
