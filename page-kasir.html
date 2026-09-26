@@ -2103,6 +2103,411 @@ html,body{overflow-x:hidden;max-width:100vw}
 .dialog-btn-primary{background:var(--danger);color:#fff}
 .dialog-btn-primary:hover{filter:brightness(.9)}
 .dialog-btn-secondary{background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color)}
+
+
+/* ============================================================
+   WEBPOS KASIR — FINAL DASHBOARD ALIGNMENT PATCH
+   ------------------------------------------------------------
+   Tujuan:
+   - Menyamakan visual shell Kasir dengan Dashboard.
+   - Sidebar, brand, active menu, user footer, header,
+     dark mode, form umum, card umum, dan bottom navigation.
+   - BAGIAN KHUSUS TRANSAKSI BERIKUT SENGAJA TIDAK DISENTUH:
+     Top Up, Tarik, Input Manual, Tahan, Kas Masuk, Kas Keluar,
+     Bayar Hutang, dan Beli Barang.
+   ============================================================ */
+
+/* ===== LAYOUT TOKEN DASHBOARD (tanpa mengubah theme-color global) ===== */
+:root {
+  --kasir-dashboard-sidebar-width: 270px;
+  --kasir-dashboard-header-height: 68px;
+  --kasir-dashboard-bottom-height: 60px;
+}
+
+/* ===== APP / SIDEBAR ===== */
+.app-container {
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.sidebar {
+  width: var(--kasir-dashboard-sidebar-width) !important;
+  background: var(--bg-card) !important;
+  border-right: 1px solid var(--border-color) !important;
+  transition: transform .25s ease, width .25s ease !important;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed) !important;
+}
+
+.sidebar-header {
+  min-height: var(--kasir-dashboard-header-height) !important;
+  padding: 1rem 1.25rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* ===== BRAND — SAMA DENGAN DASHBOARD ===== */
+.sidebar .logo-icon {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6) !important;
+}
+
+.sidebar .logo-text {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.sidebar .menu-toggle {
+  background: var(--primary) !important;
+}
+
+.sidebar .menu-toggle:hover {
+  background: var(--primary-dark) !important;
+}
+
+/* ===== SEARCH SIDEBAR ===== */
+.sidebar-search {
+  padding: .75rem 1rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.sidebar .search-input {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.sidebar .search-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+
+/* ===== NAVIGATION — SAMA DENGAN DASHBOARD ===== */
+.sidebar-nav {
+  padding: 1rem .75rem !important;
+}
+
+.sidebar .nav-section-title {
+  color: var(--text-muted) !important;
+  font-size: .65rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+}
+
+.sidebar .nav-link {
+  color: var(--text-secondary) !important;
+  font-size: .88rem !important;
+  font-weight: 600 !important;
+  padding: .6rem .85rem !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.sidebar .nav-link:hover {
+  background: var(--bg-secondary) !important;
+  color: var(--primary) !important;
+}
+
+.sidebar .nav-link.active {
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+.sidebar .nav-link.active i {
+  color: var(--primary) !important;
+}
+
+.sidebar .nav-link i {
+  width: 20px !important;
+  font-size: .95rem !important;
+}
+
+/* ===== SIDEBAR FOOTER / USER ===== */
+.sidebar-footer {
+  padding: .85rem 1rem !important;
+  border-top: 1px solid var(--border-color) !important;
+  background: var(--bg-card) !important;
+}
+
+.sidebar .user-avatar {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6) !important;
+}
+
+.sidebar .user-name {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+.sidebar .user-role {
+  color: var(--text-muted) !important;
+  font-size: .7rem !important;
+  text-transform: uppercase !important;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+  margin-left: var(--kasir-dashboard-sidebar-width) !important;
+  min-height: 100vh;
+}
+
+.sidebar.collapsed ~ .main-content {
+  margin-left: var(--sidebar-collapsed) !important;
+}
+
+@media(max-width:1024px) {
+  .main-content,
+  .sidebar.collapsed ~ .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* ===== HEADER — SHELL DASHBOARD ===== */
+.main-header {
+  min-height: var(--kasir-dashboard-header-height) !important;
+  height: var(--kasir-dashboard-header-height) !important;
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 0 1.25rem !important;
+}
+
+.header-title {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+/* Header icon umum, tidak menyentuh tombol aksi transaksi */
+.header-actions .btn-icon,
+.header-actions .btn-icon-box {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+.header-actions .btn-icon:hover,
+.header-actions .btn-icon-box:hover {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+/* ===== HEADER STATS ===== */
+.header-stats .stat-label,
+.header-stats-global .stat-label {
+  font-weight: 700 !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase !important;
+}
+
+.header-stats .stat-value {
+  color: var(--text-primary) !important;
+  font-weight: 800 !important;
+}
+
+.header-stats-global .stat-value {
+  color: var(--primary) !important;
+  font-weight: 800 !important;
+}
+
+/* ===== PAGE BACKGROUND / SPACING ===== */
+.page-content {
+  padding: 1.5rem !important;
+  background: var(--bg-primary);
+}
+
+@media(max-width:768px) {
+  .page-content {
+    padding: 1rem !important;
+    padding-bottom: calc(var(--kasir-dashboard-bottom-height) + 1.5rem) !important;
+  }
+}
+
+/* ===== STATUS INDICATOR ===== */
+.status-indicator.open {
+  background: var(--success-light) !important;
+  color: var(--success) !important;
+}
+
+.status-indicator.closed {
+  background: var(--danger-light) !important;
+  color: var(--danger) !important;
+}
+
+/* ===== GENERIC CARD — GAYA DASHBOARD ===== */
+.card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.card-header {
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.card-title {
+  color: var(--text-primary) !important;
+}
+
+.card-body {
+  padding: 1.25rem !important;
+}
+
+.card-footer {
+  background: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+/* ===== GENERIC FORM — DASHBOARD STYLE =====
+   Tidak menyentuh selector khusus manual/beli barang. */
+.form-input,
+.form-select,
+.form-textarea {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+
+.form-label {
+  color: var(--text-secondary) !important;
+}
+
+/* ===== BADGE UMUM ===== */
+.badge-primary {
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
+}
+
+/* ===== LOADING ===== */
+.loading-overlay {
+  background: var(--bg-primary) !important;
+}
+
+.spinner {
+  border-color: var(--border-color) !important;
+  border-top-color: var(--primary) !important;
+}
+
+/* ============================================================
+   BOTTOM MENU — DISAMAKAN DENGAN DASHBOARD
+   Dashboard memakai 60px, solid surface, font 0.65rem/600,
+   icon 1.1rem. Kasir memakai nama class yang berbeda,
+   sehingga kita selaraskan tanpa mengubah HTML/JS.
+   ============================================================ */
+.mobile-nav {
+  height: var(--kasir-dashboard-bottom-height) !important;
+  background: var(--bg-card) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 1px solid var(--border-color) !important;
+  padding: 0 .5rem !important;
+  z-index: 999 !important;
+}
+
+.mobile-nav-item {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  color: var(--text-muted) !important;
+  text-decoration: none !important;
+  font-size: .65rem !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+}
+
+.mobile-nav-item i {
+  font-size: 1.1rem !important;
+}
+
+.mobile-nav-item.active,
+.mobile-nav-item:hover {
+  color: var(--primary) !important;
+}
+
+.mobile-nav-item.active i {
+  color: var(--primary) !important;
+  transform: none !important;
+}
+
+[data-theme="dark"] .mobile-nav {
+  background: var(--bg-card) !important;
+  border-top-color: var(--border-color) !important;
+}
+
+@media(max-width:768px) {
+  .mobile-nav {
+    display: flex !important;
+  }
+}
+
+/* ===== DARK MODE SHELL ===== */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .main-header,
+[data-theme="dark"] .sidebar-footer,
+[data-theme="dark"] .card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .sidebar .search-input,
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link.active {
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
+}
+
+/* Tetap gunakan gradient Dashboard pada dark mode */
+[data-theme="dark"] .sidebar .logo-icon,
+[data-theme="dark"] .sidebar .user-avatar {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6) !important;
+}
+
+[data-theme="dark"] .sidebar .logo-text {
+  background-image: linear-gradient(135deg, var(--primary), #8b5cf6) !important;
+}
+
+/* ===== RESPONSIVE SIDEBAR ===== */
+@media(max-width:1024px) {
+  .sidebar {
+    width: var(--kasir-dashboard-sidebar-width) !important;
+  }
+}
+
+/* ============================================================
+   END DASHBOARD ALIGNMENT PATCH
+   Protected transaction sections intentionally left untouched.
+   ============================================================ */
+
 </style>
 <base target="">
 </head>
