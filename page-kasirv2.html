@@ -1409,6 +1409,7 @@
   
   <!-- Scripts -->
   <script src="js/firebase-config.js?v=2"></script>
+  <script src="js/kas-core.js"></script>
    <script src="js/utils.js?v=3"></script>
   <script src="js/auth.js"></script>
   <script src="js/db-offline.js"></script>
@@ -1535,88 +1536,15 @@ async function loadUangGlobal() {
     String(today.getDate()).padStart(2, '0');
 
   try {
-    const db = createFirestoreCompat();
     const user = firebase.auth().currentUser;
-    
-    // Load modal awal
-    let modalAwal = 0;
-    if (user) {
-      const modalSnap = await db.ref('modal/' + todayStr + '/' + user.uid).once('value');
-      const modalData = modalSnap.val();
-      modalAwal = modalData ? modalData.amount : 0;
-    }
-
-    // Load transaksi hari ini
-    const txSnapshot = await db.ref('transactions/' + todayStr).once('value');
-    const txData = txSnapshot.val() || {};
-
-    let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0, piutang = 0;
-    let topupAdminFee = 0, tarikAdminFee = 0;
-
-    Object.values(txData).forEach(tx => {
-      if (tx.status !== 'cancelled' && tx.status !== 'voided') {
-        switch (tx.type) {
-          case 'penjualan':
-            // Penjualan kredit tidak langsung menjadi uang kas.
-            // Yang masuk ke kas hanya pembayaran aktualnya.
-            penjualan += tx.paymentMethod === 'hutang'
-              ? (tx.paymentAmount || 0)
-              : (typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0));
-            break;
-          case 'kas_masuk':
-            if (tx.category !== 'penjualan_hutang' && tx.category !== 'penerimaan_piutang_penjualan') {
-              kasMasuk += tx.amount || 0;
-            }
-            break;
-          case 'kas_keluar':
-            kasKeluar += tx.amount || 0;
-            break;
-          case 'topup':
-            topup += tx.amount || 0;
-            topupAdminFee += tx.adminFee || 0;
-            break;
-          case 'tarik':
-            tarik += tx.amount || 0;
-            tarikAdminFee += tx.adminFee || 0;
-            break;
-        }
-      }
+    const kasLaci = await KasCore.getKasFisikLaci({
+      date: todayStr,
+      userId: user ? user.uid : null
     });
-
-    // Load piutang hari ini
-    let totalPiutang = 0;
-    try {
-      const todayStart = new Date(todayStr + 'T00:00:00').getTime();
-      const todayEnd = todayStart + 86400000;
-      const debtsSnapshot = await db.ref('debts').once('value');
-      const debtsData = debtsSnapshot.val() || {};
-      Object.values(debtsData).forEach(d => {
-        if (d.status === 'active' && d.type === 'piutang') {
-          const createdAt = d.createdAt || 0;
-          if (createdAt >= todayStart && createdAt < todayEnd) {
-            if (d.kasRecorded !== false) {
-              totalPiutang += d.remaining || 0;
-            }
-          }
-        }
-      });
-    } catch (e) {}
-
-    /*
-      Mutasi fisik laci:
-      - Top Up: customer menyerahkan nominal + admin, jadi keduanya masuk fisik.
-      - Tarik Tunai: customer menerima nominal - admin; admin tetap tinggal di laci.
-      - Penjualan kredit: hanya paymentAmount yang sudah diterima masuk kas.
-    */
-    const topupKasFisik = topup + topupAdminFee;
-    const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
-    const uangGlobal = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
-    
-    document.getElementById('headerUangGlobal').textContent = formatRupiah(uangGlobal);
-    localStorage.setItem('header_uang_global', formatRupiah(uangGlobal));
-
+    document.getElementById('headerUangGlobal').textContent = formatRupiah(kasLaci.total);
+    localStorage.setItem('header_uang_global', formatRupiah(kasLaci.total));
   } catch (err) {
-    console.error('Error loadUangGlobal:', err);
+    console.error('kasirv2: gagal memuat uang global', err);
   }
 }
 
@@ -1639,51 +1567,24 @@ async function loadUangGlobal() {
     String(today.getDate()).padStart(2, '0');
 
   try {
-    const txSnapshot = await createFirestoreCompat().ref('transactions/' + todayStr).once('value');
-    const txData = txSnapshot.val() || {};
-
-    let totalPenjualan = 0;
-    let totalLaba = 0;
-    let transaksiCount = 0;
-
-    Object.values(txData).forEach(tx => {
-      if (tx.status !== 'cancelled' && tx.status !== 'voided') {
-        switch (tx.type) {
-          case 'penjualan':
-            totalPenjualan += tx.total || 0;
-            totalLaba += tx.profit || 0;
-            // Skip kalau dari page hutang (sama persis index)
-            if (tx.source !== 'hutang_page') {
-              transaksiCount++;
-            }
-            break;
-
-          case 'topup':
-            totalLaba += tx.adminFee || 0;
-            transaksiCount++;
-            break;
-
-          case 'tarik':
-            totalLaba += tx.adminFee || 0;
-            transaksiCount++;
-            break;
-        }
-      }
+    const user = firebase.auth().currentUser;
+    const summary = await KasCore.getDailySummary({
+      date: todayStr,
+      userId: user ? user.uid : null
     });
 
-    document.getElementById('headerPenjualan').textContent = formatRupiah(totalPenjualan);
-    document.getElementById('headerTransaksi').textContent = transaksiCount.toLocaleString('id-ID');
-    document.getElementById('headerLaba').textContent = formatRupiah(totalLaba);
+    document.getElementById('headerPenjualan').textContent = formatRupiah(summary.totalSales);
+    document.getElementById('headerTransaksi').textContent = summary.salesServiceTransactionCount.toLocaleString('id-ID');
+    document.getElementById('headerLaba').textContent = formatRupiah(summary.totalProfit);
 
-    // Simpan ke localStorage untuk offline
     try {
-      localStorage.setItem('header_penjualan', formatRupiah(totalPenjualan));
-      localStorage.setItem('header_transaksi', transaksiCount.toString());
-      localStorage.setItem('header_laba', formatRupiah(totalLaba));
+      localStorage.setItem('header_penjualan', formatRupiah(summary.totalSales));
+      localStorage.setItem('header_transaksi', summary.salesServiceTransactionCount.toString());
+      localStorage.setItem('header_laba', formatRupiah(summary.totalProfit));
     } catch(e) {}
 
   } catch (err) {
-    console.error('Error loadHeaderStats:', err);
+    console.error('kasirv2: gagal memuat statistik header', err);
   }
 }
     

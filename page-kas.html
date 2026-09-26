@@ -382,6 +382,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
@@ -803,77 +804,63 @@
         }
       }
 
+      function resolveDateRange(filterType, dateFrom, dateTo) {
+        const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+        const todayDate = new Date(today + 'T00:00:00');
+        let start = today;
+        let end = today;
+
+        if (filterType === 'custom' && dateFrom && dateTo) {
+          return { startDate: dateFrom, endDate: dateTo };
+        }
+        if (filterType === 'yesterday') {
+          const yesterday = new Date(todayDate);
+          yesterday.setDate(yesterday.getDate() - 1);
+          start = yesterday.toISOString().split('T')[0];
+          end = start;
+        } else if (filterType === 'week') {
+          const startOfWeek = new Date(todayDate);
+          startOfWeek.setDate(todayDate.getDate() - todayDate.getDay());
+          start = startOfWeek.toISOString().split('T')[0];
+        } else if (filterType === 'month') {
+          const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+          start = startOfMonth.toISOString().split('T')[0];
+        } else if (filterType === 'all') {
+          start = '2000-01-01';
+        }
+
+        return { startDate: start, endDate: end };
+      }
+
       async function loadKasSummaryAndHistory(user, filterType = 'today', dateFrom = null, dateTo = null) {
         Utils.showLoading('Memuat data kas...');
         try {
+          const range = resolveDateRange(filterType, dateFrom, dateTo);
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-          
-          // 1. Ambil Modal Awal Hari Ini untuk perhitungan kas di tangan
-          let modalAwal = 0;
-          try {
-            let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-            if (!modalDoc.exists) {
-              modalDoc = await db.collection("modal").doc(today).get();
-            }
-            modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
-          } catch(e) {}
+          const [currentSummary, currentKasLaci, transactions] = await Promise.all([
+            KasCore.getDailySummary({
+              date: today,
+              userId: user.uid
+            }),
+            KasCore.getKasFisikLaci({
+              date: today,
+              userId: user.uid
+            }),
+            KasCore.getTransactionsByDateRange({
+              startDate: range.startDate,
+              endDate: range.endDate,
+              userId: user.uid
+            })
+          ]);
 
-          const snapshot = await db.collection("transactions").get();
-          
-          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, tarik = 0;
-    let topupAdminFee = 0, tarikAdminFee = 0;
+          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(currentSummary.totalCashInDrawer);
+          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(currentSummary.totalCashOutDrawer);
+          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(currentKasLaci.total);
 
-    Object.values(txData).forEach(tx => {
-      if (tx.status !== 'cancelled' && tx.status !== 'voided') {
-        switch (tx.type) {
-          case 'penjualan':
-            // Hanya Tunai (uang fisik) yang masuk ke kas.
-            // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
-            // Hutang: hanya DP yang diterima masuk kas.
-            if (tx.paymentMethod === 'cash') {
-              penjualan += typeof tx.paymentAmount === 'number' ? tx.paymentAmount : (tx.total || 0);
-            } else if (tx.paymentMethod === 'hutang') {
-              penjualan += tx.paymentAmount || 0;
-            }
-            // Transfer & QRIS: tidak masuk perhitungan kas fisik
-            break;
-                case 'kas_keluar':
-                  kasKeluarToday += data.amount || data.total || 0;
-                  break;
-                case 'topup':
-                  if (data.paymentMethod !== 'hutang') {
-                    topupToday += data.amount || 0;
-                    topupAdminToday += data.adminFee || 0;
-                  }
-                  break;
-                case 'tarik':
-                  tarikToday += data.amount || 0;
-                  tarikAdminToday += data.adminFee || 0;
-                  break;
-              }
-            }
-
-            allTransactions.push({ id: doc.id, ...data });
-          });
-
-          const topupKasFisik = topupToday + topupAdminToday;
-          const tarikKasFisik = Math.max(0, tarikToday - tarikAdminToday);
-          
-          const totalKasMasukVal = kasMasukToday + penjualanToday + topupKasFisik;
-          const totalKasKeluarVal = kasKeluarToday + tarikKasFisik;
-          const kasDitangan = modalAwal + totalKasMasukVal - totalKasKeluarVal;
-
-          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(totalKasMasukVal);
-          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(totalKasKeluarVal);
-          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(kasDitangan);
-
-          // Filter untuk tabel riwayat sesuai tab yang dipilih
-          let filteredTx;
-          if (filterType === 'custom' && dateFrom && dateTo) {
-            filteredTx = filterTransactionsByDateRange(allTransactions, dateFrom, dateTo);
-          } else {
-            filteredTx = filterTransactionsByPeriod(allTransactions, filterType);
-          }
+          const filteredTx = transactions.filter(t =>
+            KasCore.isValidTransaction(t) &&
+            ['topup', 'tarik', 'kas_masuk', 'kas_keluar', 'penjualan'].includes(t.type)
+          );
 
           filteredTx.sort((a, b) => {
             const timeA = parseFirestoreDate(a.timestamp)?.getTime() || new Date(a.date || 0).getTime();
@@ -909,7 +896,7 @@
 
               return `
                 <tr>
-                  <td>${t.date || today} ${timeStr}</td>
+                  <td>${t.date || range.endDate} ${timeStr}</td>
                   <td>
                     <span class="transaction-type-badge ${isIncome ? 'income' : 'expense'}">
                       <i class="fas fa-${isIncome ? 'arrow-up' : 'arrow-down'}"></i>
@@ -918,7 +905,7 @@
                   </td>
                   <td>${t.note || '-'}</td>
                   <td style="color: ${isIncome ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
-                    ${isIncome ? '+' : '-'} ${Utils.formatRupiah(t.total || t.amount || 0)}
+                    ${isIncome ? '+' : '-'} ${Utils.formatRupiah(KasCore.getAmount(t))}
                   </td>
                   <td>${t.userName || '-'}</td>
                 </tr>
@@ -928,7 +915,7 @@
 
           updateDateRangeInfo(filterType, filteredTx.length);
         } catch (error) {
-          console.error("Error loading kas management data:", error);
+          console.error("kas: gagal memuat ringkasan kas", error);
           Utils.showToast('Gagal memuat data kas', 'error');
         } finally {
           Utils.hideLoading();

@@ -29,6 +29,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
@@ -957,65 +958,29 @@
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           document.getElementById('kasDate').textContent = today;
 
-          let modalAwal = 0;
-          try {
-            let modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
-            if (!modalDoc.exists) {
-              modalDoc = await db.collection("modal").doc(today).get();
-            }
-            modalAwal = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
-          } catch(e) {}
-
-          const snapshot = await db.collection("transactions").where("date", "==", today).get();
-          
-          let penjualan = 0, kasMasuk = 0, kasKeluar = 0, topup = 0, topupAdmin = 0, tarik = 0, tarikAdmin = 0;
-
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.status === 'cancelled' || data.status === 'voided') return;
-
-            switch (data.type) {
-              case 'penjualan':
-                penjualan += data.paymentMethod === 'hutang'
-                  ? (data.paymentAmount || 0)
-                  : (typeof data.paymentAmount === 'number' ? data.paymentAmount : (data.total || 0));
-                break;
-              case 'kas_masuk':
-                if (data.category !== 'penjualan_hutang' && data.category !== 'penerimaan_piutang_penjualan') {
-                  kasMasuk += data.amount || 0;
-                }
-                break;
-              case 'kas_keluar':
-                kasKeluar += data.amount || 0;
-                break;
-              case 'topup':
-                if (data.paymentMethod !== 'hutang') {
-                  topup += data.amount || 0;
-                  topupAdmin += data.adminFee || 0;
-                }
-                break;
-              case 'tarik':
-                tarik += data.amount || 0;
-                tarikAdmin += data.adminFee || 0;
-                break;
-            }
-          });
-
-          const topupKasFisik = topup + topupAdmin;
-          const tarikKasFisik = Math.max(0, tarik - tarikAdmin);
-          const uangGlobal = modalAwal + kasMasuk - kasKeluar + penjualan + topupKasFisik - tarikKasFisik;
+          const shiftSummary = await KasCore.getShiftSummary({ date: today, userId: user.uid });
+          const topupKasFisik = shiftSummary.topupKasFisik;
+          const tarikKasFisik = shiftSummary.tarikKasFisik;
 
           todayStats = {
-            modalAwal, penjualan, topup, topupAdmin, tarik, tarikAdmin, kasMasuk, kasKeluar, uangGlobal
+            modalAwal: shiftSummary.modalAwal,
+            penjualan: shiftSummary.penjualan,
+            topup: shiftSummary.topup,
+            topupAdmin: shiftSummary.topupAdmin,
+            tarik: shiftSummary.tarik,
+            tarikAdmin: shiftSummary.tarikAdmin,
+            kasMasuk: shiftSummary.kasMasuk,
+            kasKeluar: shiftSummary.kasKeluar,
+            uangGlobal: shiftSummary.uangGlobal
           };
 
-          document.getElementById('sistemModal').textContent = Utils.formatRupiah(modalAwal);
-          document.getElementById('sistemMasuk').textContent = '+ ' + Utils.formatRupiah(kasMasuk);
-          document.getElementById('sistemKeluar').textContent = '- ' + Utils.formatRupiah(kasKeluar);
-          document.getElementById('sistemPenjualan').textContent = '+ ' + Utils.formatRupiah(penjualan);
+          document.getElementById('sistemModal').textContent = Utils.formatRupiah(todayStats.modalAwal);
+          document.getElementById('sistemMasuk').textContent = '+ ' + Utils.formatRupiah(todayStats.kasMasuk);
+          document.getElementById('sistemKeluar').textContent = '- ' + Utils.formatRupiah(todayStats.kasKeluar);
+          document.getElementById('sistemPenjualan').textContent = '+ ' + Utils.formatRupiah(todayStats.penjualan);
           document.getElementById('sistemTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
           document.getElementById('sistemTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
-          document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(uangGlobal);
+          document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(todayStats.uangGlobal);
 
           const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
           isShiftOpen = shiftDoc.exists && shiftDoc.data().status === 'open';
@@ -1032,7 +997,7 @@
 
           ClosingCalculator.updateComparison();
         } catch (error) {
-          console.error("Error loading closing data:", error);
+          console.error("closing: gagal memuat data closing", error);
           Utils.showToast('Gagal memuat data sistem: ' + error.message, 'error');
         } finally {
           Utils.hideLoading();

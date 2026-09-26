@@ -515,6 +515,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
 </head>
@@ -1135,164 +1136,97 @@
     const isAdmin = currentUserRole === "admin";
 
     try {
-      let modalAwal = 0, penjualan = 0, cashPenjualan = 0, kasMasuk = 0, kasKeluar = 0;
-      let topup = 0, tarik = 0, piutang = 0, laba = 0, trxCount = 0;
-      let topupAdminFee = 0, tarikAdminFee = 0;
-
       const usersSnap = await db.collection("users").get();
       const usersMap = {};
       usersSnap.forEach(doc => {
         usersMap[doc.id] = { id: doc.id, ...doc.data() };
       });
 
-      const modalSnap = await db.collection("modal").where("date", "==", today).get();
-      modalSnap.forEach(doc => {
-        const m = doc.data();
-        const targetUser = usersMap[m.userId] || {};
+      const [modalSummary, allTransactions, debtsSnapshot] = await Promise.all([
+        KasCore.getModalSummary({ date: today }),
+        KasCore.getTransactionsByDateRange({ startDate: today, endDate: today }),
+        db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get()
+      ]);
+
+      const scopedModalEntries = modalSummary.entries.filter(entry => {
+        const targetUser = usersMap[entry.userId] || {};
         const targetRole = (targetUser.role || "kasir").toLowerCase();
-
-        if (isBoss) modalAwal += m.amount || 0;
-        else if (isAdmin && targetRole === "kasir") modalAwal += m.amount || 0;
-        else if (!isBoss && !isAdmin && m.userId === user.uid) modalAwal += m.amount || 0;
+        if (isBoss) return true;
+        if (isAdmin) return targetRole === "kasir";
+        return entry.userId === user.uid;
       });
 
-      const transSnapshot = await db.collection("transactions").where("date", "==", today).get();
-      transSnapshot.forEach(doc => {
-        const t = doc.data();
-        const transactionUserId = t.userId || t.cashierId || t.cashierID;
-        const tUser = usersMap[transactionUserId] || {};
-        const tRole = (tUser.role || "kasir").toLowerCase();
-
-        if (!isBoss) {
-          if (isAdmin && tRole !== "kasir" && transactionUserId !== user.uid) return;
-          if (!isAdmin && transactionUserId !== user.uid) return;
-        }
-
-        if (t.status !== "cancelled" && t.status !== "voided") {
-          switch (t.type) {
-            case "penjualan":
-              penjualan += t.total || 0;
-              // Hanya Tunai & Hutang (uang fisik) yang masuk ke kas.
-              // Transfer & QRIS adalah pembayaran digital, tidak masuk laci.
-              if (t.paymentMethod === "cash") {
-                cashPenjualan += typeof t.paymentAmount === "number" ? t.paymentAmount : (t.total || 0);
-              } else if (t.paymentMethod === "hutang") {
-                cashPenjualan += t.paymentAmount || 0;
-              }
-              laba += t.profit || 0;
-              if (t.source !== "hutang_page") trxCount++;
-              break;
-            case "topup": 
-              if (t.paymentMethod !== "hutang") {
-                topup += t.amount || 0; 
-                topupAdminFee += t.adminFee || 0; 
-              }
-              laba += t.adminFee || 0; 
-              trxCount++; 
-              break;
-            case "tarik": tarik += t.amount || 0; tarikAdminFee += t.adminFee || 0; laba += t.adminFee || 0; trxCount++; break;
-            case "kas_masuk":
-              if (t.category !== "penjualan_hutang" && t.category !== "penerimaan_piutang_penjualan") {
-                kasMasuk += t.amount || 0;
-              }
-              break;
-            case "kas_keluar": kasKeluar += t.amount || 0; break;
-          }
-        }
+      const scopedTransactions = allTransactions.filter(transaction => {
+        const transactionUserId = KasCore.getUserId(transaction);
+        const targetUser = usersMap[transactionUserId] || {};
+        const targetRole = (targetUser.role || "kasir").toLowerCase();
+        if (isBoss) return true;
+        if (isAdmin) return targetRole === "kasir" || transactionUserId === user.uid;
+        return transactionUserId === user.uid;
       });
 
-      const debtsSnapshot = await db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get();
+      const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
+      const modalAwal = scopedModalEntries.reduce((sum, entry) => sum + KasCore.normalizeNumber(entry.amount), 0);
+      const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(modalAwal, scopedSummary);
+      const topupKasFisik = kasLaciSummary.topupKasFisik;
+      const tarikKasFisik = kasLaciSummary.tarikKasFisik;
+      const kasLaci = kasLaciSummary.total;
+
+      let piutang = 0;
       debtsSnapshot.forEach(doc => {
-        const d = doc.data();
-        if (d.date === today && d.kasRecorded !== false) {
-          const dUser = usersMap[d.userId] || {};
-          const dRole = (dUser.role || "kasir").toLowerCase();
-          if (!isBoss) {
-            if (isAdmin && dRole !== "kasir" && d.userId !== user.uid) return;
-            if (!isAdmin && d.userId !== user.uid) return;
-          }
-          piutang += d.remaining || 0;
+        const debt = doc.data();
+        if (debt.date !== today || debt.kasRecorded === false) return;
+        const targetUser = usersMap[debt.userId] || {};
+        const targetRole = (targetUser.role || "kasir").toLowerCase();
+        if (!isBoss) {
+          if (isAdmin && targetRole !== "kasir" && debt.userId !== user.uid) return;
+          if (!isAdmin && debt.userId !== user.uid) return;
         }
+        piutang += KasCore.normalizeNumber(debt.remaining != null ? debt.remaining : debt.amount);
       });
-
-      const topupKasFisik = topup + topupAdminFee;
-      const tarikKasFisik = Math.max(0, tarik - tarikAdminFee);
-      const kasLaci = modalAwal + kasMasuk - kasKeluar + cashPenjualan + topupKasFisik - tarikKasFisik;
 
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
-      document.getElementById("totalPenjualan").textContent = formatRupiah(penjualan);
+      document.getElementById("totalPenjualan").textContent = formatRupiah(scopedSummary.totalSales);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("totalTransaksi").textContent = trxCount.toString();
-      document.getElementById("totalLaba").textContent = formatRupiah(laba);
+      document.getElementById("totalTransaksi").textContent = scopedSummary.salesServiceTransactionCount.toString();
+      document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit);
 
       document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(kasMasuk);
-      document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(kasKeluar);
-      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(cashPenjualan);
+      document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(scopedSummary.cashIn);
+      document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.cashOut);
+      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(scopedSummary.cashSales);
       document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
       document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
       document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
       if (isBoss || isAdmin) {
-        renderStaffReportTable(modalSnap, transSnapshot, usersMap, isBoss, isAdmin);
+        renderStaffReportTable(
+          KasCore.buildStaffPerformance(modalSummary.entries, allTransactions, usersMap),
+          isBoss,
+          isAdmin
+        );
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("dashboard: gagal memuat statistik", err);
     }
   }
 
-  function renderStaffReportTable(modalSnap, transSnap, usersMap, isBoss, isAdmin) {
+  function renderStaffReportTable(staffRows, isBoss, isAdmin) {
     const cardReport = document.getElementById("cardReportStaff");
     const tbody = document.getElementById("staffReportTableBody");
     const badge = document.getElementById("reportScopeBadge");
     cardReport.style.display = "block";
     badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
 
-    const staffData = {};
-
-    modalSnap.forEach(doc => {
-      const m = doc.data();
-      const u = usersMap[m.userId] || {};
-      const role = (u.role || "kasir").toLowerCase();
-
-      if (isAdmin && role !== "kasir") return;
-
-      if (!staffData[m.userId]) {
-        staffData[m.userId] = { name: m.userName || u.name || 'Staf', role: role, modal: 0, penjualan: 0, count: 0 };
-      }
-      staffData[m.userId].modal += m.amount || 0;
-    });
-
-    transSnap.forEach(doc => {
-      const t = doc.data();
-      const transactionUserId = t.userId || t.cashierId || t.cashierID;
-      const u = usersMap[transactionUserId] || {};
-      const role = (u.role || "kasir").toLowerCase();
-
-      if (!staffData[transactionUserId]) {
-        if (isBoss || (isAdmin && role === "kasir")) {
-          staffData[transactionUserId] = { name: u.name || u.username || t.cashierName || 'Staf', role: role, modal: 0, penjualan: 0, count: 0 };
-        } else {
-          return;
-        }
-      }
-
-      if (t.status !== "cancelled" && t.status !== "voided" && t.type === "penjualan") {
-        staffData[transactionUserId].penjualan += t.total || 0;
-        if (t.source !== "hutang_page") staffData[transactionUserId].count++;
-      }
-    });
-
-    const keys = Object.keys(staffData);
-    if (keys.length === 0) {
+    const filteredRows = (staffRows || []).filter(row => isBoss || row.role === "kasir");
+    if (filteredRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">Belum ada aktivitas staf hari ini.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = keys.map(uid => {
-      const s = staffData[uid];
+    tbody.innerHTML = filteredRows.map(s => {
       return `
         <tr>
           <td><strong>${s.name}</strong></td>

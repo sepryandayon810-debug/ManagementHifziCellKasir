@@ -404,6 +404,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
@@ -888,8 +889,8 @@
     const summaryTotalEl = document.getElementById("totalGlobalModalSummary");
 
     try {
-      const modalSnap = await db.collection("modal").where("date", "==", todayStr).get();
       const usersSnap = await db.collection("users").get();
+      const modalSummary = await KasCore.getModalSummary({ date: todayStr });
       
       const usersMap = {};
       usersSnap.forEach(doc => {
@@ -897,18 +898,14 @@
       });
 
       let rowsHtml = "";
-      let grandTotal = 0;
       const isAdmin = currentUserRole === "admin";
 
-      modalSnap.forEach(doc => {
-        const m = doc.data();
+      modalSummary.entries.forEach(m => {
         const targetUser = usersMap[m.userId] || {};
         const targetRole = (targetUser.role || "kasir").toLowerCase();
 
         if (isAdmin && targetRole !== "kasir") return;
         if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return;
-
-        grandTotal += m.amount || 0;
 
         rowsHtml += `
           <tr>
@@ -926,10 +923,20 @@
         tbody.innerHTML = rowsHtml;
       }
 
-      summaryTotalEl.textContent = `Total: ${formatRupiah(grandTotal)}`;
+      const scopedTotal = modalSummary.entries
+        .filter(m => {
+          const targetUser = usersMap[m.userId] || {};
+          const targetRole = (targetUser.role || "kasir").toLowerCase();
+          if (isAdmin && targetRole !== "kasir") return false;
+          if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return false;
+          return true;
+        })
+        .reduce((sum, entry) => sum + KasCore.normalizeNumber(entry.amount), 0);
+
+      summaryTotalEl.textContent = `Total: ${formatRupiah(scopedTotal)}`;
 
     } catch (err) {
-      console.error(err);
+      console.error("modal-harian: gagal memuat ringkasan modal", err);
       tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger)">Gagal memuat ringkasan data.</td></tr>`;
     }
   }

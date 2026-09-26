@@ -224,6 +224,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
@@ -514,6 +515,7 @@
       let chartInstance = null;
       let currentReport = 'penjualan';
       let currentUserRole = "kasir";
+      let currentSummary = null;
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -715,28 +717,17 @@
             return;
           }
 
-          let start = new Date(dateFrom);
-          let end = new Date(dateTo);
-          let dates = [];
+          const [summary, allTransactions] = await Promise.all([
+            KasCore.getPeriodSummary({ startDate: dateFrom, endDate: dateTo }),
+            KasCore.getTransactionsByDateRange({ startDate: dateFrom, endDate: dateTo })
+          ]);
 
-          while (start <= end) {
-            dates.push(start.toISOString().split('T')[0]);
-            start.setDate(start.getDate() + 1);
-          }
-
-          let allTransactions = [];
-          for (const dStr of dates) {
-            const snap = await db.collection("transactions").where("date", "==", dStr).get();
-            snap.forEach(doc => {
-              allTransactions.push({ id: doc.id, ...doc.data() });
-            });
-          }
-
-          reportData = allTransactions;
-          calculateStats(allTransactions);
-          renderSummary(allTransactions);
-          renderTransactionList(allTransactions);
-          renderChart(allTransactions);
+          currentSummary = summary;
+          reportData = allTransactions.filter(KasCore.isValidTransaction);
+          calculateStats(reportData);
+          renderSummary(reportData);
+          renderTransactionList(reportData);
+          renderChart(reportData);
 
           Utils.showToast('Laporan berhasil dimuat', 'success');
         } catch (e) {
@@ -748,77 +739,31 @@
       }
 
       function calculateStats(transactions) {
-        let totalPenjualan = 0;
-        let totalLaba = 0;
-        let transaksiCount = 0;
-        let totalKasMutasi = 0;
-        let countMasuk = 0;
-        let countKeluar = 0;
-
-        transactions.forEach(t => {
-          if (t.status !== 'cancelled' && t.status !== 'voided') {
-            if (t.type === 'penjualan') {
-              totalPenjualan += t.total || 0;
-              totalLaba += t.profit || 0;
-              transaksiCount++;
-            } else if (['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
-              const val = t.total || t.amount || 0;
-              totalKasMutasi += val;
-              if (['topup', 'kas_masuk'].includes(t.type)) countMasuk++;
-              else countKeluar++;
-            }
-          }
-        });
-
-        const rataRata = transaksiCount > 0 ? totalPenjualan / transaksiCount : 0;
+        const summary = currentSummary || KasCore.summarizeTransactions(transactions);
+        const rataRata = summary.salesTransactionCount > 0 ? summary.totalSales / summary.salesTransactionCount : 0;
 
         if (currentReport === 'penjualan') {
-          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(totalPenjualan);
-          document.getElementById('statTransaksi').textContent = transaksiCount.toLocaleString('id-ID');
+          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.totalSales);
+          document.getElementById('statTransaksi').textContent = summary.salesTransactionCount.toLocaleString('id-ID');
           document.getElementById('statRataRata').textContent = Utils.formatRupiah(rataRata);
-          document.getElementById('statLaba').textContent = Utils.formatRupiah(totalLaba);
+          document.getElementById('statLaba').textContent = Utils.formatRupiah(summary.totalProfit);
         } else {
-          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(totalKasMutasi);
-          document.getElementById('statTransaksi').textContent = (countMasuk + countKeluar).toLocaleString('id-ID');
-          document.getElementById('statRataRata').textContent = countMasuk + ' Masuk';
-          document.getElementById('statLaba').textContent = countKeluar + ' Keluar';
+          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.totalCashMutation);
+          document.getElementById('statTransaksi').textContent = summary.cashMutationCount.toLocaleString('id-ID');
+          document.getElementById('statRataRata').textContent = summary.cashMutationIncomeCount + ' Masuk';
+          document.getElementById('statLaba').textContent = summary.cashMutationExpenseCount + ' Keluar';
         }
       }
 
       // Memisahkan rincian metode pembayaran (Tunai, QRIS, Transfer, dll.)
       function renderSummary(transactions) {
-        const summary = {
-          penjualan: 0,
-          paymentMethods: { tunai: 0, qris: 0, transfer: 0, lainnya: 0 },
-          topup: 0, tarik: 0, kas_masuk: 0, kas_keluar: 0
-        };
-
-        transactions.forEach(t => {
-          if (t.status !== 'cancelled' && t.status !== 'voided') {
-            const val = t.total || t.amount || 0;
-            if (t.type === 'penjualan') {
-              summary.penjualan += val;
-              const method = (t.paymentMethod || t.paymentType || 'tunai').toLowerCase();
-              if (method.includes('cash') || method.includes('tunai')) {
-                summary.paymentMethods.tunai += val;
-              } else if (method.includes('qris')) {
-                summary.paymentMethods.qris += val;
-              } else if (method.includes('transfer') || method.includes('bca') || method.includes('bri')) {
-                summary.paymentMethods.transfer += val;
-              } else {
-                summary.paymentMethods.lainnya += val;
-              }
-            } else {
-              summary[t.type] = (summary[t.type] || 0) + val;
-            }
-          }
-        });
+        const summary = currentSummary || KasCore.summarizeTransactions(transactions);
 
         const tbody = document.getElementById('summaryTableBody');
         
         if (currentReport === 'penjualan') {
           tbody.innerHTML = `
-            <tr><td>Total Penjualan Keseluruhan</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.penjualan)}</td></tr>
+            <tr><td>Total Penjualan Keseluruhan</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.totalSales)}</td></tr>
             <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Tunai (Cash)</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.tunai)}</td></tr>
             <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran QRIS</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.qris)}</td></tr>
             <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Transfer / Bank</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.transfer)}</td></tr>
@@ -827,9 +772,9 @@
         } else {
           tbody.innerHTML = `
             <tr><td>Layanan Top Up</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
-            <tr><td>Layanan Tarik Tunai</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.tarik)}</td></tr>
-            <tr><td>Kas Masuk Lain</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.kas_masuk)}</td></tr>
-            <tr><td>Kas Keluar Lain</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.kas_keluar)}</td></tr>
+            <tr><td>Layanan Tarik Tunai</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.withdrawal)}</td></tr>
+            <tr><td>Kas Masuk Lain</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.cashIn)}</td></tr>
+            <tr><td>Kas Keluar Lain</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.cashOut)}</td></tr>
           `;
         }
       }
@@ -838,6 +783,7 @@
         const list = document.getElementById('transactionList');
         
         const filtered = transactions.filter(t => {
+          if (!KasCore.isValidTransaction(t)) return false;
           if (currentReport === 'penjualan') {
             return t.type === 'penjualan';
           } else {
@@ -855,12 +801,13 @@
         list.innerHTML = filtered.map(t => {
           const labels = { penjualan: 'Penjualan', topup: 'Top Up', tarik: 'Tarik Tunai', kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar' };
           const isIncome = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
-          const amount = t.total || t.amount || 0;
+          const amount = KasCore.getAmount(t);
           let timeStr = '-';
           if (t.timestamp) {
             timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
           }
-          const methodLabel = t.paymentMethod ? ` [Metode: ${t.paymentMethod.toUpperCase()}]` : '';
+          const methodValue = t.paymentMethod || t.paymentType;
+          const methodLabel = methodValue ? ` [Metode: ${String(methodValue).toUpperCase()}]` : '';
 
           return `
             <div class="transaction-item">
@@ -882,13 +829,13 @@
 
         const byDate = {};
         transactions.forEach(t => {
-          if (t.status !== 'cancelled') {
+          if (KasCore.isValidTransaction(t)) {
             if (currentReport === 'penjualan' && t.type === 'penjualan') {
               const d = t.date || 'Lainnya';
-              byDate[d] = (byDate[d] || 0) + (t.total || 0);
+              byDate[d] = (byDate[d] || 0) + KasCore.getAmount(t);
             } else if (currentReport === 'kas' && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
               const d = t.date || 'Lainnya';
-              const val = t.total || t.amount || 0;
+              const val = KasCore.getAmount(t);
               const isInc = ['topup', 'kas_masuk'].includes(t.type);
               byDate[d] = (byDate[d] || 0) + (isInc ? val : -val);
             }
@@ -938,15 +885,15 @@
         if (currentReport === 'penjualan') {
           csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
           reportData.forEach(t => {
-            if (t.type === 'penjualan') {
-              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || 'tunai'}",${t.total || 0},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+            if (KasCore.isValidTransaction(t) && t.type === 'penjualan') {
+              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || t.paymentType || 'tunai'}",${KasCore.getAmount(t)},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         } else {
           csv = 'ID,Tanggal,Tipe,Jumlah,Keterangan,Kasir\n';
           reportData.forEach(t => {
-            if (['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
-              csv += `"${t.id}","${t.date || ''}","${t.type}",${t.amount || t.total || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+            if (KasCore.isValidTransaction(t) && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
+              csv += `"${t.id}","${t.date || ''}","${t.type}",${KasCore.getAmount(t)},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         }
