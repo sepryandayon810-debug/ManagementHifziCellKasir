@@ -1,332 +1,685 @@
-// js/kas-core.js - Sumber tunggal perhitungan kas WebPOS.
-// Semua angka yang dikembalikan adalah number mentah; format Rupiah tetap di halaman UI.
 if (typeof window.KasCore === 'undefined') {
-  window.KasCore = (function () {
-    'use strict';
+  window.KasCore = (function() {
+    "use strict";
+
+    const EXCLUDED_KAS_MASUK_CATEGORIES = [
+      'penjualan_hutang',
+      'penerimaan_piutang_penjualan'
+    ];
 
     function getDb() {
-      if (!window.db && !(window.firebase && firebase.firestore)) {
-        throw new Error('Firestore belum siap. Muat js/firebase-config.js sebelum js/kas-core.js.');
+      if (window.db && typeof window.db.collection === 'function') {
+        return window.db;
       }
-      return window.db || firebase.firestore();
+      if (window.firebase && window.firebase.firestore) {
+        return window.firebase.firestore();
+      }
+      throw new Error('KasCore membutuhkan firebase.firestore() yang sudah diinisialisasi');
     }
 
-    /** Mengubah nilai Firestore/form menjadi number aman. */
-    function toNumber(value) {
-      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    function normalizeNumber(value) {
+      if (typeof value === 'number' && !isNaN(value)) return value;
       if (typeof value === 'string') {
-        var parsed = Number(value.replace(/[^0-9.-]/g, ''));
-        return Number.isFinite(parsed) ? parsed : 0;
+        const cleaned = value.replace(/[^\d.-]/g, '');
+        const parsed = Number(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
       }
       return 0;
     }
 
-    /** Tanggal lokal dalam format YYYY-MM-DD, tanpa masalah UTC dari toISOString(). */
-    function getTodayString(date) {
-      var d = date instanceof Date ? date : new Date();
-      return d.getFullYear() + '-' +
-        String(d.getMonth() + 1).padStart(2, '0') + '-' +
-        String(d.getDate()).padStart(2, '0');
+    function parseDateValue(value) {
+      if (!value) return null;
+      if (typeof value === 'number') {
+        const numberDate = new Date(value);
+        return isNaN(numberDate.getTime()) ? null : numberDate;
+      }
+      if (value && typeof value.toDate === 'function') {
+        try {
+          return value.toDate();
+        } catch (error) {
+          console.error('kas-core: gagal parse Firestore Timestamp', error);
+          return null;
+        }
+      }
+      if (value && typeof value.seconds === 'number') {
+        return new Date(value.seconds * 1000);
+      }
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? null : date;
     }
 
-    /** Mengembalikan true hanya untuk transaksi yang masuk perhitungan. */
-    function isValidTransaction(transaction) {
-      var status = String((transaction && transaction.status) || '').toLowerCase();
-      return status !== 'cancelled' && status !== 'voided';
+    function formatDateKey(dateValue) {
+      const date = parseDateValue(dateValue);
+      if (!date) return '';
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+      ].join('-');
     }
 
-    /** Fallback nilai transaksi untuk data lama: total, amount, lalu paymentAmount. */
-    function getAmount(transaction) {
-      transaction = transaction || {};
-      if (transaction.total !== undefined && transaction.total !== null) return toNumber(transaction.total);
-      if (transaction.amount !== undefined && transaction.amount !== null) return toNumber(transaction.amount);
-      return toNumber(transaction.paymentAmount);
+    function getTransactionDate(transaction) {
+      return transaction && transaction.date
+        ? transaction.date
+        : formatDateKey(transaction && transaction.timestamp);
     }
 
-    function getAdminFee(transaction) {
-      transaction = transaction || {};
-      return toNumber(transaction.adminFee !== undefined ? transaction.adminFee : transaction.fee);
-    }
-
-    function getType(transaction) {
-      return String((transaction && transaction.type) || '').trim().toLowerCase();
+    function getUserId(transaction) {
+      return transaction
+        ? (transaction.userId || transaction.cashierId || transaction.cashierID || null)
+        : null;
     }
 
     function getPaymentMethod(transaction) {
-      transaction = transaction || {};
-      return String(transaction.paymentMethod || transaction.paymentType || transaction.method || 'cash').trim().toLowerCase();
+      return String(
+        (transaction && (transaction.paymentMethod || transaction.paymentType)) || 'cash'
+      ).toLowerCase();
     }
 
-    function isCashPayment(transaction) {
-      var method = getPaymentMethod(transaction);
-      return ['cash', 'tunai', 'cashier', 'uang_tunai'].indexOf(method) !== -1;
+    function getAdminFee(transaction) {
+      return normalizeNumber(transaction && transaction.adminFee);
     }
 
-    function isDebtPayment(transaction) {
-      var method = getPaymentMethod(transaction);
-      return ['hutang', 'piutang', 'bon', 'credit'].indexOf(method) !== -1;
-    }
-
-    /** Penjualan yang benar-benar menambah uang fisik laci. */
-    function getPhysicalSaleAmount(transaction) {
-      if (isCashPayment(transaction)) {
-        return transaction && transaction.paymentAmount !== undefined
-          ? toNumber(transaction.paymentAmount)
-          : getAmount(transaction);
+    function getAmount(transaction) {
+      if (!transaction) return 0;
+      if (transaction.type === 'penjualan') {
+        return normalizeNumber(transaction.total != null ? transaction.total : transaction.amount);
       }
-      if (isDebtPayment(transaction)) return toNumber(transaction && transaction.paymentAmount);
+      if (transaction.amount != null) return normalizeNumber(transaction.amount);
+      if (transaction.total != null) return normalizeNumber(transaction.total);
       return 0;
     }
 
-    function shouldCountCashIn(transaction) {
-      var category = String((transaction && transaction.category) || '').toLowerCase();
-      return category !== 'penjualan_hutang' && category !== 'penerimaan_piutang_penjualan';
+    function getPaymentAmount(transaction) {
+      if (!transaction) return 0;
+      if (transaction.paymentAmount != null) return normalizeNumber(transaction.paymentAmount);
+      return getAmount(transaction);
     }
 
-    function isCashPurchase(transaction) {
-      transaction = transaction || {};
-      return transaction.kurangiSaldo === true || transaction.reduceCash === true ||
-        transaction.cashImpact === 'out' || transaction.isCashExpense === true;
+    function isValidTransaction(transaction) {
+      const status = String((transaction && transaction.status) || '').toLowerCase();
+      return status !== 'cancelled' && status !== 'voided';
     }
 
-    function normalizeTransaction(id, data) {
-      var transaction = Object.assign({ id: id }, data || {});
-      transaction.amountValue = getAmount(transaction);
-      transaction.adminFeeValue = getAdminFee(transaction);
-      transaction.typeNormalized = getType(transaction);
-      return transaction;
-    }
-
-    async function getTransactionsByDateRange(options) {
-      options = options || {};
-      var startDate = options.startDate || options.date || getTodayString();
-      var endDate = options.endDate || options.date || startDate;
-      var userId = options.userId || null;
-      var shiftId = options.shiftId || null;
-      var firestore = getDb();
-      var snapshot;
-
-      try {
-        snapshot = await firestore.collection('transactions')
-          .where('date', '>=', startDate)
-          .where('date', '<=', endDate)
-          .get();
-      } catch (error) {
-        console.warn('kas-core: query range date gagal, memakai fallback filter client.', error);
-        snapshot = await firestore.collection('transactions').get();
+    function getCashSaleAmount(transaction) {
+      const method = getPaymentMethod(transaction);
+      if (method === 'cash' || method === 'tunai') {
+        return getPaymentAmount(transaction);
       }
-
-      var result = [];
-      snapshot.forEach(function (doc) {
-        var tx = normalizeTransaction(doc.id, doc.data());
-        var txDate = tx.date || '';
-        if (txDate < startDate || txDate > endDate) return;
-        if (userId && tx.userId !== userId) return;
-        if (shiftId && tx.shiftId !== shiftId) return;
-        result.push(tx);
-      });
-      return result;
+      if (method === 'hutang') {
+        return getPaymentAmount(transaction);
+      }
+      return 0;
     }
 
-    function summarizeTransactions(transactions) {
-      var summary = {
-        totalPenjualan: 0,
-        totalLaba: 0,
-        totalTransaksi: 0,
-        penjualanTunai: 0,
-        kasMasuk: 0,
-        kasKeluar: 0,
+    function classifyPaymentMethod(transaction) {
+      const method = getPaymentMethod(transaction);
+      if (method.indexOf('cash') >= 0 || method.indexOf('tunai') >= 0) return 'tunai';
+      if (method.indexOf('qris') >= 0) return 'qris';
+      if (
+        method.indexOf('transfer') >= 0 ||
+        method.indexOf('bca') >= 0 ||
+        method.indexOf('bri') >= 0 ||
+        method.indexOf('mandiri') >= 0 ||
+        method.indexOf('bank') >= 0
+      ) {
+        return 'transfer';
+      }
+      if (method.indexOf('hutang') >= 0) return 'hutang';
+      return 'lainnya';
+    }
+
+    function matchesTransactionFilters(transaction, filters) {
+      if (!transaction) return false;
+      if (filters.userId && getUserId(transaction) !== filters.userId) return false;
+      if (filters.shiftId && transaction.shiftId !== filters.shiftId) return false;
+      return true;
+    }
+
+    function buildDateRangeList(startDate, endDate) {
+      const dates = [];
+      const current = parseDateValue(startDate + 'T00:00:00');
+      const last = parseDateValue(endDate + 'T00:00:00');
+      if (!current || !last) return dates;
+      while (current.getTime() <= last.getTime()) {
+        dates.push(formatDateKey(current));
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
+
+    function createSummary(transactions) {
+      const summary = {
+        transactions: Array.isArray(transactions) ? transactions.slice() : [],
+        validTransactions: [],
+        totalSales: 0,
+        cashSales: 0,
+        salesProfit: 0,
+        totalProfit: 0,
+        transactionCount: 0,
+        salesServiceTransactionCount: 0,
+        salesTransactionCount: 0,
+        cashMutationCount: 0,
+        cashMutationIncomeCount: 0,
+        cashMutationExpenseCount: 0,
+        cashIn: 0,
+        cashOut: 0,
         topup: 0,
         topupAdmin: 0,
-        tarik: 0,
-        tarikAdmin: 0,
-        pembelianKasKeluar: 0,
-        totalKasMasukFisik: 0,
-        totalKasKeluarFisik: 0,
-        transaksi: []
+        withdrawal: 0,
+        withdrawalAdmin: 0,
+        paymentMethods: {
+          tunai: 0,
+          qris: 0,
+          transfer: 0,
+          hutang: 0,
+          lainnya: 0
+        }
       };
 
-      (transactions || []).forEach(function (tx) {
-        if (!isValidTransaction(tx)) return;
-        var type = getType(tx);
-        var amount = getAmount(tx);
-        var admin = getAdminFee(tx);
-        summary.transaksi.push(tx);
+      summary.transactions.forEach(function(transaction) {
+        if (!isValidTransaction(transaction)) return;
+        summary.validTransactions.push(transaction);
 
-        if (type === 'penjualan') {
-          summary.totalPenjualan += amount;
-          summary.totalLaba += toNumber(tx.profit);
-          summary.totalTransaksi += 1;
-          summary.penjualanTunai += getPhysicalSaleAmount(tx);
-        } else if (type === 'kas_masuk') {
-          if (shouldCountCashIn(tx)) summary.kasMasuk += amount;
-        } else if (type === 'kas_keluar') {
-          summary.kasKeluar += amount;
-        } else if (type === 'topup') {
-          if (!isDebtPayment(tx)) {
-            summary.topup += amount;
-            summary.topupAdmin += admin;
+        const amount = getAmount(transaction);
+        const adminFee = getAdminFee(transaction);
+
+        switch (transaction.type) {
+          case 'penjualan': {
+            const paymentGroup = classifyPaymentMethod(transaction);
+            summary.totalSales += amount;
+            summary.cashSales += getCashSaleAmount(transaction);
+            summary.salesProfit += normalizeNumber(transaction.profit);
+            summary.paymentMethods[paymentGroup] =
+              (summary.paymentMethods[paymentGroup] || 0) + amount;
+            if (transaction.source !== 'hutang_page') {
+              summary.salesTransactionCount += 1;
+              summary.transactionCount += 1;
+              summary.salesServiceTransactionCount += 1;
+            }
+            break;
           }
-        } else if (type === 'tarik') {
-          summary.tarik += amount;
-          summary.tarikAdmin += admin;
-        } else if (['pembelian', 'purchase', 'restock'].indexOf(type) !== -1 && isCashPurchase(tx)) {
-          summary.pembelianKasKeluar += amount;
+          case 'topup':
+            if (getPaymentMethod(transaction) !== 'hutang') {
+              summary.topup += amount;
+              summary.topupAdmin += adminFee;
+              summary.transactionCount += 1;
+              summary.salesServiceTransactionCount += 1;
+              summary.cashMutationCount += 1;
+              summary.cashMutationIncomeCount += 1;
+            }
+            break;
+          case 'tarik':
+            summary.withdrawal += amount;
+            summary.withdrawalAdmin += adminFee;
+            summary.transactionCount += 1;
+            summary.salesServiceTransactionCount += 1;
+            summary.cashMutationCount += 1;
+            summary.cashMutationExpenseCount += 1;
+            break;
+          case 'kas_masuk':
+            if (EXCLUDED_KAS_MASUK_CATEGORIES.indexOf(transaction.category) === -1) {
+              summary.cashIn += amount;
+              summary.transactionCount += 1;
+              summary.cashMutationCount += 1;
+              summary.cashMutationIncomeCount += 1;
+            }
+            break;
+          case 'kas_keluar':
+            summary.cashOut += amount;
+            summary.transactionCount += 1;
+            summary.cashMutationCount += 1;
+            summary.cashMutationExpenseCount += 1;
+            break;
         }
       });
 
-      summary.topupFisik = summary.topup + summary.topupAdmin;
-      summary.tarikFisik = Math.max(0, summary.tarik - summary.tarikAdmin);
-      summary.totalKasMasukFisik = summary.kasMasuk + summary.penjualanTunai + summary.topupFisik;
-      summary.totalKasKeluarFisik = summary.kasKeluar + summary.pembelianKasKeluar + summary.tarikFisik;
+      summary.totalProfit = summary.salesProfit + summary.topupAdmin + summary.withdrawalAdmin;
+      summary.totalCashInDrawer =
+        summary.cashSales + summary.cashIn + summary.topup + summary.topupAdmin;
+      summary.totalCashOutDrawer =
+        summary.cashOut + Math.max(0, summary.withdrawal - summary.withdrawalAdmin);
+      summary.netCashFlow = summary.totalCashInDrawer - summary.totalCashOutDrawer;
+      summary.totalCashMutation =
+        summary.cashIn +
+        summary.cashOut +
+        summary.topup +
+        summary.withdrawal;
+
       return summary;
     }
 
-    async function getPeriodSummary(options) {
-      options = options || {};
-      var transactions = await getTransactionsByDateRange(options);
-      var summary = summarizeTransactions(transactions);
-      summary.startDate = options.startDate || options.date || getTodayString();
-      summary.endDate = options.endDate || options.date || summary.startDate;
-      return summary;
+    async function loadTransactionsByRange(startDate, endDate) {
+      const db = getDb();
+      if (!startDate || !endDate) return [];
+
+      try {
+        let query = db.collection('transactions');
+        if (startDate === endDate) {
+          query = query.where('date', '==', startDate);
+        } else {
+          query = query.where('date', '>=', startDate).where('date', '<=', endDate);
+        }
+
+        const snapshot = await query.get();
+        const transactions = [];
+        snapshot.forEach(function(doc) {
+          transactions.push(Object.assign({ id: doc.id }, doc.data()));
+        });
+        return transactions;
+      } catch (error) {
+        console.error('kas-core: query range transactions gagal, pakai fallback per tanggal', {
+          startDate: startDate,
+          endDate: endDate,
+          error: error
+        });
+        const transactions = [];
+        const dates = buildDateRangeList(startDate, endDate);
+        for (let index = 0; index < dates.length; index += 1) {
+          const dailySnapshot = await db.collection('transactions').where('date', '==', dates[index]).get();
+          dailySnapshot.forEach(function(doc) {
+            transactions.push(Object.assign({ id: doc.id }, doc.data()));
+          });
+        }
+        return transactions;
+      }
     }
 
-    async function getDailySummary(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      return getPeriodSummary(Object.assign({}, options, { startDate: date, endDate: date }));
+    /**
+     * Ambil transaksi mentah dalam rentang tanggal dengan fallback field yang aman.
+     * @param {{startDate:string, endDate:string, userId?:string, shiftId?:string}} options
+     * @returns {Promise<Array<object>>}
+     */
+    async function getTransactionsByDateRange(options) {
+      const startDate = options && options.startDate;
+      const endDate = options && options.endDate;
+      const userId = options && options.userId;
+      const shiftId = options && options.shiftId;
+      const transactions = await loadTransactionsByRange(startDate, endDate);
+
+      return transactions
+        .filter(function(transaction) {
+          return matchesTransactionFilters(transaction, { userId: userId, shiftId: shiftId });
+        })
+        .sort(function(a, b) {
+          const timeA = parseDateValue(a.timestamp);
+          const timeB = parseDateValue(b.timestamp);
+          return (timeB ? timeB.getTime() : 0) - (timeA ? timeA.getTime() : 0);
+        });
     }
 
-    async function getModalAmount(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      var userId = options.userId || null;
-      var firestore = getDb();
+    async function loadModalEntry(date, userId) {
+      const db = getDb();
 
-      if (userId) {
-        var specific = await firestore.collection('modal').doc(date + '_' + userId).get();
-        if (specific.exists) return toNumber(specific.data().amount);
+      if (!userId) return null;
+
+      try {
+        const directDoc = await db.collection('modal').doc(date + '_' + userId).get();
+        if (directDoc.exists) {
+          return Object.assign({ id: directDoc.id }, directDoc.data());
+        }
+      } catch (error) {
+        console.error('kas-core: gagal membaca modal harian by user doc', { date: date, userId: userId, error: error });
       }
 
-      var legacy = await firestore.collection('modal').doc(date).get();
-      if (legacy.exists) return toNumber(legacy.data().amount);
-      return 0;
+      try {
+        const snapshot = await db.collection('modal').where('date', '==', date).get();
+        let matched = null;
+        snapshot.forEach(function(doc) {
+          const data = Object.assign({ id: doc.id }, doc.data());
+          if (!matched && data.userId === userId) {
+            matched = data;
+          }
+        });
+        if (matched) return matched;
+      } catch (error) {
+        console.error('kas-core: gagal fallback query modal by date', { date: date, userId: userId, error: error });
+      }
+
+      try {
+        const legacyDoc = await db.collection('modal').doc(date).get();
+        if (legacyDoc.exists) {
+          return Object.assign({ id: legacyDoc.id }, legacyDoc.data());
+        }
+      } catch (error) {
+        console.error('kas-core: gagal membaca modal legacy doc', { date: date, userId: userId, error: error });
+      }
+
+      return null;
     }
 
+    /**
+     * Ambil ringkasan modal harian untuk satu tanggal.
+     * @param {{date:string, userId?:string}} options
+     * @returns {Promise<{date:string, entries:Array<object>, total:number}>}
+     */
     async function getModalSummary(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      var firestore = getDb();
-      var snapshot = await firestore.collection('modal').where('date', '==', date).get();
-      var items = [];
-      snapshot.forEach(function (doc) {
-        items.push(Object.assign({ id: doc.id, amount: 0 }, doc.data(), {
-          amount: toNumber(doc.data().amount)
-        }));
-      });
-      return {
-        date: date,
-        items: items,
-        total: items.reduce(function (total, item) { return total + item.amount; }, 0)
-      };
+      const date = options && options.date;
+      const userId = options && options.userId;
+      const db = getDb();
+
+      if (!date) {
+        return { date: '', entries: [], total: 0 };
+      }
+
+      if (userId) {
+        const entry = await loadModalEntry(date, userId);
+        const amount = normalizeNumber(entry && entry.amount);
+        return {
+          date: date,
+          entries: entry ? [entry] : [],
+          total: amount
+        };
+      }
+
+      try {
+        const snapshot = await db.collection('modal').where('date', '==', date).get();
+        const entries = [];
+        snapshot.forEach(function(doc) {
+          entries.push(Object.assign({ id: doc.id }, doc.data()));
+        });
+        return {
+          date: date,
+          entries: entries,
+          total: entries.reduce(function(sum, entry) {
+            return sum + normalizeNumber(entry.amount);
+          }, 0)
+        };
+      } catch (error) {
+        console.error('kas-core: gagal mengambil ringkasan modal', { date: date, error: error });
+        try {
+          const snapshot = await db.collection('modal').get();
+          const entries = [];
+          snapshot.forEach(function(doc) {
+            const entry = Object.assign({ id: doc.id }, doc.data());
+            if (entry.date === date || String(doc.id).indexOf(date + '_') === 0) {
+              entries.push(entry);
+            }
+          });
+          if (entries.length > 0) {
+            return {
+              date: date,
+              entries: entries,
+              total: entries.reduce(function(sum, entry) {
+                return sum + normalizeNumber(entry.amount);
+              }, 0)
+            };
+          }
+        } catch (scanError) {
+          console.error('kas-core: gagal scan modal docs fallback', { date: date, error: scanError });
+        }
+        try {
+          const legacyDoc = await db.collection('modal').doc(date).get();
+          if (legacyDoc.exists) {
+            const legacyEntry = Object.assign({ id: legacyDoc.id }, legacyDoc.data());
+            return {
+              date: date,
+              entries: [legacyEntry],
+              total: normalizeNumber(legacyEntry.amount)
+            };
+          }
+        } catch (legacyError) {
+          console.error('kas-core: gagal fallback modal legacy', { date: date, error: legacyError });
+        }
+        return { date: date, entries: [], total: 0 };
+      }
     }
 
-    async function getKasFisikLaci(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      var summary = await getDailySummary(Object.assign({}, options, { date: date }));
-      var modalAwal = options.modalAwal !== undefined
-        ? toNumber(options.modalAwal)
-        : await getModalAmount({ date: date, userId: options.userId });
-      var kasFisik = modalAwal + summary.totalKasMasukFisik - summary.totalKasKeluarFisik;
-
-      return Object.assign({}, summary, {
-        date: date,
-        modalAwal: modalAwal,
-        uangGlobal: kasFisik,
-        kasFisik: kasFisik
+    /**
+     * Ringkasan transaksi untuk satu hari.
+     * @param {{date:string, userId?:string, shiftId?:string}} options
+     * @returns {Promise<object>}
+     */
+    async function getDailySummary(options) {
+      const date = options && options.date;
+      return getPeriodSummary({
+        startDate: date,
+        endDate: date,
+        userId: options && options.userId,
+        shiftId: options && options.shiftId
       });
     }
 
-    async function getShiftSummary(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      var summary = await getKasFisikLaci({
-        date: date,
-        userId: options.userId,
-        shiftId: options.shiftId,
-        modalAwal: options.modalAwal
+    /**
+     * Ringkasan transaksi untuk rentang tanggal.
+     * @param {{startDate:string, endDate:string, userId?:string, shiftId?:string}} options
+     * @returns {Promise<object>}
+     */
+    async function getPeriodSummary(options) {
+      const startDate = options && options.startDate;
+      const endDate = options && options.endDate;
+      const userId = options && options.userId;
+      const shiftId = options && options.shiftId;
+      const transactions = await getTransactionsByDateRange({
+        startDate: startDate,
+        endDate: endDate,
+        userId: userId,
+        shiftId: shiftId
       });
-      summary.shiftId = options.shiftId || null;
+      const summary = createSummary(transactions);
+      summary.startDate = startDate;
+      summary.endDate = endDate;
+      summary.userId = userId || null;
+      summary.shiftId = shiftId || null;
       return summary;
     }
 
+    /**
+     * Hitung kas fisik laci dari modal awal dan hasil ringkasan transaksi.
+     * @param {number} modalAwal
+     * @param {object} summary
+     * @returns {{modalAwal:number, topupKasFisik:number, tarikKasFisik:number, total:number}}
+     */
+    function calculateKasFisikLaciFromSummary(modalAwal, summary) {
+      const safeSummary = summary || createSummary([]);
+      const normalizedModal = normalizeNumber(modalAwal);
+      const topupKasFisik = safeSummary.topup + safeSummary.topupAdmin;
+      const tarikKasFisik = Math.max(0, safeSummary.withdrawal - safeSummary.withdrawalAdmin);
+      const total =
+        normalizedModal +
+        safeSummary.cashIn -
+        safeSummary.cashOut +
+        safeSummary.cashSales +
+        topupKasFisik -
+        tarikKasFisik;
+
+      return {
+        modalAwal: normalizedModal,
+        topupKasFisik: topupKasFisik,
+        tarikKasFisik: tarikKasFisik,
+        total: total
+      };
+    }
+
+    /**
+     * Hitung kas fisik laci dengan rumus modal + masuk - keluar + penjualan tunai + topup - tarik.
+     * @param {{date:string, userId?:string, shiftId?:string}} options
+     * @returns {Promise<object>}
+     */
+    async function getKasFisikLaci(options) {
+      const date = options && options.date;
+      const userId = options && options.userId;
+      const shiftId = options && options.shiftId;
+      const modalSummary = await getModalSummary({ date: date, userId: userId });
+      const summary = await getDailySummary({ date: date, userId: userId, shiftId: shiftId });
+      const kasFisik = calculateKasFisikLaciFromSummary(modalSummary.total, summary);
+
+      return {
+        date: date,
+        userId: userId || null,
+        shiftId: shiftId || null,
+        modalAwal: kasFisik.modalAwal,
+        uangMasukLain: summary.cashIn,
+        kasKeluarToko: summary.cashOut,
+        penjualanProduk: summary.cashSales,
+        topup: summary.topup,
+        topupAdmin: summary.topupAdmin,
+        tarikTunai: summary.withdrawal,
+        tarikAdmin: summary.withdrawalAdmin,
+        topupKasFisik: kasFisik.topupKasFisik,
+        tarikKasFisik: kasFisik.tarikKasFisik,
+        total: kasFisik.total,
+        summary: summary
+      };
+    }
+
+    /**
+     * Ringkasan shift dan closing berdasarkan tanggal / user / shift.
+     * @param {{date:string, shiftId?:string, userId?:string}} options
+     * @returns {Promise<object>}
+     */
+    async function getShiftSummary(options) {
+      const date = options && options.date;
+      const userId = options && options.userId;
+      const shiftId = options && options.shiftId;
+      const db = getDb();
+      const kas = await getKasFisikLaci({ date: date, userId: userId, shiftId: shiftId });
+      let shift = null;
+
+      try {
+        if (userId) {
+          const doc = await db.collection('shifts').doc(date + '_' + userId).get();
+          if (doc.exists) {
+            shift = Object.assign({ id: doc.id }, doc.data());
+          }
+        }
+
+        if (!shift) {
+          const snapshot = await db.collection('shifts').where('date', '==', date).get();
+          snapshot.forEach(function(doc) {
+            if (shift) return;
+            const data = Object.assign({ id: doc.id }, doc.data());
+            if (shiftId && data.id !== shiftId && data.shiftId !== shiftId && doc.id !== shiftId) return;
+            if (userId && data.userId !== userId) return;
+            shift = data;
+          });
+        }
+      } catch (error) {
+        console.error('kas-core: gagal mengambil data shift', { date: date, userId: userId, shiftId: shiftId, error: error });
+      }
+
+      return {
+        date: date,
+        userId: userId || null,
+        shiftId: shiftId || (shift && shift.id) || null,
+        shift: shift,
+        modalAwal: kas.modalAwal,
+        kasMasuk: kas.summary.cashIn,
+        kasKeluar: kas.summary.cashOut,
+        penjualan: kas.summary.cashSales,
+        topup: kas.summary.topup,
+        topupAdmin: kas.summary.topupAdmin,
+        tarik: kas.summary.withdrawal,
+        tarikAdmin: kas.summary.withdrawalAdmin,
+        topupKasFisik: kas.topupKasFisik,
+        tarikKasFisik: kas.tarikKasFisik,
+        uangGlobal: kas.total,
+        summary: kas.summary
+      };
+    }
+
+    /**
+     * Kinerja staf per hari untuk tabel dashboard.
+     * @param {{date:string}} options
+     * @returns {Promise<{date:string, staff:Array<object>}>}
+     */
     async function getStaffPerformanceToday(options) {
-      options = options || {};
-      var date = options.date || getTodayString();
-      var firestore = getDb();
-      var transactions = await getTransactionsByDateRange({ startDate: date, endDate: date });
-      var usersSnapshot = await firestore.collection('users').get();
-      var users = {};
-      usersSnapshot.forEach(function (doc) {
-        users[doc.id] = Object.assign({ id: doc.id }, doc.data());
-      });
+      const date = options && options.date;
+      const db = getDb();
+      const modalSummary = await getModalSummary({ date: date });
+      const transactions = await getTransactionsByDateRange({ startDate: date, endDate: date });
+      const usersMap = {};
+      const staffMap = {};
 
-      var grouped = {};
-      Object.keys(users).forEach(function (id) {
-        grouped[id] = {
-          userId: id,
-          name: users[id].name || users[id].username || '-',
-          role: String(users[id].role || 'kasir').toLowerCase(),
-          modalAwal: 0,
-          penjualan: 0,
-          laba: 0,
-          totalTransaksi: 0
-        };
-      });
+      try {
+        const usersSnapshot = await db.collection('users').get();
+        usersSnapshot.forEach(function(doc) {
+          usersMap[doc.id] = Object.assign({ id: doc.id }, doc.data());
+        });
+      } catch (error) {
+        console.error('kas-core: gagal mengambil users untuk staff performance', { date: date, error: error });
+      }
 
-      transactions.forEach(function (tx) {
-        if (!isValidTransaction(tx) || !tx.userId) return;
-        if (!grouped[tx.userId]) {
-          grouped[tx.userId] = { userId: tx.userId, name: tx.userName || '-', role: 'kasir', modalAwal: 0, penjualan: 0, laba: 0, totalTransaksi: 0 };
+      const staff = buildStaffPerformance(modalSummary.entries, transactions, usersMap);
+
+      return {
+        date: date,
+        staff: staff
+      };
+    }
+
+    function buildStaffPerformance(modalEntries, transactions, usersMap) {
+      const staffMap = {};
+
+      (modalEntries || []).forEach(function(entry) {
+        const userId = entry.userId || null;
+        if (!userId) return;
+        const userData = (usersMap && usersMap[userId]) || {};
+        if (!staffMap[userId]) {
+          staffMap[userId] = {
+            userId: userId,
+            name: entry.userName || userData.name || userData.username || 'Staf',
+            role: String((userData.role || 'kasir')).toLowerCase(),
+            modal: 0,
+            penjualan: 0,
+            count: 0
+          };
         }
-        if (getType(tx) === 'penjualan') {
-          grouped[tx.userId].penjualan += getAmount(tx);
-          grouped[tx.userId].laba += toNumber(tx.profit);
-          grouped[tx.userId].totalTransaksi += 1;
-        }
+        staffMap[userId].modal += normalizeNumber(entry.amount);
       });
 
-      var modalSummary = await getModalSummary({ date: date });
-      modalSummary.items.forEach(function (item) {
-        if (!item.userId) return;
-        if (!grouped[item.userId]) {
-          grouped[item.userId] = { userId: item.userId, name: item.userName || '-', role: 'kasir', modalAwal: 0, penjualan: 0, laba: 0, totalTransaksi: 0 };
+      (transactions || []).forEach(function(transaction) {
+        if (!isValidTransaction(transaction) || transaction.type !== 'penjualan') return;
+        const transactionUserId = getUserId(transaction);
+        if (!transactionUserId) return;
+        const userData = (usersMap && usersMap[transactionUserId]) || {};
+        if (!staffMap[transactionUserId]) {
+          staffMap[transactionUserId] = {
+            userId: transactionUserId,
+            name:
+              userData.name ||
+              userData.username ||
+              transaction.userName ||
+              transaction.cashierName ||
+              'Staf',
+            role: String((userData.role || 'kasir')).toLowerCase(),
+            modal: 0,
+            penjualan: 0,
+            count: 0
+          };
         }
-        grouped[item.userId].modalAwal += item.amount;
+        staffMap[transactionUserId].penjualan += getAmount(transaction);
+        staffMap[transactionUserId].count += 1;
       });
 
-      return Object.keys(grouped).map(function (id) { return grouped[id]; });
+      return Object.keys(staffMap)
+        .map(function(userId) {
+          return staffMap[userId];
+        })
+        .sort(function(a, b) {
+          if (b.penjualan !== a.penjualan) return b.penjualan - a.penjualan;
+          return String(a.name || '').localeCompare(String(b.name || ''), 'id');
+        });
     }
 
     return {
-      toNumber: toNumber,
-      getTodayString: getTodayString,
-      isValidTransaction: isValidTransaction,
+      normalizeNumber: normalizeNumber,
       getAmount: getAmount,
-      getAdminFee: getAdminFee,
-      getType: getType,
+      getPaymentAmount: getPaymentAmount,
       getPaymentMethod: getPaymentMethod,
-      getPhysicalSaleAmount: getPhysicalSaleAmount,
+      getUserId: getUserId,
+      getTransactionDate: getTransactionDate,
+      isValidTransaction: isValidTransaction,
+      summarizeTransactions: createSummary,
+      calculateKasFisikLaciFromSummary: calculateKasFisikLaciFromSummary,
       getTransactionsByDateRange: getTransactionsByDateRange,
-      summarizeTransactions: summarizeTransactions,
+      getModalSummary: getModalSummary,
       getDailySummary: getDailySummary,
       getPeriodSummary: getPeriodSummary,
-      getModalAmount: getModalAmount,
-      getModalSummary: getModalSummary,
       getKasFisikLaci: getKasFisikLaci,
       getShiftSummary: getShiftSummary,
-      getStaffPerformanceToday: getStaffPerformanceToday
+      getStaffPerformanceToday: getStaffPerformanceToday,
+      buildStaffPerformance: buildStaffPerformance
     };
   })();
 }
