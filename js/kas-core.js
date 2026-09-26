@@ -2,11 +2,6 @@ if (typeof window.KasCore === 'undefined') {
   window.KasCore = (function() {
     "use strict";
 
-    const EXCLUDED_KAS_MASUK_CATEGORIES = [
-      'penjualan_hutang',
-      'penerimaan_piutang_penjualan'
-    ];
-
     function getDb() {
       if (window.db && typeof window.db.collection === 'function') {
         return window.db;
