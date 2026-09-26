@@ -725,8 +725,50 @@
         async function loadCurrentKas() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-            const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
-            document.getElementById('kasSaatIni').textContent = Utils.formatRupiah(kasLaci.total);
+
+            // Gunakan sumber dan rumus yang sama dengan halaman Kasir.
+            const modalSummary = await KasCore.getModalSummary({ date: today });
+            const allTransactions = await KasCore.getTransactionsByDateRange({
+              startDate: today,
+              endDate: today
+            });
+
+            // Untuk kasir, ambil transaksi milik user yang sedang login.
+            const scopedTransactions = allTransactions.filter(transaction => {
+              const transactionUserId = KasCore.getUserId(transaction);
+              return transactionUserId === user.uid;
+            });
+
+            const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
+
+            // Modal awal juga harus berasal dari modal user yang sama.
+            const scopedModalEntries = modalSummary.entries.filter(entry => {
+              return entry.userId === user.uid;
+            });
+
+            const modalAwal = scopedModalEntries.reduce((sum, entry) => {
+              return sum + KasCore.normalizeNumber(entry.amount);
+            }, 0);
+
+            const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(
+              modalAwal,
+              scopedSummary
+            );
+
+            const kasLaci = KasCore.normalizeNumber(kasLaciSummary.total);
+
+            document.getElementById('kasSaatIni').textContent =
+              Utils.formatRupiah(kasLaci);
+
+            console.log('[Kas Masuk] Kas laci sinkron dengan Kasir:', {
+              modalAwal,
+              cashIn: scopedSummary.cashIn,
+              cashOut: scopedSummary.cashOut,
+              cashSales: scopedSummary.cashSales,
+              topupKasFisik: kasLaciSummary.topupKasFisik,
+              tarikKasFisik: kasLaciSummary.tarikKasFisik,
+              total: kasLaci
+            });
           } catch (error) {
             console.error("kas-masuk: gagal memuat kas tersedia", error);
           }
