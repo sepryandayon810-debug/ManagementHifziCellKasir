@@ -2,6 +2,10 @@ if (typeof window.KasCore === 'undefined') {
   window.KasCore = (function() {
     "use strict";
 
+    const EXCLUDED_KAS_MASUK_CATEGORIES = [
+      'penjualan_hutang'
+    ];
+
     function getDb() {
       if (window.db && typeof window.db.collection === 'function') {
         return window.db;
@@ -280,11 +284,6 @@ if (typeof window.KasCore === 'undefined') {
       }
     }
 
-    /**
-     * Ambil transaksi mentah dalam rentang tanggal dengan fallback field yang aman.
-     * @param {{startDate:string, endDate:string, userId?:string, shiftId?:string}} options
-     * @returns {Promise<Array<object>>}
-     */
     async function getTransactionsByDateRange(options) {
       const startDate = options && options.startDate;
       const endDate = options && options.endDate;
@@ -343,11 +342,6 @@ if (typeof window.KasCore === 'undefined') {
       return null;
     }
 
-    /**
-     * Ambil ringkasan modal harian untuk satu tanggal.
-     * @param {{date:string, userId?:string}} options
-     * @returns {Promise<{date:string, entries:Array<object>, total:number}>}
-     */
     async function getModalSummary(options) {
       const date = options && options.date;
       const userId = options && options.userId;
@@ -420,11 +414,6 @@ if (typeof window.KasCore === 'undefined') {
       }
     }
 
-    /**
-     * Ringkasan transaksi untuk satu hari.
-     * @param {{date:string, userId?:string, shiftId?:string}} options
-     * @returns {Promise<object>}
-     */
     async function getDailySummary(options) {
       const date = options && options.date;
       return getPeriodSummary({
@@ -435,11 +424,6 @@ if (typeof window.KasCore === 'undefined') {
       });
     }
 
-    /**
-     * Ringkasan transaksi untuk rentang tanggal.
-     * @param {{startDate:string, endDate:string, userId?:string, shiftId?:string}} options
-     * @returns {Promise<object>}
-     */
     async function getPeriodSummary(options) {
       const startDate = options && options.startDate;
       const endDate = options && options.endDate;
@@ -459,12 +443,6 @@ if (typeof window.KasCore === 'undefined') {
       return summary;
     }
 
-    /**
-     * Hitung kas fisik laci dari modal awal dan hasil ringkasan transaksi.
-     * @param {number} modalAwal
-     * @param {object} summary
-     * @returns {{modalAwal:number, topupKasFisik:number, tarikKasFisik:number, total:number}}
-     */
     function calculateKasFisikLaciFromSummary(modalAwal, summary) {
       const safeSummary = summary || createSummary([]);
       const normalizedModal = normalizeNumber(modalAwal);
@@ -486,11 +464,6 @@ if (typeof window.KasCore === 'undefined') {
       };
     }
 
-    /**
-     * Hitung kas fisik laci dengan rumus modal + masuk - keluar + penjualan tunai + topup - tarik.
-     * @param {{date:string, userId?:string, shiftId?:string}} options
-     * @returns {Promise<object>}
-     */
     async function getKasFisikLaci(options) {
       const date = options && options.date;
       const userId = options && options.userId;
@@ -518,11 +491,6 @@ if (typeof window.KasCore === 'undefined') {
       };
     }
 
-    /**
-     * Ringkasan shift dan closing berdasarkan tanggal / user / shift.
-     * @param {{date:string, shiftId?:string, userId?:string}} options
-     * @returns {Promise<object>}
-     */
     async function getShiftSummary(options) {
       const date = options && options.date;
       const userId = options && options.userId;
@@ -573,18 +541,12 @@ if (typeof window.KasCore === 'undefined') {
       };
     }
 
-    /**
-     * Kinerja staf per hari untuk tabel dashboard.
-     * @param {{date:string}} options
-     * @returns {Promise<{date:string, staff:Array<object>}>}
-     */
     async function getStaffPerformanceToday(options) {
       const date = options && options.date;
       const db = getDb();
       const modalSummary = await getModalSummary({ date: date });
       const transactions = await getTransactionsByDateRange({ startDate: date, endDate: date });
       const usersMap = {};
-      const staffMap = {};
 
       try {
         const usersSnapshot = await db.collection('users').get();
