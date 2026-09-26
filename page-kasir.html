@@ -6252,17 +6252,9 @@ function confirmEditCart() {
   showToast(`${cart[itemIndex].name} berhasil diupdate`, 'success');
 }
 
-// ===== TUTUP MODAL SAAT KLIK OUTSIDE =====
-document.addEventListener('DOMContentLoaded', () => {
-  const editCartModal = document.getElementById('editCartModal');
-  if (editCartModal) {
-    editCartModal.addEventListener('click', (e) => {
-      if (e.target === editCartModal) closeEditCartModal();
-    });
-  }
+// ===== TUTUP MODAL SAAT KLIK OUTSIDE & BARCODE SCANNER =====
 
-// ===== BARCODE SCANNER — HOOK UNTUK ANDROID WEBVIEW & MODAL =====
-
+// 1. Fungsi Global Barcode Scanner
 function openBarcodeModal() {
   const modal = document.getElementById('barcodeModal');
   if (!modal) {
@@ -6319,8 +6311,17 @@ window.handleScanResult = function(barcode) {
   }
 };
 
-// Inisialisasi Event Listener setelah DOM siap
+// 2. Inisialisasi Event Listener setelah DOM siap
 document.addEventListener('DOMContentLoaded', () => {
+  // Tutup modal edit cart saat klik di luar
+  const editCartModal = document.getElementById('editCartModal');
+  if (editCartModal) {
+    editCartModal.addEventListener('click', (e) => {
+      if (e.target === editCartModal) closeEditCartModal();
+    });
+  }
+
+  // Tombol Scan Barcode
   const btnScan = document.getElementById('btnScan');
   const barcodeModal = document.getElementById('barcodeModal');
   const barcodeModalClose = document.getElementById('barcodeModalClose');
@@ -6399,14 +6400,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Tombol ESC untuk tutup modal
+// Tombol ESC untuk tutup modal barcode
 document.addEventListener('keydown', (e) => {
   const barcodeModal = document.getElementById('barcodeModal');
   if (e.key === 'Escape' && barcodeModal && barcodeModal.classList.contains('active')) {
     closeBarcodeModal();
   }
 });
-
+    
       // ⭐ AUTO-SYNC SAAT ONLINE
     window.addEventListener('online', async () => {
       showToast('Internet kembali! Menyinkronkan...', 'info');
