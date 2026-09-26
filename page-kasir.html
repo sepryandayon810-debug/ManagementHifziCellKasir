@@ -4921,13 +4921,10 @@ async function loadUangGlobal() {
     String(today.getDate()).padStart(2, '0');
 
   try {
-    const user = firebase.auth().currentUser;
-    const userId = user ? user.uid : null;
-
-    // Ambil ringkasan harian dan modal secara paralel persis seperti modul kas fisik
+    // Jangan batasi userId agar menghitung total keseluruhan kas toko secara sinkron
     const [modalSummary, summary] = await Promise.all([
-      KasCore.getModalSummary({ date: todayStr, userId: userId }),
-      KasCore.getDailySummary({ date: todayStr, userId: userId })
+      KasCore.getModalSummary({ date: todayStr }),
+      KasCore.getDailySummary({ date: todayStr })
     ]);
 
     const kasFisik = KasCore.calculateKasFisikLaciFromSummary(modalSummary.total, summary);
