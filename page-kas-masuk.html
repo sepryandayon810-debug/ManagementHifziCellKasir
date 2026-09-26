@@ -723,56 +723,97 @@
         let amount = 0;
 
         async function loadCurrentKas() {
-          try {
-            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+        try {
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
-            // Gunakan sumber dan rumus yang sama dengan halaman Kasir.
-            const modalSummary = await KasCore.getModalSummary({ date: today });
-            const allTransactions = await KasCore.getTransactionsByDateRange({
+          // ============================================================
+          // PERHITUNGAN INI DIBUAT SAMA DENGAN index.html
+          // ============================================================
+          // index.html menentukan scope berdasarkan role:
+          // owner/developer = semua staf
+          // admin            = kasir + user admin sendiri
+          // kasir            = user sendiri
+          // ============================================================
+
+          const currentRole = (userData && userData.role ? userData.role : 'kasir').toLowerCase();
+          const isBoss = currentRole === 'owner' || currentRole === 'developer';
+          const isAdmin = currentRole === 'admin';
+
+          const [usersSnap, modalSummary, allTransactions] = await Promise.all([
+            db.collection('users').get(),
+            KasCore.getModalSummary({ date: today }),
+            KasCore.getTransactionsByDateRange({
               startDate: today,
               endDate: today
-            });
+            })
+          ]);
 
-            // Untuk kasir, ambil transaksi milik user yang sedang login.
-            const scopedTransactions = allTransactions.filter(transaction => {
-              const transactionUserId = KasCore.getUserId(transaction);
-              return transactionUserId === user.uid;
-            });
+          // Buat usersMap sama seperti index.html
+          const usersMap = {};
+          usersSnap.forEach(doc => {
+            usersMap[doc.id] = { id: doc.id, ...doc.data() };
+          });
 
-            const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
+          // SAMA PERSIS DENGAN index.html
+          const scopedModalEntries = modalSummary.entries.filter(entry => {
+            const targetUser = usersMap[entry.userId] || {};
+            const targetRole = (targetUser.role || 'kasir').toLowerCase();
 
-            // Modal awal juga harus berasal dari modal user yang sama.
-            const scopedModalEntries = modalSummary.entries.filter(entry => {
-              return entry.userId === user.uid;
-            });
+            if (isBoss) return true;
+            if (isAdmin) return targetRole === 'kasir';
+            return entry.userId === user.uid;
+          });
 
-            const modalAwal = scopedModalEntries.reduce((sum, entry) => {
-              return sum + KasCore.normalizeNumber(entry.amount);
-            }, 0);
+          // SAMA PERSIS DENGAN index.html
+          const scopedTransactions = allTransactions.filter(transaction => {
+            const transactionUserId = KasCore.getUserId(transaction);
+            const targetUser = usersMap[transactionUserId] || {};
+            const targetRole = (targetUser.role || 'kasir').toLowerCase();
 
-            const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(
-              modalAwal,
-              scopedSummary
-            );
+            if (isBoss) return true;
+            if (isAdmin) return targetRole === 'kasir' || transactionUserId === user.uid;
+            return transactionUserId === user.uid;
+          });
 
-            const kasLaci = KasCore.normalizeNumber(kasLaciSummary.total);
+          // Ringkasan transaksi menggunakan KasCore yang sama dengan index.html
+          const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
 
-            document.getElementById('kasSaatIni').textContent =
-              Utils.formatRupiah(kasLaci);
+          // Modal Awal menggunakan entry yang sudah di-scope seperti index.html
+          const modalAwal = scopedModalEntries.reduce(
+            (sum, entry) => sum + KasCore.normalizeNumber(entry.amount),
+            0
+          );
 
-            console.log('[Kas Masuk] Kas laci sinkron dengan Kasir:', {
-              modalAwal,
-              cashIn: scopedSummary.cashIn,
-              cashOut: scopedSummary.cashOut,
-              cashSales: scopedSummary.cashSales,
-              topupKasFisik: kasLaciSummary.topupKasFisik,
-              tarikKasFisik: kasLaciSummary.tarikKasFisik,
-              total: kasLaci
-            });
-          } catch (error) {
-            console.error("kas-masuk: gagal memuat kas tersedia", error);
+          // RUMUS FISIK YANG SAMA DENGAN index.html
+          const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(
+            modalAwal,
+            scopedSummary
+          );
+
+          const kasLaci = KasCore.normalizeNumber(kasLaciSummary.total);
+
+          const kasSaatIniEl = document.getElementById('kasSaatIni');
+          if (kasSaatIniEl) {
+            kasSaatIniEl.textContent = Utils.formatRupiah(kasLaci);
           }
+
+          console.log('[Kas Masuk] Perhitungan SAMA dengan index.html:', {
+            role: currentRole,
+            isBoss,
+            isAdmin,
+            modalAwal,
+            cashIn: scopedSummary.cashIn,
+            cashOut: scopedSummary.cashOut,
+            cashSales: scopedSummary.cashSales,
+            totalSales: scopedSummary.totalSales,
+            topupKasFisik: kasLaciSummary.topupKasFisik,
+            tarikKasFisik: kasLaciSummary.tarikKasFisik,
+            kasLaci
+          });
+        } catch (error) {
+          console.error('kas-masuk: gagal memuat kas tersedia', error);
         }
+      }
 
         function updateDisplay() {
           document.getElementById('kasAmount').textContent = Utils.formatRupiah(amount);
