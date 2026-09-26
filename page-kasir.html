@@ -4628,80 +4628,6 @@ html,body{overflow-x:hidden;max-width:100vw}
     </div>
   </div>
 
-  <!-- ===== MODAL SCAN BARCODE ===== -->
-<div class="barcode-modal-overlay" id="barcodeModal">
-
-  <div class="barcode-modal">
-
-    <div class="barcode-modal-header">
-      <div class="barcode-modal-title">
-
-        <div class="barcode-modal-title-icon">
-          <i class="fas fa-barcode"></i>
-        </div>
-
-        <div class="barcode-modal-title-text">
-          <strong>Scan Barcode</strong>
-          <span>Masukkan atau scan kode produk</span>
-        </div>
-      </div>
-
-      <button type="button"
-              class="barcode-modal-close"
-              id="barcodeModalClose">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-
-
-    <div class="barcode-modal-body">
-
-      <div class="barcode-scanner-box">
-        <i class="fas fa-barcode barcode-scanner-icon"></i>
-      </div>
-
-      <label class="barcode-input-label" for="barcodeInput">
-        Kode Barcode
-      </label>
-
-      <div class="barcode-input-wrap">
-        <i class="fas fa-barcode"></i>
-
-        <input
-          type="text"
-          id="barcodeInput"
-          class="barcode-modal-input"
-          placeholder="Scan atau masukkan barcode..."
-          autocomplete="off"
-          inputmode="numeric"
-        >
-      </div>
-
-    </div>
-
-
-    <div class="barcode-modal-footer">
-
-      <button type="button"
-              class="barcode-modal-btn cancel"
-              id="barcodeModalCancel">
-        <i class="fas fa-times"></i>
-        Batal
-      </button>
-
-      <button type="button"
-              class="barcode-modal-btn confirm"
-              id="barcodeModalConfirm">
-        <i class="fas fa-check"></i>
-        Proses
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -6234,287 +6160,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ============================================================
-// SCAN BARCODE
-// Android WebView + iOS + Fallback Web
-// ============================================================
-
-(function () {
-
+  // ===== SCAN BARCODE — HOOK UNTUK ANDROID WEBVIEW =====
+  // Tombol scan: panggil Android jika ada, jika tidak fallback ke input manual
   const btnScan = document.getElementById('btnScan');
-  const barcodeModal = document.getElementById('barcodeModal');
-  const barcodeInput = document.getElementById('barcodeInput');
-  const barcodeModalClose = document.getElementById('barcodeModalClose');
-  const barcodeModalCancel = document.getElementById('barcodeModalCancel');
-  const barcodeModalConfirm = document.getElementById('barcodeModalConfirm');
-
-
-  // ==========================================================
-  // BUKA MODAL BARCODE
-  // ==========================================================
-
-  window.openBarcodeModal = function () {
-
-    if (!barcodeModal) {
-      console.error('barcodeModal tidak ditemukan di HTML');
-      return;
-    }
-
-    barcodeModal.classList.add('active');
-
-    // Fokus ke input setelah animasi
-    setTimeout(function () {
-      if (barcodeInput) {
-        barcodeInput.focus();
-        barcodeInput.select();
-      }
-    }, 150);
-  };
-
-
-  // ==========================================================
-  // TUTUP MODAL BARCODE
-  // ==========================================================
-
-  window.closeBarcodeModal = function () {
-
-    if (!barcodeModal) return;
-
-    barcodeModal.classList.remove('active');
-
-    if (barcodeInput) {
-      barcodeInput.value = '';
-    }
-  };
-
-
-  // ==========================================================
-  // PROSES HASIL BARCODE
-  // ==========================================================
-
-  window.handleScanResult = function (barcode) {
-
-    barcode = String(barcode || '').trim();
-
-    if (!barcode) {
-      return;
-    }
-
-    console.log('Barcode diterima:', barcode);
-
-
-    // Cari produk
-    const product = (window.products || []).find(function (p) {
-
-      return String(p.code || '') === barcode ||
-             String(p.barcode || '') === barcode ||
-             String(p.sku || '') === barcode;
-
-    });
-
-
-    if (product) {
-
-      // Tutup modal
-      window.closeBarcodeModal();
-
-      // Masukkan produk ke keranjang
-      addToCart(product.id);
-
-      // Notifikasi
-      showToast(
-        'Scan: ' + product.name,
-        'success'
-      );
-
-    } else {
-
-      showToast(
-        'Produk dengan barcode "' + barcode + '" tidak ditemukan',
-        'warning'
-      );
-
-      // Tetap fokus agar bisa scan lagi
-      if (barcodeInput) {
-        barcodeInput.focus();
-        barcodeInput.select();
-      }
-
-    }
-  };
-
-
-  // ==========================================================
-  // TOMBOL SCAN
-  // ==========================================================
-
   if (btnScan) {
-
-    btnScan.addEventListener('click', function () {
-
-      // ------------------------------------------------------
-      // ANDROID WEBVIEW
-      // ------------------------------------------------------
-
-      if (
-        window.AndroidBridge &&
-        typeof window.AndroidBridge.scanBarcode === 'function'
-      ) {
-
-        console.log('Memanggil AndroidBridge.scanBarcode()');
-
+    btnScan.addEventListener('click', () => {
+      if (window.AndroidBridge && typeof window.AndroidBridge.scanBarcode === 'function') {
+        // Dipanggil dari Android Studio (WebView.addJavascriptInterface)
         window.AndroidBridge.scanBarcode();
-
-        return;
-      }
-
-
-      // ------------------------------------------------------
-      // iOS WKWebView
-      // ------------------------------------------------------
-
-      if (
-        window.webkit &&
-        window.webkit.messageHandlers &&
-        window.webkit.messageHandlers.scanBarcode
-      ) {
-
-        console.log('Memanggil iOS scanBarcode');
-
-        window.webkit.messageHandlers.scanBarcode.postMessage({
-          action: 'scan'
-        });
-
-        return;
-      }
-
-
-      // ------------------------------------------------------
-      // WEB BIASA / FALLBACK
-      // ------------------------------------------------------
-
-      console.log('Android/iOS bridge tidak tersedia.');
-
-      window.openBarcodeModal();
-
+      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scanBarcode) {
+        // iOS WKWebView
+        window.webkit.messageHandlers.scanBarcode.postMessage({ action: 'scan' });
+      } else {
+  // Fallback web: tampilkan popup custom
+  openBarcodeModal();
+}
     });
-
   }
 
-
-  // ==========================================================
-  // TOMBOL CLOSE
-  // ==========================================================
-
-  if (barcodeModalClose) {
-
-    barcodeModalClose.addEventListener('click', function () {
-      window.closeBarcodeModal();
+  // Fungsi ini dipanggil oleh Android setelah scan selesai
+  // Android side: webView.evaluateJavascript("handleScanResult('123456')", null)
+  window.handleScanResult = function(barcode) {
+    barcode = String(barcode || '').trim();
+    if (!barcode) return;
+    // Cari produk berdasarkan code/barcode
+    const product = (window.products || []).find(function(p) {
+      return p.code === barcode || p.barcode === barcode || p.sku === barcode;
     });
-
-  }
-
-
-  if (barcodeModalCancel) {
-
-    barcodeModalCancel.addEventListener('click', function () {
-      window.closeBarcodeModal();
-    });
-
-  }
-
-
-  // ==========================================================
-  // TOMBOL PROSES
-  // ==========================================================
-
-  if (barcodeModalConfirm) {
-
-    barcodeModalConfirm.addEventListener('click', function () {
-
-      if (!barcodeInput) return;
-
-      const barcode = barcodeInput.value.trim();
-
-      if (!barcode) {
-
-        showToast(
-          'Silakan masukkan barcode terlebih dahulu',
-          'warning'
-        );
-
-        barcodeInput.focus();
-
-        return;
-      }
-
-      window.handleScanResult(barcode);
-
-    });
-
-  }
-
-
-  // ==========================================================
-  // ENTER PADA INPUT
-  // ==========================================================
-
-  if (barcodeInput) {
-
-    barcodeInput.addEventListener('keydown', function (event) {
-
-      if (event.key === 'Enter') {
-
-        event.preventDefault();
-
-        if (barcodeModalConfirm) {
-          barcodeModalConfirm.click();
-        }
-
-      }
-
-    });
-
-  }
-
-
-  // ==========================================================
-  // KLIK AREA GELAP = TUTUP
-  // ==========================================================
-
-  if (barcodeModal) {
-
-    barcodeModal.addEventListener('click', function (event) {
-
-      if (event.target === barcodeModal) {
-        window.closeBarcodeModal();
-      }
-
-    });
-
-  }
-
-
-  // ==========================================================
-  // ESC = TUTUP
-  // ==========================================================
-
-  document.addEventListener('keydown', function (event) {
-
-    if (
-      event.key === 'Escape' &&
-      barcodeModal &&
-      barcodeModal.classList.contains('active')
-    ) {
-
-      window.closeBarcodeModal();
-
+    if (product) {
+      addToCart(product.id);
+      showToast('Scan: ' + product.name, 'success');
+    } else {
+      showToast('Produk dengan barcode "' + barcode + '" tidak ditemukan', 'warning');
     }
+  };
+});
 
-  });
-
-})();
-  
       // ⭐ AUTO-SYNC SAAT ONLINE
     window.addEventListener('online', async () => {
       showToast('Internet kembali! Menyinkronkan...', 'info');
