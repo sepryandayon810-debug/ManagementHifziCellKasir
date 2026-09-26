@@ -6161,23 +6161,77 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===== SCAN BARCODE — HOOK UNTUK ANDROID WEBVIEW =====
-  // Tombol scan: panggil Android jika ada, jika tidak fallback ke input manual
-  const btnScan = document.getElementById('btnScan');
-  if (btnScan) {
-    btnScan.addEventListener('click', () => {
-      if (window.AndroidBridge && typeof window.AndroidBridge.scanBarcode === 'function') {
-        // Dipanggil dari Android Studio (WebView.addJavascriptInterface)
-        window.AndroidBridge.scanBarcode();
-      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scanBarcode) {
-        // iOS WKWebView
-        window.webkit.messageHandlers.scanBarcode.postMessage({ action: 'scan' });
-      } else {
-  // Fallback web: tampilkan popup custom
-  openBarcodeModal();
-}
-    });
+
+// Fungsi untuk membuka modal barcode versi web
+function openBarcodeModal() {
+
+  const modal = document.getElementById('barcodeModal');
+
+  if (!modal) {
+    console.error('ERROR: #barcodeModal tidak ditemukan');
+    return;
   }
 
+  // Tampilkan modal
+  modal.classList.add('active');
+
+  // Fokus ke input barcode
+  const input = document.getElementById('barcodeInput');
+
+  if (input) {
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 100);
+  }
+}
+
+
+// Tombol scan
+const btnScan = document.getElementById('btnScan');
+
+if (btnScan) {
+
+  btnScan.addEventListener('click', () => {
+
+    // ================================
+    // ANDROID WEBVIEW
+    // ================================
+    if (
+      window.AndroidBridge &&
+      typeof window.AndroidBridge.scanBarcode === 'function'
+    ) {
+
+      window.AndroidBridge.scanBarcode();
+      return;
+    }
+
+
+    // ================================
+    // iOS WKWebView
+    // ================================
+    if (
+      window.webkit &&
+      window.webkit.messageHandlers &&
+      window.webkit.messageHandlers.scanBarcode
+    ) {
+
+      window.webkit.messageHandlers.scanBarcode.postMessage({
+        action: 'scan'
+      });
+
+      return;
+    }
+
+
+    // ================================
+    // WEB BIASA
+    // ================================
+    openBarcodeModal();
+
+  });
+}
+  
   // Fungsi ini dipanggil oleh Android setelah scan selesai
   // Android side: webView.evaluateJavascript("handleScanResult('123456')", null)
   window.handleScanResult = function(barcode) {
