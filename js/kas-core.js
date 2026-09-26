@@ -74,9 +74,7 @@ if (typeof window.KasCore === 'undefined') {
           ? toNumber(transaction.paymentAmount)
           : getAmount(transaction);
       }
-      // Pada transaksi hutang, hanya DP/paymentAmount yang benar-benar diterima.
       if (isDebtPayment(transaction)) return toNumber(transaction && transaction.paymentAmount);
-      // QRIS/transfer/digital tidak masuk uang fisik laci.
       return 0;
     }
 
@@ -85,10 +83,6 @@ if (typeof window.KasCore === 'undefined') {
       return category !== 'penjualan_hutang' && category !== 'penerimaan_piutang_penjualan';
     }
 
-    /**
-     * Pembelian hanya menjadi kas keluar bila halaman pembelian menandainya sebagai
-     * pengurang kas. Hal ini mencegah pembelian yang sudah menulis kas_keluar dihitung dua kali.
-     */
     function isCashPurchase(transaction) {
       transaction = transaction || {};
       return transaction.kurangiSaldo === true || transaction.reduceCash === true ||
@@ -103,11 +97,6 @@ if (typeof window.KasCore === 'undefined') {
       return transaction;
     }
 
-    /**
-     * Mengambil transaksi pada rentang tanggal. Kolom date di aplikasi memakai YYYY-MM-DD,
-     * sehingga range string tetap aman secara urutan. Jika index Firestore belum tersedia,
-     * fallback membaca collection lalu menyaringnya di browser agar halaman tidak crash.
-     */
     async function getTransactionsByDateRange(options) {
       options = options || {};
       var startDate = options.startDate || options.date || getTodayString();
@@ -139,7 +128,6 @@ if (typeof window.KasCore === 'undefined') {
       return result;
     }
 
-    /** Meringkas transaksi yang sudah diambil tanpa melakukan query tambahan. */
     function summarizeTransactions(transactions) {
       var summary = {
         totalPenjualan: 0,
@@ -194,7 +182,6 @@ if (typeof window.KasCore === 'undefined') {
       return summary;
     }
 
-    /** Ringkasan keuangan untuk rentang tanggal. */
     async function getPeriodSummary(options) {
       options = options || {};
       var transactions = await getTransactionsByDateRange(options);
@@ -204,14 +191,12 @@ if (typeof window.KasCore === 'undefined') {
       return summary;
     }
 
-    /** Ringkasan keuangan satu hari. */
     async function getDailySummary(options) {
       options = options || {};
       var date = options.date || getTodayString();
       return getPeriodSummary(Object.assign({}, options, { startDate: date, endDate: date }));
     }
 
-    /** Mengambil modal yang dialokasikan untuk pengguna pada hari tertentu. */
     async function getModalAmount(options) {
       options = options || {};
       var date = options.date || getTodayString();
@@ -228,7 +213,6 @@ if (typeof window.KasCore === 'undefined') {
       return 0;
     }
 
-    /** Mengambil semua catatan modal untuk satu tanggal. */
     async function getModalSummary(options) {
       options = options || {};
       var date = options.date || getTodayString();
@@ -247,11 +231,6 @@ if (typeof window.KasCore === 'undefined') {
       };
     }
 
-    /**
-     * Kas fisik laci = modal awal + kas masuk lain + penjualan tunai
-     * + (top up + admin) - kas keluar - pembelian yang ditandai kurangi kas
-     * - (tarik tunai - admin).
-     */
     async function getKasFisikLaci(options) {
       options = options || {};
       var date = options.date || getTodayString();
@@ -269,7 +248,6 @@ if (typeof window.KasCore === 'undefined') {
       });
     }
 
-    /** Ringkasan untuk halaman shift/closing, dengan fallback shiftId bila tersedia. */
     async function getShiftSummary(options) {
       options = options || {};
       var date = options.date || getTodayString();
@@ -283,7 +261,6 @@ if (typeof window.KasCore === 'undefined') {
       return summary;
     }
 
-    /** Kinerja staf untuk dashboard, dihitung dari satu query transaksi harian. */
     async function getStaffPerformanceToday(options) {
       options = options || {};
       var date = options.date || getTodayString();
