@@ -839,20 +839,17 @@
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           const [currentSummary, currentKasLaci, transactions] = await Promise.all([
             KasCore.getDailySummary({
-              date: today,
-              userId: user.uid
+              date: today
             }),
             KasCore.getKasFisikLaci({
-              date: today,
-              userId: user.uid
+              date: today
             }),
             KasCore.getTransactionsByDateRange({
               startDate: range.startDate,
-              endDate: range.endDate,
-              userId: user.uid
+              endDate: range.endDate
             })
           ]);
-
+          
           document.getElementById('kasMasuk').textContent = Utils.formatRupiah(currentSummary.totalCashInDrawer);
           document.getElementById('kasKeluar').textContent = Utils.formatRupiah(currentSummary.totalCashOutDrawer);
           document.getElementById('kasDitangan').textContent = Utils.formatRupiah(currentKasLaci.total);
