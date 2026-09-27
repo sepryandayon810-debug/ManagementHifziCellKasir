@@ -989,59 +989,314 @@
   }
 
   async function saveModalHarian() {
-    if (rawModalAmount <= 0) {
-      toast("Masukkan nominal modal awal yang valid (lebih dari 0)!", "error");
-      return;
-    }
 
-    const todayStr = getTodayString();
-    const select = document.getElementById("selectTargetKasir");
-    const targetUid = select.value;
-    const targetUserName = select.options[select.selectedIndex].text.split(" (")[0];
+  /*
+   * =========================================================
+   * VALIDASI
+   * =========================================================
+   */
+  if (rawModalAmount <= 0) {
 
-    const btn = document.getElementById("btnSaveModal");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    toast(
+      "Masukkan nominal modal awal yang valid (lebih dari 0)!",
+      "error"
+    );
 
-    try {
-      const docId = `${todayStr}_${targetUid}`;
-      const senderName = document.getElementById("userName").textContent;
-
-      await db.collection("modal").doc(docId).set({
-        id: docId,
-        date: todayStr,
-        userId: targetUid,
-        userName: targetUserName,
-        allocatedBy: currentUser.uid,
-        allocatedByName: senderName,
-        amount: rawModalAmount,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      await db.collection("shifts").doc(docId).set({
-        id: "shift_" + Date.now(),
-        userId: targetUid,
-        userName: targetUserName,
-        date: todayStr,
-        status: "open",
-        modalAwal: rawModalAmount,
-        openTime: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      localStorage.removeItem("fromDashboard");
-      toast(`Modal ${formatRupiah(rawModalAmount)} berhasil disimpan untuk ${targetUserName}!`, "success");
-
-      setTimeout(() => {
-        window.location.href = "index.html";
-      }, 1200);
-
-    } catch (err) {
-      console.error(err);
-      toast("Gagal menyimpan modal: " + err.message, "error");
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
-    }
+    return;
   }
+
+
+  const todayStr =
+    getTodayString();
+
+  const select =
+    document.getElementById(
+      "selectTargetKasir"
+    );
+
+  const targetUid =
+    select.value;
+
+  if (!targetUid) {
+
+    toast(
+      "Kasir tujuan belum dipilih.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  const targetUserName =
+    select.options[
+      select.selectedIndex
+    ].text.split(" (")[0];
+
+
+  const btn =
+    document.getElementById(
+      "btnSaveModal"
+    );
+
+
+  btn.disabled = true;
+
+  btn.innerHTML =
+    '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+
+  try {
+
+    /*
+     * =======================================================
+     * ID MODAL
+     *
+     * Satu modal per user per tanggal.
+     *
+     * Ini SAMA dengan pola yang dibaca KasCore:
+     *
+     * modal/{date}_{userId}
+     * =======================================================
+     */
+    const modalId =
+      `${todayStr}_${targetUid}`;
+
+
+    const senderName =
+      document.getElementById(
+        "userName"
+      ).textContent;
+
+
+    /*
+     * =======================================================
+     * DATA MODAL
+     *
+     * PENTING:
+     *
+     * Jangan masukkan cash_in/cash_out di sini.
+     *
+     * Modal bukan transaction.
+     *
+     * KasCore.getModalSummary()
+     * membaca field amount.
+     * =======================================================
+     */
+    const modalData = {
+
+      id:
+        modalId,
+
+      date:
+        todayStr,
+
+      userId:
+        targetUid,
+
+      userName:
+        targetUserName,
+
+      allocatedBy:
+        currentUser.uid,
+
+      allocatedByName:
+        senderName,
+
+      amount:
+        KasCore.normalizeNumber(
+          rawModalAmount
+        ),
+
+      /*
+       * Penanda sumber data.
+       *
+       * Tidak dipakai sebagai transaction.
+       */
+      category:
+        "modal_awal",
+
+      type:
+        "modal_awal",
+
+      updatedAt:
+        firebase.firestore.FieldValue
+          .serverTimestamp()
+    };
+
+
+    /*
+     * =======================================================
+     * SIMPAN MODAL
+     * =======================================================
+     */
+    await db
+      .collection("modal")
+      .doc(modalId)
+      .set(
+        modalData,
+        {
+          merge: true
+        }
+      );
+
+
+    /*
+     * =======================================================
+     * SHIFT
+     *
+     * Shift memakai user + tanggal yang sama.
+     *
+     * modalAwal harus sama dengan
+     * modal.amount.
+     * =======================================================
+     */
+    const shiftRef =
+      db
+        .collection("shifts")
+        .doc(modalId);
+
+
+    const existingShift =
+      await shiftRef.get();
+
+
+    let shiftId;
+
+
+    if (
+      existingShift.exists &&
+      existingShift.data().id
+    ) {
+
+      /*
+       * Jangan membuat ID shift baru
+       * setiap kali modal diedit.
+       */
+      shiftId =
+        existingShift.data().id;
+
+    } else {
+
+      shiftId =
+        "shift_" +
+        Date.now();
+    }
+
+
+    await shiftRef.set({
+
+      id:
+        shiftId,
+
+      userId:
+        targetUid,
+
+      userName:
+        targetUserName,
+
+      date:
+        todayStr,
+
+      status:
+        existingShift.exists
+          ? (
+              existingShift.data().status ||
+              "open"
+            )
+          : "open",
+
+      /*
+       * Sumber angka yang sama dengan modal.amount
+       */
+      modalAwal:
+        KasCore.normalizeNumber(
+          rawModalAmount
+        ),
+
+      /*
+       * Referensi balik ke dokumen modal
+       */
+      modalId:
+        modalId,
+
+      openTime:
+        existingShift.exists &&
+        existingShift.data().openTime
+          ? existingShift.data().openTime
+          : firebase.firestore
+              .FieldValue
+              .serverTimestamp(),
+
+      updatedAt:
+        firebase.firestore
+          .FieldValue
+          .serverTimestamp()
+
+    }, {
+      merge: true
+    });
+
+
+    /*
+     * =======================================================
+     * REFRESH DATA
+     * =======================================================
+     */
+    localStorage.removeItem(
+      "fromDashboard"
+    );
+
+
+    /*
+     * Pastikan tampilan summary langsung sinkron
+     */
+    await loadExistingModal();
+
+    await loadModalSummary(
+      todayStr
+    );
+
+
+    toast(
+      `Modal ${formatRupiah(rawModalAmount)} berhasil disimpan untuk ${targetUserName}!`,
+      "success"
+    );
+
+
+    /*
+     * Kembali ke dashboard
+     */
+    setTimeout(() => {
+
+      window.location.href =
+        "index.html";
+
+    }, 1200);
+
+
+  } catch (err) {
+
+    console.error(
+      "modal-harian: gagal menyimpan modal",
+      err
+    );
+
+
+    toast(
+      "Gagal menyimpan modal: " +
+      err.message,
+      "error"
+    );
+
+
+    btn.disabled =
+      false;
+
+    btn.innerHTML =
+      '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
+  }
+}
 
 })();
 </script>
