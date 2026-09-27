@@ -1179,50 +1179,37 @@
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const transactionId = 'TRK_' + Date.now();
 
-              const transactionData = {
+        // =========================================================
+// TRANSAKSI TARIK TUNAI
+// Semua aturan mutasi kas diserahkan ke KasCore.
+// =========================================================
+
+const transactionBase = {
   id: transactionId,
 
+  // Alias lama yang tetap dipertahankan
   type: 'tarik',
 
-  // =========================
-  // NILAI UTAMA
-  // =========================
+  // Kategori standar KasCore
+  kategori: 'tarik_tunai',
+
+  // Tarik tunai menggunakan uang tunai dari laci
+  metode_pembayaran: 'tunai',
+
+  // Nilai transaksi
   amount: amount,
   total: amount,
+  nominal: amount,
 
-  // =========================
-  // ADMIN / LABA
-  // =========================
+  // Admin
   adminFee: adminFeeValue,
   profit: adminFeeValue,
-
-  // Format standar KasCore
-  nominal: amount,
   admin: adminFeeValue,
-  laba: adminFeeValue,
 
-  // =========================
-  // MUTASI KAS
-  // =========================
-
-  // Uang fisik yang benar-benar keluar
-  cash_out: uangFisikKeluar,
-
-  // Saldo digital bertambah sebesar nominal tarik
-  digital_in: amount,
-
-  // Tarik tunai masuk transaksi
-  masuk_transaksi: true,
-
-  // Bukan penjualan
-  masuk_penjualan: false,
-
-  // Kas global terpengaruh
+  // Approval kas global
   pengaruhi_kas_global: true,
 
-  // =========================
-  // INFO TRANSAKSI
-  // =========================
+  // Informasi transaksi
   note: note || 'Tarik Tunai',
   userId: user.uid,
   userName: userName,
@@ -1231,6 +1218,77 @@
   status: 'completed',
   source: 'kasir_tarik'
 };
+
+
+// =========================================================
+// MINTA KASCORE MENGHITUNG MUTASI
+// =========================================================
+
+const mutation =
+  KasCore.mapTransactionMutation(transactionBase);
+
+
+// =========================================================
+// GABUNGKAN DATA TRANSAKSI + MUTASI KASCORE
+// =========================================================
+
+const transactionBase = {
+  id: transactionId,
+
+  // =========================
+  // KATEGORI
+  // =========================
+
+  type: 'tarik',
+  kategori: 'tarik_tunai',
+
+  // Tarik tunai dari kas fisik
+  metode_pembayaran: 'tunai',
+
+  // =========================
+  // NILAI
+  // =========================
+
+  amount: amount,
+  total: amount,
+  nominal: amount,
+
+  // =========================
+  // ADMIN / LABA
+  // =========================
+
+  adminFee: adminFeeValue,
+  profit: adminFeeValue,
+  admin: adminFeeValue,
+
+  // =========================
+  // KAS GLOBAL
+  // =========================
+
+  pengaruhi_kas_global: true,
+
+  // =========================
+  // IDENTITAS TRANSAKSI
+  // =========================
+
+  note: note || 'Tarik Tunai',
+
+  userId: user.uid,
+  userName: userName,
+
+  // Field tanggal lama / backward compatibility
+  date: today,
+
+  // Field tanggal standar KasCore
+  date_key: today,
+
+  timestamp: Date.now(),
+
+  status: 'completed',
+
+  source: 'kasir_tarik'
+};
+              
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
               Utils.hideLoading();
