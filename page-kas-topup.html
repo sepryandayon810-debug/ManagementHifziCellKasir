@@ -1438,13 +1438,37 @@
                 }
               }
 
+              // ====== MUTASI BAKU VIA KAS-CORE (selaras tabel approval) ======
+              // Top Up Tunai : transaksi=ya, penjualan=tidak, kas + (nominal+admin), laba=admin, hutang=tidak
+              // Top Up Hutang: transaksi=ya, penjualan=tidak, kas tidak berubah, laba=0 (mengikuti pelunasan), hutang=ya
+              const mutation = KasCore.mapTransactionMutation({
+                kategori: 'top_up',
+                metode_pembayaran: paymentMode === 'hutang' ? 'utang' : 'tunai',
+                nominal: amount,
+                admin: adminFeeValue
+              });
+
               const transactionData = {
                 id: transactionId,
                 type: 'topup',
-                amount: amount,
+                kategori: 'top_up',
+                metode_pembayaran: mutation.metode_pembayaran,
+                nominal: amount,
+                admin: adminFeeValue,
                 adminFee: adminFeeValue,
+                amount: amount,
                 total: total,
-                profit: adminFeeValue,
+                profit: mutation.laba,
+                laba: mutation.laba,
+                cash_in: mutation.cash_in,
+                cash_out: mutation.cash_out,
+                bank_in: mutation.bank_in,
+                bank_out: mutation.bank_out,
+                digital_in: mutation.digital_in,
+                digital_out: mutation.digital_out,
+                masuk_transaksi: mutation.masuk_transaksi,
+                masuk_penjualan: mutation.masuk_penjualan,
+                pengaruhi_kas_global: mutation.pengaruhi_kas_global,
                 note: note || 'Top Up Saldo',
                 paymentMethod: paymentMode,
                 customerId: customerId || null,
@@ -1452,6 +1476,7 @@
                 userId: user.uid,
                 userName: userName,
                 date: today,
+                date_key: today,
                 timestamp: timestamp,
                 status: 'completed',
                 source: 'kasir_topup'
