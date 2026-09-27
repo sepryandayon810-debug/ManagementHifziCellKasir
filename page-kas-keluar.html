@@ -784,71 +784,190 @@
           });
         });
 
-        // SIMPAN KAS KELUAR LANGSUNG TANPA STRUK PRINT
-        const saveBtn = document.getElementById('btnSimpanKeluar');
-        if (saveBtn) {
-          saveBtn.addEventListener('click', async () => {
-            if (amount <= 0) {
-              Utils.showToast('Masukkan nominal kas keluar terlebih dahulu', 'warning');
-              return;
-            }
+ // ============================================================
+// SIMPAN KAS KELUAR
+// KasCore menjadi sumber aturan mutasi
+// ============================================================
+const saveBtn = document.getElementById('btnSimpanKeluar');
 
-            if (amount > kasTersedia) {
-              Utils.showToast(`Uang fisik laci tidak mencukupi (Tersedia: ${Utils.formatRupiah(kasTersedia)})`, 'error');
-              return;
-            }
+if (saveBtn) {
+  saveBtn.addEventListener('click', async () => {
 
-            const note = document.getElementById('keluarNote').value.trim();
-            if (!note) {
-              Utils.showToast('Keterangan atau keperluan pengeluaran wajib diisi', 'warning');
-              document.getElementById('keluarNote').focus();
-              return;
-            }
+    // ----------------------------------------------------------
+    // VALIDASI NOMINAL
+    // ----------------------------------------------------------
+    if (amount <= 0) {
+      Utils.showToast(
+        'Masukkan nominal kas keluar terlebih dahulu',
+        'warning'
+      );
+      return;
+    }
 
-            const category = document.getElementById('keluarCategory').value;
+    // ----------------------------------------------------------
+    // VALIDASI KAS FISIK
+    // ----------------------------------------------------------
+    if (amount > kasTersedia) {
+      Utils.showToast(
+        `Uang fisik laci tidak mencukupi (Tersedia: ${Utils.formatRupiah(kasTersedia)})`,
+        'error'
+      );
+      return;
+    }
 
-            try {
-              Utils.showLoading('Menyimpan kas keluar...');
-              const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-              const timestamp = Date.now();
-              const transactionId = 'KASOUT_' + timestamp;
+    // ----------------------------------------------------------
+    // VALIDASI KETERANGAN
+    // ----------------------------------------------------------
+    const noteEl = document.getElementById('keluarNote');
+    const note = noteEl ? noteEl.value.trim() : '';
 
-              const transactionData = {
-                id: transactionId,
-                type: 'kas_keluar',
-                amount: amount,
-                category: category,
-                note: note,
-                description: note,
-                cashDirection: 'out',
-                flowType: 'operasional_keluar',
-                userId: user.uid,
-                userName: userName,
-                date: today,
-                timestamp: timestamp,
-                status: 'completed',
-                source: 'kasir_keluar'
-              };
+    if (!note) {
+      Utils.showToast(
+        'Keterangan atau keperluan pengeluaran wajib diisi',
+        'warning'
+      );
 
-              await db.collection("transactions").doc(transactionId).set(transactionData);
+      noteEl?.focus();
+      return;
+    }
 
-              Utils.hideLoading();
-              Utils.showToast('Kas keluar berhasil disimpan!', 'success');
+    // ----------------------------------------------------------
+    // KATEGORI
+    // ----------------------------------------------------------
+    const category =
+      document.getElementById('keluarCategory')?.value || 'operasional';
 
-              if (isFromKasir()) {
-                setTimeout(() => goBack(), 800);
-              } else {
-                resetForm();
-              }
+    try {
 
-            } catch (error) {
-              Utils.hideLoading();
-              console.error("FIRESTORE KAS KELUAR ERROR:", error);
-              Utils.showToast('Gagal menyimpan kas keluar: ' + error.message, 'error');
-            }
-          });
-        }
+      Utils.showLoading('Menyimpan kas keluar...');
+      saveBtn.disabled = true;
 
+      const today =
+        Utils.getTodayString
+          ? Utils.getTodayString()
+          : new Date().toISOString().split('T')[0];
+
+      const timestamp = Date.now();
+      const transactionId = 'KASOUT_' + timestamp;
+
+      // ========================================================
+      // KASCORE MENENTUKAN MUTASI
+      // ========================================================
+      const mutation = KasCore.mapTransactionMutation({
+        kategori: 'kas_keluar',
+        metode_pembayaran: 'tunai',
+        nominal: amount,
+        admin: 0,
+        modal_produk: 0,
+        pengaruhi_kas_global: true
+      });
+
+      // ========================================================
+      // DATA TRANSAKSI
+      // ========================================================
+      const transactionData = {
+
+        // Identitas
+        id: transactionId,
+        type: 'kas_keluar',
+        source: 'kasir_keluar',
+        kategori: 'kas_keluar',
+
+        // Nominal
+        amount: amount,
+        total: amount,
+        nominal: amount,
+
+        // Metode
+        metode_pembayaran: 'tunai',
+
+        // Mutasi dari KasCore
+        cash_in: mutation.cash_in,
+        cash_out: mutation.cash_out,
+
+        bank_in: mutation.bank_in,
+        bank_out: mutation.bank_out,
+
+        digital_in: mutation.digital_in,
+        digital_out: mutation.digital_out,
+
+        laba: mutation.laba,
+
+        masuk_transaksi: mutation.masuk_transaksi,
+        masuk_penjualan: mutation.masuk_penjualan,
+        pengaruhi_kas_global: mutation.pengaruhi_kas_global,
+
+        // Informasi kas keluar
+        category: category,
+        note: note,
+        description: note,
+
+        cashDirection: 'out',
+        flowType: 'operasional_keluar',
+
+        // User
+        userId: user.uid,
+        userName: userName,
+
+        // Tanggal
+        date_key: today,
+        date: today,
+
+        // Waktu & status
+        timestamp: timestamp,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        status: 'completed'
+      };
+
+      // ========================================================
+      // SIMPAN
+      // ========================================================
+      await db
+        .collection('transactions')
+        .doc(transactionId)
+        .set(transactionData);
+
+      // ========================================================
+      // BERHASIL
+      // ========================================================
+      Utils.showToast(
+        'Kas keluar berhasil disimpan!',
+        'success'
+      );
+
+      // Jika dipanggil dari Kasir
+      if (isFromKasir()) {
+
+        setTimeout(() => {
+          goBack();
+        }, 800);
+
+      } else {
+
+        // Tetap di halaman Kas Keluar
+        resetForm();
+      }
+
+    } catch (error) {
+
+      console.error(
+        'FIRESTORE KAS KELUAR ERROR:',
+        error
+      );
+
+      Utils.showToast(
+        'Gagal menyimpan kas keluar: ' + error.message,
+        'error'
+      );
+
+    } finally {
+
+      saveBtn.disabled = false;
+      Utils.hideLoading();
+    }
+  });
+}
+        
         function resetForm() {
           amount = 0;
           document.getElementById('keluarNote').value = '';
