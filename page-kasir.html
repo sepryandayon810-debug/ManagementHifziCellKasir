@@ -4614,7 +4614,7 @@ async function loadHeaderStats() {
     function updateResellerModeUI(){var normal=document.getElementById('btnNormalMode'),reseller=document.getElementById('btnResellerMode');if(!normal||!reseller)return;normal.classList.toggle('active',!resellerMode);reseller.classList.toggle('active',resellerMode);normal.setAttribute('aria-pressed',resellerMode?'false':'true');reseller.setAttribute('aria-pressed',resellerMode?'true':'false');}
     function setResellerMode(nextMode){if(nextMode&&!products.some(function(p){return getResellerPrice(p)!==null;})){showToast('Belum ada harga reseller','warning');return;}if(cart.length){showToast('Kosongkan keranjang dulu','warning');return;}resellerMode=!!nextMode;updateResellerModeUI();renderProducts();}
     function toggleResellerMode(){setResellerMode(!resellerMode);}
-    function applyKasirSettings(data){if(!data||typeof data!=='object')return;var storeName=data.storeName||data.name||data.brandName||data.webName,theme=data.theme||data.appearanceTheme||data.themeMode||data.mode,color=data.themeColor||data.color||data.primaryColor||data.colorTheme||data.palette||data.colorName;if(theme!=='light'&&theme!=='dark'){var darkValue=data.darkMode??data.isDarkMode;if(typeof darkValue==='boolean')theme=darkValue?'dark':'light';}if(storeName){document.querySelectorAll('.logo-text').forEach(function(e){e.textContent=storeName;});document.title=storeName+' - Kasir';try{localStorage.setItem('webpos_store_name',storeName);}catch(e){}}if(theme==='light'||theme==='dark'){document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('webpos_theme',theme);}catch(e){}var icon=document.querySelector('#btnTheme i');if(icon)icon.className=theme==='dark'?'fas fa-moon':'fas fa-moon';}var colors=['indigo','blue','green','orange','purple','red','pink','teal','sunset'];if(colors.indexOf(color)>=0){document.documentElement.setAttribute('data-theme-color',color);try{localStorage.setItem('webpos_theme_color',color);}catch(e){}}if(data.receiptHeader&&typeof data.receiptHeader==='object'){try{localStorage.setItem('receiptHeader',JSON.stringify(data.receiptHeader));}catch(e){}}}
+    function applyKasirSettings(data){if(!data||typeof data!=='object')return;var storeName=data.storeName||data.name||data.brandName||data.webName,theme=data.theme||data.appearanceTheme||data.themeMode||data.mode,color=data.themeColor||data.color||data.primaryColor||data.colorTheme||data.palette||data.colorName;if(theme!=='light'&&theme!=='dark'){var darkValue=data.darkMode??data.isDarkMode;if(typeof darkValue==='boolean')theme=darkValue?'dark':'light';}if(storeName){document.querySelectorAll('.logo-text').forEach(function(e){e.textContent=storeName;});document.title=storeName+' - Kasir';try{localStorage.setItem('webpos_store_name',storeName);}catch(e){}}if(theme==='light'||theme==='dark'){document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('webpos_theme',theme);}catch(e){}var icon=document.querySelector('#btnTheme i');if(icon)icon.className=theme==='dark'?'fas fa-moon':'fas fa-moon';}var colors=['indigo','blue','green','orange','purple','red','pink','teal','sunset'];if(colors.indexOf(color)>=0){document.documentElement.setAttribute('data-theme-color',color);try{localStorage.setItem('webpos_theme_color',color);}catch(e){}}var rh=data.receiptHeader;if(!rh&&(data.name||data.address||data.phone||data.footerNote)){rh={storeName:data.name,address:data.address,phone:data.phone,note:data.footerNote};}if(rh&&typeof rh==='object'){try{localStorage.setItem('receiptHeader',JSON.stringify(rh));}catch(e){}}}
     async function syncKasirSettings(){
       try{applyKasirSettings({storeName:localStorage.getItem('webpos_store_name'),theme:localStorage.getItem('webpos_theme'),themeColor:localStorage.getItem('webpos_theme_color')});}catch(e){}
       try{
@@ -6045,7 +6045,18 @@ document.addEventListener('keydown', (e) => {
 
     function loadReceiptHeader() {
       try {
-        return JSON.parse(localStorage.getItem('receiptHeader')) || {};
+        // 1. Prioritas: receiptHeader (ditulis applyKasirSettings dari Firestore / menu Setting)
+        var hdr = JSON.parse(localStorage.getItem('receiptHeader')) || {};
+        // 2. Fallback: webpos_receipt_header (ditulis menu Printer & Struk)
+        if (!hdr.storeName && !hdr.address && !hdr.phone && !hdr.note) {
+          hdr = JSON.parse(localStorage.getItem('webpos_receipt_header')) || {};
+        }
+        // 3. Fallback: key individual dari menu Setting
+        if (!hdr.storeName) hdr.storeName = localStorage.getItem('webpos_store_name') || '';
+        if (!hdr.address) hdr.address = localStorage.getItem('webpos_store_address') || '';
+        if (!hdr.phone) hdr.phone = localStorage.getItem('webpos_store_phone') || '';
+        if (!hdr.note) hdr.note = localStorage.getItem('webpos_store_footer_note') || '';
+        return hdr;
       } catch(e) {
         return {};
       }

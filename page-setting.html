@@ -1004,6 +1004,11 @@
         document.getElementById("storeAddress").value = s.address || "";
         document.getElementById("storePhone").value = s.phone || "";
         document.getElementById("receiptFooterNote").value = s.footerNote || "";
+        // Sinkronkan ke receiptHeader supaya struk Kasir langsung dapat
+        localStorage.setItem("webpos_store_footer_note", s.footerNote || "");
+        localStorage.setItem("receiptHeader", JSON.stringify({
+          storeName: s.name || "", address: s.address || "", phone: s.phone || "", note: s.footerNote || ""
+        }));
       } else {
         document.getElementById("storeName").value = localStorage.getItem("webpos_store_name") || "HIFZI CELL";
       }
@@ -1036,6 +1041,11 @@
       localStorage.setItem("webpos_store_name", name);
       localStorage.setItem("webpos_store_address", address);
       localStorage.setItem("webpos_store_phone", phone);
+      localStorage.setItem("webpos_store_footer_note", footerNote);
+      // Tulis juga sebagai receiptHeader agar struk di Kasir langsung membaca
+      localStorage.setItem("receiptHeader", JSON.stringify({
+        storeName: name, address: address, phone: phone, note: footerNote
+      }));
 
       syncStoreBrandName();
       toast("Pengaturan toko berhasil disimpan", "success");
