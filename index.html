@@ -1130,6 +1130,9 @@
     });
   }
 
+  // ==========================================
+  // PERBAIKAN UTAMA DI FUNGSI INI
+  // ==========================================
   async function loadDashboardStats(user) {
     const today = getTodayString();
     const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
@@ -1165,12 +1168,15 @@
         return transactionUserId === user.uid;
       });
 
+      // 1. Dapatkan Rangkuman KasCore Baru
       const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
       const modalAwal = scopedModalEntries.reduce((sum, entry) => sum + KasCore.normalizeNumber(entry.amount), 0);
       const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(modalAwal, scopedSummary);
-      const topupKasFisik = kasLaciSummary.topupKasFisik;
-      const tarikKasFisik = kasLaciSummary.tarikKasFisik;
-      const kasLaci = kasLaciSummary.total;
+      
+      // Mengambil nilai mutasi baku baru
+      const topupKasFisik = kasLaciSummary.topupKasFisik || 0;
+      const tarikKasFisik = kasLaciSummary.tarikKasFisik || 0;
+      const kasLaci = kasLaciSummary.totalKasFisikDiLaci || 0;
 
       let piutang = 0;
       debtsSnapshot.forEach(doc => {
@@ -1185,27 +1191,30 @@
         piutang += KasCore.normalizeNumber(debt.remaining != null ? debt.remaining : debt.amount);
       });
 
+      // 2. Render Angka ke UI (Dengan Proteksi Fallback || 0)
       document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
-      document.getElementById("totalPenjualan").textContent = formatRupiah(scopedSummary.totalSales);
+      document.getElementById("totalPenjualan").textContent = formatRupiah(scopedSummary.totalSales || 0);
       document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("totalTransaksi").textContent = scopedSummary.salesServiceTransactionCount.toString();
-      document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit);
+      
+      // FIX PERBAIKAN ERROR TOSTRING: Menggunakan transactionCount bawaan KasCore baru
+      const trxCount = scopedSummary.transactionCount || scopedSummary.salesServiceTransactionCount || 0;
+      document.getElementById("totalTransaksi").textContent = trxCount.toString();
+      
+      document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit || 0);
 
       document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(scopedSummary.cashIn);
-      document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.cashOut);
-      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(scopedSummary.cashSales);
+      document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(scopedSummary.totalCashIn || 0);
+      document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.totalCashOut || 0);
+      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(scopedSummary.cashSales || 0);
       document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
       document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
       document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
 
+      // 3. Render Performa Staf
       if (isBoss || isAdmin) {
-        renderStaffReportTable(
-          KasCore.buildStaffPerformance(modalSummary.entries, allTransactions, usersMap),
-          isBoss,
-          isAdmin
-        );
+        const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, usersMap);
+        renderStaffReportTable(staffData, isBoss, isAdmin);
       }
 
     } catch (err) {
@@ -1213,14 +1222,49 @@
     }
   }
 
+  // Helper lokal penyeragaman Performa Staf jika KasCore.buildStaffPerformance belum didefinisikan
+  function buildStaffPerformanceHelper(modalEntries, transactions, usersMap) {
+    const staffMap = {};
+
+    (modalEntries || []).forEach(m => {
+      const uId = m.userId;
+      if (!staffMap[uId]) {
+        const u = usersMap[uId] || {};
+        staffMap[uId] = { name: u.name || u.username || 'Staf', role: u.role || 'kasir', modal: 0, penjualan: 0, count: 0 };
+      }
+      staffMap[uId].modal += KasCore.normalizeNumber(m.amount);
+    });
+
+    (transactions || []).forEach(tx => {
+      if (!KasCore.isValidTransaction(tx)) return;
+      const uId = KasCore.getUserId(tx);
+      if (!uId) return;
+
+      if (!staffMap[uId]) {
+        const u = usersMap[uId] || {};
+        staffMap[uId] = { name: u.name || u.username || 'Staf', role: u.role || 'kasir', modal: 0, penjualan: 0, count: 0 };
+      }
+
+      const cIn = KasCore.normalizeNumber(tx.cash_in);
+      const bIn = KasCore.normalizeNumber(tx.bank_in);
+      
+      staffMap[uId].penjualan += (cIn + bIn);
+      staffMap[uId].count += 1;
+    });
+
+    return Object.values(staffMap);
+  }
+
   function renderStaffReportTable(staffRows, isBoss, isAdmin) {
     const cardReport = document.getElementById("cardReportStaff");
     const tbody = document.getElementById("staffReportTableBody");
     const badge = document.getElementById("reportScopeBadge");
-    cardReport.style.display = "block";
-    badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
+    if (!cardReport || !tbody) return;
 
-    const filteredRows = (staffRows || []).filter(row => isBoss || row.role === "kasir");
+    cardReport.style.display = "block";
+    if (badge) badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
+
+    const filteredRows = (staffRows || []).filter(row => isBoss || (row.role || "").toLowerCase() === "kasir");
     if (filteredRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">Belum ada aktivitas staf hari ini.</td></tr>`;
       return;
@@ -1230,7 +1274,7 @@
       return `
         <tr>
           <td><strong>${s.name}</strong></td>
-          <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${s.role.toUpperCase()}</span></td>
+          <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${(s.role || '').toUpperCase()}</span></td>
           <td>${formatRupiah(s.modal)}</td>
           <td style="color:var(--success); font-weight:700;">${formatRupiah(s.penjualan)}</td>
           <td style="text-align:right">${s.count} Trx</td>
@@ -1253,6 +1297,8 @@
     const toggleBox = document.getElementById("btnToggleShift");
     const toggleTxt = document.getElementById("shiftToggleText");
     const toggleIcon = document.getElementById("shiftToggleIcon");
+
+    if (!statusBox || !toggleBox) return;
 
     if (isShiftOpen) {
       statusBox.className = "status-indicator open";
@@ -1322,6 +1368,7 @@
 
   async function loadAvailableTransferUsers(currentUser) {
     const select = document.getElementById("transferTargetUser");
+    if (!select) return;
     select.innerHTML = '<option value="">Pilih rekan sesama role...</option>';
 
     try {
@@ -1404,6 +1451,7 @@
 
   function toast(msg, type = "success") {
     const box = document.getElementById("toastContainer");
+    if (!box) return;
     const el = document.createElement("div");
     el.className = `toast-pill ${type}`;
     el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'circle-exclamation'}"></i><span>${msg}</span>`;
