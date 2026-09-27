@@ -832,93 +832,485 @@
         return { startDate: start, endDate: end };
       }
 
-      async function loadKasSummaryAndHistory(user, filterType = 'today', dateFrom = null, dateTo = null) {
-        Utils.showLoading('Memuat data kas...');
-        try {
-          const range = resolveDateRange(filterType, dateFrom, dateTo);
-          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-          const [currentSummary, currentKasLaci, transactions] = await Promise.all([
-            KasCore.getDailySummary({
-              date: today
-            }),
-            KasCore.getKasFisikLaci({
-              date: today
-            }),
-            KasCore.getTransactionsByDateRange({
-              startDate: range.startDate,
-              endDate: range.endDate
-            })
-          ]);
-          
-          document.getElementById('kasMasuk').textContent = Utils.formatRupiah(currentSummary.totalCashInDrawer);
-          document.getElementById('kasKeluar').textContent = Utils.formatRupiah(currentSummary.totalCashOutDrawer);
-          document.getElementById('kasDitangan').textContent = Utils.formatRupiah(currentKasLaci.total);
+      async function loadKasSummaryAndHistory(
+  user,
+  filterType = 'today',
+  dateFrom = null,
+  dateTo = null
+) {
+  Utils.showLoading('Memuat data kas...');
 
-          const filteredTx = transactions.filter(t =>
-            KasCore.isValidTransaction(t) &&
-            ['topup', 'tarik', 'kas_masuk', 'kas_keluar', 'penjualan'].includes(t.type)
-          );
+  try {
+    const range = resolveDateRange(
+      filterType,
+      dateFrom,
+      dateTo
+    );
 
-          filteredTx.sort((a, b) => {
-            const timeA = parseFirestoreDate(a.timestamp)?.getTime() || new Date(a.date || 0).getTime();
-            const timeB = parseFirestoreDate(b.timestamp)?.getTime() || new Date(b.date || 0).getTime();
-            return timeB - timeA;
-          });
+    const today =
+      Utils.getTodayString
+        ? Utils.getTodayString()
+        : new Date().toISOString().split('T')[0];
 
-          const tbody = document.getElementById('kasHistory');
-          if (filteredTx.length === 0) {
-            tbody.innerHTML = `
-              <tr>
-                <td colspan="5" style="text-align: center; padding: 3rem;">
-                  <div style="color: var(--text-muted);">Tidak ada riwayat transaksi kas untuk periode ini</div>
-                </td>
-              </tr>
-            `;
-          } else {
-            tbody.innerHTML = filteredTx.map(t => {
-              const isIncome = ['topup', 'kas_masuk', 'penjualan'].includes(t.type);
-              const typeLabels = {
-                topup: 'Top Up',
-                tarik: 'Tarik Tunai',
-                kas_masuk: 'Kas Masuk',
-                kas_keluar: 'Kas Keluar',
-                penjualan: 'Penjualan'
-              };
+    /*
+     * =========================================================
+     * 1. RINGKASAN PERIODE
+     *
+     * SEMUA PERHITUNGAN MENGIKUTI KAS CORE.
+     * Jangan hitung ulang aturan transaksi di page-kas.
+     * =========================================================
+     */
+    const periodSummary =
+      await KasCore.getPeriodSummary({
+        startDate: range.startDate,
+        endDate: range.endDate
+      });
 
-              let timeStr = '-';
-              const timeVal = parseFirestoreDate(t.timestamp);
-              if (timeVal) {
-                timeStr = timeVal.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-              }
 
-              return `
-                <tr>
-                  <td>${t.date || range.endDate} ${timeStr}</td>
-                  <td>
-                    <span class="transaction-type-badge ${isIncome ? 'income' : 'expense'}">
-                      <i class="fas fa-${isIncome ? 'arrow-up' : 'arrow-down'}"></i>
-                      ${typeLabels[t.type] || t.type}
-                    </span>
-                  </td>
-                  <td>${t.note || '-'}</td>
-                  <td style="color: ${isIncome ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
-                    ${isIncome ? '+' : '-'} ${Utils.formatRupiah(KasCore.getAmount(t))}
-                  </td>
-                  <td>${t.userName || '-'}</td>
-                </tr>
-              `;
-            }).join('');
-          }
+    /*
+     * =========================================================
+     * 2. KAS FISIK HARI INI
+     *
+     * "Kas di Tangan" tetap menunjukkan posisi laci hari ini.
+     * =========================================================
+     */
+    const currentKasLaci =
+      await KasCore.getKasFisikLaci({
+        date: today
+      });
 
-          updateDateRangeInfo(filterType, filteredTx.length);
-        } catch (error) {
-          console.error("kas: gagal memuat ringkasan kas", error);
-          Utils.showToast('Gagal memuat data kas', 'error');
-        } finally {
-          Utils.hideLoading();
-        }
+
+    /*
+     * =========================================================
+     * 3. UPDATE CARD
+     *
+     * Mengikuti KasCore:
+     *
+     * totalCashInDrawer  = cashGlobalIn
+     * totalCashOutDrawer = cashGlobalOut
+     * saldo kas fisik    = modal + saldoKasGlobal
+     * =========================================================
+     */
+    document.getElementById('kasMasuk').textContent =
+      Utils.formatRupiah(
+        periodSummary.totalCashInDrawer
+      );
+
+    document.getElementById('kasKeluar').textContent =
+      Utils.formatRupiah(
+        periodSummary.totalCashOutDrawer
+      );
+
+    document.getElementById('kasDitangan').textContent =
+      Utils.formatRupiah(
+        currentKasLaci.total
+      );
+
+
+    /*
+     * =========================================================
+     * 4. AMBIL TRANSAKSI PERIODE
+     * =========================================================
+     */
+    const transactions =
+      await KasCore.getTransactionsByDateRange({
+        startDate: range.startDate,
+        endDate: range.endDate
+      });
+
+
+    /*
+     * =========================================================
+     * 5. FILTER RIWAYAT
+     *
+     * Tampilkan transaksi yang:
+     *
+     * - masuk transaksi
+     * ATAU
+     * - mempengaruhi kas global
+     *
+     * Jadi:
+     *
+     * Jual Tunai       -> tampil
+     * Jual QRIS        -> tampil
+     * Jual Transfer    -> tampil
+     * Jual Hutang      -> tampil
+     * Top Up           -> tampil
+     * Tarik Tunai      -> tampil
+     * Kas Masuk        -> tampil
+     * Kas Keluar       -> tampil
+     * Pinjaman Uang    -> tampil
+     * Pengembalian     -> tampil
+     * Bayar Hutang     -> tampil
+     *
+     * Pembelian:
+     * hanya tampil jika memang menghasilkan transaksi
+     * atau mutasi kas.
+     * =========================================================
+     */
+    const filteredTx = transactions.filter(function (t) {
+
+      if (!KasCore.isValidTransaction(t)) {
+        return false;
       }
 
+      const classification =
+        KasCore.classifyTransaction(t);
+
+      const cashIn =
+        Number(t.cash_in || 0);
+
+      const cashOut =
+        Number(t.cash_out || 0);
+
+      const bankIn =
+        Number(t.bank_in || 0);
+
+      const bankOut =
+        Number(t.bank_out || 0);
+
+      const digitalIn =
+        Number(t.digital_in || 0);
+
+      const digitalOut =
+        Number(t.digital_out || 0);
+
+
+      /*
+       * Masuk transaksi sesuai KasCore
+       */
+      if (classification.isTransaction) {
+        return true;
+      }
+
+
+      /*
+       * Atau memiliki mutasi kas/bank/digital
+       */
+      return (
+        cashIn !== 0 ||
+        cashOut !== 0 ||
+        bankIn !== 0 ||
+        bankOut !== 0 ||
+        digitalIn !== 0 ||
+        digitalOut !== 0
+      );
+    });
+
+
+    /*
+     * =========================================================
+     * 6. SORT TERBARU
+     * =========================================================
+     */
+    filteredTx.sort(function (a, b) {
+
+      const timeA =
+        parseFirestoreDate(
+          a.waktu ||
+          a.timestamp ||
+          a.createdAt
+        )?.getTime() ||
+        new Date(a.date || 0).getTime();
+
+      const timeB =
+        parseFirestoreDate(
+          b.waktu ||
+          b.timestamp ||
+          b.createdAt
+        )?.getTime() ||
+        new Date(b.date || 0).getTime();
+
+      return timeB - timeA;
+    });
+
+
+    /*
+     * =========================================================
+     * 7. RENDER TABLE
+     * =========================================================
+     */
+    const tbody =
+      document.getElementById('kasHistory');
+
+
+    if (filteredTx.length === 0) {
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5"
+              style="text-align:center;padding:3rem;">
+            <div style="color:var(--text-muted);">
+              Tidak ada riwayat kas/transaksi
+              untuk periode ini
+            </div>
+          </td>
+        </tr>
+      `;
+
+    } else {
+
+      tbody.innerHTML =
+        filteredTx.map(function (t) {
+
+          const classification =
+            KasCore.classifyTransaction(t);
+
+          const category =
+            classification.category;
+
+          const method =
+            classification.paymentMethod;
+
+
+          /*
+           * =====================================================
+           * LABEL KATEGORI
+           * =====================================================
+           */
+          const typeLabels = {
+
+            modal_awal:
+              'Modal Awal',
+
+            kas_masuk:
+              'Kas Masuk',
+
+            kas_keluar:
+              'Kas Keluar',
+
+            jual:
+              method === 'utang'
+                ? 'Jual Hutang'
+                : method === 'qris'
+                  ? 'Jual QRIS'
+                  : method === 'transfer'
+                    ? 'Jual Transfer'
+                    : 'Jual Tunai',
+
+            top_up:
+              method === 'utang'
+                ? 'Top Up Hutang'
+                : 'Top Up',
+
+            tarik_tunai:
+              'Tarik Tunai',
+
+            bayar_hutang:
+              'Bayar Hutang',
+
+            pinjaman_tunai:
+              'Pinjam Uang',
+
+            pengembalian_pinjaman:
+              'Pengembalian Pinjaman',
+
+            pembelian:
+              'Pembelian Barang'
+          };
+
+
+          const label =
+            typeLabels[category] ||
+            t.kategori ||
+            t.category ||
+            t.type ||
+            'Transaksi';
+
+
+          /*
+           * =====================================================
+           * TENTUKAN INCOME / EXPENSE
+           *
+           * Prioritas berdasarkan MUTASI KAS.
+           * =====================================================
+           */
+          const cashIn =
+            Number(t.cash_in || 0);
+
+          const cashOut =
+            Number(t.cash_out || 0);
+
+          const bankIn =
+            Number(t.bank_in || 0);
+
+          const bankOut =
+            Number(t.bank_out || 0);
+
+
+          const isIncome =
+            cashIn > 0 ||
+            bankIn > 0;
+
+
+          const isExpense =
+            cashOut > 0 ||
+            bankOut > 0;
+
+
+          /*
+           * =====================================================
+           * NOMINAL DISPLAY
+           *
+           * KasCore sendiri menggunakan nominal/total/
+           * harga_jual/amount/nilai sebagai nominal utama.
+           *
+           * Jangan gunakan KasCore.getAmount()
+           * karena fungsi tersebut tidak tersedia.
+           * =====================================================
+           */
+          const amount =
+            Number(
+              t.nominal ??
+              t.total ??
+              t.harga_jual ??
+              t.hargaJual ??
+              t.amount ??
+              t.nilai ??
+              0
+            );
+
+
+          /*
+           * Jika tidak ada mutasi kas,
+           * tetapi merupakan transaksi (misalnya jual hutang),
+           * tetap tampil sebagai transaksi biasa.
+           */
+          let badgeClass = 'income';
+          let sign = '+';
+
+          if (isExpense) {
+            badgeClass = 'expense';
+            sign = '-';
+          }
+
+
+          /*
+           * =====================================================
+           * TANGGAL / WAKTU
+           * =====================================================
+           */
+          let timeStr = '-';
+
+          const timeVal =
+            parseFirestoreDate(
+              t.waktu ||
+              t.timestamp ||
+              t.createdAt
+            );
+
+          if (timeVal) {
+
+            timeStr =
+              timeVal.toLocaleTimeString(
+                'id-ID',
+                {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }
+              );
+          }
+
+
+          /*
+           * =====================================================
+           * KETERANGAN
+           * =====================================================
+           */
+          const note =
+            t.note ||
+            t.keterangan ||
+            t.deskripsi ||
+            t.nama ||
+            '-';
+
+
+          /*
+           * =====================================================
+           * USER
+           * =====================================================
+           */
+          const userName =
+            t.userName ||
+            t.namaKasir ||
+            t.cashierName ||
+            '-';
+
+
+          return `
+            <tr>
+
+              <td>
+                ${t.date || range.endDate}
+                ${timeStr}
+              </td>
+
+              <td>
+                <span class="transaction-type-badge ${badgeClass}">
+                  <i class="fas fa-${
+                    isExpense
+                      ? 'arrow-down'
+                      : 'arrow-up'
+                  }"></i>
+
+                  ${label}
+                </span>
+              </td>
+
+              <td>
+                ${note}
+              </td>
+
+              <td style="
+                color:${
+                  isExpense
+                    ? 'var(--danger)'
+                    : 'var(--success)'
+                };
+                font-weight:700;
+              ">
+                ${sign}
+                ${Utils.formatRupiah(amount)}
+              </td>
+
+              <td>
+                ${userName}
+              </td>
+
+            </tr>
+          `;
+        }).join('');
+    }
+
+
+    /*
+     * =========================================================
+     * 8. INFO PERIODE
+     * =========================================================
+     */
+    updateDateRangeInfo(
+      filterType,
+      filteredTx.length
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      'kas: gagal memuat ringkasan kas',
+      error
+    );
+
+    Utils.showToast(
+      'Gagal memuat data kas',
+      'error'
+    );
+
+  } finally {
+
+    Utils.hideLoading();
+  }
+}
       function filterTransactionsByDateRange(transactions, from, to) {
         const fromDate = new Date(from);
         fromDate.setHours(0,0,0,0);
