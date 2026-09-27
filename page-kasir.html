@@ -5187,110 +5187,288 @@ function updatePaymentDisplay() {
       document.getElementById('sisaPiutangValue').textContent = formatRupiah(remaining > 0 ? remaining : 0);
     }
 
-        // ===== PROSES BAYAR =====
+    Error `Uncaught SyntaxError: Unexpected end of input` terjadi karena ada kurung kurawal penutup `}` atau kurung buka `(` yang hilang atau kurang di akhir fungsi `processPayment()`.
+
+Ketika kita mengganti potongan kode di dalam fungsi, penutup fungsi `processPayment` yaitu `}` yang paling akhir tidak ikut terikut atau terhapus.
+
+Berikut adalah fungsi **`processPayment()` lengkap dari awal sampai akhir** (sudah dilengkapi penutup `}` di paling bawah). Silakan ganti seluruh fungsi `processPayment` dari baris pembuka `async function processPayment() {` sampai baris penutupnya:
+
+```javascript
+// ===== PROSES BAYAR =====
 // Mobile confirm
 document.getElementById('btnConfirmPayment').addEventListener('click', processPayment);
 // Desktop confirm  
 document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', processPayment);
 
 async function processPayment() {
-      const total = calculateTotal();
+  const total = calculateTotal();
 
-      // ⭐ MODE OFFLINE
-      if (!navigator.onLine) {
-        if (cart.length === 0) {
-          showToast('Keranjang kosong', 'warning');
-          return;
+  // ⭐ MODE OFFLINE
+  if (!navigator.onLine) {
+    if (cart.length === 0) {
+      showToast('Keranjang kosong', 'warning');
+      return;
+    }
+    if (paymentMethod === 'hutang') {
+      showToast('Piutang tidak bisa saat offline. Gunakan Tunai/Transfer.', 'error');
+      return;
+    }
+    if (paymentAmount < total) {
+      showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Masukkan nominal penuh sebelum menyimpan offline.`, 'error');
+      return;
+    }
+    try {
+      const isCash = paymentMethod === 'cash';
+
+      const transactionData = {
+        type: 'penjualan',
+        items: JSON.parse(JSON.stringify(cart)),
+        subtotal: getCartSubtotal(),
+        total: total,
+        profit: getCartProfit(),
+        paymentMethod: paymentMethod,
+        paymentAmount: total,
+        change: 0,
+        discount: discount,
+        note: localStorage.getItem('kasir_note') || '',
+        timestamp: Date.now(),
+        cashierName: document.getElementById('userName').textContent,
+        status: 'pending_sync',
+        priceMode: resellerMode ? 'reseller' : 'regular',
+        resellerMode: resellerMode,
+        resellerName: selectedResellerName || null,
+
+        // Parameter Sinkronisasi Kas Laci (Offline)
+        source: 'kasir',
+        flowType: 'penjualan_tunai',
+        cashDirection: isCash ? 'in' : 'none',
+        affectKas: isCash,
+        remainingPiutang: 0
+      };
+
+      await saveOfflineTransaction(transactionData);
+      
+      // Kurangi stok lokal
+      for (const item of cart) {
+        const prod = products.find(p => p.id === item.productId);
+        if (prod && !prod.isUnlimited) {
+          prod.stock = Math.max(0, (prod.stock || 0) - item.quantity);
         }
-        if (paymentMethod === 'hutang') {
-          showToast('Piutang tidak bisa saat offline. Gunakan Tunai/Transfer.', 'error');
-          return;
-        }
-        if (paymentAmount < total) {
-          showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Masukkan nominal penuh sebelum menyimpan offline.`, 'error');
-          return;
-        }
-        try {
-          const isCash = paymentMethod === 'cash';
+      }
+      await saveProductsToCache(products);
+      
+      cart = []; discount = 0;
+      localStorage.removeItem('kasir_note');
+      saveCart(); renderCart(); updateSummary();
+      paymentModal.classList.remove('active');
+      showToast('Transaksi tersimpan offline. Sync otomatis saat online.', 'warning');
 
-          const transactionData = {
-            type: 'penjualan',
-            items: JSON.parse(JSON.stringify(cart)),
-            subtotal: getCartSubtotal(),
-            total: total,
-            profit: getCartProfit(),
-            paymentMethod: paymentMethod,
-            paymentAmount: total,
-            change: 0,
-            discount: discount,
-            note: localStorage.getItem('kasir_note') || '',
-            timestamp: Date.now(),
-            cashierName: document.getElementById('userName').textContent,
-            status: 'pending_sync',
-            priceMode: resellerMode ? 'reseller' : 'regular',
-            resellerMode: resellerMode,
-            resellerName: selectedResellerName || null,
+      if (document.getElementById('printReceiptToggle').checked) {
+        showStrukModal(transactionData);
+      } else {
+        showToast('Transaksi tersimpan offline (tanpa struk)', 'success');
+      }
+      loadHeaderStats();
+    } catch(err) {
+      console.error('Offline save error:', err);
+      showToast('Gagal menyimpan offline', 'error');
+    }
+    return;
+  }
 
-            // 🔹 PENYESUAIAN STRUKTUR MODUL KAS & TRANSAKSI
-            source: 'kasir',
-            flowType: 'penjualan_tunai',
-            cashDirection: isCash ? 'in' : 'none',
-            affectKas: isCash,
-            remainingPiutang: 0
-          };
+  /* =========================================
+     MODE PIUTANG / HUTANG CUSTOMER (DIPERBAIKI)
+     ========================================= */
+  if (paymentMethod === 'hutang') {
+    const piutangNameInput = document.getElementById('piutangName');
+    const piutangName = (piutangNameInput ? piutangNameInput.value : '').trim();
 
-          await saveOfflineTransaction(transactionData);
-          
-          // Kurangi stok lokal
-          for (const item of cart) {
-            const prod = products.find(p => p.id === item.productId);
-            if (prod && !prod.isUnlimited) {
-              prod.stock = Math.max(0, (prod.stock || 0) - item.quantity);
-            }
-          }
-          await saveProductsToCache(products);
-          
-          cart = []; discount = 0;
-          localStorage.removeItem('kasir_note');
-          saveCart(); renderCart(); updateSummary();
-          paymentModal.classList.remove('active');
-          showToast('Transaksi tersimpan offline. Sync otomatis saat online.', 'warning');
+    if (!piutangName) {
+      showToast('Nama pelanggan wajib diisi untuk piutang', 'error');
+      if (piutangNameInput) piutangNameInput.focus();
+      return;
+    }
 
-          if (document.getElementById('printReceiptToggle').checked) {
-            showStrukModal(transactionData);
-          } else {
-            showToast('Transaksi tersimpan offline (tanpa struk)', 'success');
-          }
-          loadHeaderStats();
-        } catch(err) {
-          console.error('Offline save error:', err);
-          showToast('Gagal menyimpan offline', 'error');
-        }
-        return;
+    const piutangPayment = parseInt(document.getElementById('piutangPayment').value.replace(/\D/g, '')) || 0;
+    const remainingDebt = total - piutangPayment;
+    if (piutangPayment > total) {
+      showToast('Jumlah pembayaran tidak boleh melebihi total transaksi', 'error');
+      return;
+    }
+
+    // Rangkum nama dan jumlah produk langsung dari keranjang belanja
+    const productSummary = cart.map(i => `${i.name} (x${i.quantity})`).join(', ');
+
+    try {
+      document.getElementById('loadingOverlay').classList.add('active');
+
+      const user = firebase.auth().currentUser;
+      const transactionId = 'TRX' + Date.now();
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+      const subtotal = getCartSubtotal();
+      const profit = getCartProfit();
+      const taxAmount = 0;
+
+      // 1. Simpan transaksi kasir
+      const transaction = {
+        id: transactionId,
+        type: 'penjualan',
+        items: cart,
+        productSummary: productSummary,
+        subtotal,
+        tax: taxAmount,
+        discount,
+        total,
+        profit,
+        paymentMethod: 'hutang',
+        paymentAmount: piutangPayment,
+        change: 0,
+        remainingPiutang: remainingDebt > 0 ? remainingDebt : 0,
+        cashierId: user ? user.uid : 'unknown',
+        cashierName: document.getElementById('userName').textContent,
+        note: productSummary,
+        customerName: piutangName,
+        timestamp: Date.now(),
+        status: 'completed',
+        isHutang: true,
+        hutangName: piutangName,
+
+        source: 'kasir',
+        flowType: remainingDebt > 0 ? 'penjualan_kredit' : 'penjualan_lunas',
+        cashDirection: piutangPayment > 0 ? 'in' : 'none',
+        affectKas: piutangPayment > 0
+      };
+
+      const db = createFirestoreCompat();
+
+      // Auto-save customer jika belum ada
+      const customerExists = Object.values(customers).some(c => 
+        c.name && c.name.toLowerCase() === piutangName.toLowerCase()
+      );
+
+      if (!customerExists) {
+        const newCustomerId = 'cust_' + Date.now();
+        await db.ref('customers/' + newCustomerId).set({
+          name: piutangName,
+          phone: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+        customers[newCustomerId] = { name: piutangName, phone: null };
       }
 
-      /* =========================================
-   MODE PIUTANG / HUTANG CUSTOMER (DIPERBAIKI)
-   ========================================= */
-if (paymentMethod === 'hutang') {
-  const piutangNameInput = document.getElementById('piutangName');
-  const piutangName = (piutangNameInput ? piutangNameInput.value : '').trim();
+      await db.ref(`transactions/${todayStr}/${transactionId}`).set(transaction);
 
-  if (!piutangName) {
-    showToast('Nama pelanggan wajib diisi untuk piutang', 'error');
-    if (piutangNameInput) piutangNameInput.focus();
+      // 2. Simpan ke debts/
+      const debtId = 'debt_' + Date.now();
+      const dueDate = document.getElementById('piutangDueDate').value || null;
+      await db.ref(`debts/${debtId}`).set({
+        id: debtId,
+        type: 'piutang',
+        date: todayStr,
+        name: piutangName,
+        customerName: piutangName,
+        amount: remainingDebt > 0 ? remainingDebt : 0,
+        remaining: remainingDebt > 0 ? remainingDebt : 0,
+        dueDate: dueDate,
+        note: productSummary,
+        items: cart,
+        status: 'active',
+        userId: user ? user.uid : 'unknown',
+        userName: document.getElementById('userName').textContent,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        affectKas: piutangPayment > 0,
+        source: 'kasir',
+        flowType: 'piutang_penjualan',
+        kasRecorded: true,
+        sourceTransactionId: transactionId,
+        invoiceNumber: transactionId
+      });
+
+      // 2b. Jika ada pembayaran sebagian (DP), catat sebagai kas masuk
+      if (piutangPayment > 0) {
+        const kasId = 'kas_' + Date.now();
+        await db.ref(`transactions/${todayStr}/${kasId}`).set({
+          id: kasId,
+          type: 'kas_masuk',
+          category: 'penerimaan_piutang_penjualan',
+          source: 'penjualan',
+          flowType: 'pembayaran_sebagian_piutang',
+          cashDirection: 'in',
+          relatedTransactionId: transactionId,
+          amount: piutangPayment,
+          note: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
+          userId: user ? user.uid : 'unknown',
+          userName: document.getElementById('userName').textContent,
+          timestamp: Date.now(),
+          date: todayStr,
+          status: 'completed',
+          sourceTransactionId: transactionId
+        });
+      }
+
+      // 3. Update stok
+      for (const item of cart) {
+        const ref = db.ref(`products/${item.productId}`);
+        const snap = await ref.once('value');
+        const prod = snap.val();
+        if (prod) {
+          await ref.update({
+            stock: Math.max(0, (prod.stock || 0) - item.quantity),
+            soldCount: (prod.soldCount || 0) + item.quantity
+          });
+        }
+      }
+
+      // 4. Reset kasir
+      cart = [];
+      discount = 0;
+      localStorage.removeItem('kasir_note');
+      saveCart();
+      renderCart();
+      updateSummary();
+      paymentModal.classList.remove('active');
+      document.getElementById('cartSection').classList.remove('open');
+
+      // Reset form piutang
+      document.getElementById('piutangName').value = '';
+      document.getElementById('piutangDueDate').value = '';
+      // Reset ke mode tunai
+      paymentMethod = 'cash';
+      document.querySelectorAll('.payment-method').forEach(x => x.classList.remove('active'));
+      document.querySelector('.payment-method[data-method="cash"]').classList.add('active');
+      document.getElementById('piutangSection').classList.remove('active');
+      document.querySelector('.quick-amounts').style.display = 'flex';
+      document.querySelector('.numpad').style.display = 'grid';
+      document.getElementById('paymentInput').parentElement.style.display = 'block';
+      document.getElementById('paymentChange').parentElement.style.display = 'block';
+
+      document.getElementById('loadingOverlay').classList.remove('active');
+      showToast('Piutang berhasil dicatat! Silakan cek di Hutang/Piutang.', 'success');
+      if (document.getElementById('printReceiptToggle').checked) {
+        showStrukModal(transaction);
+      }
+
+      await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+
+    } catch (e) {
+      console.error('Piutang error:', e);
+      document.getElementById('loadingOverlay').classList.remove('active');
+      showToast('Gagal mencatat piutang', 'error');
+    }
     return;
   }
+  /* ============ END TAMBAHAN MODE PIUTANG ============ */
 
-  const piutangPayment = parseInt(document.getElementById('piutangPayment').value.replace(/\D/g, '')) || 0;
-  const remainingDebt = total - piutangPayment;
-  if (piutangPayment > total) {
-    showToast('Jumlah pembayaran tidak boleh melebihi total transaksi', 'error');
+  if (paymentAmount < total) {
+    showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
     return;
   }
-
-  // Rangkum nama dan jumlah produk langsung dari keranjang belanja
-  const productSummary = cart.map(i => `${i.name} (x${i.quantity})`).join(', ');
 
   try {
     document.getElementById('loadingOverlay').classList.add('active');
@@ -5306,107 +5484,37 @@ if (paymentMethod === 'hutang') {
     const profit = getCartProfit();
     const taxAmount = 0;
 
-    // 1. Simpan transaksi kasir (Piutang)
+    const isCash = paymentMethod === 'cash';
+
     const transaction = {
       id: transactionId,
       type: 'penjualan',
       items: cart,
-      productSummary: productSummary,
       subtotal,
       tax: taxAmount,
       discount,
       total,
       profit,
-      paymentMethod: 'hutang',
-      paymentAmount: piutangPayment,
-      change: 0,
-      remainingPiutang: remainingDebt > 0 ? remainingDebt : 0,
+      paymentMethod,
+      paymentAmount,
+      change: paymentAmount - total,
       cashierId: user ? user.uid : 'unknown',
       cashierName: document.getElementById('userName').textContent,
-      note: productSummary,
-      customerName: piutangName,
+      note: localStorage.getItem('kasir_note') || '',
       timestamp: Date.now(),
       status: 'completed',
-      isHutang: true,
-      hutangName: piutangName,
 
-      // 🔹 PENYESUAIAN ALUR KAS & TRANSAKSI
       source: 'kasir',
-      flowType: remainingDebt > 0 ? 'penjualan_kredit' : 'penjualan_lunas',
-      cashDirection: piutangPayment > 0 ? 'in' : 'none',
-      affectKas: piutangPayment > 0
+      flowType: 'penjualan_tunai',
+      cashDirection: isCash ? 'in' : 'none',
+      affectKas: isCash,
+      remainingPiutang: 0
     };
 
     const db = createFirestoreCompat();
-
-    // Auto-save customer jika belum ada
-    const customerExists = Object.values(customers).some(c => 
-      c.name && c.name.toLowerCase() === piutangName.toLowerCase()
-    );
-
-    if (!customerExists) {
-      const newCustomerId = 'cust_' + Date.now();
-      await db.ref('customers/' + newCustomerId).set({
-        name: piutangName,
-        phone: null,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      });
-      customers[newCustomerId] = { name: piutangName, phone: null };
-    }
-
     await db.ref(`transactions/${todayStr}/${transactionId}`).set(transaction);
 
-    // 2. Simpan ke debts/ dengan nama pelanggan & rincian produk yang pasti terisi
-    const debtId = 'debt_' + Date.now();
-    const dueDate = document.getElementById('piutangDueDate').value || null;
-    await db.ref(`debts/${debtId}`).set({
-      id: debtId,
-      type: 'piutang',
-      date: todayStr,
-      name: piutangName,           // Memastikan nama pelanggan tidak kosong
-      customerName: piutangName,
-      amount: remainingDebt > 0 ? remainingDebt : 0,
-      remaining: remainingDebt > 0 ? remainingDebt : 0,
-      dueDate: dueDate,
-      note: productSummary,        // Berisi nama produk
-      items: cart,                 // Menyimpan daftar barang
-      status: 'active',
-      userId: user ? user.uid : 'unknown',
-      userName: document.getElementById('userName').textContent,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      affectKas: piutangPayment > 0,
-      source: 'kasir',
-      flowType: 'piutang_penjualan',
-      kasRecorded: true,
-      sourceTransactionId: transactionId,
-      invoiceNumber: transactionId
-    });
-
-    // 2b. Jika ada pembayaran sebagian (DP), catat sebagai kas masuk
-    if (piutangPayment > 0) {
-      const kasId = 'kas_' + Date.now();
-      await db.ref(`transactions/${todayStr}/${kasId}`).set({
-        id: kasId,
-        type: 'kas_masuk',
-        category: 'penerimaan_piutang_penjualan',
-        source: 'penjualan',
-        flowType: 'pembayaran_sebagian_piutang',
-        cashDirection: 'in',
-        relatedTransactionId: transactionId,
-        amount: piutangPayment,
-        note: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
-        userId: user ? user.uid : 'unknown',
-        userName: document.getElementById('userName').textContent,
-        timestamp: Date.now(),
-        date: todayStr,
-        status: 'completed',
-        sourceTransactionId: transactionId
-      });
-    }
-
-    // 3. Update stok (barang tetap keluar)
+    // Update stok produk
     for (const item of cart) {
       const ref = db.ref(`products/${item.productId}`);
       const snap = await ref.once('value');
@@ -5419,7 +5527,6 @@ if (paymentMethod === 'hutang') {
       }
     }
 
-    // 4. Reset kasir
     cart = [];
     discount = 0;
     localStorage.removeItem('kasir_note');
@@ -5428,123 +5535,20 @@ if (paymentMethod === 'hutang') {
     updateSummary();
     paymentModal.classList.remove('active');
     document.getElementById('cartSection').classList.remove('open');
-
-    // Reset form piutang
-    document.getElementById('piutangName').value = '';
-    document.getElementById('piutangDueDate').value = '';
-    // Reset ke mode tunai
-    paymentMethod = 'cash';
-    document.querySelectorAll('.payment-method').forEach(x => x.classList.remove('active'));
-    document.querySelector('.payment-method[data-method="cash"]').classList.add('active');
-    document.getElementById('piutangSection').classList.remove('active');
-    document.querySelector('.quick-amounts').style.display = 'flex';
-    document.querySelector('.numpad').style.display = 'grid';
-    document.getElementById('paymentInput').parentElement.style.display = 'block';
-    document.getElementById('paymentChange').parentElement.style.display = 'block';
-
     document.getElementById('loadingOverlay').classList.remove('active');
-    showToast('Piutang berhasil dicatat! Silakan cek di Hutang/Piutang.', 'success');
+    showToast('Transaksi berhasil!', 'success');
+
     if (document.getElementById('printReceiptToggle').checked) {
       showStrukModal(transaction);
     }
-
+    
     await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
 
   } catch (e) {
-    console.error('Piutang error:', e);
+    console.error('Payment error:', e);
     document.getElementById('loadingOverlay').classList.remove('active');
-    showToast('Gagal mencatat piutang', 'error');
+    showToast('Gagal memproses transaksi', 'error');
   }
-  return; // STOP, jangan lanjut ke logic bayar tunai/transfer/qris
-}
-/* ============ END TAMBAHAN MODE PIUTANG ============ */
-
-if (paymentAmount < total) {
-  showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
-  return;
-}
-
-try {
-  document.getElementById('loadingOverlay').classList.add('active');
-
-  const user = firebase.auth().currentUser;
-  const transactionId = 'TRX' + Date.now();
-  const today = new Date();
-  const todayStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
-
-  const subtotal = getCartSubtotal();
-  const profit = getCartProfit();
-  const taxAmount = 0; // PPN dihapus dari UI, default 0
-
-  // Filter apakah pembayaran tunai atau non-tunai (QRIS/Transfer/dll)
-  const isCash = paymentMethod === 'cash';
-
-  // 🔹 PENYESUAIAN ALUR KAS & TRANSAKSI TUNAI / NON-TUNAI
-  const transaction = {
-    id: transactionId,
-    type: 'penjualan',
-    items: cart,
-    subtotal,
-    tax: taxAmount,
-    discount,
-    total,
-    profit,
-    paymentMethod,
-    paymentAmount,
-    change: paymentAmount - total,
-    cashierId: user ? user.uid : 'unknown',
-    cashierName: document.getElementById('userName').textContent,
-    note: localStorage.getItem('kasir_note') || '',
-    timestamp: Date.now(),
-    status: 'completed',
-
-    // Parameter Sinkronisasi Kas Laci
-    source: 'kasir',
-    flowType: 'penjualan_tunai',
-    cashDirection: isCash ? 'in' : 'none',
-    affectKas: isCash,
-    remainingPiutang: 0
-  };
-
-  const db = createFirestoreCompat();
-  await db.ref(`transactions/${todayStr}/${transactionId}`).set(transaction);
-
-  // Update stok produk
-  for (const item of cart) {
-    const ref = db.ref(`products/${item.productId}`);
-    const snap = await ref.once('value');
-    const prod = snap.val();
-    if (prod) {
-      await ref.update({
-        stock: Math.max(0, (prod.stock || 0) - item.quantity),
-        soldCount: (prod.soldCount || 0) + item.quantity
-      });
-    }
-  }
-
-  cart = [];
-  discount = 0;
-  localStorage.removeItem('kasir_note');
-  saveCart();
-  renderCart();
-  updateSummary();
-  paymentModal.classList.remove('active');
-  document.getElementById('cartSection').classList.remove('open');
-  document.getElementById('loadingOverlay').classList.remove('active');
-  showToast('Transaksi berhasil!', 'success');
-
-  if (document.getElementById('printReceiptToggle').checked) {
-    showStrukModal(transaction);
-  }
-  // Reload produk, statistik, dan uang global
-  await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
-
-} catch (e) {
-  console.error('Payment error:', e);
-  document.getElementById('loadingOverlay').classList.remove('active');
-  showToast('Gagal memproses transaksi', 'error');
 }
   
     // ===== QUICK ACTIONS =====
