@@ -728,7 +728,7 @@ if (typeof window.KasCore === 'undefined') {
       }
 
       return normalizeNumber(
-        transaction.admin ??
+        transaction.adminFee ??
         transaction.biaya_admin ??
         transaction.fee ??
         0
@@ -824,7 +824,7 @@ if (typeof window.KasCore === 'undefined') {
               );
             }
 
-            return 0;
+            return admin;
           }
 
           return admin;
@@ -1144,10 +1144,8 @@ if (typeof window.KasCore === 'undefined') {
            * Top Up hutang:
            * laba mengikuti pelunasan.
            */
-          result.laba =
-            method === 'utang'
-              ? 0
-              : admin;
+          result.laba = admin;
+
 
           break;
 
@@ -1508,7 +1506,7 @@ if (typeof window.KasCore === 'undefined') {
         case 'top_up':
 
           classification.affectsProfit =
-            method !== 'utang';
+           true;
 
           classification.affectsDebt =
             method === 'utang';
