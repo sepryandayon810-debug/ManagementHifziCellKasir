@@ -1168,21 +1168,57 @@
               const transactionId = 'TRK_' + Date.now();
 
               const transactionData = {
-                id: transactionId,
-                type: 'tarik',
-                amount: amount,
-                total: amount,
-                adminFee: adminFeeValue,
-                profit: adminFeeValue,
-                note: note || 'Tarik Tunai',
-                userId: user.uid,
-                userName: userName,
-                date: today,
-                timestamp: Date.now(),
-                status: 'completed',
-                source: 'kasir_tarik'
-              };
+  id: transactionId,
 
+  type: 'tarik',
+
+  // =========================
+  // NILAI UTAMA
+  // =========================
+  amount: amount,
+  total: amount,
+
+  // =========================
+  // ADMIN / LABA
+  // =========================
+  adminFee: adminFeeValue,
+  profit: adminFeeValue,
+
+  // Format standar KasCore
+  nominal: amount,
+  admin: adminFeeValue,
+  laba: adminFeeValue,
+
+  // =========================
+  // MUTASI KAS
+  // =========================
+
+  // Uang fisik yang benar-benar keluar
+  cash_out: uangFisikKeluar,
+
+  // Saldo digital bertambah sebesar nominal tarik
+  digital_in: amount,
+
+  // Tarik tunai masuk transaksi
+  masuk_transaksi: true,
+
+  // Bukan penjualan
+  masuk_penjualan: false,
+
+  // Kas global terpengaruh
+  pengaruhi_kas_global: true,
+
+  // =========================
+  // INFO TRANSAKSI
+  // =========================
+  note: note || 'Tarik Tunai',
+  userId: user.uid,
+  userName: userName,
+  date: today,
+  timestamp: Date.now(),
+  status: 'completed',
+  source: 'kasir_tarik'
+};
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
               Utils.hideLoading();
