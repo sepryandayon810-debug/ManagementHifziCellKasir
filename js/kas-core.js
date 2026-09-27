@@ -2156,21 +2156,25 @@ if (typeof window.KasCore === 'undefined') {
            * Pinjaman / hutang baru
            */
           if (
-            category === 'pinjaman_tunai' ||
-            (
-              category === 'jual' &&
-              method === 'utang'
-            ) ||
-            (
-              category === 'top_up' &&
-              method === 'utang'
-            )
-          ) {
+  category === 'pinjaman_tunai' ||
+  (
+    category === 'jual' &&
+    method === 'utang'
+  ) ||
+  (
+    category === 'top_up' &&
+    method === 'utang'
+  )
+) {
 
-            summary.debtCreated +=
-              getNominal(tx);
-          }
-
+  summary.debtCreated +=
+    getNominal(tx) +
+    (
+      category === 'top_up'
+        ? getAdmin(tx)
+        : 0
+    );
+}
 
           /*
            * Pelunasan
