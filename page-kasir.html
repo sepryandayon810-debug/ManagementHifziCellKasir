@@ -4534,8 +4534,8 @@ async function loadUangGlobal() {
     }
   }
 }
-    // ===== LOAD HEADER STATS DARI FIREBASE =====
-       async function loadHeaderStats() {
+  // ===== LOAD HEADER STATS DARI FIREBASE =====
+async function loadHeaderStats() {
   // ⭐ OFFLINE: pakai data tersimpan
   if (!navigator.onLine) {
     const savedPenjualan = localStorage.getItem('header_penjualan');
@@ -4559,14 +4559,19 @@ async function loadUangGlobal() {
       userId: user ? user.uid : null
     });
 
-    document.getElementById('headerPenjualan').textContent = formatRupiah(summary.totalSales);
-    document.getElementById('headerTransaksi').textContent = summary.salesServiceTransactionCount.toLocaleString('id-ID');
-    document.getElementById('headerLaba').textContent = formatRupiah(summary.totalProfit);
+    // Gunakan summary.totalSales, summary.transactionCount, dan summary.totalProfit
+    const totalSales = summary.totalSales || summary.totalCashIn || 0;
+    const totalTx = summary.transactionCount || 0;
+    const totalProfit = summary.totalProfit || 0;
+
+    document.getElementById('headerPenjualan').textContent = formatRupiah(totalSales);
+    document.getElementById('headerTransaksi').textContent = totalTx.toLocaleString('id-ID');
+    document.getElementById('headerLaba').textContent = formatRupiah(totalProfit);
 
     try {
-      localStorage.setItem('header_penjualan', formatRupiah(summary.totalSales));
-      localStorage.setItem('header_transaksi', summary.salesServiceTransactionCount.toString());
-      localStorage.setItem('header_laba', formatRupiah(summary.totalProfit));
+      localStorage.setItem('header_penjualan', formatRupiah(totalSales));
+      localStorage.setItem('header_transaksi', totalTx.toString());
+      localStorage.setItem('header_laba', formatRupiah(totalProfit));
     } catch(e) {}
 
   } catch (err) {
