@@ -2,10 +2,7 @@ if (typeof window.KasCore === 'undefined') {
   window.KasCore = (function() {
     "use strict";
 
-    const EXCLUDED_KAS_MASUK_CATEGORIES = [
-      'penjualan_hutang'
-    ];
-
+    // Akses Instans Firestore (Mendukung SDK v8 / v9 Compat)
     function getDb() {
       if (window.db && typeof window.db.collection === 'function') {
         return window.db;
@@ -13,9 +10,10 @@ if (typeof window.KasCore === 'undefined') {
       if (window.firebase && window.firebase.firestore) {
         return window.firebase.firestore();
       }
-      throw new Error('KasCore membutuhkan firebase.firestore() yang sudah diinisialisasi');
+      throw new Error('KasCore memerlukan firebase.firestore() yang sudah terinisialisasi.');
     }
 
+    // Utility Normalisasi Angka
     function normalizeNumber(value) {
       if (typeof value === 'number' && !isNaN(value)) return value;
       if (typeof value === 'string') {
@@ -26,6 +24,7 @@ if (typeof window.KasCore === 'undefined') {
       return 0;
     }
 
+    // Utility Parsing Date & Timestamp
     function parseDateValue(value) {
       if (!value) return null;
       if (typeof value === 'number') {
@@ -36,7 +35,7 @@ if (typeof window.KasCore === 'undefined') {
         try {
           return value.toDate();
         } catch (error) {
-          console.error('kas-core: gagal parse Firestore Timestamp', error);
+          console.error('KasCore: Gagal parse Firestore Timestamp', error);
           return null;
         }
       }
@@ -58,9 +57,9 @@ if (typeof window.KasCore === 'undefined') {
     }
 
     function getTransactionDate(transaction) {
-      return transaction && transaction.date
-        ? transaction.date
-        : formatDateKey(transaction && transaction.timestamp);
+      return (transaction && transaction.date_key) 
+        || (transaction && transaction.date)
+        || formatDateKey(transaction && (transaction.waktu || transaction.timestamp));
     }
 
     function getUserId(transaction) {
@@ -69,63 +68,9 @@ if (typeof window.KasCore === 'undefined') {
         : null;
     }
 
-    function getPaymentMethod(transaction) {
-      return String(
-        (transaction && (transaction.paymentMethod || transaction.paymentType)) || 'cash'
-      ).toLowerCase();
-    }
-
-    function getAdminFee(transaction) {
-      return normalizeNumber(transaction && transaction.adminFee);
-    }
-
-    function getAmount(transaction) {
-      if (!transaction) return 0;
-      if (transaction.type === 'penjualan') {
-        return normalizeNumber(transaction.total != null ? transaction.total : transaction.amount);
-      }
-      if (transaction.amount != null) return normalizeNumber(transaction.amount);
-      if (transaction.total != null) return normalizeNumber(transaction.total);
-      return 0;
-    }
-
-    function getPaymentAmount(transaction) {
-      if (!transaction) return 0;
-      if (transaction.paymentAmount != null) return normalizeNumber(transaction.paymentAmount);
-      return getAmount(transaction);
-    }
-
     function isValidTransaction(transaction) {
       const status = String((transaction && transaction.status) || '').toLowerCase();
       return status !== 'cancelled' && status !== 'voided';
-    }
-
-    function getCashSaleAmount(transaction) {
-      const method = getPaymentMethod(transaction);
-      if (method === 'cash' || method === 'tunai') {
-        return getPaymentAmount(transaction);
-      }
-      if (method === 'hutang') {
-        return getPaymentAmount(transaction);
-      }
-      return 0;
-    }
-
-    function classifyPaymentMethod(transaction) {
-      const method = getPaymentMethod(transaction);
-      if (method.indexOf('cash') >= 0 || method.indexOf('tunai') >= 0) return 'tunai';
-      if (method.indexOf('qris') >= 0) return 'qris';
-      if (
-        method.indexOf('transfer') >= 0 ||
-        method.indexOf('bca') >= 0 ||
-        method.indexOf('bri') >= 0 ||
-        method.indexOf('mandiri') >= 0 ||
-        method.indexOf('bank') >= 0
-      ) {
-        return 'transfer';
-      }
-      if (method.indexOf('hutang') >= 0) return 'hutang';
-      return 'lainnya';
     }
 
     function matchesTransactionFilters(transaction, filters) {
@@ -147,107 +92,141 @@ if (typeof window.KasCore === 'undefined') {
       return dates;
     }
 
+    /**
+     * core: createSummary
+     * Menerima array dokumen transaksi Firestore (Skema Baru 6-Field)
+     * dan menghasilkan agregasi lengkap untuk Dashboard & Closing.
+     */
     function createSummary(transactions) {
       const summary = {
         transactions: Array.isArray(transactions) ? transactions.slice() : [],
         validTransactions: [],
-        totalSales: 0,
-        cashSales: 0,
-        salesProfit: 0,
+        
+        // 1. Mutasi Baku Firestore Baru
+        totalCashIn: 0,
+        totalCashOut: 0,
+        totalBankIn: 0,
+        totalBankOut: 0,
+        totalDigitalIn: 0,
+        totalDigitalOut: 0,
+
+        // 2. Akumulasi Laba Bersih & Counter
         totalProfit: 0,
         transactionCount: 0,
-        salesServiceTransactionCount: 0,
-        salesTransactionCount: 0,
-        cashMutationCount: 0,
-        cashMutationIncomeCount: 0,
-        cashMutationExpenseCount: 0,
-        cashIn: 0,
-        cashOut: 0,
-        topup: 0,
-        topupAdmin: 0,
-        withdrawal: 0,
-        withdrawalAdmin: 0,
+
+        // 3. Rincian Metode Pembayaran (UI Compatibility)
         paymentMethods: {
           tunai: 0,
           qris: 0,
           transfer: 0,
-          hutang: 0,
+          utang: 0,
           lainnya: 0
-        }
+        },
+
+        // Backward compatibility (agar UI lama yang memanggil properti ini tidak error/undefined)
+        salesProfit: 0,
+        totalSales: 0,
+        cashSales: 0,
+        topup: 0,
+        topupAdmin: 0,
+        withdrawal: 0,
+        withdrawalAdmin: 0,
+        cashIn: 0,
+        cashOut: 0
       };
 
-      summary.transactions.forEach(function(transaction) {
-        if (!isValidTransaction(transaction)) return;
-        summary.validTransactions.push(transaction);
+      summary.transactions.forEach(function(tx) {
+        if (!isValidTransaction(tx)) return;
+        summary.validTransactions.push(tx);
 
-        const amount = getAmount(transaction);
-        const adminFee = getAdminFee(transaction);
+        // Ambil nilai mutasi baku dari dokumen Firestore
+        const cIn = normalizeNumber(tx.cash_in);
+        const cOut = normalizeNumber(tx.cash_out);
+        const bIn = normalizeNumber(tx.bank_in);
+        const bOut = normalizeNumber(tx.bank_out);
+        const dIn = normalizeNumber(tx.digital_in);
+        const dOut = normalizeNumber(tx.digital_out);
+        const labaTx = normalizeNumber(tx.laba);
 
-        switch (transaction.type) {
-          case 'penjualan': {
-            const paymentGroup = classifyPaymentMethod(transaction);
-            summary.totalSales += amount;
-            summary.cashSales += getCashSaleAmount(transaction);
-            summary.salesProfit += normalizeNumber(transaction.profit);
-            summary.paymentMethods[paymentGroup] =
-              (summary.paymentMethods[paymentGroup] || 0) + amount;
-            if (transaction.source !== 'hutang_page') {
-              summary.salesTransactionCount += 1;
-              summary.transactionCount += 1;
-              summary.salesServiceTransactionCount += 1;
-            }
-            break;
-          }
-          case 'topup':
-            if (getPaymentMethod(transaction) !== 'hutang') {
-              summary.topup += amount;
-              summary.topupAdmin += adminFee;
-              summary.transactionCount += 1;
-              summary.salesServiceTransactionCount += 1;
-              summary.cashMutationCount += 1;
-              summary.cashMutationIncomeCount += 1;
-            }
-            break;
-          case 'tarik':
-            summary.withdrawal += amount;
-            summary.withdrawalAdmin += adminFee;
-            summary.transactionCount += 1;
-            summary.salesServiceTransactionCount += 1;
-            summary.cashMutationCount += 1;
-            summary.cashMutationExpenseCount += 1;
-            break;
-          case 'kas_masuk':
-            if (EXCLUDED_KAS_MASUK_CATEGORIES.indexOf(transaction.category) === -1) {
-              summary.cashIn += amount;
-              summary.transactionCount += 1;
-              summary.cashMutationCount += 1;
-              summary.cashMutationIncomeCount += 1;
-            }
-            break;
-          case 'kas_keluar':
-            summary.cashOut += amount;
-            summary.transactionCount += 1;
-            summary.cashMutationCount += 1;
-            summary.cashMutationExpenseCount += 1;
-            break;
+        // Akumulasi Mutasi 6-Field
+        summary.totalCashIn += cIn;
+        summary.totalCashOut += cOut;
+        summary.totalBankIn += bIn;
+        summary.totalBankOut += bOut;
+        summary.totalDigitalIn += dIn;
+        summary.totalDigitalOut += dOut;
+
+        // Akumulasi Laba Bersih
+        summary.totalProfit += labaTx;
+        summary.transactionCount += 1;
+
+        // Akumulasi Metode Pembayaran
+        const method = String(tx.metode_pembayaran || tx.paymentMethod || 'tunai').toLowerCase();
+        if (method.includes('tunai') || method.includes('cash')) {
+          summary.paymentMethods.tunai += (cIn > 0 ? cIn : (dOut > 0 ? dOut : 0));
+        } else if (method.includes('qris')) {
+          summary.paymentMethods.qris += bIn;
+        } else if (method.includes('transfer') || method.includes('bank')) {
+          summary.paymentMethods.transfer += bIn;
+        } else if (method.includes('utang') || method.includes('hutang')) {
+          summary.paymentMethods.utang += normalizeNumber(tx.nominal);
+        } else {
+          summary.paymentMethods.lainnya += (cIn + bIn);
+        }
+
+        // Mapping Backward Compatibility untuk UI Lama
+        const kategori = tx.kategori || tx.type;
+        if (kategori === 'top_up' || kategori === 'topup') {
+          summary.topup += dOut;
+          summary.topupAdmin += labaTx;
+        } else if (kategori === 'tarik_tunai' || kategori === 'tarik') {
+          summary.withdrawal += dIn;
+          summary.withdrawalAdmin += labaTx;
+        } else if (kategori === 'jual' || kategori === 'penjualan') {
+          summary.totalSales += (cIn + bIn);
+          summary.cashSales += cIn;
+          summary.salesProfit += labaTx;
         }
       });
 
-      summary.totalProfit = summary.salesProfit + summary.topupAdmin + summary.withdrawalAdmin;
-      summary.totalCashInDrawer =
-        summary.cashSales + summary.cashIn + summary.topup + summary.topupAdmin;
-      summary.totalCashOutDrawer =
-        summary.cashOut + Math.max(0, summary.withdrawal - summary.withdrawalAdmin);
-      summary.netCashFlow = summary.totalCashInDrawer - summary.totalCashOutDrawer;
-      summary.totalCashMutation =
-        summary.cashIn +
-        summary.cashOut +
-        summary.topup +
-        summary.withdrawal;
+      // Saldo Hasil Hitungan (Net Balance)
+      summary.saldoLaciSeharusnya = summary.totalCashIn - summary.totalCashOut;
+      summary.saldoBankSeharusnya = summary.totalBankIn - summary.totalBankOut;
+      summary.mutasiSaldoDigital = summary.totalDigitalIn - summary.totalDigitalOut;
+
+      // Backward Compatibility Alias Properti
+      summary.cashIn = summary.totalCashIn;
+      summary.cashOut = summary.totalCashOut;
+      summary.totalCashInDrawer = summary.totalCashIn;
+      summary.totalCashOutDrawer = summary.totalCashOut;
+      summary.netCashFlow = summary.saldoLaciSeharusnya;
 
       return summary;
     }
 
+    /**
+     * Hitung Posisi Kas Fisik Laci + Modal Awal Shift/Harian
+     */
+    function calculateKasFisikLaciFromSummary(modalAwal, summary) {
+      const safeSummary = summary || createSummary([]);
+      const normalizedModal = normalizeNumber(modalAwal);
+      
+      const totalKasFisikDiLaci = normalizedModal + safeSummary.saldoLaciSeharusnya;
+
+      return {
+        modalAwal: normalizedModal,
+        cashIn: safeSummary.totalCashIn,
+        cashOut: safeSummary.totalCashOut,
+        saldoLaciSeharusnya: safeSummary.saldoLaciSeharusnya,
+        totalKasFisikDiLaci: totalKasFisikDiLaci,
+        // Backward compatibility
+        topupKasFisik: safeSummary.topup,
+        tarikKasFisik: safeSummary.withdrawal,
+        total: totalKasFisikDiLaci
+      };
+    }
+
+    // Load Transaksi Berdasarkan Rentang Tanggal dari Firestore
     async function loadTransactionsByRange(startDate, endDate) {
       const db = getDb();
       if (!startDate || !endDate) return [];
@@ -255,9 +234,9 @@ if (typeof window.KasCore === 'undefined') {
       try {
         let query = db.collection('transactions');
         if (startDate === endDate) {
-          query = query.where('date', '==', startDate);
+          query = query.where('date_key', '==', startDate);
         } else {
-          query = query.where('date', '>=', startDate).where('date', '<=', endDate);
+          query = query.where('date_key', '>=', startDate).where('date_key', '<=', endDate);
         }
 
         const snapshot = await query.get();
@@ -267,20 +246,25 @@ if (typeof window.KasCore === 'undefined') {
         });
         return transactions;
       } catch (error) {
-        console.error('kas-core: query range transactions gagal, pakai fallback per tanggal', {
-          startDate: startDate,
-          endDate: endDate,
-          error: error
-        });
-        const transactions = [];
-        const dates = buildDateRangeList(startDate, endDate);
-        for (let index = 0; index < dates.length; index += 1) {
-          const dailySnapshot = await db.collection('transactions').where('date', '==', dates[index]).get();
-          dailySnapshot.forEach(function(doc) {
+        console.warn('KasCore: Query date_key gagal, mencoba fallback date', error);
+        // Fallback jika ada dokumen lama yang menggunakan field 'date'
+        try {
+          let fallbackQuery = db.collection('transactions');
+          if (startDate === endDate) {
+            fallbackQuery = fallbackQuery.where('date', '==', startDate);
+          } else {
+            fallbackQuery = fallbackQuery.where('date', '>=', startDate).where('date', '<=', endDate);
+          }
+          const snapshot = await fallbackQuery.get();
+          const transactions = [];
+          snapshot.forEach(function(doc) {
             transactions.push(Object.assign({ id: doc.id }, doc.data()));
           });
+          return transactions;
+        } catch (err2) {
+          console.error('KasCore: Fallback query gagal', err2);
+          return [];
         }
-        return transactions;
       }
     }
 
@@ -296,15 +280,14 @@ if (typeof window.KasCore === 'undefined') {
           return matchesTransactionFilters(transaction, { userId: userId, shiftId: shiftId });
         })
         .sort(function(a, b) {
-          const timeA = parseDateValue(a.timestamp);
-          const timeB = parseDateValue(b.timestamp);
+          const timeA = parseDateValue(a.waktu || a.timestamp);
+          const timeB = parseDateValue(b.waktu || b.timestamp);
           return (timeB ? timeB.getTime() : 0) - (timeA ? timeA.getTime() : 0);
         });
     }
 
     async function loadModalEntry(date, userId) {
       const db = getDb();
-
       if (!userId) return null;
 
       try {
@@ -313,32 +296,8 @@ if (typeof window.KasCore === 'undefined') {
           return Object.assign({ id: directDoc.id }, directDoc.data());
         }
       } catch (error) {
-        console.error('kas-core: gagal membaca modal harian by user doc', { date: date, userId: userId, error: error });
+        console.error('KasCore: Gagal membaca modal harian', error);
       }
-
-      try {
-        const snapshot = await db.collection('modal').where('date', '==', date).get();
-        let matched = null;
-        snapshot.forEach(function(doc) {
-          const data = Object.assign({ id: doc.id }, doc.data());
-          if (!matched && data.userId === userId) {
-            matched = data;
-          }
-        });
-        if (matched) return matched;
-      } catch (error) {
-        console.error('kas-core: gagal fallback query modal by date', { date: date, userId: userId, error: error });
-      }
-
-      try {
-        const legacyDoc = await db.collection('modal').doc(date).get();
-        if (legacyDoc.exists) {
-          return Object.assign({ id: legacyDoc.id }, legacyDoc.data());
-        }
-      } catch (error) {
-        console.error('kas-core: gagal membaca modal legacy doc', { date: date, userId: userId, error: error });
-      }
-
       return null;
     }
 
@@ -347,18 +306,12 @@ if (typeof window.KasCore === 'undefined') {
       const userId = options && options.userId;
       const db = getDb();
 
-      if (!date) {
-        return { date: '', entries: [], total: 0 };
-      }
+      if (!date) return { date: '', entries: [], total: 0 };
 
       if (userId) {
         const entry = await loadModalEntry(date, userId);
         const amount = normalizeNumber(entry && entry.amount);
-        return {
-          date: date,
-          entries: entry ? [entry] : [],
-          total: amount
-        };
+        return { date: date, entries: entry ? [entry] : [], total: amount };
       }
 
       try {
@@ -370,46 +323,10 @@ if (typeof window.KasCore === 'undefined') {
         return {
           date: date,
           entries: entries,
-          total: entries.reduce(function(sum, entry) {
-            return sum + normalizeNumber(entry.amount);
-          }, 0)
+          total: entries.reduce((sum, e) => sum + normalizeNumber(e.amount), 0)
         };
       } catch (error) {
-        console.error('kas-core: gagal mengambil ringkasan modal', { date: date, error: error });
-        try {
-          const snapshot = await db.collection('modal').get();
-          const entries = [];
-          snapshot.forEach(function(doc) {
-            const entry = Object.assign({ id: doc.id }, doc.data());
-            if (entry.date === date || String(doc.id).indexOf(date + '_') === 0) {
-              entries.push(entry);
-            }
-          });
-          if (entries.length > 0) {
-            return {
-              date: date,
-              entries: entries,
-              total: entries.reduce(function(sum, entry) {
-                return sum + normalizeNumber(entry.amount);
-              }, 0)
-            };
-          }
-        } catch (scanError) {
-          console.error('kas-core: gagal scan modal docs fallback', { date: date, error: scanError });
-        }
-        try {
-          const legacyDoc = await db.collection('modal').doc(date).get();
-          if (legacyDoc.exists) {
-            const legacyEntry = Object.assign({ id: legacyDoc.id }, legacyDoc.data());
-            return {
-              date: date,
-              entries: [legacyEntry],
-              total: normalizeNumber(legacyEntry.amount)
-            };
-          }
-        } catch (legacyError) {
-          console.error('kas-core: gagal fallback modal legacy', { date: date, error: legacyError });
-        }
+        console.error('KasCore: Gagal mengambil modal summary', error);
         return { date: date, entries: [], total: 0 };
       }
     }
@@ -429,12 +346,14 @@ if (typeof window.KasCore === 'undefined') {
       const endDate = options && options.endDate;
       const userId = options && options.userId;
       const shiftId = options && options.shiftId;
+      
       const transactions = await getTransactionsByDateRange({
         startDate: startDate,
         endDate: endDate,
         userId: userId,
         shiftId: shiftId
       });
+      
       const summary = createSummary(transactions);
       summary.startDate = startDate;
       summary.endDate = endDate;
@@ -443,31 +362,11 @@ if (typeof window.KasCore === 'undefined') {
       return summary;
     }
 
-    function calculateKasFisikLaciFromSummary(modalAwal, summary) {
-      const safeSummary = summary || createSummary([]);
-      const normalizedModal = normalizeNumber(modalAwal);
-      const topupKasFisik = safeSummary.topup + safeSummary.topupAdmin;
-      const tarikKasFisik = Math.max(0, safeSummary.withdrawal - safeSummary.withdrawalAdmin);
-      const total =
-        normalizedModal +
-        safeSummary.cashIn -
-        safeSummary.cashOut +
-        safeSummary.cashSales +
-        topupKasFisik -
-        tarikKasFisik;
-
-      return {
-        modalAwal: normalizedModal,
-        topupKasFisik: topupKasFisik,
-        tarikKasFisik: tarikKasFisik,
-        total: total
-      };
-    }
-
     async function getKasFisikLaci(options) {
       const date = options && options.date;
       const userId = options && options.userId;
       const shiftId = options && options.shiftId;
+      
       const modalSummary = await getModalSummary({ date: date, userId: userId });
       const summary = await getDailySummary({ date: date, userId: userId, shiftId: shiftId });
       const kasFisik = calculateKasFisikLaciFromSummary(modalSummary.total, summary);
@@ -477,16 +376,18 @@ if (typeof window.KasCore === 'undefined') {
         userId: userId || null,
         shiftId: shiftId || null,
         modalAwal: kasFisik.modalAwal,
-        uangMasukLain: summary.cashIn,
-        kasKeluarToko: summary.cashOut,
-        penjualanProduk: summary.cashSales,
-        topup: summary.topup,
-        topupAdmin: summary.topupAdmin,
-        tarikTunai: summary.withdrawal,
-        tarikAdmin: summary.withdrawalAdmin,
-        topupKasFisik: kasFisik.topupKasFisik,
-        tarikKasFisik: kasFisik.tarikKasFisik,
-        total: kasFisik.total,
+        cashIn: summary.totalCashIn,
+        cashOut: summary.totalCashOut,
+        bankIn: summary.totalBankIn,
+        bankOut: summary.totalBankOut,
+        digitalIn: summary.totalDigitalIn,
+        digitalOut: summary.totalDigitalOut,
+        saldoLaciSeharusnya: summary.saldoLaciSeharusnya,
+        saldoBankSeharusnya: summary.saldoBankSeharusnya,
+        mutasiSaldoDigital: summary.mutasiSaldoDigital,
+        totalKasFisikDiLaci: kasFisik.totalKasFisikDiLaci,
+        totalLaba: summary.totalProfit,
+        total: kasFisik.totalKasFisikDiLaci, // Alias untuk UI lama
         summary: summary
       };
     }
@@ -495,138 +396,29 @@ if (typeof window.KasCore === 'undefined') {
       const date = options && options.date;
       const userId = options && options.userId;
       const shiftId = options && options.shiftId;
-      const db = getDb();
+      
       const kas = await getKasFisikLaci({ date: date, userId: userId, shiftId: shiftId });
-      let shift = null;
-
-      try {
-        if (userId) {
-          const doc = await db.collection('shifts').doc(date + '_' + userId).get();
-          if (doc.exists) {
-            shift = Object.assign({ id: doc.id }, doc.data());
-          }
-        }
-
-        if (!shift) {
-          const snapshot = await db.collection('shifts').where('date', '==', date).get();
-          snapshot.forEach(function(doc) {
-            if (shift) return;
-            const data = Object.assign({ id: doc.id }, doc.data());
-            if (shiftId && data.id !== shiftId && data.shiftId !== shiftId && doc.id !== shiftId) return;
-            if (userId && data.userId !== userId) return;
-            shift = data;
-          });
-        }
-      } catch (error) {
-        console.error('kas-core: gagal mengambil data shift', { date: date, userId: userId, shiftId: shiftId, error: error });
-      }
-
+      
       return {
         date: date,
         userId: userId || null,
-        shiftId: shiftId || (shift && shift.id) || null,
-        shift: shift,
+        shiftId: shiftId || null,
         modalAwal: kas.modalAwal,
-        kasMasuk: kas.summary.cashIn,
-        kasKeluar: kas.summary.cashOut,
-        penjualan: kas.summary.cashSales,
-        topup: kas.summary.topup,
-        topupAdmin: kas.summary.topupAdmin,
-        tarik: kas.summary.withdrawal,
-        tarikAdmin: kas.summary.withdrawalAdmin,
-        topupKasFisik: kas.topupKasFisik,
-        tarikKasFisik: kas.tarikKasFisik,
-        uangGlobal: kas.total,
+        totalKasIn: kas.cashIn,
+        totalKasOut: kas.cashOut,
+        saldoLaciFisik: kas.totalKasFisikDiLaci,
+        saldoBank: kas.saldoBankSeharusnya,
+        mutasiDigital: kas.mutasiSaldoDigital,
+        labaShift: kas.totalLaba,
         summary: kas.summary
       };
     }
 
-    async function getStaffPerformanceToday(options) {
-      const date = options && options.date;
-      const db = getDb();
-      const modalSummary = await getModalSummary({ date: date });
-      const transactions = await getTransactionsByDateRange({ startDate: date, endDate: date });
-      const usersMap = {};
-
-      try {
-        const usersSnapshot = await db.collection('users').get();
-        usersSnapshot.forEach(function(doc) {
-          usersMap[doc.id] = Object.assign({ id: doc.id }, doc.data());
-        });
-      } catch (error) {
-        console.error('kas-core: gagal mengambil users untuk staff performance', { date: date, error: error });
-      }
-
-      const staff = buildStaffPerformance(modalSummary.entries, transactions, usersMap);
-
-      return {
-        date: date,
-        staff: staff
-      };
-    }
-
-    function buildStaffPerformance(modalEntries, transactions, usersMap) {
-      const staffMap = {};
-
-      (modalEntries || []).forEach(function(entry) {
-        const userId = entry.userId || null;
-        if (!userId) return;
-        const userData = (usersMap && usersMap[userId]) || {};
-        if (!staffMap[userId]) {
-          staffMap[userId] = {
-            userId: userId,
-            name: entry.userName || userData.name || userData.username || 'Staf',
-            role: String((userData.role || 'kasir')).toLowerCase(),
-            modal: 0,
-            penjualan: 0,
-            count: 0
-          };
-        }
-        staffMap[userId].modal += normalizeNumber(entry.amount);
-      });
-
-      (transactions || []).forEach(function(transaction) {
-        if (!isValidTransaction(transaction) || transaction.type !== 'penjualan') return;
-        const transactionUserId = getUserId(transaction);
-        if (!transactionUserId) return;
-        const userData = (usersMap && usersMap[transactionUserId]) || {};
-        if (!staffMap[transactionUserId]) {
-          staffMap[transactionUserId] = {
-            userId: transactionUserId,
-            name:
-              userData.name ||
-              userData.username ||
-              transaction.userName ||
-              transaction.cashierName ||
-              'Staf',
-            role: String((userData.role || 'kasir')).toLowerCase(),
-            modal: 0,
-            penjualan: 0,
-            count: 0
-          };
-        }
-        staffMap[transactionUserId].penjualan += getAmount(transaction);
-        staffMap[transactionUserId].count += 1;
-      });
-
-      return Object.keys(staffMap)
-        .map(function(userId) {
-          return staffMap[userId];
-        })
-        .sort(function(a, b) {
-          if (b.penjualan !== a.penjualan) return b.penjualan - a.penjualan;
-          return String(a.name || '').localeCompare(String(b.name || ''), 'id');
-        });
-    }
-
     return {
       normalizeNumber: normalizeNumber,
-      getAmount: getAmount,
-      getPaymentAmount: getPaymentAmount,
-      getPaymentMethod: getPaymentMethod,
-      getUserId: getUserId,
-      getTransactionDate: getTransactionDate,
       isValidTransaction: isValidTransaction,
+      getTransactionDate: getTransactionDate,
+      getUserId: getUserId,
       summarizeTransactions: createSummary,
       calculateKasFisikLaciFromSummary: calculateKasFisikLaciFromSummary,
       getTransactionsByDateRange: getTransactionsByDateRange,
@@ -634,9 +426,7 @@ if (typeof window.KasCore === 'undefined') {
       getDailySummary: getDailySummary,
       getPeriodSummary: getPeriodSummary,
       getKasFisikLaci: getKasFisikLaci,
-      getShiftSummary: getShiftSummary,
-      getStaffPerformanceToday: getStaffPerformanceToday,
-      buildStaffPerformance: buildStaffPerformance
+      getShiftSummary: getShiftSummary
     };
   })();
 }
