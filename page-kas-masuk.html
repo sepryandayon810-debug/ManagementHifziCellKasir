@@ -827,213 +827,67 @@
         let amount = 0;
 
         async function loadCurrentKas() {
-          try {
-            const today =
-              Utils.getTodayString
-                ? Utils.getTodayString()
-                : new Date().toISOString().split('T')[0];
+  try {
+    const today =
+      Utils.getTodayString
+        ? Utils.getTodayString()
+        : new Date().toISOString().split('T')[0];
 
-            /*
-             * ========================================================
-             * SCOPE SESUAI ROLE
-             * ========================================================
-             *
-             * owner/developer = semua staf
-             * admin            = kasir + admin sendiri
-             * kasir            = user sendiri
-             */
-            const currentRole =
-              (
-                userData &&
-                userData.role
-                  ? userData.role
-                  : 'kasir'
-              ).toLowerCase();
+    /*
+     * Gunakan KasCore langsung.
+     *
+     * Kas fisik laci =
+     * Modal Awal
+     * + Kas Global masuk
+     * - Kas Global keluar
+     *
+     * Scope kasir = user yang sedang login.
+     */
+    const kas = await KasCore.getKasFisikLaci({
+      date: today,
+      userId: user.uid
+    });
 
-            const isBoss =
-              currentRole === 'owner' ||
-              currentRole === 'developer';
+    const kasLaci =
+      KasCore.normalizeNumber(
+        kas.totalKasFisikDiLaci
+      );
 
-            const isAdmin =
-              currentRole === 'admin';
+    const kasSaatIniEl =
+      document.getElementById('kasSaatIni');
 
-            const [
-              usersSnap,
-              modalSummary,
-              allTransactions
-            ] = await Promise.all([
-              db.collection('users').get(),
+    if (kasSaatIniEl) {
+      kasSaatIniEl.textContent =
+        Utils.formatRupiah(kasLaci);
+    }
 
-              KasCore.getModalSummary({
-                date: today
-              }),
+    console.log('[Kas Masuk] KasCore:', {
+      date: today,
+      userId: user.uid,
+      modalAwal: kas.modalAwal,
+      cashIn: kas.cashIn,
+      cashOut: kas.cashOut,
+      saldoKasGlobal: kas.saldoKasGlobal,
+      totalKasFisikDiLaci:
+        kas.totalKasFisikDiLaci
+    });
 
-              KasCore.getTransactionsByDateRange({
-                startDate: today,
-                endDate: today
-              })
-            ]);
+  } catch (error) {
+    console.error(
+      '[Kas Masuk] Gagal memuat kas tersedia:',
+      error
+    );
 
-            /*
-             * ========================================================
-             * USERS MAP
-             * ========================================================
-             */
-            const usersMap = {};
+    const kasSaatIniEl =
+      document.getElementById('kasSaatIni');
 
-            usersSnap.forEach(doc => {
-              usersMap[doc.id] = {
-                id: doc.id,
-                ...doc.data()
-              };
-            });
-
-            /*
-             * ========================================================
-             * SCOPE MODAL
-             * ========================================================
-             */
-            const scopedModalEntries =
-              modalSummary.entries.filter(entry => {
-                const targetUser =
-                  usersMap[entry.userId] || {};
-
-                const targetRole =
-                  (
-                    targetUser.role ||
-                    'kasir'
-                  ).toLowerCase();
-
-                if (isBoss) {
-                  return true;
-                }
-
-                if (isAdmin) {
-                  return (
-                    targetRole === 'kasir' ||
-                    entry.userId === user.uid
-                  );
-                }
-
-                return entry.userId === user.uid;
-              });
-
-            /*
-             * ========================================================
-             * SCOPE TRANSAKSI
-             * ========================================================
-             */
-            const scopedTransactions =
-              allTransactions.filter(transaction => {
-                const transactionUserId =
-                  KasCore.getUserId(transaction);
-
-                const targetUser =
-                  usersMap[transactionUserId] || {};
-
-                const targetRole =
-                  (
-                    targetUser.role ||
-                    'kasir'
-                  ).toLowerCase();
-
-                if (isBoss) {
-                  return true;
-                }
-
-                if (isAdmin) {
-                  return (
-                    targetRole === 'kasir' ||
-                    transactionUserId === user.uid
-                  );
-                }
-
-                return transactionUserId === user.uid;
-              });
-
-            /*
-             * ========================================================
-             * SUMMARY
-             * ========================================================
-             *
-             * Tetap menggunakan KasCore asli.
-             */
-            const scopedSummary =
-              KasCore.summarizeTransactions(
-                scopedTransactions
-              );
-
-            /*
-             * ========================================================
-             * MODAL AWAL
-             * ========================================================
-             */
-            const modalAwal =
-              scopedModalEntries.reduce(
-                (sum, entry) => {
-                  return (
-                    sum +
-                    KasCore.normalizeNumber(
-                      entry.amount
-                    )
-                  );
-                },
-                0
-              );
-
-            /*
-             * ========================================================
-             * KAS FISIK LACI
-             * ========================================================
-             */
-            const kasLaciSummary =
-              KasCore.calculateKasFisikLaciFromSummary(
-                modalAwal,
-                scopedSummary
-              );
-
-            const kasLaci =
-              KasCore.normalizeNumber(
-                kasLaciSummary.total
-              );
-
-            const kasSaatIniEl =
-              document.getElementById(
-                'kasSaatIni'
-              );
-
-            if (kasSaatIniEl) {
-              kasSaatIniEl.textContent =
-                Utils.formatRupiah(kasLaci);
-            }
-
-            console.log(
-              '[Kas Masuk] Perhitungan menggunakan KasCore:',
-              {
-                role: currentRole,
-                isBoss,
-                isAdmin,
-                modalAwal,
-                cashIn: scopedSummary.cashIn,
-                cashOut: scopedSummary.cashOut,
-                cashSales: scopedSummary.cashSales,
-                totalSales: scopedSummary.totalSales,
-                topupKasFisik:
-                  kasLaciSummary.topupKasFisik,
-                tarikKasFisik:
-                  kasLaciSummary.tarikKasFisik,
-                kasLaci
-              }
-            );
-
-          } catch (error) {
-            console.error(
-              'kas-masuk: gagal memuat kas tersedia',
-              error
-            );
-          }
-        }
-
+    if (kasSaatIniEl) {
+      kasSaatIniEl.textContent =
+        Utils.formatRupiah(0);
+    }
+  }
+}
+        
         /*
          * ============================================================
          * DISPLAY JUMLAH
@@ -1130,170 +984,215 @@
          * SIMPAN KAS MASUK
          * ============================================================
          */
-        const saveBtn =
-          document.getElementById(
-            'btnSimpanKas'
-          );
-
-        if (saveBtn) {
-          saveBtn.addEventListener(
-            'click',
-            async () => {
-
-              if (amount <= 0) {
-                Utils.showToast(
-                  'Masukkan jumlah uang terlebih dahulu',
-                  'warning'
-                );
-
-                return;
-              }
-
-              const noteEl =
-                document.getElementById(
-                  'kasNote'
-                );
-
-              const note =
-                noteEl
-                  ? noteEl.value.trim()
-                  : '';
-
-              if (!note) {
-                Utils.showToast(
-                  'Keterangan wajib diisi',
-                  'warning'
-                );
-
-                if (noteEl) {
-                  noteEl.focus();
-                }
-
-                return;
-              }
-
-              try {
-                Utils.showLoading(
-                  'Menyimpan kas masuk...'
-                );
-
-                const today =
-                  Utils.getTodayString
-                    ? Utils.getTodayString()
-                    : new Date()
-                        .toISOString()
-                        .split('T')[0];
-
-                const transactionId =
-                  'KIN_' + Date.now();
-
-                /*
-                 * ====================================================
-                 * TRANSAKSI MENGIKUTI KASCORE
-                 * ====================================================
-                 *
-                 * Kas Masuk adalah kas fisik yang masuk ke laci,
-                 * sehingga field utama yang harus diisi adalah:
-                 *
-                 *     cash_in: amount
-                 *
-                 * Field amount dan total tetap dipertahankan karena
-                 * mungkin digunakan oleh page/report lain.
-                 *
-                 * date_key juga disimpan karena KasCore menggunakan
-                 * date_key sebagai tanggal transaksi.
-                 */
-                await db
-                  .collection("transactions")
-                  .doc(transactionId)
-                  .set({
-
-                    // Identitas transaksi
-                    id: transactionId,
-
-                    // Jenis/source transaksi
-                    type: 'kas_masuk',
-                    source: 'kas_masuk',
-
-                    // Field nominal lama
-                    amount: amount,
-                    total: amount,
-
-                    // ==================================================
-                    // FIELD YANG DIBACA KASCORE
-                    // ==================================================
-
-                    // Kas masuk fisik
-                    cash_in: amount,
-
-                    // Tidak ada kas keluar
-                    cash_out: 0,
-
-                    // Tidak ada mutasi bank
-                    bank_in: 0,
-                    bank_out: 0,
-
-                    // Tidak ada mutasi digital
-                    digital_in: 0,
-                    digital_out: 0,
-
-                    // Keterangan
-                    note: note,
-
-                    // User
-                    userId: user.uid,
-                    userName: userName,
-
-                    // ==================================================
-                    // TANGGAL
-                    // ==================================================
-
-                    // Field standar KasCore
-                    date_key: today,
-
-                    // Tetap simpan field lama
-                    date: today,
-
-                    // Timestamp
-                    timestamp: Date.now(),
-
-                    // Status
-                    status: 'completed'
-                  });
-
-                Utils.hideLoading();
-
-                Utils.showToast(
-                  'Kas masuk berhasil disimpan!',
-                  'success'
-                );
-
-                setTimeout(() => {
-                  goBack();
-                }, 1200);
-
-              } catch (error) {
-                Utils.hideLoading();
-
-                console.error(
-                  '[Kas Masuk] Gagal menyimpan transaksi:',
-                  error
-                );
-
-                Utils.showToast(
-                  'Gagal menyimpan: ' +
-                  error.message,
-                  'error'
-                );
-              }
-            }
-          );
-        }
-
         /*
-         * Load kas saat page dibuka.
-         */
-        loadCurrentKas();
+ * ============================================================
+ * SIMPAN KAS MASUK
+ * ============================================================
+ */
+const saveBtn =
+  document.getElementById('btnSimpanKas');
+
+if (saveBtn) {
+  saveBtn.addEventListener('click', async () => {
+
+    if (amount <= 0) {
+      Utils.showToast(
+        'Masukkan jumlah uang terlebih dahulu',
+        'warning'
+      );
+      return;
+    }
+
+    const noteEl =
+      document.getElementById('kasNote');
+
+    const note =
+      noteEl
+        ? noteEl.value.trim()
+        : '';
+
+    if (!note) {
+      Utils.showToast(
+        'Keterangan wajib diisi',
+        'warning'
+      );
+
+      if (noteEl) {
+        noteEl.focus();
+      }
+
+      return;
+    }
+
+    try {
+      Utils.showLoading(
+        'Menyimpan kas masuk...'
+      );
+
+      const today =
+        Utils.getTodayString
+          ? Utils.getTodayString()
+          : new Date()
+              .toISOString()
+              .split('T')[0];
+
+      const transactionId =
+        'KIN_' + Date.now();
+
+
+      /*
+       * ========================================================
+       * KASCORE MENENTUKAN MUTASI
+       * ========================================================
+       *
+       * Kas Masuk:
+       *
+       * Kas Global       = YA
+       * Cash In          = nominal
+       * Cash Out         = 0
+       * Bank In          = 0
+       * Digital In       = 0
+       * Laba             = 0
+       * Masuk Transaksi  = TIDAK
+       * Masuk Penjualan  = TIDAK
+       */
+      const mutation =
+        KasCore.mapTransactionMutation({
+          kategori: 'kas_masuk',
+          metode_pembayaran: 'tunai',
+          nominal: amount,
+
+          admin: 0,
+          modal_produk: 0,
+
+          pengaruhi_kas_global: true
+        });
+
+
+      /*
+       * ========================================================
+       * DATA TRANSAKSI
+       * ========================================================
+       */
+      const transactionData = {
+
+        // Identitas
+        id: transactionId,
+
+        // Kategori
+        type: 'kas_masuk',
+        source: 'kas_masuk',
+        kategori: 'kas_masuk',
+
+        // Nominal
+        amount: amount,
+        total: amount,
+        nominal: amount,
+
+        // Metode
+        metode_pembayaran: 'tunai',
+
+        // Hasil KasCore
+        cash_in: mutation.cash_in,
+        cash_out: mutation.cash_out,
+
+        bank_in: mutation.bank_in,
+        bank_out: mutation.bank_out,
+
+        digital_in: mutation.digital_in,
+        digital_out: mutation.digital_out,
+
+        laba: mutation.laba,
+
+        masuk_transaksi:
+          mutation.masuk_transaksi,
+
+        masuk_penjualan:
+          mutation.masuk_penjualan,
+
+        pengaruhi_kas_global:
+          mutation.pengaruhi_kas_global,
+
+        // Keterangan
+        note: note,
+
+        // User
+        userId: user.uid,
+        userName: userName,
+
+        // Tanggal
+        date_key: today,
+        date: today,
+
+        // Waktu
+        timestamp: Date.now(),
+
+        createdAt:
+          firebase.firestore.FieldValue.serverTimestamp(),
+
+        // Status
+        status: 'completed'
+      };
+
+
+      /*
+       * ========================================================
+       * SIMPAN KE FIRESTORE
+       * ========================================================
+       */
+      await db
+        .collection('transactions')
+        .doc(transactionId)
+        .set(transactionData);
+
+
+      /*
+       * ========================================================
+       * SELESAI
+       * ========================================================
+       */
+
+      amount = 0;
+      updateDisplay();
+
+      if (noteEl) {
+        noteEl.value = '';
+      }
+
+      Utils.showToast(
+        'Kas masuk berhasil disimpan',
+        'success'
+      );
+
+      await loadCurrentKas();
+
+    } catch (error) {
+
+      console.error(
+        '[Kas Masuk] Gagal menyimpan:',
+        error
+      );
+
+      Utils.showToast(
+        'Gagal menyimpan kas masuk: ' +
+        (error.message || error),
+        'error'
+      );
+
+    } finally {
+
+      Utils.hideLoading();
+    }
+  });
+}
+
+
+/*
+ * ============================================================
+ * LOAD KAS SAAT PAGE DIBUKA
+ * ============================================================
+ */
+loadCurrentKas();
       }
     })();
   </script>
