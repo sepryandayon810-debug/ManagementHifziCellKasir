@@ -836,46 +836,113 @@
       }
 
       function initKasShift(user) {
-        checkShiftStatus(user);
-        loadShiftHistory('today');
 
-        document.getElementById('btnToggleShift').addEventListener('click', () => {
-          if (isShiftOpen) {
-            window.location.href = 'page-closing.html';
-          } else {
-            openShift(user);
-          }
-        });
+  // ==========================================================
+  // LOAD STATUS SHIFT
+  // ==========================================================
+  checkShiftStatus(user);
 
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            const filterType = e.currentTarget.getAttribute('data-filter');
-            const dateRow = document.getElementById('dateFilterRow');
-            if (filterType === 'custom') {
-              dateRow.style.display = 'grid';
-            } else {
-              dateRow.style.display = 'none';
-              loadShiftHistory(filterType);
-            }
-          });
-        });
+  // ==========================================================
+  // LOAD RIWAYAT SHIFT
+  // ==========================================================
+  loadShiftHistory('today');
 
-        const applyDateBtn = document.getElementById('btnApplyDate');
-        if (applyDateBtn) {
-          applyDateBtn.addEventListener('click', () => {
-            const from = document.getElementById('dateFrom').value;
-            const to = document.getElementById('dateTo').value;
-            if (!from || !to) {
-              Utils.showToast('Pilih tanggal dari dan sampai', 'warning');
-              return;
-            }
-            loadShiftHistory('custom', from, to);
-          });
-        }
+  // ==========================================================
+  // TOGGLE SHIFT
+  // ==========================================================
+  const toggleBtn = document.getElementById('btnToggleShift');
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+
+      if (isShiftOpen) {
+        window.location.href = 'page-closing.html';
+      } else {
+        openShift(user);
       }
 
+    });
+  }
+
+  // ==========================================================
+  // FILTER RIWAYAT
+  // ==========================================================
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+
+    btn.addEventListener('click', (e) => {
+
+      document
+        .querySelectorAll('.filter-btn')
+        .forEach(b => b.classList.remove('active'));
+
+      e.currentTarget.classList.add('active');
+
+      const filterType =
+        e.currentTarget.getAttribute('data-filter');
+
+      const dateRow =
+        document.getElementById('dateFilterRow');
+
+      if (filterType === 'custom') {
+
+        dateRow.style.display = 'grid';
+
+      } else {
+
+        dateRow.style.display = 'none';
+
+        loadShiftHistory(filterType);
+      }
+    });
+
+  });
+
+
+  // ==========================================================
+  // FILTER CUSTOM DATE
+  // ==========================================================
+  const applyDateBtn =
+    document.getElementById('btnApplyDate');
+
+  if (applyDateBtn) {
+
+    applyDateBtn.addEventListener('click', () => {
+
+      const from =
+        document.getElementById('dateFrom').value;
+
+      const to =
+        document.getElementById('dateTo').value;
+
+      if (!from || !to) {
+
+        Utils.showToast(
+          'Pilih tanggal dari dan sampai',
+          'warning'
+        );
+
+        return;
+      }
+
+      if (from > to) {
+
+        Utils.showToast(
+          'Tanggal mulai tidak boleh lebih besar dari tanggal akhir',
+          'warning'
+        );
+
+        return;
+      }
+
+      loadShiftHistory(
+        'custom',
+        from,
+        to
+      );
+    });
+  }
+}
+      
       async function checkShiftStatus(user) {
         const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
@@ -886,7 +953,7 @@
           if (docSnap.exists && docSnap.data().status === 'open') {
             isShiftOpen = true;
             currentShiftId = docSnap.id;
-            updateShiftUI(true, docSnap.data().openTime || docSnap.data().openedAt);
+            updateShiftUI(true, docSnap.data().openedAt || docSnap.data().openTime);
           } else {
             isShiftOpen = false;
             currentShiftId = null;
@@ -926,70 +993,123 @@
         }
       }
 
-      async function openShift(user) {
-        Utils.showLoading('Membuka shift kerja...');
-        try {
-          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-          const shiftId = 'shift_' + Date.now();
-          
-          let modalAmount = 0;
-          try {
-            let modalDoc = await db.collection('modal').doc(`${today}_${user.uid}`).get();
-            if (!modalDoc.exists) {
-              modalDoc = await db.collection('modal').doc(today).get();
-            }
-            modalAmount = modalDoc.exists ? (modalDoc.data().amount || 0) : 0;
-          } catch(e) {}
+          async function openShift(user) {
+  Utils.showLoading('Membuka shift kerja...');
 
-          await db.collection('shifts').doc(`${today}_${user.uid}`).set({
-            id: shiftId,
-            status: 'open',
-            openTime: Date.now(),
-            openedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            userId: user.uid,
-            userName: document.getElementById('userName').textContent,
-            modalAwal: modalAmount,
-            date: today
-          });
+  try {
+    const today = Utils.getTodayString
+      ? Utils.getTodayString()
+      : new Date().toISOString().split('T')[0];
 
-          Utils.hideLoading();
-          Utils.showToast('Shift kerja berhasil dibuka!', 'success');
-          checkShiftStatus(user);
-        } catch (error) {
-          Utils.hideLoading();
-          console.error('Error opening shift:', error);
-          Utils.showToast('Gagal membuka shift: ' + error.message, 'error');
-        }
+    const shiftDocId = `${today}_${user.uid}`;
+
+    // Ambil modal yang sudah dialokasikan
+    let modalAmount = 0;
+
+    try {
+      let modalDoc = await db
+        .collection('modal')
+        .doc(`${today}_${user.uid}`)
+        .get();
+
+      // fallback data lama
+      if (!modalDoc.exists) {
+        modalDoc = await db
+          .collection('modal')
+          .doc(today)
+          .get();
       }
 
-      async function loadKasLaciSummary(user) {
+      if (modalDoc.exists) {
+        modalAmount = Number(modalDoc.data().amount || 0);
+      }
+
+    } catch (e) {
+      console.warn('Gagal membaca modal:', e);
+    }
+
+    // BUKA SHIFT
+    await db
+      .collection('shifts')
+      .doc(shiftDocId)
+      .set({
+        id: shiftDocId,
+        userId: user.uid,
+        userName: document.getElementById('userName').textContent,
+        date: today,
+
+        status: 'open',
+
+        modalAwal: modalAmount,
+
+        openedAt:
+          firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    Utils.hideLoading();
+
+    Utils.showToast(
+      'Shift kerja berhasil dibuka!',
+      'success'
+    );
+
+    await checkShiftStatus(user);
+
+  } catch (error) {
+
+    Utils.hideLoading();
+
+    console.error(
+      'Error opening shift:',
+      error
+    );
+
+    Utils.showToast(
+      'Gagal membuka shift: ' +
+      (error.message || 'Terjadi kesalahan'),
+      'error'
+    );
+  }
+}
+      
+     async function loadKasLaciSummary(user) {
   const today = Utils.getTodayString
     ? Utils.getTodayString()
     : new Date().toISOString().split('T')[0];
 
   try {
+
     // ==========================================================
-    // 1. KAS FISIK LACI
+    // 1. AMBIL HASIL KAS FISIK DARI KASCORE
     // ==========================================================
     const kasLaci = await KasCore.getKasFisikLaci({
       date: today,
       userId: user.uid
     });
 
+    const modalAwal = Number(kasLaci.modalAwal || 0);
+    const penjualanProduk = Number(kasLaci.penjualanProduk || 0);
+    const uangMasukLain = Number(kasLaci.uangMasukLain || 0);
+    const kasKeluarToko = Number(kasLaci.kasKeluarToko || 0);
     const topupKasFisik = Number(kasLaci.topupKasFisik || 0);
     const tarikKasFisik = Number(kasLaci.tarikKasFisik || 0);
+    const totalKasFisik = Number(kasLaci.total || 0);
+
+    // ==========================================================
+    // 2. TAMPILKAN KOMPONEN KAS FISIK
+    // ==========================================================
 
     document.getElementById('summaryModal').textContent =
-      Utils.formatRupiah(kasLaci.modalAwal);
+      Utils.formatRupiah(modalAwal);
 
     document.getElementById('summaryPenjualan').textContent =
-      '+ ' + Utils.formatRupiah(kasLaci.penjualanProduk);
+      '+ ' + Utils.formatRupiah(penjualanProduk);
 
     document.getElementById('summaryKasMasuk').textContent =
-      '+ ' + Utils.formatRupiah(kasLaci.uangMasukLain);
+      '+ ' + Utils.formatRupiah(uangMasukLain);
 
     document.getElementById('summaryKasKeluar').textContent =
-      '- ' + Utils.formatRupiah(kasLaci.kasKeluarToko);
+      '- ' + Utils.formatRupiah(kasKeluarToko);
 
     document.getElementById('summaryTopup').textContent =
       '+ ' + Utils.formatRupiah(topupKasFisik);
@@ -998,20 +1118,25 @@
       '- ' + Utils.formatRupiah(tarikKasFisik);
 
     // ==========================================================
-    // 2. KAS FISIK TOTAL
-    // QRIS / TRANSFER TIDAK MASUK KE SINI
+    // 3. TOTAL KAS FISIK LACI
+    //
+    // QRIS / TRANSFER TIDAK DITAMBAHKAN KE KAS FISIK
     // ==========================================================
+
     document.getElementById('summaryKasSistem').textContent =
-      Utils.formatRupiah(kasLaci.total);
+      Utils.formatRupiah(totalKasFisik);
 
     document.getElementById('headerKasLaci').textContent =
-      Utils.formatRupiah(kasLaci.total);
+      Utils.formatRupiah(totalKasFisik);
 
 
     // ==========================================================
-    // 3. BACA SEMUA TRANSAKSI HARI INI USER INI
-    // UNTUK MEMISAHKAN QRIS DAN TRANSFER
+    // 4. NON TUNAI
+    //
+    // Untuk tampilan QRIS / Transfer kita baca transaksi,
+    // tetapi TIDAK mengubah perhitungan kas fisik.
     // ==========================================================
+
     const transactions =
       await KasCore.getTransactionsByDateRange({
         startDate: today,
@@ -1019,28 +1144,17 @@
         userId: user.uid
       });
 
-
-    // ==========================================================
-    // 4. HITUNG QRIS & TRANSFER
-    // ==========================================================
     let totalQRIS = 0;
     let totalTransfer = 0;
 
     transactions.forEach(t => {
 
-      // Pastikan transaksi valid
       if (
         typeof KasCore.isValidTransaction === 'function' &&
         !KasCore.isValidTransaction(t)
       ) {
         return;
       }
-
-      const kategori = String(
-        t.kategori ||
-        t.category ||
-        ''
-      ).toLowerCase();
 
       const metode = String(
         t.metode_pembayaran ||
@@ -1049,6 +1163,23 @@
         ''
       ).toLowerCase();
 
+      /*
+       * HANYA TAMPILKAN TRANSAKSI PENJUALAN
+       * sebagai QRIS / Transfer pada ringkasan ini.
+       *
+       * Jadi kas masuk transfer, pembayaran lain, dsb.
+       * tidak ikut dianggap sebagai "Transaksi QRIS/Transfer".
+       */
+
+      const isPenjualan =
+  typeof KasCore.isSaleTransaction === 'function'
+    ? KasCore.isSaleTransaction(t)
+    : t.masuk_penjualan === true;
+
+if (!isPenjualan) {
+  return;
+}
+      
       const nominal = Number(
         t.nominal ??
         t.amount ??
@@ -1056,17 +1187,14 @@
         0
       ) || 0;
 
+      if (nominal <= 0) {
+        return;
+      }
 
-      // --------------------------------------------------------
-      // QRIS
-      // --------------------------------------------------------
       if (metode === 'qris') {
         totalQRIS += nominal;
       }
 
-      // --------------------------------------------------------
-      // TRANSFER
-      // --------------------------------------------------------
       else if (metode === 'transfer') {
         totalTransfer += nominal;
       }
@@ -1076,17 +1204,25 @@
     // ==========================================================
     // 5. TOTAL NON TUNAI
     // ==========================================================
+
     const totalNonTunai =
       totalQRIS +
       totalTransfer;
 
 
     // ==========================================================
-    // 6. TAMPILKAN
+    // 6. TAMPILKAN NON TUNAI
     // ==========================================================
-    const qrisEl = document.getElementById('summaryQRIS');
-    const transferEl = document.getElementById('summaryTransfer');
-    const nonTunaiEl = document.getElementById('summaryNonTunai');
+
+    const qrisEl =
+      document.getElementById('summaryQRIS');
+
+    const transferEl =
+      document.getElementById('summaryTransfer');
+
+    const nonTunaiEl =
+      document.getElementById('summaryNonTunai');
+
 
     if (qrisEl) {
       qrisEl.textContent =
@@ -1103,32 +1239,305 @@
         Utils.formatRupiah(totalNonTunai);
     }
 
-    console.log('KAS & SHIFT - NON TUNAI:', {
-      qris: totalQRIS,
-      transfer: totalTransfer,
-      totalNonTunai: totalNonTunai,
-      bankInKasCore: kasLaci.bankIn
+
+    console.log('KAS & SHIFT:', {
+      tanggal: today,
+      modalAwal,
+      penjualanProduk,
+      uangMasukLain,
+      kasKeluarToko,
+      topupKasFisik,
+      tarikKasFisik,
+      totalKasFisik,
+      totalQRIS,
+      totalTransfer,
+      totalNonTunai
     });
 
   } catch (error) {
+
     console.error(
-      'kas-shift: gagal memuat ringkasan kas laci/non-tunai',
+      'kas-shift: gagal memuat ringkasan kas',
       error
+    );
+
+    Utils.showToast(
+      'Gagal memuat ringkasan kas: ' +
+      (error.message || 'Terjadi kesalahan'),
+      'error'
     );
   }
 }
-      
-      function filterShiftsByDateRange(shifts, from, to) {
-        const fromDate = new Date(from);
-        fromDate.setHours(0,0,0,0);
-        const toDate = new Date(to);
-        toDate.setHours(23,59,59,999);
-        return shifts.filter(shift => {
-          const shiftDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
-          if (!shiftDate) return false;
-          return shiftDate.getTime() >= fromDate.getTime() && shiftDate.getTime() <= toDate.getTime();
-        });
+
+async function loadShiftHistory(filterType = 'today', from = null, to = null) {
+  const historyEl = document.getElementById('shiftHistory');
+  const countEl = document.getElementById('totalShiftCount');
+
+  if (!historyEl) return;
+
+  historyEl.innerHTML = `
+    <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+      <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;margin-bottom:0.5rem;"></i>
+      <div>Memuat riwayat shift...</div>
+    </div>
+  `;
+
+  try {
+    const user = auth.currentUser;
+
+    if (!user) {
+      historyEl.innerHTML = `
+        <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+          Pengguna belum login.
+        </div>
+      `;
+      return;
+    }
+
+    // ==========================================================
+    // 1. AMBIL SHIFT MILIK USER YANG SEDANG LOGIN
+    // ==========================================================
+    const snapshot = await db
+      .collection('shifts')
+      .where('userId', '==', user.uid)
+      .get();
+
+    let shifts = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data() || {};
+
+      shifts.push({
+        id: doc.id,
+        ...data
+      });
+    });
+
+    // ==========================================================
+    // 2. URUTKAN DARI TERBARU
+    // ==========================================================
+    shifts.sort((a, b) => {
+      const dateA =
+        parseFirestoreDate(a.openTime) ||
+        parseFirestoreDate(a.openedAt) ||
+        parseFirestoreDate(a.date) ||
+        new Date(0);
+
+      const dateB =
+        parseFirestoreDate(b.openTime) ||
+        parseFirestoreDate(b.openedAt) ||
+        parseFirestoreDate(b.date) ||
+        new Date(0);
+
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    // ==========================================================
+    // 3. FILTER PERIODE
+    // ==========================================================
+    if (filterType === 'custom') {
+      if (from && to) {
+        shifts = filterShiftsByDateRange(shifts, from, to);
       }
+    } else {
+      shifts = filterShiftsByPeriod(shifts, filterType);
+    }
+
+    // ==========================================================
+    // 4. UPDATE JUMLAH
+    // ==========================================================
+    if (countEl) {
+      countEl.textContent = `${shifts.length} shift`;
+    }
+
+    updateDateRangeInfo(filterType, shifts.length);
+
+    // ==========================================================
+    // 5. JIKA KOSONG
+    // ==========================================================
+    if (!shifts.length) {
+      historyEl.innerHTML = `
+        <div style="
+          padding:3rem 1rem;
+          text-align:center;
+          color:var(--text-muted);
+        ">
+          <i class="fas fa-calendar-xmark"
+             style="font-size:2rem;margin-bottom:0.75rem;opacity:0.5;"></i>
+          <div style="font-weight:700;">Tidak ada riwayat shift</div>
+          <div style="font-size:0.75rem;margin-top:0.25rem;">
+            Tidak ditemukan shift pada periode ini.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // ==========================================================
+    // 6. RENDER
+    // ==========================================================
+    historyEl.innerHTML = shifts.map(shift => {
+
+      const openDate =
+        parseFirestoreDate(shift.openTime) ||
+        parseFirestoreDate(shift.openedAt) ||
+        parseFirestoreDate(shift.date);
+
+      const closeDate =
+        parseFirestoreDate(shift.closeTime) ||
+        parseFirestoreDate(shift.closedAt);
+
+      const status =
+        String(shift.status || '').toLowerCase() === 'open'
+          ? 'open'
+          : 'closed';
+
+      const statusText =
+        status === 'open'
+          ? 'AKTIF'
+          : 'SELESAI';
+
+      let dateText = '-';
+      let openTimeText = '-';
+
+      if (openDate) {
+        dateText = openDate.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
+
+        openTimeText = openDate.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }) + ' WIB';
+      }
+
+      let durationText = '';
+
+      if (openDate && closeDate) {
+        const durationMs = closeDate.getTime() - openDate.getTime();
+
+        if (durationMs >= 0) {
+          const totalMinutes = Math.floor(durationMs / 60000);
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+
+          if (hours > 0) {
+            durationText = `${hours} jam ${minutes} menit`;
+          } else {
+            durationText = `${minutes} menit`;
+          }
+        }
+      } else if (status === 'open') {
+        durationText = 'Sedang berlangsung';
+      }
+
+      const userName =
+        shift.userName ||
+        document.getElementById('userName')?.textContent ||
+        '-';
+
+      return `
+        <div class="shift-item">
+
+          <div class="shift-info">
+
+            <div class="shift-date">
+              ${dateText}
+            </div>
+
+            <div class="shift-time">
+              <i class="fas fa-clock"></i>
+              ${openTimeText}
+            </div>
+
+            <div class="shift-user">
+              <i class="fas fa-user"></i>
+              ${userName}
+            </div>
+
+          </div>
+
+          <div class="shift-status">
+
+            <span class="shift-badge ${status}">
+              ${statusText}
+            </span>
+
+            ${
+              durationText
+                ? `<span class="shift-duration">${durationText}</span>`
+                : ''
+            }
+
+          </div>
+
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+
+    console.error('Error loadShiftHistory:', error);
+
+    historyEl.innerHTML = `
+      <div style="
+        padding:2rem 1rem;
+        text-align:center;
+        color:var(--danger);
+      ">
+        <i class="fas fa-triangle-exclamation"
+           style="font-size:1.5rem;margin-bottom:0.5rem;"></i>
+
+        <div style="font-weight:700;">
+          Gagal memuat riwayat shift
+        </div>
+
+        <div style="
+          font-size:0.75rem;
+          margin-top:0.35rem;
+          color:var(--text-muted);
+        ">
+          ${error.message || 'Terjadi kesalahan'}
+        </div>
+      </div>
+    `;
+
+    if (countEl) {
+      countEl.textContent = '0 shift';
+    }
+  }
+}
+      
+     function filterShiftsByDateRange(shifts, from, to) {
+
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+
+  const fromDate = new Date(fy, fm - 1, fd);
+  fromDate.setHours(0, 0, 0, 0);
+
+  const toDate = new Date(ty, tm - 1, td);
+  toDate.setHours(23, 59, 59, 999);
+
+  return shifts.filter(shift => {
+
+    const shiftDate =
+      parseFirestoreDate(shift.openedAt) ||
+      parseFirestoreDate(shift.openTime) ||
+      parseFirestoreDate(shift.date);
+
+    if (!shiftDate) {
+      return false;
+    }
+
+    return (
+      shiftDate.getTime() >= fromDate.getTime() &&
+      shiftDate.getTime() <= toDate.getTime()
+    );
+  });
+}
 
       function filterShiftsByPeriod(shifts, filterType) {
         const today = new Date();
@@ -1141,7 +1550,7 @@
 
         return shifts.filter(shift => {
           const shiftDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
-          if (!shiftDate) return true;
+          if (!shiftDate) return false;
           shiftDate.setHours(0, 0, 0, 0);
 
           switch(filterType) {
