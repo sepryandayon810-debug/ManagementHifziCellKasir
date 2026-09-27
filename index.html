@@ -767,6 +767,31 @@
             <span class="kas-item-value expense" id="kasTarik">- Rp 0</span>
           </div>
 
+          <!-- ===== INFO NON-TUNAI (QRIS / TRANSFER) ===== -->
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon income"><i class="fas fa-qrcode"></i></div>
+    <span class="kas-item-label">Penjualan Non-Tunai</span>
+  </div>
+  <span class="kas-item-value income" id="kasPenjualanNonTunai">+ Rp 0</span>
+</div>
+
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon income"><i class="fas fa-mobile-screen"></i></div>
+    <span class="kas-item-label">Top Up Non-Tunai (Bank)</span>
+  </div>
+  <span class="kas-item-value income" id="kasTopUpNonTunai">+ Rp 0</span>
+</div>
+
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon expense"><i class="fas fa-building-columns"></i></div>
+    <span class="kas-item-label">Tarik Non-Tunai (Bank Keluar)</span>
+  </div>
+  <span class="kas-item-value expense" id="kasTarikNonTunai">- Rp 0</span>
+</div>
+
           <div class="kas-item">
             <div class="kas-item-info">
               <div class="kas-item-icon warning"><i class="fas fa-hand-holding-usd"></i></div>
@@ -781,6 +806,11 @@
           <div class="kas-total-value" id="kasGlobal">Rp 0</div>
         </div>
 
+          <div class="kas-total" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border);">
+  <div class="kas-total-label"><i class="fas fa-credit-card" style="color:var(--accent);"></i> Total Saldo Bank (Non-Tunai)</div>
+  <div class="kas-total-value" id="kasBank" style="color:var(--accent); font-size:1.3rem;">Rp 0</div>
+</div>
+        
         <div class="formula-display">
           Rumus fisik: Modal Awal + Uang Masuk - Kas Keluar + Penjualan + (Top Up + Admin) - (Tarik - Admin)
         </div>
@@ -1209,7 +1239,31 @@
       document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
       document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
       document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
+      // ===== HITUNG NON-TUNAI (QRIS / TRANSFER → BANK) =====
+let topupNonTunai = 0;
+let tarikNonTunai = 0;
+
+scopedTransactions.forEach(tx => {
+  if (!KasCore.isValidTransaction(tx)) return;
+  const cat = KasCore.getCategory(tx);
+  const met = KasCore.getPaymentMethod(tx);
+  if (met !== 'qris' && met !== 'transfer') return;
+
+  const nominal = KasCore.getNominal(tx);
+  const admin = KasCore.getAdmin(tx);
+
+  if (cat === 'top_up') topupNonTunai += nominal + admin;
+  if (cat === 'tarik_tunai') tarikNonTunai += Math.max(0, nominal - admin);
+});
+
+const penjualanNonTunai = (scopedSummary.salesQris || 0) + (scopedSummary.salesTransfer || 0);
+
+document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(penjualanNonTunai);
+document.getElementById("kasTopUpNonTunai").textContent   = "+ " + formatRupiah(topupNonTunai);
+document.getElementById("kasTarikNonTunai").textContent   = "- " + formatRupiah(tarikNonTunai);
+document.getElementById("kasBank").textContent            = formatRupiah(scopedSummary.saldoBank || 0);
       document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
+      
 
       // 3. Render Performa Staf
       if (isBoss || isAdmin) {
