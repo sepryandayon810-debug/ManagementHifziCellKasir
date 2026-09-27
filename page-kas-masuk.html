@@ -582,6 +582,7 @@
       function goBack() {
         const dariKasir = isFromKasir();
         localStorage.removeItem('fromKasir');
+
         if (dariKasir) {
           window.location.replace('page-kasir.html');
         } else {
@@ -592,15 +593,17 @@
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
         if (!logoEl) return;
+
         const cached = localStorage.getItem("webpos_store_name");
         if (cached) logoEl.textContent = cached;
+
         try {
           const doc = await db.collection("settings").doc("store").get();
           if (doc.exists && doc.data().name) {
             logoEl.textContent = doc.data().name;
             localStorage.setItem("webpos_store_name", doc.data().name);
           }
-        } catch(e) {}
+        } catch (e) {}
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -608,6 +611,7 @@
 
         if (isFromKasir()) {
           const btnBack = document.getElementById('btnBackKasir');
+
           if (btnBack) {
             btnBack.style.display = 'flex';
             btnBack.onclick = () => {
@@ -623,25 +627,51 @@
             return;
           }
 
-          let userData = { name: user.email, role: 'kasir' };
+          let userData = {
+            name: user.email,
+            role: 'kasir'
+          };
+
           try {
             const doc = await db.collection("users").doc(user.uid).get();
+
             if (doc.exists) {
               userData = doc.data();
+
               if (typeof RoleGuard !== 'undefined') {
                 RoleGuard.apply((userData.role || 'kasir').toLowerCase());
               }
             }
-          } catch(e) {}
+          } catch (e) {
+            console.error('[Kas Masuk] Gagal membaca data user:', e);
+          }
 
-          const dName = userData.name || userData.username || user.email.split('@')[0];
-          document.getElementById('userName').textContent = dName;
-          document.getElementById('userRole').textContent = (userData.role || 'Kasir').toUpperCase();
+          const dName =
+            userData.name ||
+            userData.username ||
+            user.email.split('@')[0];
+
+          const userNameEl = document.getElementById('userName');
+          const userRoleEl = document.getElementById('userRole');
           const avatar = document.getElementById('userAvatar');
-          if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
+
+          if (userNameEl) userNameEl.textContent = dName;
+
+          if (userRoleEl) {
+            userRoleEl.textContent =
+              (userData.role || 'Kasir').toUpperCase();
+          }
+
+          if (avatar) {
+            avatar.textContent = dName.slice(0, 2).toUpperCase();
+          }
 
           setupSidebarEvents();
-          initKasMasuk(user, dName);
+
+          // FIX:
+          // userData dikirim ke initKasMasuk agar role yang digunakan
+          // untuk menentukan scope transaksi sesuai dengan user yang login.
+          initKasMasuk(user, dName, userData);
         });
       });
 
@@ -651,18 +681,35 @@
         const menuToggle = document.getElementById('menuToggle');
         const mobileToggle = document.getElementById('mobileMenuToggle');
 
-        if (menuToggle) menuToggle.onclick = () => sidebar.classList.toggle('collapsed');
+        if (menuToggle) {
+          menuToggle.onclick = () => {
+            if (sidebar) {
+              sidebar.classList.toggle('collapsed');
+            }
+          };
+        }
+
         if (mobileToggle) {
           mobileToggle.onclick = (e) => {
             e.stopPropagation();
-            sidebar.classList.add('mobile-open');
-            if (backdrop) backdrop.classList.add('active');
+
+            if (sidebar) {
+              sidebar.classList.add('mobile-open');
+            }
+
+            if (backdrop) {
+              backdrop.classList.add('active');
+            }
           };
         }
+
         if (backdrop) {
           backdrop.onclick = () => {
-            sidebar.classList.remove('mobile-open');
-            if (backdrop) backdrop.classList.remove('active');
+            if (sidebar) {
+              sidebar.classList.remove('mobile-open');
+            }
+
+            backdrop.classList.remove('active');
           };
         }
 
@@ -670,226 +717,582 @@
           toggle.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
+
             const parent = this.closest('.nav-dropdown');
+
+            if (!parent) return;
+
             document.querySelectorAll('.nav-dropdown.open').forEach(openDropdown => {
-              if (openDropdown !== parent) openDropdown.classList.remove('open');
+              if (openDropdown !== parent) {
+                openDropdown.classList.remove('open');
+              }
             });
+
             parent.classList.toggle('open');
           });
         });
 
         document.getElementById("menuSearch")?.addEventListener("input", function() {
           const q = this.value.toLowerCase();
+
           document.querySelectorAll(".nav-link span").forEach(span => {
             const li = span.closest(".nav-item");
-            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+
+            if (li) {
+              li.style.display =
+                span.textContent.toLowerCase().includes(q)
+                  ? ""
+                  : "none";
+            }
           });
         });
 
-        const themeToggle = document.getElementById('btnThemeToggle');
+        const themeToggle =
+          document.getElementById('btnThemeToggle');
+
         if (themeToggle) {
           themeToggle.addEventListener('click', () => {
-            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-            const nextTheme = isDark ? "light" : "dark";
-            document.documentElement.setAttribute("data-theme", nextTheme);
-            localStorage.setItem("webpos_theme", nextTheme);
+            const isDark =
+              document.documentElement.getAttribute("data-theme") === "dark";
+
+            const nextTheme =
+              isDark ? "light" : "dark";
+
+            document.documentElement.setAttribute(
+              "data-theme",
+              nextTheme
+            );
+
+            localStorage.setItem(
+              "webpos_theme",
+              nextTheme
+            );
           });
         }
 
         // Logout dengan Modal Internal WebPOS
-        const logoutBtn = document.getElementById('btnLogout');
+        const logoutBtn =
+          document.getElementById('btnLogout');
+
         if (logoutBtn) {
           logoutBtn.onclick = () => {
-            const modal = document.getElementById('customLogoutModal');
+            const modal =
+              document.getElementById('customLogoutModal');
+
             if (modal) {
               modal.classList.add('open');
-              document.getElementById('btnConfirmLogoutAction').onclick = () => {
-                auth.signOut().then(() => {
-                  localStorage.removeItem('webpos_session');
-                  window.location.href = 'login.html';
-                });
-              };
+
+              const confirmBtn =
+                document.getElementById(
+                  'btnConfirmLogoutAction'
+                );
+
+              if (confirmBtn) {
+                confirmBtn.onclick = () => {
+                  auth.signOut().then(() => {
+                    localStorage.removeItem(
+                      'webpos_session'
+                    );
+
+                    window.location.href =
+                      'login.html';
+                  });
+                };
+              }
+
             } else {
               auth.signOut().then(() => {
-                localStorage.removeItem('webpos_session');
-                window.location.href = 'login.html';
+                localStorage.removeItem(
+                  'webpos_session'
+                );
+
+                window.location.href =
+                  'login.html';
               });
             }
           };
         }
       }
 
-      async function initKasMasuk(user, userName) {
+      /*
+       * ============================================================
+       * KAS MASUK
+       * ============================================================
+       *
+       * KasCore TIDAK DIUBAH.
+       *
+       * Page ini mengikuti struktur field yang dibaca KasCore.
+       */
+      async function initKasMasuk(user, userName, userData) {
         let amount = 0;
 
         async function loadCurrentKas() {
-        try {
-          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          try {
+            const today =
+              Utils.getTodayString
+                ? Utils.getTodayString()
+                : new Date().toISOString().split('T')[0];
 
-          // ============================================================
-          // PERHITUNGAN INI DIBUAT SAMA DENGAN index.html
-          // ============================================================
-          // index.html menentukan scope berdasarkan role:
-          // owner/developer = semua staf
-          // admin            = kasir + user admin sendiri
-          // kasir            = user sendiri
-          // ============================================================
+            /*
+             * ========================================================
+             * SCOPE SESUAI ROLE
+             * ========================================================
+             *
+             * owner/developer = semua staf
+             * admin            = kasir + admin sendiri
+             * kasir            = user sendiri
+             */
+            const currentRole =
+              (
+                userData &&
+                userData.role
+                  ? userData.role
+                  : 'kasir'
+              ).toLowerCase();
 
-          const currentRole = (userData && userData.role ? userData.role : 'kasir').toLowerCase();
-          const isBoss = currentRole === 'owner' || currentRole === 'developer';
-          const isAdmin = currentRole === 'admin';
+            const isBoss =
+              currentRole === 'owner' ||
+              currentRole === 'developer';
 
-          const [usersSnap, modalSummary, allTransactions] = await Promise.all([
-            db.collection('users').get(),
-            KasCore.getModalSummary({ date: today }),
-            KasCore.getTransactionsByDateRange({
-              startDate: today,
-              endDate: today
-            })
-          ]);
+            const isAdmin =
+              currentRole === 'admin';
 
-          // Buat usersMap sama seperti index.html
-          const usersMap = {};
-          usersSnap.forEach(doc => {
-            usersMap[doc.id] = { id: doc.id, ...doc.data() };
-          });
+            const [
+              usersSnap,
+              modalSummary,
+              allTransactions
+            ] = await Promise.all([
+              db.collection('users').get(),
 
-          // SAMA PERSIS DENGAN index.html
-          const scopedModalEntries = modalSummary.entries.filter(entry => {
-            const targetUser = usersMap[entry.userId] || {};
-            const targetRole = (targetUser.role || 'kasir').toLowerCase();
+              KasCore.getModalSummary({
+                date: today
+              }),
 
-            if (isBoss) return true;
-            if (isAdmin) return targetRole === 'kasir';
-            return entry.userId === user.uid;
-          });
+              KasCore.getTransactionsByDateRange({
+                startDate: today,
+                endDate: today
+              })
+            ]);
 
-          // SAMA PERSIS DENGAN index.html
-          const scopedTransactions = allTransactions.filter(transaction => {
-            const transactionUserId = KasCore.getUserId(transaction);
-            const targetUser = usersMap[transactionUserId] || {};
-            const targetRole = (targetUser.role || 'kasir').toLowerCase();
+            /*
+             * ========================================================
+             * USERS MAP
+             * ========================================================
+             */
+            const usersMap = {};
 
-            if (isBoss) return true;
-            if (isAdmin) return targetRole === 'kasir' || transactionUserId === user.uid;
-            return transactionUserId === user.uid;
-          });
+            usersSnap.forEach(doc => {
+              usersMap[doc.id] = {
+                id: doc.id,
+                ...doc.data()
+              };
+            });
 
-          // Ringkasan transaksi menggunakan KasCore yang sama dengan index.html
-          const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
+            /*
+             * ========================================================
+             * SCOPE MODAL
+             * ========================================================
+             */
+            const scopedModalEntries =
+              modalSummary.entries.filter(entry => {
+                const targetUser =
+                  usersMap[entry.userId] || {};
 
-          // Modal Awal menggunakan entry yang sudah di-scope seperti index.html
-          const modalAwal = scopedModalEntries.reduce(
-            (sum, entry) => sum + KasCore.normalizeNumber(entry.amount),
-            0
-          );
+                const targetRole =
+                  (
+                    targetUser.role ||
+                    'kasir'
+                  ).toLowerCase();
 
-          // RUMUS FISIK YANG SAMA DENGAN index.html
-          const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(
-            modalAwal,
-            scopedSummary
-          );
+                if (isBoss) {
+                  return true;
+                }
 
-          const kasLaci = KasCore.normalizeNumber(kasLaciSummary.total);
+                if (isAdmin) {
+                  return (
+                    targetRole === 'kasir' ||
+                    entry.userId === user.uid
+                  );
+                }
 
-          const kasSaatIniEl = document.getElementById('kasSaatIni');
-          if (kasSaatIniEl) {
-            kasSaatIniEl.textContent = Utils.formatRupiah(kasLaci);
-          }
-
-          console.log('[Kas Masuk] Perhitungan SAMA dengan index.html:', {
-            role: currentRole,
-            isBoss,
-            isAdmin,
-            modalAwal,
-            cashIn: scopedSummary.cashIn,
-            cashOut: scopedSummary.cashOut,
-            cashSales: scopedSummary.cashSales,
-            totalSales: scopedSummary.totalSales,
-            topupKasFisik: kasLaciSummary.topupKasFisik,
-            tarikKasFisik: kasLaciSummary.tarikKasFisik,
-            kasLaci
-          });
-        } catch (error) {
-          console.error('kas-masuk: gagal memuat kas tersedia', error);
-        }
-      }
-
-        function updateDisplay() {
-          document.getElementById('kasAmount').textContent = Utils.formatRupiah(amount);
-        }
-
-        document.querySelectorAll('.numpad-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const num = btn.dataset.num;
-            const action = btn.dataset.action;
-
-            if (num !== undefined) {
-              if (num === '00') amount = amount * 100;
-              else if (num === '000') amount = amount * 1000;
-              else amount = amount * 10 + parseInt(num);
-            } else if (action === 'clear') {
-              amount = 0;
-            } else if (action === 'backspace') {
-              amount = Math.floor(amount / 10);
-            }
-            updateDisplay();
-          });
-        });
-
-        document.querySelectorAll('.quick-amount').forEach(btn => {
-          btn.addEventListener('click', () => {
-            amount = parseInt(btn.dataset.amount);
-            updateDisplay();
-          });
-        });
-
-        const saveBtn = document.getElementById('btnSimpanKas');
-        if (saveBtn) {
-          saveBtn.addEventListener('click', async () => {
-            if (amount <= 0) {
-              Utils.showToast('Masukkan jumlah uang terlebih dahulu', 'warning');
-              return;
-            }
-
-            const note = document.getElementById('kasNote').value.trim();
-            if (!note) {
-              Utils.showToast('Keterangan wajib diisi', 'warning');
-              document.getElementById('kasNote').focus();
-              return;
-            }
-
-            try {
-              Utils.showLoading('Menyimpan kas masuk...');
-              const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-              const transactionId = 'KIN_' + Date.now();
-
-              await db.collection("transactions").doc(transactionId).set({
-                id: transactionId,
-                type: 'kas_masuk',
-                amount: amount,
-                total: amount,
-                note: note,
-                userId: user.uid,
-                userName: userName,
-                date: today,
-                timestamp: Date.now(),
-                status: 'completed',
-                source: 'kas_masuk'
+                return entry.userId === user.uid;
               });
 
-              Utils.hideLoading();
-              Utils.showToast('Kas masuk berhasil disimpan!', 'success');
+            /*
+             * ========================================================
+             * SCOPE TRANSAKSI
+             * ========================================================
+             */
+            const scopedTransactions =
+              allTransactions.filter(transaction => {
+                const transactionUserId =
+                  KasCore.getUserId(transaction);
 
-              setTimeout(() => { goBack(); }, 1200);
+                const targetUser =
+                  usersMap[transactionUserId] || {};
 
-            } catch (error) {
-              Utils.hideLoading();
-              Utils.showToast('Gagal menyimpan: ' + error.message, 'error');
+                const targetRole =
+                  (
+                    targetUser.role ||
+                    'kasir'
+                  ).toLowerCase();
+
+                if (isBoss) {
+                  return true;
+                }
+
+                if (isAdmin) {
+                  return (
+                    targetRole === 'kasir' ||
+                    transactionUserId === user.uid
+                  );
+                }
+
+                return transactionUserId === user.uid;
+              });
+
+            /*
+             * ========================================================
+             * SUMMARY
+             * ========================================================
+             *
+             * Tetap menggunakan KasCore asli.
+             */
+            const scopedSummary =
+              KasCore.summarizeTransactions(
+                scopedTransactions
+              );
+
+            /*
+             * ========================================================
+             * MODAL AWAL
+             * ========================================================
+             */
+            const modalAwal =
+              scopedModalEntries.reduce(
+                (sum, entry) => {
+                  return (
+                    sum +
+                    KasCore.normalizeNumber(
+                      entry.amount
+                    )
+                  );
+                },
+                0
+              );
+
+            /*
+             * ========================================================
+             * KAS FISIK LACI
+             * ========================================================
+             */
+            const kasLaciSummary =
+              KasCore.calculateKasFisikLaciFromSummary(
+                modalAwal,
+                scopedSummary
+              );
+
+            const kasLaci =
+              KasCore.normalizeNumber(
+                kasLaciSummary.total
+              );
+
+            const kasSaatIniEl =
+              document.getElementById(
+                'kasSaatIni'
+              );
+
+            if (kasSaatIniEl) {
+              kasSaatIniEl.textContent =
+                Utils.formatRupiah(kasLaci);
             }
-          });
+
+            console.log(
+              '[Kas Masuk] Perhitungan menggunakan KasCore:',
+              {
+                role: currentRole,
+                isBoss,
+                isAdmin,
+                modalAwal,
+                cashIn: scopedSummary.cashIn,
+                cashOut: scopedSummary.cashOut,
+                cashSales: scopedSummary.cashSales,
+                totalSales: scopedSummary.totalSales,
+                topupKasFisik:
+                  kasLaciSummary.topupKasFisik,
+                tarikKasFisik:
+                  kasLaciSummary.tarikKasFisik,
+                kasLaci
+              }
+            );
+
+          } catch (error) {
+            console.error(
+              'kas-masuk: gagal memuat kas tersedia',
+              error
+            );
+          }
         }
 
+        /*
+         * ============================================================
+         * DISPLAY JUMLAH
+         * ============================================================
+         */
+        function updateDisplay() {
+          const display =
+            document.getElementById(
+              'kasAmount'
+            );
+
+          if (display) {
+            display.textContent =
+              Utils.formatRupiah(amount);
+          }
+        }
+
+        /*
+         * ============================================================
+         * NUMPAD
+         * ============================================================
+         */
+        document
+          .querySelectorAll('.numpad-btn')
+          .forEach(btn => {
+            btn.addEventListener(
+              'click',
+              () => {
+                const num =
+                  btn.dataset.num;
+
+                const action =
+                  btn.dataset.action;
+
+                if (num !== undefined) {
+
+                  if (num === '00') {
+                    amount =
+                      amount * 100;
+
+                  } else if (num === '000') {
+                    amount =
+                      amount * 1000;
+
+                  } else {
+                    amount =
+                      amount * 10 +
+                      parseInt(num, 10);
+                  }
+
+                } else if (
+                  action === 'clear'
+                ) {
+                  amount = 0;
+
+                } else if (
+                  action === 'backspace'
+                ) {
+                  amount =
+                    Math.floor(
+                      amount / 10
+                    );
+                }
+
+                updateDisplay();
+              }
+            );
+          });
+
+        /*
+         * ============================================================
+         * QUICK AMOUNT
+         * ============================================================
+         */
+        document
+          .querySelectorAll('.quick-amount')
+          .forEach(btn => {
+            btn.addEventListener(
+              'click',
+              () => {
+                amount =
+                  parseInt(
+                    btn.dataset.amount || '0',
+                    10
+                  ) || 0;
+
+                updateDisplay();
+              }
+            );
+          });
+
+        /*
+         * ============================================================
+         * SIMPAN KAS MASUK
+         * ============================================================
+         */
+        const saveBtn =
+          document.getElementById(
+            'btnSimpanKas'
+          );
+
+        if (saveBtn) {
+          saveBtn.addEventListener(
+            'click',
+            async () => {
+
+              if (amount <= 0) {
+                Utils.showToast(
+                  'Masukkan jumlah uang terlebih dahulu',
+                  'warning'
+                );
+
+                return;
+              }
+
+              const noteEl =
+                document.getElementById(
+                  'kasNote'
+                );
+
+              const note =
+                noteEl
+                  ? noteEl.value.trim()
+                  : '';
+
+              if (!note) {
+                Utils.showToast(
+                  'Keterangan wajib diisi',
+                  'warning'
+                );
+
+                if (noteEl) {
+                  noteEl.focus();
+                }
+
+                return;
+              }
+
+              try {
+                Utils.showLoading(
+                  'Menyimpan kas masuk...'
+                );
+
+                const today =
+                  Utils.getTodayString
+                    ? Utils.getTodayString()
+                    : new Date()
+                        .toISOString()
+                        .split('T')[0];
+
+                const transactionId =
+                  'KIN_' + Date.now();
+
+                /*
+                 * ====================================================
+                 * TRANSAKSI MENGIKUTI KASCORE
+                 * ====================================================
+                 *
+                 * Kas Masuk adalah kas fisik yang masuk ke laci,
+                 * sehingga field utama yang harus diisi adalah:
+                 *
+                 *     cash_in: amount
+                 *
+                 * Field amount dan total tetap dipertahankan karena
+                 * mungkin digunakan oleh page/report lain.
+                 *
+                 * date_key juga disimpan karena KasCore menggunakan
+                 * date_key sebagai tanggal transaksi.
+                 */
+                await db
+                  .collection("transactions")
+                  .doc(transactionId)
+                  .set({
+
+                    // Identitas transaksi
+                    id: transactionId,
+
+                    // Jenis/source transaksi
+                    type: 'kas_masuk',
+                    source: 'kas_masuk',
+
+                    // Field nominal lama
+                    amount: amount,
+                    total: amount,
+
+                    // ==================================================
+                    // FIELD YANG DIBACA KASCORE
+                    // ==================================================
+
+                    // Kas masuk fisik
+                    cash_in: amount,
+
+                    // Tidak ada kas keluar
+                    cash_out: 0,
+
+                    // Tidak ada mutasi bank
+                    bank_in: 0,
+                    bank_out: 0,
+
+                    // Tidak ada mutasi digital
+                    digital_in: 0,
+                    digital_out: 0,
+
+                    // Keterangan
+                    note: note,
+
+                    // User
+                    userId: user.uid,
+                    userName: userName,
+
+                    // ==================================================
+                    // TANGGAL
+                    // ==================================================
+
+                    // Field standar KasCore
+                    date_key: today,
+
+                    // Tetap simpan field lama
+                    date: today,
+
+                    // Timestamp
+                    timestamp: Date.now(),
+
+                    // Status
+                    status: 'completed'
+                  });
+
+                Utils.hideLoading();
+
+                Utils.showToast(
+                  'Kas masuk berhasil disimpan!',
+                  'success'
+                );
+
+                setTimeout(() => {
+                  goBack();
+                }, 1200);
+
+              } catch (error) {
+                Utils.hideLoading();
+
+                console.error(
+                  '[Kas Masuk] Gagal menyimpan transaksi:',
+                  error
+                );
+
+                Utils.showToast(
+                  'Gagal menyimpan: ' +
+                  error.message,
+                  'error'
+                );
+              }
+            }
+          );
+        }
+
+        /*
+         * Load kas saat page dibuka.
+         */
         loadCurrentKas();
       }
     })();
