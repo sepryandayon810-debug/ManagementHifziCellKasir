@@ -596,6 +596,23 @@
                   <div class="system-data-label"><i class="fas fa-minus-circle" style="color: var(--danger);"></i> Tarik Tunai (Fisik Keluar)</div>
                   <div class="system-data-value negative" id="sistemTarik">- Rp 0</div>
                 </div>
+                                <div class="system-data-item">
+                  <div class="system-data-label"><i class="fas fa-minus-circle" style="color: var(--danger);"></i> Tarik Tunai (Fisik Keluar)</div>
+                  <div class="system-data-value negative" id="sistemTarik">- Rp 0</div>
+                </div>
+                <!-- TAMBAHAN: NON TUNAI (INFO SAJA) -->
+                <div class="system-data-item" style="opacity:0.85;">
+                  <div class="system-data-label"><i class="fas fa-qrcode" style="color: var(--info);"></i> Penjualan QRIS</div>
+                  <div class="system-data-value" id="sistemQRIS" style="color: var(--info);">Rp 0</div>
+                </div>
+                <div class="system-data-item" style="opacity:0.85;">
+                  <div class="system-data-label"><i class="fas fa-building-columns" style="color: var(--info);"></i> Penjualan Transfer</div>
+                  <div class="system-data-value" id="sistemTransfer" style="color: var(--info);">Rp 0</div>
+                </div>
+                <div class="system-data-item" style="opacity:0.7; border-style: dashed;">
+                  <div class="system-data-label"><i class="fas fa-credit-card"></i> Total Non Tunai <span style="font-size:0.65rem; font-weight:600;">(tidak masuk laci)</span></div>
+                  <div class="system-data-value" id="sistemNonTunai" style="color: var(--info);">Rp 0</div>
+                </div>
                 <div class="system-data-item highlight">
                   <div class="system-data-label"><i class="fas fa-calculator"></i> Total Seharusnya di Laci</div>
                   <div class="system-data-value" id="sistemGlobal" style="color: var(--primary); font-size: 1.15rem; font-weight: 800;">Rp 0</div>
@@ -958,28 +975,56 @@
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           document.getElementById('kasDate').textContent = today;
 
-          const shiftSummary = await KasCore.getShiftSummary({ date: today, userId: user.uid });
-          const topupKasFisik = shiftSummary.topupKasFisik;
-          const tarikKasFisik = shiftSummary.tarikKasFisik;
+          // SINKRON DENGAN PAGE KAS & SHIFT: pakai getKasFisikLaci (sumber tunggal)
+const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
 
-          todayStats = {
-            modalAwal: shiftSummary.modalAwal,
-            penjualan: shiftSummary.penjualan,
-            topup: shiftSummary.topup,
-            topupAdmin: shiftSummary.topupAdmin,
-            tarik: shiftSummary.tarik,
-            tarikAdmin: shiftSummary.tarikAdmin,
-            kasMasuk: shiftSummary.kasMasuk,
-            kasKeluar: shiftSummary.kasKeluar,
-            uangGlobal: shiftSummary.uangGlobal
-          };
+// Rincian komponen kas fisik dihitung dari transaksi via helper KasCore
+const txList = (kasLaci.summary && kasLaci.summary.validTransactions) ? kasLaci.summary.validTransactions : [];
 
+let topupKasFisik = 0;   // top_up tunai : kas bertambah nominal + admin
+let tarikKasFisik = 0;   // tarik_tunai tunai : kas berkurang nominal - admin
+let penjualanTunai = 0;
+let kasMasukLain = 0;
+let kasKeluarToko = 0;
+let totalQRIS = 0;
+let totalTransfer = 0;
+          
+txList.forEach(t => {
+  const kategori = KasCore.getCategory(t);
+  const metode = KasCore.getPaymentMethod(t);
+  const nominal = KasCore.getNominal(t);
+  const admin = KasCore.getAdmin(t);
+
+    if (kategori === 'jual' && metode === 'tunai') penjualanTunai += nominal;
+  else if (kategori === 'jual' && metode === 'qris') totalQRIS += nominal;
+  else if (kategori === 'jual' && metode === 'transfer') totalTransfer += nominal;
+  else if (kategori === 'top_up' && metode === 'tunai') topupKasFisik += nominal + admin;
+  else if (kategori === 'tarik_tunai' && metode === 'tunai') tarikKasFisik += Math.max(0, nominal - admin);
+  else if (kategori === 'kas_masuk') kasMasukLain += nominal;
+  else if (kategori === 'kas_keluar') kasKeluarToko += nominal;
+});
+
+todayStats = {
+  modalAwal: kasLaci.modalAwal,
+  penjualan: penjualanTunai,
+  topup: topupKasFisik,
+  topupAdmin: 0,
+  tarik: tarikKasFisik,
+  tarikAdmin: 0,
+  kasMasuk: kasMasukLain,
+  kasKeluar: kasKeluarToko,
+  uangGlobal: kasLaci.total   // == headerKasLaci / summaryKasSistem di page Kas & Shift
+};
+          
           document.getElementById('sistemModal').textContent = Utils.formatRupiah(todayStats.modalAwal);
           document.getElementById('sistemMasuk').textContent = '+ ' + Utils.formatRupiah(todayStats.kasMasuk);
           document.getElementById('sistemKeluar').textContent = '- ' + Utils.formatRupiah(todayStats.kasKeluar);
           document.getElementById('sistemPenjualan').textContent = '+ ' + Utils.formatRupiah(todayStats.penjualan);
           document.getElementById('sistemTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
           document.getElementById('sistemTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
+          document.getElementById('sistemQRIS').textContent = Utils.formatRupiah(totalQRIS);
+          document.getElementById('sistemTransfer').textContent = Utils.formatRupiah(totalTransfer);
+          document.getElementById('sistemNonTunai').textContent = Utils.formatRupiah(totalQRIS + totalTransfer);
           document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(todayStats.uangGlobal);
 
           const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
@@ -1081,8 +1126,8 @@
 'Penjualan    : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\n' +
 'Kas Masuk    : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\n' +
 'Kas Keluar   : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\n' +
-'Top Up Fisik : ' + Utils.formatRupiah(cData.sistem.topup + cData.sistem.topupAdmin) + '\n' +
-'Tarik Tunai  : ' + Utils.formatRupiah(Math.max(0, cData.sistem.tarik - cData.sistem.tarikAdmin)) + '\n' +
+'Top Up Fisik : ' + Utils.formatRupiah(cData.sistem.topup) + '\n' +
+'Tarik Tunai  : ' + Utils.formatRupiah(cData.sistem.tarik) + '\n' +
 '--------------------------------\n' +
 'Kas Sistem   : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\n' +
 'Uang Fisik   : ' + Utils.formatRupiah(cData.fisik.total) + '\n' +
@@ -1130,8 +1175,8 @@
           c += 'Penjualan  : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\x0A';
           c += 'Kas Masuk  : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\x0A';
           c += 'Kas Keluar : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\x0A';
-          c += 'Topup Fisik: ' + Utils.formatRupiah(cData.sistem.topup + cData.sistem.topupAdmin) + '\x0A';
-          c += 'Tarik Fisik: ' + Utils.formatRupiah(Math.max(0, cData.sistem.tarik - cData.sistem.tarikAdmin)) + '\x0A';
+          c += 'Topup Fisik: ' + Utils.formatRupiah(cData.sistem.topup) + '\x0A';
+          c += 'Tarik Fisik: ' + Utils.formatRupiah(cData.sistem.tarik) + '\x0A';
           c += '--------------------------------\x0A';
           c += 'Kas Sistem : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\x0A';
           c += 'Fisik Laci : ' + Utils.formatRupiah(cData.fisik.total) + '\x0A';
