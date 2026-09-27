@@ -575,6 +575,36 @@
                 </div>
                 <span class="kas-item-value expense" id="summaryTarik">- Rp 0</span>
               </div>
+              <!-- PEMISAH NON TUNAI -->
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon income">
+      <i class="fas fa-qrcode"></i>
+    </div>
+    <span class="kas-item-label">Transaksi QRIS</span>
+  </div>
+  <span class="kas-item-value income" id="summaryQRIS">+ Rp 0</span>
+</div>
+
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon income">
+      <i class="fas fa-building-columns"></i>
+    </div>
+    <span class="kas-item-label">Transaksi Transfer</span>
+  </div>
+  <span class="kas-item-value income" id="summaryTransfer">+ Rp 0</span>
+</div>
+
+<div class="kas-item">
+  <div class="kas-item-info">
+    <div class="kas-item-icon neutral">
+      <i class="fas fa-credit-card"></i>
+    </div>
+    <span class="kas-item-label">Total Non Tunai</span>
+  </div>
+  <span class="kas-item-value" id="summaryNonTunai">Rp 0</span>
+</div>
             </div>
 
             <div class="kas-total-box">
@@ -933,106 +963,161 @@
       }
 
       async function loadKasLaciSummary(user) {
-        const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+  const today = Utils.getTodayString
+    ? Utils.getTodayString()
+    : new Date().toISOString().split('T')[0];
 
-        try {
-          const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
-          const topupKasFisik = kasLaci.topupKasFisik;
-          const tarikKasFisik = kasLaci.tarikKasFisik;
+  try {
+    // ==========================================================
+    // 1. KAS FISIK LACI
+    // ==========================================================
+    const kasLaci = await KasCore.getKasFisikLaci({
+      date: today,
+      userId: user.uid
+    });
 
-          document.getElementById('summaryModal').textContent = Utils.formatRupiah(kasLaci.modalAwal);
-          document.getElementById('summaryPenjualan').textContent = '+ ' + Utils.formatRupiah(kasLaci.penjualanProduk);
-          document.getElementById('summaryKasMasuk').textContent = '+ ' + Utils.formatRupiah(kasLaci.uangMasukLain);
-          document.getElementById('summaryKasKeluar').textContent = '- ' + Utils.formatRupiah(kasLaci.kasKeluarToko);
-          document.getElementById('summaryTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
-          document.getElementById('summaryTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
-          
-          document.getElementById('summaryKasSistem').textContent = Utils.formatRupiah(kasLaci.total);
-          document.getElementById('headerKasLaci').textContent = Utils.formatRupiah(kasLaci.total);
+    const topupKasFisik = Number(kasLaci.topupKasFisik || 0);
+    const tarikKasFisik = Number(kasLaci.tarikKasFisik || 0);
 
-        } catch (error) {
-          console.error('kas-shift: gagal memuat ringkasan kas laci', error);
-        }
+    document.getElementById('summaryModal').textContent =
+      Utils.formatRupiah(kasLaci.modalAwal);
+
+    document.getElementById('summaryPenjualan').textContent =
+      '+ ' + Utils.formatRupiah(kasLaci.penjualanProduk);
+
+    document.getElementById('summaryKasMasuk').textContent =
+      '+ ' + Utils.formatRupiah(kasLaci.uangMasukLain);
+
+    document.getElementById('summaryKasKeluar').textContent =
+      '- ' + Utils.formatRupiah(kasLaci.kasKeluarToko);
+
+    document.getElementById('summaryTopup').textContent =
+      '+ ' + Utils.formatRupiah(topupKasFisik);
+
+    document.getElementById('summaryTarik').textContent =
+      '- ' + Utils.formatRupiah(tarikKasFisik);
+
+    // ==========================================================
+    // 2. KAS FISIK TOTAL
+    // QRIS / TRANSFER TIDAK MASUK KE SINI
+    // ==========================================================
+    document.getElementById('summaryKasSistem').textContent =
+      Utils.formatRupiah(kasLaci.total);
+
+    document.getElementById('headerKasLaci').textContent =
+      Utils.formatRupiah(kasLaci.total);
+
+
+    // ==========================================================
+    // 3. BACA SEMUA TRANSAKSI HARI INI USER INI
+    // UNTUK MEMISAHKAN QRIS DAN TRANSFER
+    // ==========================================================
+    const transactions =
+      await KasCore.getTransactionsByDateRange({
+        startDate: today,
+        endDate: today,
+        userId: user.uid
+      });
+
+
+    // ==========================================================
+    // 4. HITUNG QRIS & TRANSFER
+    // ==========================================================
+    let totalQRIS = 0;
+    let totalTransfer = 0;
+
+    transactions.forEach(t => {
+
+      // Pastikan transaksi valid
+      if (
+        typeof KasCore.isValidTransaction === 'function' &&
+        !KasCore.isValidTransaction(t)
+      ) {
+        return;
       }
 
-      async function loadShiftHistory(filterType = 'today', dateFrom = null, dateTo = null) {
-        Utils.showLoading('Memuat riwayat shift...');
-        try {
-          const snap = await db.collection('shifts').get();
-          let shiftsArray = [];
-          
-          snap.forEach(doc => {
-            shiftsArray.push({ id: doc.id, ...doc.data() });
-          });
+      const kategori = String(
+        t.kategori ||
+        t.category ||
+        ''
+      ).toLowerCase();
 
-          let filteredShifts;
-          if (filterType === 'custom' && dateFrom && dateTo) {
-            filteredShifts = filterShiftsByDateRange(shiftsArray, dateFrom, dateTo);
-          } else {
-            filteredShifts = filterShiftsByPeriod(shiftsArray, filterType);
-          }
+      const metode = String(
+        t.metode_pembayaran ||
+        t.paymentMethod ||
+        t.metodePembayaran ||
+        ''
+      ).toLowerCase();
 
-          filteredShifts.sort((a, b) => {
-            const timeA = (parseFirestoreDate(a.openTime) || parseFirestoreDate(a.openedAt) || new Date(a.date || 0)).getTime();
-            const timeB = (parseFirestoreDate(b.openTime) || parseFirestoreDate(b.openedAt) || new Date(b.date || 0)).getTime();
-            return timeB - timeA;
-          });
-          
-          const historyList = document.getElementById('shiftHistory');
-          let html = '';
-          
-          if (filteredShifts.length === 0) {
-            html = '<div class="empty-state" style="padding: 2.5rem; text-align: center;"><i class="fas fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; display:block;"></i><p style="color:var(--text-muted); font-size:0.9rem;">Tidak ada riwayat shift untuk periode ini</p></div>';
-          } else {
-            filteredShifts.forEach(shift => {
-              const openDate = parseFirestoreDate(shift.openTime) || parseFirestoreDate(shift.openedAt) || parseFirestoreDate(shift.date);
-              const closeDate = parseFirestoreDate(shift.closeTime) || parseFirestoreDate(shift.closedAt);
+      const nominal = Number(
+        t.nominal ??
+        t.amount ??
+        t.total ??
+        0
+      ) || 0;
 
-              const formattedDate = openDate 
-                ? openDate.toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
-                : (shift.date || 'Hari Ini');
-                
-              const openStr = openDate ? openDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-              const closeStr = closeDate ? closeDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : (shift.status === 'open' ? 'Sekarang' : '-');
-              
-              let duration = '-';
-              if (openDate && closeDate) {
-                const diff = closeDate.getTime() - openDate.getTime();
-                const hours = Math.floor(diff / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                duration = `${hours}j ${minutes}m`;
-              } else if (shift.status === 'open') {
-                duration = 'Sedang Berjalan';
-              }
 
-              html += `
-                <div class="shift-item">
-                  <div class="shift-info">
-                    <span class="shift-date">${formattedDate}</span>
-                    <span class="shift-time"><i class="far fa-clock"></i> ${openStr} - ${closeStr}</span>
-                    <span class="shift-user"><i class="far fa-user"></i> ${shift.userName || 'Kasir'}</span>
-                    ${shift.kasAkhir ? `<span style="color:var(--success); font-size:0.78rem; font-weight:700; margin-top:2px;">Fisik Kas: ${Utils.formatRupiah(shift.kasAkhir)}</span>` : ''}
-                  </div>
-                  <div class="shift-status">
-                    <span class="shift-badge ${shift.status}">${shift.status === 'open' ? 'BUKA' : 'TUTUP'}</span>
-                    <span class="shift-duration">${duration}</span>
-                  </div>
-                </div>
-              `;
-            });
-          }
-
-          historyList.innerHTML = html;
-          document.getElementById('totalShiftCount').textContent = `${filteredShifts.length} shift`;
-          updateDateRangeInfo(filterType, filteredShifts.length);
-        } catch (error) {
-          console.error('Error loading shift history:', error);
-          Utils.showToast('Gagal memuat riwayat shift', 'error');
-        } finally {
-          Utils.hideLoading();
-        }
+      // --------------------------------------------------------
+      // QRIS
+      // --------------------------------------------------------
+      if (metode === 'qris') {
+        totalQRIS += nominal;
       }
 
+      // --------------------------------------------------------
+      // TRANSFER
+      // --------------------------------------------------------
+      else if (metode === 'transfer') {
+        totalTransfer += nominal;
+      }
+    });
+
+
+    // ==========================================================
+    // 5. TOTAL NON TUNAI
+    // ==========================================================
+    const totalNonTunai =
+      totalQRIS +
+      totalTransfer;
+
+
+    // ==========================================================
+    // 6. TAMPILKAN
+    // ==========================================================
+    const qrisEl = document.getElementById('summaryQRIS');
+    const transferEl = document.getElementById('summaryTransfer');
+    const nonTunaiEl = document.getElementById('summaryNonTunai');
+
+    if (qrisEl) {
+      qrisEl.textContent =
+        '+ ' + Utils.formatRupiah(totalQRIS);
+    }
+
+    if (transferEl) {
+      transferEl.textContent =
+        '+ ' + Utils.formatRupiah(totalTransfer);
+    }
+
+    if (nonTunaiEl) {
+      nonTunaiEl.textContent =
+        Utils.formatRupiah(totalNonTunai);
+    }
+
+    console.log('KAS & SHIFT - NON TUNAI:', {
+      qris: totalQRIS,
+      transfer: totalTransfer,
+      totalNonTunai: totalNonTunai,
+      bankInKasCore: kasLaci.bankIn
+    });
+
+  } catch (error) {
+    console.error(
+      'kas-shift: gagal memuat ringkasan kas laci/non-tunai',
+      error
+    );
+  }
+}
+      
       function filterShiftsByDateRange(shifts, from, to) {
         const fromDate = new Date(from);
         fromDate.setHours(0,0,0,0);
