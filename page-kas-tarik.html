@@ -1093,16 +1093,28 @@
           document.getElementById('summaryTotalFisik').textContent = Utils.formatRupiah(uangFisikKeluar);
         }
 
-        async function loadKasTersedia() {
-          try {
-            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-            const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
-            kasTersedia = kasLaci.total;
-            document.getElementById('kasTersedia').textContent = Utils.formatRupiah(kasTersedia);
-          } catch (error) {
-            console.error("kas-tarik: gagal memuat kas tersedia", error);
-          }
-        }
+       async function loadKasTersedia() {
+  try {
+    const today = Utils.getTodayString
+      ? Utils.getTodayString()
+      : new Date().toISOString().split('T')[0];
+
+    const kasLaci = await KasCore.getKasFisikLaci({
+      date: today,
+      userId: user.uid
+    });
+
+    // Kas Fisik Laci dari KasCore
+    kasTersedia = Number(kasLaci.totalKasFisikDiLaci || 0);
+
+    document.getElementById('kasTersedia').textContent =
+      Utils.formatRupiah(kasTersedia);
+
+  } catch (error) {
+    console.error("kas-tarik: gagal memuat kas tersedia", error);
+  }
+}
+        
 
         function updateDisplay() {
           document.getElementById('tarikAmount').textContent = Utils.formatRupiah(amount);
