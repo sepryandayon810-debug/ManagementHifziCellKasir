@@ -4382,7 +4382,33 @@ html,body{overflow-x:hidden;max-width:100vw}
   <script src="js/role-guard.js"></script>
 
   <script>
-    // ===== FIRESTORE COMPATIBILITY LAYER =====
+    /* ============================================================
+     * DAFTAR ISI FUNCTION KASIR — page-kasir.html
+     * ------------------------------------------------------------
+     * Perhitungan finansial (kas, laba, hutang, saldo, transaksi)
+     * TIDAK dihitung di halaman ini. Semua angka memakai KasCore.
+     * Sumber tunggal: window.KasCore (js/kas-core.js).
+     *
+     * BAGIAN 1  Firebase Compatibility Layer .............. baris 4411
+     * BAGIAN 2  Navigasi & Sidebar ........................ baris 4442
+     * BAGIAN 3  Helper UI (rupiah, confirm, toast) ......... baris 4504
+     * BAGIAN 4  Load Data Global (uang laci & header) ...... baris 4537
+     * BAGIAN 5  State & Angka/Harga/Setting Terpusat ....... baris 4611
+     * BAGIAN 6  Load User, Kategori, Pelanggan, Produk ..... baris 4656
+     * BAGIAN 7  Produk (view, render, cari, keranjang) ..... baris 4755
+     * BAGIAN 8  Keranjang & Ringkasan ..................... baris 4959
+     * BAGIAN 9  Pembayaran ................................ baris 5047
+     * BAGIAN 10 Quick Action (produk manual) .............. baris 5568
+     * BAGIAN 11 Pintasan Kas .............................. baris 5639
+     * BAGIAN 12 Pelanggan Baru dari Kasir ................. baris 5744
+     * BAGIAN 13 Edit Keranjang ............................ baris 5809
+     * BAGIAN 14 Barcode Scanner ........................... baris 5894
+     * BAGIAN 15 Cetak Struk Penjualan ..................... baris 6081
+     * BAGIAN 16 Quick Edit Produk (long press) ............ baris 6279
+     * BAGIAN 17 Beli Barang (multi item) .................. baris 6375
+     * BAGIAN 18 Inisialisasi & Navigasi Berlapis .......... baris 6741
+     * ============================================================ */
+    // ===== BAGIAN 1: FIREBASE COMPATIBILITY LAYER =====
     function createFirestoreCompat() {
       const firestore = firebase.firestore();
       function makeRef(path) {
@@ -4413,6 +4439,7 @@ html,body{overflow-x:hidden;max-width:100vw}
       }
       return {ref:makeRef};
     }
+    // ===== BAGIAN 2: NAVIGASI & SIDEBAR (DROPDOWN, COLLAPSE, DARK MODE) =====
     // ===== SIDEBAR DROPDOWN =====
     function toggleDropdown(id) {
       const el = document.getElementById(id);
@@ -4474,6 +4501,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
       btnTheme.querySelector('i').className = next === 'dark' ? 'fas fa-moon' : 'fas fa-moon';
     });
 
+    // ===== BAGIAN 3: HELPER UI (RUPIAH, CONFIRM, TOAST) =====
     // ===== FORMAT RUPIAH =====
     function formatRupiah(num) {
       return 'Rp ' + Math.round(num || 0).toLocaleString('id-ID');
@@ -4506,7 +4534,8 @@ document.querySelectorAll('.nav-link').forEach(link => {
       setTimeout(() => toast.remove(), 3500);
     }
 
-// ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
+    // ===== BAGIAN 4: LOAD DATA GLOBAL (UANG LACI & HEADER STATS) =====
+    // ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
 async function loadUangGlobal() {
   const today = new Date();
   const todayStr = today.getFullYear() + '-' +
@@ -4579,6 +4608,7 @@ async function loadHeaderStats() {
   }
 }
     
+    // ===== BAGIAN 5: STATE & ANGKA/HARGA/SETTING TERPUSAT =====
     // ===== STATE =====
     let products = [];
     let categories = [];
@@ -4598,6 +4628,7 @@ async function loadHeaderStats() {
     function toMoney(value) { const n=Number(String(value==null?0:value).replace(/[^0-9-]/g,'')); return Number.isFinite(n)?Math.round(n):0; }
     function getCartSubtotal() { return cart.reduce(function(s,i){return s+toMoney(i.price)*Math.max(0,toMoney(i.quantity));},0); }
     function getCartProfit() { return cart.reduce(function(s,i){return s+(toMoney(i.price)-toMoney(i.cost))*Math.max(0,toMoney(i.quantity));},0); }
+    function getCartModal(){ return cart.reduce(function(s,i){ return s + toMoney(i.cost) * Math.max(0,toMoney(i.quantity)); },0); }
     function normalizeCart() { cart=Array.isArray(cart)?cart.map(function(i){var price=toMoney(i.price),cost=toMoney(i.cost),quantity=Math.max(1,toMoney(i.quantity)||1);return Object.assign({},i,{price:price,cost:cost,quantity:quantity,total:price*quantity});}):[]; }
     function getResellerPrice(product) {
       if(!product) return null;
@@ -4622,6 +4653,7 @@ async function loadHeaderStats() {
         settingDocs.forEach(function(doc){if(doc.exists)applyKasirSettings(doc.data());});
       }catch(e){}
     }
+    // ===== BAGIAN 6: LOAD USER, KATEGORI, PELANGGAN & PRODUK =====
     // ===== LOAD USER =====
     function loadUserData() {
       try {
@@ -4720,6 +4752,7 @@ async function loadCustomers() {
     }
     }
 
+    // ===== BAGIAN 7: PRODUK (VIEW, RENDER, CARI, TAMBAH/HAPUS KERANJANG) =====
     // ===== VIEW MODE HELPER =====
 function applyCurrentView() {
   const grid = document.getElementById('productsGrid');
@@ -4923,6 +4956,7 @@ window.editQtyDirect = function(productId, rawValue) {
       updateSummary();
     };
 
+    // ===== BAGIAN 8: KERANJANG & RINGKASAN (RENDER, SUMMARY, SAVE/LOAD, CLEAR) =====
     // ===== RENDER CART =====
 function renderCart() {
   const container = document.getElementById('cartItems');
@@ -5010,6 +5044,7 @@ function renderCart() {
       });
     });
 
+    // ===== BAGIAN 9: PEMBAYARAN (MODAL, DISPLAY, PROSES BAYAR) =====
     // ===== PAYMENT MODAL =====
     const paymentModal = document.getElementById('paymentModal');
 
@@ -5530,6 +5565,7 @@ async function processPayment() {
       }
     }
 
+    // ===== BAGIAN 10: QUICK ACTION (PRODUK MANUAL) =====
     // ===== QUICK ACTIONS =====
     // btnTopup & btnTarik sudah pakai onclick di HTML
     const manualModal = document.getElementById('manualModal');
@@ -5600,6 +5636,7 @@ function confirmManualInput() {
 
 // Event listener tombol manual
 document.getElementById('btnManual').addEventListener('click', openManualModal);
+    // ===== BAGIAN 11: PINTASAN KAS (TOPUP, TARIK, KAS MASUK/KELUAR, BAYAR HUTANG) =====
     function goToTopup() {
   localStorage.setItem('fromKasir', 'true');
   window.location.href = 'page-kas-topup.html';
@@ -5704,7 +5741,8 @@ document.getElementById('btnMinimizeCart').addEventListener('click', () => {
       if (autocompleteBox) autocompleteBox.style.display = 'none';
     };
 
-        // ===== TAMBAH PELANGGAN BARU DARI KASIR =====
+    // ===== BAGIAN 12: PELANGGAN BARU DARI KASIR =====
+    // ===== TAMBAH PELANGGAN BARU DARI KASIR =====
     function toggleAddCustomerForm() {
       const form = document.getElementById('newCustomerForm');
       const isVisible = form.style.display === 'block';
@@ -5768,6 +5806,7 @@ document.querySelectorAll('.view-btn').forEach(btn => {
   });
 });
 
+    // ===== BAGIAN 13: EDIT KERANJANG (MODAL, PROFIT, SIMPAN) =====
     // ===== EDIT CART VARIABLES =====
 let currentEditProductId = null;
 
@@ -5852,7 +5891,8 @@ function confirmEditCart() {
   showToast(`${cart[itemIndex].name} berhasil diupdate`, 'success');
 }
 
-// ===== TUTUP MODAL SAAT KLIK OUTSIDE & BARCODE SCANNER =====
+    // ===== BAGIAN 14: BARCODE SCANNER =====
+    // ===== TUTUP MODAL SAAT KLIK OUTSIDE & BARCODE SCANNER =====
 
 // 1. Fungsi Global Barcode Scanner
 function openBarcodeModal() {
@@ -6038,7 +6078,8 @@ document.addEventListener('keydown', (e) => {
       await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
     });
 
-        // ==========================================
+    // ===== BAGIAN 15: CETAK STRUK PENJUALAN (HEADER, ESC/POS, MODAL, BLUETOOTH) =====
+    // ==========================================
     // CETAK STRUK PENJUALAN (TAMBAHAN)
     // ==========================================
     let lastTransactionData = null;
@@ -6235,6 +6276,7 @@ document.addEventListener('keydown', (e) => {
   }
 }
 
+    // ===== BAGIAN 16: QUICK EDIT PRODUK (LONG PRESS) =====
     // ===== LONG PRESS PRODUCT → QUICK EDIT =====
 let longPressTimer = null;
 let currentQuickEditId = null;
@@ -6330,7 +6372,8 @@ async function saveProductQuickEdit() {
     showToast('Gagal simpan: ' + e.message, 'error');
   }
 }
-       // ===== MODAL BELI BARANG - MULTI ITEM =====
+    // ===== BAGIAN 17: BELI BARANG (MULTI ITEM) =====
+    // ===== MODAL BELI BARANG - MULTI ITEM =====
 let beliMode = 'existing';
 let beliSelectedProduct = null;
 let beliItems = []; // ⭐ ARRAY UNTUK MULTI ITEM
@@ -6695,7 +6738,8 @@ async function saveBeliBarang() {
   }
 }
     
-        // ===== INISIALISASI =====
+    // ===== BAGIAN 18: INISIALISASI & NAVIGASI BERLAPIS =====
+    // ===== INISIALISASI =====
     function runInit() {
       syncKasirSettings();
       loadUserData();
