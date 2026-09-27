@@ -738,20 +738,30 @@
         }
       }
 
+      // Nominal utama transaksi — KasCore memakai urutan nominal/total/harga_jual/amount/nilai.
+      // Catatan: KasCore.getAmount() tidak ada di API saat ini.
+      function getTxNominal(t) {
+        if (!t) return 0;
+        return Number(t.nominal ?? t.total ?? t.harga_jual ?? t.hargaJual ?? t.amount ?? t.nilai ?? 0) || 0;
+      }
+
       function calculateStats(transactions) {
         const summary = currentSummary || KasCore.summarizeTransactions(transactions);
-        const rataRata = summary.salesTransactionCount > 0 ? summary.totalSales / summary.salesTransactionCount : 0;
+        const salesCount = summary.salesCount || 0;
+        const rataRata = salesCount > 0 ? summary.totalSales / salesCount : 0;
 
         if (currentReport === 'penjualan') {
           document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.totalSales);
-          document.getElementById('statTransaksi').textContent = summary.salesTransactionCount.toLocaleString('id-ID');
+          document.getElementById('statTransaksi').textContent = salesCount.toLocaleString('id-ID');
           document.getElementById('statRataRata').textContent = Utils.formatRupiah(rataRata);
           document.getElementById('statLaba').textContent = Utils.formatRupiah(summary.totalProfit);
         } else {
-          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.totalCashMutation);
-          document.getElementById('statTransaksi').textContent = summary.cashMutationCount.toLocaleString('id-ID');
-          document.getElementById('statRataRata').textContent = summary.cashMutationIncomeCount + ' Masuk';
-          document.getElementById('statLaba').textContent = summary.cashMutationExpenseCount + ' Keluar';
+          const masuk = transactions.filter(t => ['topup', 'kas_masuk'].includes(t.type));
+          const keluar = transactions.filter(t => ['tarik', 'kas_keluar'].includes(t.type));
+          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.netCashFlow);
+          document.getElementById('statTransaksi').textContent = (masuk.length + keluar.length).toLocaleString('id-ID');
+          document.getElementById('statRataRata').textContent = masuk.length + ' Masuk';
+          document.getElementById('statLaba').textContent = keluar.length + ' Keluar';
         }
       }
 
@@ -801,7 +811,7 @@
         list.innerHTML = filtered.map(t => {
           const labels = { penjualan: 'Penjualan', topup: 'Top Up', tarik: 'Tarik Tunai', kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar' };
           const isIncome = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
-          const amount = KasCore.getAmount(t);
+          const amount = getTxNominal(t);
           let timeStr = '-';
           if (t.timestamp) {
             timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -832,10 +842,10 @@
           if (KasCore.isValidTransaction(t)) {
             if (currentReport === 'penjualan' && t.type === 'penjualan') {
               const d = t.date || 'Lainnya';
-              byDate[d] = (byDate[d] || 0) + KasCore.getAmount(t);
+              byDate[d] = (byDate[d] || 0) + getTxNominal(t);
             } else if (currentReport === 'kas' && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
               const d = t.date || 'Lainnya';
-              const val = KasCore.getAmount(t);
+              const val = getTxNominal(t);
               const isInc = ['topup', 'kas_masuk'].includes(t.type);
               byDate[d] = (byDate[d] || 0) + (isInc ? val : -val);
             }
@@ -886,14 +896,14 @@
           csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
           reportData.forEach(t => {
             if (KasCore.isValidTransaction(t) && t.type === 'penjualan') {
-              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || t.paymentType || 'tunai'}",${KasCore.getAmount(t)},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
+              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || t.paymentType || 'tunai'}",${getTxNominal(t)},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         } else {
           csv = 'ID,Tanggal,Tipe,Jumlah,Keterangan,Kasir\n';
           reportData.forEach(t => {
             if (KasCore.isValidTransaction(t) && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
-              csv += `"${t.id}","${t.date || ''}","${t.type}",${KasCore.getAmount(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+              csv += `"${t.id}","${t.date || ''}","${t.type}",${getTxNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         }
