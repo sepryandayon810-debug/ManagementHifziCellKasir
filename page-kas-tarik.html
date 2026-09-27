@@ -1174,13 +1174,13 @@
             const note = document.getElementById('tarikNote').value.trim();
             const shouldPrint = document.getElementById('printReceiptToggle').checked;
 
-           try {
+            try {
               Utils.showLoading('Menyimpan transaksi tarik tunai...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
               const transactionId = 'TRK_' + Date.now();
 
               // =========================================================
-              // TRANSAKSI TARIK TUNAI & MUTASI KASCORE
+              // BENTUK DATA DASAR TRANSAKSI TARIK TUNAI
               // =========================================================
               const transactionBase = {
                 id: transactionId,
@@ -1204,39 +1204,11 @@
                 source: 'kasir_tarik'
               };
 
-              // Minta KasCore menghitung mutasi
+              // =========================================================
+              // MINTA KASCORE MENGHITUNG MUTASI & GABUNGKAN DATA
+              // =========================================================
               const mutation = KasCore.mapTransactionMutation(transactionBase);
-
-              // Gabungkan data transaksi dengan hasil mutasi KasCore
               const transactionData = Object.assign({}, transactionBase, mutation);
-              
-              await db.collection("transactions").doc(transactionId).set(transactionData);
-
-              Utils.hideLoading();
-              Utils.showToast('Tarik tunai berhasil diproses!', 'success');
-
-              if (shouldPrint) {
-                showStrukModal(transactionData);
-              } else {
-                if (isFromKasir()) {
-                  setTimeout(() => goBack(), 800);
-                } else {
-                  resetForm();
-                }
-              }
-
-            } catch (error) {
-              Utils.hideLoading();
-              console.error("FIRESTORE TARIK ERROR:", error);
-              Utils.showToast('Gagal menyimpan tarik tunai: ' + error.message, 'error');
-            }
-
-// =========================================================
-// MINTA KASCORE MENGHITUNG MUTASI
-// =========================================================
-
-const mutation =
-  KasCore.mapTransactionMutation(transactionBase);
               
               await db.collection("transactions").doc(transactionId).set(transactionData);
 
@@ -1260,7 +1232,7 @@ const mutation =
             }
           });
         }
-
+        
         function resetForm() {
           amount = 0;
           document.getElementById('adminFee').value = '';
