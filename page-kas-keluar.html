@@ -668,7 +668,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initKasKeluar(user, dName);
+          initKasKeluar(user, dName, userData);
         });
       });
 
@@ -738,13 +738,28 @@
         }
       }
 
-      async function initKasKeluar(user, userName) {
+      async function initKasKeluar(user, userName, userData) {
         // PERHITUNGAN KAS LACI SINKRON MASTER
         async function loadKasTersedia() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-            const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
-            kasTersedia = kasLaci.total;
+            const role = String(
+  (userData && userData.role) || 'kasir'
+).trim().toLowerCase();
+const scope =
+  role === 'owner' ||
+  role === 'admin' ||
+  role === 'developer'
+    ? 'role'
+    : 'own';
+const kasLaci = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: scope
+});
+kasTersedia = KasCore.normalizeNumber(
+  kasLaci.totalLaci
+);
             document.getElementById('kasTersedia').textContent = Utils.formatRupiah(kasTersedia);
           } catch (error) {
             console.error("kas-keluar: gagal memuat kas tersedia", error);
@@ -847,86 +862,40 @@ if (saveBtn) {
           ? Utils.getTodayString()
           : new Date().toISOString().split('T')[0];
 
-      const timestamp = Date.now();
-      const transactionId = 'KASOUT_' + timestamp;
-
-      // ========================================================
-      // KASCORE MENENTUKAN MUTASI
-      // ========================================================
-      const mutation = KasCore.mapTransactionMutation({
-        kategori: 'kas_keluar',
-        metode_pembayaran: 'tunai',
-        nominal: amount,
-        admin: 0,
-        modal_produk: 0,
-        pengaruhi_kas_global: true
-      });
-
-      // ========================================================
-      // DATA TRANSAKSI
-      // ========================================================
-      const transactionData = {
-
-        // Identitas
-        id: transactionId,
-        type: 'kas_keluar',
-        source: 'kasir_keluar',
-        kategori: 'kas_keluar',
-
-        // Nominal
-        amount: amount,
-        total: amount,
-        nominal: amount,
-
-        // Metode
-        metode_pembayaran: 'tunai',
-
-        // Mutasi dari KasCore
-        cash_in: mutation.cash_in,
-        cash_out: mutation.cash_out,
-
-        bank_in: mutation.bank_in,
-        bank_out: mutation.bank_out,
-
-        digital_in: mutation.digital_in,
-        digital_out: mutation.digital_out,
-
-        laba: mutation.laba,
-
-        masuk_transaksi: mutation.masuk_transaksi,
-        masuk_penjualan: mutation.masuk_penjualan,
-        pengaruhi_kas_global: mutation.pengaruhi_kas_global,
-
-        // Informasi kas keluar
-        category: category,
-        note: note,
-        description: note,
-
-        cashDirection: 'out',
-        flowType: 'operasional_keluar',
-
-        // User
-        userId: user.uid,
-        userName: userName,
-
-        // Tanggal
-        date_key: today,
-        date: today,
-
-        // Waktu & status
-        timestamp: timestamp,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        status: 'completed'
-      };
-
-      // ========================================================
-      // SIMPAN
-      // ========================================================
-      await db
-        .collection('transactions')
-        .doc(transactionId)
-        .set(transactionData);
-
+      /*
+ * SATU PINTU TULIS KASCORE
+ * KasCore menentukan dan menyimpan:
+ * cash_in, cash_out, bank/digital,
+ * laba, serta flag transaksi.
+ */
+const saved = await KasCore.saveTransaction({
+  kategori: 'kas_keluar',
+  metode_pembayaran: 'tunai',
+  nominal: amount,
+  admin: 0,
+  modal_produk: 0,
+  userId: user.uid,
+  catatan: note,
+  status: 'completed',
+  pengaruhi_kas_global: true
+});
+// Field tambahan hanya untuk tampilan/riwayat.
+// Mutasi keuangan tetap berasal dari KasCore.
+await db.collection('transactions')
+  .doc(saved.id)
+  .update({
+    type: 'kas_keluar',
+    source: 'kasir_keluar',
+    amount: amount,
+    total: amount,
+    note: note,
+    description: note,
+    category: category,
+    cashDirection: 'out',
+    flowType: 'operasional_keluar',
+    userName: userName,
+    date: today
+  });
       // ========================================================
       // BERHASIL
       // ========================================================
