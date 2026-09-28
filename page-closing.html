@@ -814,7 +814,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initClosing(user);
+          initClosing(user, userData);
         });
       });
 
@@ -963,64 +963,88 @@
         }
       };
 
-      async function initClosing(user) {
+      async function initClosing(user, userData) {
         generateDenominationInputs();
         Utils.showLoading('Memuat data sistem...');
 
         try {
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           document.getElementById('kasDate').textContent = today;
+/*
+ * KasCore adalah satu-satunya sumber perhitungan closing.
+ * Halaman hanya menampilkan hasilnya.
+ */
+const role = String(
+  (userData && userData.role) || 'kasir'
+).trim().toLowerCase();
 
-          // SINKRON DENGAN PAGE KAS & SHIFT: pakai getKasFisikLaci (sumber tunggal)
-const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
+const scope =
+  role === 'owner' ||
+  role === 'admin' ||
+  role === 'developer'
+    ? 'role'
+    : 'own';
 
-// Rincian komponen kas fisik dihitung dari transaksi via helper KasCore
-const txList = (kasLaci.summary && kasLaci.summary.validTransactions) ? kasLaci.summary.validTransactions : [];
-
-let topupKasFisik = 0;   // top_up tunai : kas bertambah nominal + admin
-let tarikKasFisik = 0;   // tarik_tunai tunai : kas berkurang nominal - admin
-let penjualanTunai = 0;
-let kasMasukLain = 0;
-let kasKeluarToko = 0;
-let totalQRIS = 0;
-let totalTransfer = 0;
-          
-txList.forEach(t => {
-  const kategori = KasCore.getCategory(t);
-  const metode = KasCore.getPaymentMethod(t);
-  const nominal = KasCore.getNominal(t);
-  const admin = KasCore.getAdmin(t);
-
-    if (kategori === 'jual' && metode === 'tunai') penjualanTunai += nominal;
-  else if (kategori === 'jual' && metode === 'qris') totalQRIS += nominal;
-  else if (kategori === 'jual' && metode === 'transfer') totalTransfer += nominal;
-  else if (kategori === 'top_up' && metode === 'tunai') topupKasFisik += nominal + admin;
-  else if (kategori === 'tarik_tunai' && metode === 'tunai') tarikKasFisik += Math.max(0, nominal - admin);
-  else if (kategori === 'kas_masuk') kasMasukLain += nominal;
-  else if (kategori === 'kas_keluar') kasKeluarToko += nominal;
+const kasLaci = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: scope
 });
 
+const summary = kasLaci.summary || {};
+
+const totalQRIS =
+  KasCore.normalizeNumber(kasLaci.penjualanQris);
+
+const totalTransfer =
+  KasCore.normalizeNumber(kasLaci.penjualanTransfer);
+
+const totalNonTunai =
+  KasCore.normalizeNumber(kasLaci.penjualanNonTunai);
+
 todayStats = {
-  modalAwal: kasLaci.modalAwal,
-  penjualan: penjualanTunai,
-  topup: topupKasFisik,
-  topupAdmin: 0,
-  tarik: tarikKasFisik,
-  tarikAdmin: 0,
-  kasMasuk: kasMasukLain,
-  kasKeluar: kasKeluarToko,
-  uangGlobal: kasLaci.total   // == headerKasLaci / summaryKasSistem di page Kas & Shift
+  modalAwal:
+    KasCore.normalizeNumber(kasLaci.modalAwal),
+
+  penjualan:
+    KasCore.normalizeNumber(kasLaci.penjualanTunai),
+
+  topup:
+    KasCore.normalizeNumber(kasLaci.topupFisik),
+
+  topupAdmin:
+    KasCore.normalizeNumber(summary.topupAdmin),
+
+  tarik:
+    KasCore.normalizeNumber(kasLaci.tarikFisik),
+
+  tarikAdmin:
+    KasCore.normalizeNumber(summary.withdrawalAdmin),
+
+  kasMasuk:
+    KasCore.normalizeNumber(summary.cashFlowIn),
+
+  kasKeluar:
+    KasCore.normalizeNumber(summary.cashFlowOut),
+
+  uangGlobal:
+    KasCore.normalizeNumber(kasLaci.totalLaci)
 };
           
           document.getElementById('sistemModal').textContent = Utils.formatRupiah(todayStats.modalAwal);
           document.getElementById('sistemMasuk').textContent = '+ ' + Utils.formatRupiah(todayStats.kasMasuk);
           document.getElementById('sistemKeluar').textContent = '- ' + Utils.formatRupiah(todayStats.kasKeluar);
           document.getElementById('sistemPenjualan').textContent = '+ ' + Utils.formatRupiah(todayStats.penjualan);
-          document.getElementById('sistemTopup').textContent = '+ ' + Utils.formatRupiah(topupKasFisik);
-          document.getElementById('sistemTarik').textContent = '- ' + Utils.formatRupiah(tarikKasFisik);
-          document.getElementById('sistemQRIS').textContent = Utils.formatRupiah(totalQRIS);
-          document.getElementById('sistemTransfer').textContent = Utils.formatRupiah(totalTransfer);
-          document.getElementById('sistemNonTunai').textContent = Utils.formatRupiah(totalQRIS + totalTransfer);
+          document.getElementById('sistemTopup').textContent =
+  '+ ' + Utils.formatRupiah(todayStats.topup);
+document.getElementById('sistemTarik').textContent =
+  '- ' + Utils.formatRupiah(todayStats.tarik);
+document.getElementById('sistemQRIS').textContent =
+  Utils.formatRupiah(totalQRIS);
+document.getElementById('sistemTransfer').textContent =
+  Utils.formatRupiah(totalTransfer);
+document.getElementById('sistemNonTunai').textContent =
+  Utils.formatRupiah(totalNonTunai);
           document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(todayStats.uangGlobal);
 
           const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
