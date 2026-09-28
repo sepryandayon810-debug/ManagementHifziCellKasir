@@ -212,6 +212,15 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    .btn-icon-only {
+  width: 44px;
+  height: 44px;
+  padding: 0 !important;
+  border-radius: var(--radius-md);
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
   </style>
 
   <!-- Chart.js -->
@@ -383,21 +392,20 @@
             </div>
           </div>
           <div class="filter-actions">
-            <button class="btn btn-primary" id="btnGenerate">
-              <i class="fas fa-sync"></i> Tampilkan Laporan
-            </button>
-            <button class="btn btn-secondary" id="btnReset">
-              <i class="fas fa-undo"></i> Reset
-            </button>
-            <button class="btn btn-success" id="btnExport">
-              <i class="fas fa-download"></i> Export CSV
-            </button>
-            <button class="btn btn-success" id="btnExport"><i class="fas fa-download"></i> Export CSV</button>
-<button class="btn btn-secondary" id="btnExportJSON"><i class="fas fa-file-export"></i> Export JSON</button>
-<button class="btn btn-primary" id="btnImport"><i class="fas fa-upload"></i> Import CSV</button>
-          </div>
-        </div>
-
+  <button class="btn btn-primary" id="btnGenerate">
+    <i class="fas fa-sync"></i> Tampilkan Laporan
+  </button>
+  <button class="btn btn-secondary" id="btnReset">
+    <i class="fas fa-undo"></i> Reset
+  </button>
+  <button class="btn btn-success btn-icon-only" id="btnExport" title="Export CSV">
+    <i class="fas fa-file-csv"></i>
+  </button>
+  <button class="btn btn-primary btn-icon-only" id="btnImport" title="Import CSV">
+    <i class="fas fa-upload"></i>
+  </button>
+</div>
+</div>
         <!-- Stats Cards 1 Kolom Penuh ke Bawah (1x1) -->
         <div class="report-stats">
           <div class="stat-card">
@@ -735,10 +743,8 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
             return;
           }
 
-          const [summary, allTransactions] = await Promise.all([
-            KasCore.getPeriodSummary({ startDate: dateFrom, endDate: dateTo }),
-            KasCore.getTransactionsByDateRange({ startDate: dateFrom, endDate: dateTo })
-          ]);
+          const allTransactions = await fetchTransactionsByDate(dateFrom, dateTo);
+const summary = KasCore.summarizeTransactions(allTransactions); // mesin KasCore tetap dipakai
 
           currentSummary = summary;
           reportData = allTransactions.filter(KasCore.isValidTransaction);
@@ -762,6 +768,47 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
         if (!t) return 0;
         return Number(t.nominal ?? t.total ?? t.harga_jual ?? t.hargaJual ?? t.amount ?? t.nilai ?? 0) || 0;
       }
+
+      // ⭐ FETCH SESUAI FORMAT YANG DITULIS KASIR (field 'date')
+async function fetchTransactionsByDate(dateFrom, dateTo) {
+  const db = window.db;
+  const seen = {};
+  const result = [];
+
+  // Query 1: field 'date' (format yang dipakai page-kasir)
+  try {
+    const snap = await db.collection('transactions')
+      .where('date', '>=', dateFrom)
+      .where('date', '<=', dateTo)
+      .get();
+    snap.forEach(doc => {
+      if (!seen[doc.id]) {
+        seen[doc.id] = true;
+        result.push(Object.assign({ id: doc.id }, doc.data()));
+      }
+    });
+  } catch (e) {
+    console.warn('Query date gagal:', e);
+  }
+
+  // Query 2: field 'date_key' (jika ada data dari import CSV / page lain)
+  try {
+    const snap = await db.collection('transactions')
+      .where('date_key', '>=', dateFrom)
+      .where('date_key', '<=', dateTo)
+      .get();
+    snap.forEach(doc => {
+      if (!seen[doc.id]) {
+        seen[doc.id] = true;
+        result.push(Object.assign({ id: doc.id }, doc.data()));
+      }
+    });
+  } catch (e) {
+    console.warn('Query date_key gagal:', e);
+  }
+
+  return result;
+}
 
       function calculateStats(transactions) {
         const summary = currentSummary || KasCore.summarizeTransactions(transactions);
@@ -939,7 +986,7 @@ transactions.forEach(t => {
   let importFileSelected = null;
 
 function downloadTemplate() {
-  const header = 'date,tipe,metode,nominal,admin,modal,keterangan,user_id\n';
+  const header = 'date,tipe,metode,nominal,dll\n';
   const sample =
     '2026-09-28,penjualan,tunai,15000,0,10000,Contoh jual tunai,kasir01\n' +
     '2026-09-28,penjualan,qris,25000,0,18000,Contoh jual qris,kasir01\n' +
