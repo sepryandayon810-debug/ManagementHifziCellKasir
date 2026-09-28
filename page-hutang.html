@@ -828,7 +828,8 @@
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
 
-   <script>
+   
+  <script>
     let pendingConfirmAction = null;
 
     function showCustomConfirm(title, message, iconType, confirmText, callback) {
@@ -1994,6 +1995,18 @@
             return;
           }
 
+          // WAJIB dicek sebelum data hutang diubah.
+          // Jika KasCore gagal dimuat, pembayaran dibatalkan agar saldo tidak hilang.
+          if (affectKas) {
+            try {
+              await ensureKasCore();
+            } catch (coreError) {
+              console.error('KasCore preflight gagal:', coreError);
+              Utils.showToast('Pembayaran dibatalkan: KasCore belum siap. ' + coreError.message, 'error');
+              return;
+            }
+          }
+
           // =========================
           // PELUNASAN BATCH
           // =========================
@@ -2009,25 +2022,11 @@
                   : 'pengembalian_pinjaman';
 
                 const now = Date.now();
-                await firestoreDb.ref('debts/' + item.id).update({
-                  remaining: 0,
-                  status: 'paid',
-                  paidAt: now,
-                  updatedAt: now
-                });
+                let kasRecord = null;
 
-                await firestoreDb.ref('debt_payments/' + item.id + '/' + now).set({
-                  category,
-                  amount: remaining,
-                  note: note || `Pelunasan - ${item.name}`,
-                  affectKas,
-                  userId: user.uid,
-                  userName: user.name || user.email,
-                  timestamp: now
-                });
-
+                // Kas harus berhasil lebih dulu. Kalau gagal, saldo hutang tidak disentuh.
                 if (affectKas) {
-                  await recordToKas(
+                  kasRecord = await recordToKas(
                     item.type === 'hutang' ? 'keluar' : 'masuk',
                     remaining,
                     item.type === 'hutang'
@@ -2044,6 +2043,30 @@
                         : 'penerimaan_piutang'
                     }
                   );
+                }
+
+                try {
+                  await firestoreDb.ref('debts/' + item.id).update({
+                    remaining: 0,
+                    status: 'paid',
+                    paidAt: now,
+                    updatedAt: now
+                  });
+
+                  await firestoreDb.ref('debt_payments/' + item.id + '/' + now).set({
+                    category,
+                    amount: remaining,
+                    note: note || `Pelunasan - ${item.name}`,
+                    affectKas,
+                    userId: user.uid,
+                    userName: user.name || user.email,
+                    timestamp: now
+                  });
+                } catch (itemError) {
+                  if (kasRecord?.date_key && kasRecord?.id) {
+                    await firestoreDb.ref('transactions/' + kasRecord.date_key + '/' + kasRecord.id).remove().catch(() => {});
+                  }
+                  throw itemError;
                 }
               }
 
@@ -2110,29 +2133,18 @@
               ? 'bayar_hutang'
               : 'pengembalian_pinjaman';
             const now = Date.now();
+            const previousDebt = {
+              remaining: item.remaining,
+              status: item.status,
+              paidAt: item.paidAt ?? null,
+              updatedAt: item.updatedAt ?? null
+            };
+            const paymentPath = 'debt_payments/' + currentPaymentId + '/' + now;
 
-            // 1. Update saldo hutang/piutang.
-            await firestoreDb.ref('debts/' + currentPaymentId).update({
-              remaining: newRemaining,
-              status: isFullyPaid ? 'paid' : 'active',
-              paidAt: isFullyPaid ? now : null,
-              updatedAt: now
-            });
-
-            // 2. Simpan histori pembayaran.
-            await firestoreDb.ref('debt_payments/' + currentPaymentId + '/' + now).set({
-              category,
-              amount: paymentAmount,
-              note,
-              affectKas,
-              userId: user.uid,
-              userName: user.name || user.email,
-              timestamp: now
-            });
-
-            // 3. Jika checkbox kas aktif, biarkan KasCore menentukan arah kas.
+            // 1. Catat kas terlebih dahulu. Jika KasCore gagal, hutang TIDAK diubah.
+            let kasRecord = null;
             if (affectKas) {
-              await recordToKas(
+              kasRecord = await recordToKas(
                 item.type === 'hutang' ? 'keluar' : 'masuk',
                 paymentAmount,
                 item.type === 'hutang'
@@ -2151,6 +2163,25 @@
               );
             }
 
+            // 2. Setelah kas sukses, baru ubah saldo hutang/piutang.
+            await firestoreDb.ref('debts/' + currentPaymentId).update({
+              remaining: newRemaining,
+              status: isFullyPaid ? 'paid' : 'active',
+              paidAt: isFullyPaid ? now : null,
+              updatedAt: now
+            });
+
+            // 3. Simpan histori pembayaran.
+            await firestoreDb.ref(paymentPath).set({
+              category,
+              amount: paymentAmount,
+              note,
+              affectKas,
+              userId: user.uid,
+              userName: user.name || user.email,
+              timestamp: now
+            });
+
             Utils.showToast(
               'Pembayaran berhasil' + (affectKas ? ' dan tercatat di kas' : ''),
               'success'
@@ -2166,16 +2197,52 @@
             }
           } catch (error) {
             console.error('Error processing payment:', error);
+            // Jika kas sudah tercatat tetapi update hutang gagal, hapus transaksi kas tadi.
+            try {
+              if (typeof kasRecord !== 'undefined' && kasRecord && kasRecord.date_key && kasRecord.id) {
+                await firestoreDb.ref('transactions/' + kasRecord.date_key + '/' + kasRecord.id).remove();
+              }
+              await firestoreDb.ref(paymentPath).remove().catch(() => {});
+              await firestoreDb.ref('debts/' + currentPaymentId).update(previousDebt).catch(() => {});
+            } catch (rollbackError) {
+              console.error('Rollback pembayaran gagal:', rollbackError);
+            }
             Utils.showToast('Gagal memproses pembayaran: ' + error.message, 'error');
           } finally {
             Utils.hideLoading();
           }
         }
 
-        async function recordToKas(type, amount, description, user, category = 'kas_masuk', relatedDebtId = null, extra = {}) {
-          if (!window.KasCore || typeof window.KasCore.mapTransactionMutation !== 'function') {
-            throw new Error('KasCore belum tersedia. Pastikan js/kas-core.js dimuat.');
+        async function ensureKasCore() {
+          if (window.KasCore && typeof window.KasCore.mapTransactionMutation === 'function') {
+            return window.KasCore;
           }
+
+          await new Promise((resolve, reject) => {
+            const existing = document.querySelector('script[data-kas-core-loader="1"]');
+            if (existing) {
+              existing.addEventListener('load', resolve, { once: true });
+              existing.addEventListener('error', () => reject(new Error('File ./js/kas-core.js tidak dapat dimuat.')), { once: true });
+              return;
+            }
+
+            const script = document.createElement('script');
+            script.src = './js/kas-core.js?v=5';
+            script.dataset.kasCoreLoader = '1';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('File ./js/kas-core.js tidak ditemukan / gagal dimuat.'));
+            document.head.appendChild(script);
+          });
+
+          if (!window.KasCore || typeof window.KasCore.mapTransactionMutation !== 'function') {
+            throw new Error('KasCore gagal diinisialisasi. Periksa file ./js/kas-core.js.');
+          }
+
+          return window.KasCore;
+        }
+
+        async function recordToKas(type, amount, description, user, category = 'kas_masuk', relatedDebtId = null, extra = {}) {
+          await ensureKasCore();
 
           const nominal = Math.max(0, Number(amount) || 0);
           if (nominal <= 0) return null;
@@ -2209,6 +2276,10 @@
 
           const hasOut = cashOut > 0 || bankOut > 0 || digitalOut > 0;
           const hasIn = cashIn > 0 || bankIn > 0 || digitalIn > 0;
+
+          if (affectsCashGlobal && !hasOut && !hasIn) {
+            throw new Error('KasCore tidak menghasilkan arus kas untuk kategori ' + category + '.');
+          }
 
           let cashDirection = 'none';
           if (hasOut) cashDirection = 'out';
