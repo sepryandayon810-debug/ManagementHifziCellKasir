@@ -1347,8 +1347,12 @@
         async function loadKasTersedia() {
           try {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-            const kasLaci = await KasCore.getKasFisikLaci({ date: today, userId: user.uid });
-            kasTersedia = kasLaci.total;
+           const kasLaci = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: 'own'
+});
+kasTersedia = kasLaci.totalLaci;
             document.getElementById('kasTersedia').textContent = Utils.formatRupiah(kasTersedia);
           } catch (error) {
             console.error("kas-topup: gagal memuat kas tersedia", error);
