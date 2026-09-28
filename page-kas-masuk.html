@@ -833,13 +833,26 @@ async function loadCurrentKas() {
 
   try {
     const today = Utils.getTodayString();
-
-    // Ambil saldo langsung dari KasCore.
-    const kas = await KasCore.getKasLaciDisplay({
-      date: today,
-      userId: user.uid,
-      scope: 'own'
-    });
+/*
+ * Scope saldo harus mengikuti role user:
+ * - Owner/Admin/Developer melihat kas tim
+ * - Kasir melihat kas miliknya sendiri
+ */
+const role = String(
+  (userData && userData.role) || 'kasir'
+).trim().toLowerCase();
+const scope =
+  role === 'owner' ||
+  role === 'admin' ||
+  role === 'developer'
+    ? 'role'
+    : 'own';
+// Ambil saldo langsung dari KasCore.
+const kas = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: scope
+});
 
     const saldo = KasCore.normalizeNumber(
       kas.totalLaci
