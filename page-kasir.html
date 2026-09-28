@@ -5233,8 +5233,14 @@ document.getElementById('btnConfirmPayment').addEventListener('click', processPa
 // Desktop confirm  
 document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', processPayment);
 
-async function processPayment() {
+    async function processPayment() {
       const total = calculateTotal();
+
+      // ⭐ Normalisasi metode pembayaran ke format KasCore
+      const metodeKasCore =
+        paymentMethod === 'cash' ? 'tunai' :
+        paymentMethod === 'qris' ? 'qris' :
+        paymentMethod === 'transfer' ? 'transfer' : 'utang';
 
       // ⭐ MODE OFFLINE
       if (!navigator.onLine) {
@@ -5251,18 +5257,45 @@ async function processPayment() {
           return;
         }
         try {
+          const today = new Date();
+          const todayStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+          const offlineMutation = KasCore.mapTransactionMutation({
+            kategori: 'jual',
+            metode_pembayaran: metodeKasCore,
+            nominal: total,
+            modal_produk: getCartModal()
+          });
+
           const transactionData = {
             type: 'penjualan',
+            kategori: 'jual',
+            metode_pembayaran: offlineMutation.metode_pembayaran,
+            nominal: total,
             items: JSON.parse(JSON.stringify(cart)),
             subtotal: getCartSubtotal(),
             total: total,
             profit: getCartProfit(),
+            laba: offlineMutation.laba,
+            cash_in: offlineMutation.cash_in,
+            cash_out: offlineMutation.cash_out,
+            bank_in: offlineMutation.bank_in,
+            bank_out: offlineMutation.bank_out,
+            digital_in: offlineMutation.digital_in,
+            digital_out: offlineMutation.digital_out,
+            masuk_transaksi: offlineMutation.masuk_transaksi,
+            masuk_penjualan: offlineMutation.masuk_penjualan,
+            pengaruhi_kas_global: offlineMutation.pengaruhi_kas_global,
             paymentMethod: paymentMethod,
             paymentAmount: total,
             change: 0,
             discount: discount,
             note: localStorage.getItem('kasir_note') || '',
             timestamp: Date.now(),
+            date: todayStr,
+            date_key: todayStr,
             cashierName: document.getElementById('userName').textContent,
             status: 'pending_sync',
             priceMode: resellerMode ? 'reseller' : 'regular',
@@ -5270,7 +5303,7 @@ async function processPayment() {
             resellerName: selectedResellerName || null
           };
           await saveOfflineTransaction(transactionData);
-          
+
           // Kurangi stok lokal
           for (const item of cart) {
             const prod = products.find(p => p.id === item.productId);
@@ -5279,7 +5312,7 @@ async function processPayment() {
             }
           }
           await saveProductsToCache(products);
-          
+
           cart = []; discount = 0;
           localStorage.removeItem('kasir_note');
           saveCart(); renderCart(); updateSummary();
@@ -5304,7 +5337,7 @@ async function processPayment() {
       if (paymentMethod === 'hutang') {
         const piutangNameInput = document.getElementById('piutangName');
         const piutangName = (piutangNameInput ? piutangNameInput.value : '').trim();
-        
+
         if (!piutangName) {
           showToast('Nama pelanggan wajib diisi untuk piutang', 'error');
           if (piutangNameInput) piutangNameInput.focus();
@@ -5334,11 +5367,22 @@ async function processPayment() {
           const subtotal = getCartSubtotal();
           const profit = getCartProfit();
           const taxAmount = 0;
-          
+
+          // ⭐ MUTASI BAKU: Jual Hutang — penjualan ✅, kas ❌, laba ✅, hutang ✅
+          const hutangMutation = KasCore.mapTransactionMutation({
+            kategori: 'jual',
+            metode_pembayaran: 'utang',
+            nominal: total,
+            modal_produk: getCartModal()
+          });
+
           // 1. Simpan transaksi kasir
           const transaction = {
             id: transactionId,
             type: 'penjualan',
+            kategori: 'jual',
+            metode_pembayaran: 'utang',
+            nominal: total,
             items: cart,
             productSummary: productSummary,
             subtotal,
@@ -5346,6 +5390,16 @@ async function processPayment() {
             discount,
             total,
             profit,
+            laba: hutangMutation.laba,
+            cash_in: hutangMutation.cash_in,         // 0 — uang belum diterima
+            cash_out: hutangMutation.cash_out,
+            bank_in: hutangMutation.bank_in,
+            bank_out: hutangMutation.bank_out,
+            digital_in: hutangMutation.digital_in,
+            digital_out: hutangMutation.digital_out,  // modal keluar dari saldo digital
+            masuk_transaksi: hutangMutation.masuk_transaksi,     // true
+            masuk_penjualan: hutangMutation.masuk_penjualan,     // true
+            pengaruhi_kas_global: hutangMutation.pengaruhi_kas_global, // false
             paymentMethod: 'hutang',
             paymentAmount: piutangPayment,
             change: 0,
@@ -5355,6 +5409,8 @@ async function processPayment() {
             note: productSummary,
             customerName: piutangName,
             timestamp: Date.now(),
+            date: todayStr,
+            date_key: todayStr,                        // ⭐ KUNCI: agar terbaca KasCore
             status: 'completed',
             isHutang: true,
             hutangName: piutangName,
@@ -5365,7 +5421,7 @@ async function processPayment() {
           const db = createFirestoreCompat();
 
           // Auto-save customer jika belum ada
-          const customerExists = Object.values(customers).some(c => 
+          const customerExists = Object.values(customers).some(c =>
             c.name && c.name.toLowerCase() === piutangName.toLowerCase()
           );
 
@@ -5408,13 +5464,32 @@ async function processPayment() {
             sourceTransactionId: transactionId,
             invoiceNumber: transactionId
           });
-          
+
                     // 2b. Jika ada pembayaran sebagian, catat sebagai kas masuk
             if (piutangPayment > 0) {
             const kasId = 'kas_' + Date.now();
+
+            // ⭐ MUTASI BAKU: kas masuk tunai — bukan transaksi, bukan penjualan, masuk laci
+            const kasMasukMutation = KasCore.mapTransactionMutation({
+              kategori: 'kas_masuk',
+              metode_pembayaran: 'tunai',
+              nominal: piutangPayment
+            });
+
             await db.ref(`transactions/${todayStr}/${kasId}`).set({
               id: kasId,
                type: 'kas_masuk',
+               kategori: 'kas_masuk',
+               metode_pembayaran: 'tunai',
+               nominal: piutangPayment,
+               cash_in: kasMasukMutation.cash_in,     // ⭐ piutangPayment masuk laci
+               cash_out: kasMasukMutation.cash_out,
+               bank_in: kasMasukMutation.bank_in,
+               bank_out: kasMasukMutation.bank_out,
+               laba: 0,
+               masuk_transaksi: false,
+               masuk_penjualan: false,
+               pengaruhi_kas_global: true,
                category: 'penerimaan_piutang_penjualan',
                source: 'penjualan',
                flowType: 'pembayaran_sebagian_piutang',
@@ -5426,12 +5501,10 @@ async function processPayment() {
               userName: document.getElementById('userName').textContent,
               timestamp: Date.now(),
               date: todayStr,
+              date_key: todayStr,                     // ⭐ KUNCI
               status: 'completed',
               sourceTransactionId: transactionId
             });
-
-            // Update saldo kas global (kalau path kas/saldo ada)
-            // Sumber kebenaran kas adalah transaksi Firestore, bukan saldo agregat terpisah.
           }
 
           // 3. Update stok (barang tetap keluar)
@@ -5456,7 +5529,7 @@ async function processPayment() {
           updateSummary();
           paymentModal.classList.remove('active');
           document.getElementById('cartSection').classList.remove('open');
-          
+
           // Reset form piutang
           document.getElementById('piutangName').value = '';
           document.getElementById('piutangDueDate').value = '';
@@ -5506,15 +5579,36 @@ async function processPayment() {
         const profit = getCartProfit();
         const taxAmount = 0; // PPN dihapus dari UI, default 0
 
+        // ⭐ MUTASI BAKU: Jual Tunai/QRIS/Transfer — sesuai tabel approval
+        const mutation = KasCore.mapTransactionMutation({
+          kategori: 'jual',
+          metode_pembayaran: metodeKasCore,
+          nominal: total,
+          modal_produk: getCartModal()
+        });
+
         const transaction = {
           id: transactionId,
           type: 'penjualan',
+          kategori: 'jual',
+          metode_pembayaran: mutation.metode_pembayaran,
+          nominal: total,
           items: cart,
           subtotal,
           tax: taxAmount,
           discount,
           total,
           profit,
+          laba: mutation.laba,
+          cash_in: mutation.cash_in,                 // ⭐ tunai masuk laci
+          cash_out: mutation.cash_out,
+          bank_in: mutation.bank_in,                 // ⭐ QRIS/transfer masuk bank
+          bank_out: mutation.bank_out,
+          digital_in: mutation.digital_in,
+          digital_out: mutation.digital_out,         // ⭐ modal keluar saldo digital
+          masuk_transaksi: mutation.masuk_transaksi,     // true
+          masuk_penjualan: mutation.masuk_penjualan,     // true
+          pengaruhi_kas_global: mutation.pengaruhi_kas_global,
           paymentMethod,
           paymentAmount,
           change: paymentAmount - total,
@@ -5522,6 +5616,8 @@ async function processPayment() {
           cashierName: document.getElementById('userName').textContent,
           note: localStorage.getItem('kasir_note') || '',
           timestamp: Date.now(),
+          date: todayStr,
+          date_key: todayStr,                        // ⭐ KUNCI: agar terbaca KasCore
           status: 'completed'
         };
 
