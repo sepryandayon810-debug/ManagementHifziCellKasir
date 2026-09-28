@@ -1334,8 +1334,11 @@
         function updateSummary() {
           const feeInput = document.getElementById('adminFee');
           adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
-          const total = amount + adminFee;
-
+          const total = KasCore.getTotalCharge({
+  kategori: 'top_up',
+  nominal: amount,
+  admin: adminFee
+});
           document.getElementById('summaryTopup').textContent = Utils.formatRupiah(amount);
           document.getElementById('summaryAdminFee').textContent = Utils.formatRupiah(adminFee);
           document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
@@ -1441,49 +1444,22 @@
               // ====== MUTASI BAKU VIA KAS-CORE (selaras tabel approval) ======
               // Top Up Tunai : transaksi=ya, penjualan=tidak, kas + (nominal+admin), laba=admin, hutang=tidak
               // Top Up Hutang: transaksi=ya, penjualan=tidak, kas tidak berubah, laba=0 (mengikuti pelunasan), hutang=ya
-              const mutation = KasCore.mapTransactionMutation({
-                kategori: 'top_up',
-                metode_pembayaran: paymentMode === 'hutang' ? 'utang' : 'tunai',
-                nominal: amount,
-                admin: adminFeeValue
-              });
-
-              const transactionData = {
-                id: transactionId,
-                type: 'topup',
-                kategori: 'top_up',
-                metode_pembayaran: mutation.metode_pembayaran,
-                nominal: amount,
-                admin: adminFeeValue,
-                adminFee: adminFeeValue,
-                amount: amount,
-                total: total,
-                profit: mutation.laba,
-                laba: mutation.laba,
-                cash_in: mutation.cash_in,
-                cash_out: mutation.cash_out,
-                bank_in: mutation.bank_in,
-                bank_out: mutation.bank_out,
-                digital_in: mutation.digital_in,
-                digital_out: mutation.digital_out,
-                masuk_transaksi: mutation.masuk_transaksi,
-                masuk_penjualan: mutation.masuk_penjualan,
-                pengaruhi_kas_global: mutation.pengaruhi_kas_global,
-                note: note || 'Top Up Saldo',
-                paymentMethod: paymentMode,
-                customerId: customerId || null,
-                customerName: customerName || null,
-                userId: user.uid,
-                userName: userName,
-                date: today,
-                date_key: today,
-                timestamp: timestamp,
-                status: 'completed',
-                source: 'kasir_topup'
-              };
-
-              await db.collection("transactions").doc(transactionId).set(transactionData);
-
+             const result = await KasCore.saveTransaction({
+  transactionId,
+  kategori: 'top_up',
+  metode_pembayaran: paymentMode === 'hutang' ? 'utang' : 'tunai',
+  paymentMethod: paymentMode,
+  nominal: amount,
+  admin: adminFeeValue,
+  customerId,
+  customerName,
+  userId: user.uid,
+  userName,
+  date_key: today,
+  waktu: timestamp,
+  source: 'kasir_topup'
+});
+              
               if (paymentMode === 'hutang') {
                 const debtId = 'debt_' + timestamp;
                 const noteDescription = 'Top Up: ' + (note || 'Top Up Saldo');
