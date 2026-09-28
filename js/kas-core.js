@@ -1,22 +1,25 @@
 /* ============================================================
- * KAS CORE — SINGLE SOURCE OF TRUTH
+ * KAS CORE — SINGLE SOURCE OF TRUTH (versi perbaikan)
  * ============================================================
  * 1. KAS GLOBAL / UANG LACI      5. HUTANG / PIUTANG
  * 2. TOTAL TRANSAKSI              6. SALDO BANK
  * 3. TOTAL PENJUALAN              7. SALDO DIGITAL
  * 4. LABA                         8. SHIFT / CLOSING
  *
- * ATURAN APPROVAL:
- * MODAL AWAL : bukan transaksi, bukan penjualan, +kas, bukan laba
- * KAS MASUK  : bukan transaksi, bukan penjualan, +kas, bukan laba
- * KAS KELUAR : bukan transaksi, bukan penjualan, -kas, bukan laba
- * JUAL       : transaksi, penjualan, kas tergantung metode, laba = jual-modal, hutang jika bon
- * TOP UP     : transaksi, bukan penjualan, kas sesuai metode, laba = admin
- * TARIK      : transaksi, bukan penjualan, -kas, laba = admin
- * PINJAMAN   : bukan transaksi, -kas, membuat hutang
- * PENGEMBALIAN: bukan transaksi, +kas jika dicentang, melunasi hutang
- * BAYAR HUTANG: bukan transaksi baru, kas hanya jika dicentang
- * PEMBELIAN  : transaksi sesuai page, bukan penjualan, kas ikut checkbox
+ * ATURAN APPROVAL (sesuai tabel logika):
+ * MODAL AWAL   : bukan transaksi, bukan penjualan, +kas, bukan laba
+ * KAS MASUK    : bukan transaksi, bukan penjualan, +kas, bukan laba
+ * KAS KELUAR   : bukan transaksi, bukan penjualan, -kas, bukan laba
+ * JUAL TUNAI   : transaksi, penjualan, +kas laci, laba = jual-modal
+ * JUAL QRIS/TR : transaksi, penjualan, +bank (bukan laci), laba = jual-modal
+ * JUAL HUTANG  : transaksi, penjualan, kas tidak bergerak, laba dihitung, membuat hutang
+ * BAYAR HUTANG : bukan transaksi, kas hanya jika dicentang, melunasi hutang
+ * TOP UP TUNAI : transaksi, bukan penjualan, +kas (nominal+admin), laba = admin
+ * TOP UP HUTANG: transaksi, bukan penjualan, kas tidak bergerak, laba = admin, hutang = nominal+admin
+ * TARIK TUNAI  : transaksi, bukan penjualan, -kas (nominal-admin), laba = admin
+ * PINJAMAN     : bukan transaksi, -kas, membuat hutang
+ * PENGEMBALIAN : bukan transaksi, +kas jika dicentang, melunasi hutang
+ * PEMBELIAN    : sesuai flag page, bukan penjualan, kas ikut checkbox
  * ============================================================ */
 
 if (typeof window.KasCore === 'undefined') {
@@ -147,6 +150,16 @@ if (typeof window.KasCore === 'undefined') {
       return transaction ? (transaction.shiftId || transaction.shift_id || null) : null;
     }
 
+    // Modal harian disimpan dengan id dokumen "YYYY-MM-DD_uid".
+    // Fallback: ambil uid dari id dokumen jika field userId tidak ada.
+    function getModalEntryUserId(entry) {
+      if (!entry) return null;
+      if (entry.userId) return entry.userId;
+      var parts = String(entry.id || '').split('_');
+      // "2026-09-28_abc123" -> date berisi 2 tanda "-", uid = bagian setelah tanda ke-3
+      return parts.length >= 4 ? parts.slice(3).join('_') : (parts[1] || null);
+    }
+
     /* ==========================================================
      * 6. KATEGORI
      * ========================================================== */
@@ -275,7 +288,7 @@ if (typeof window.KasCore === 'undefined') {
         case 'jual': return true;
         case 'top_up': return true;
         case 'tarik_tunai': return true;
-        case 'pembelian': return false;  // mengikuti field page; tanpa flag tidak dihitung
+        case 'pembelian': return false;  // mengikuti flag page; tanpa flag tidak dihitung
         // Semua berikut bukan transaksi bisnis
         case 'modal_awal':
         case 'kas_masuk':
@@ -324,9 +337,12 @@ if (typeof window.KasCore === 'undefined') {
       );
     }
 
+    // FIX: field yang ditulis mapper bernama "admin" — sebelumnya tidak terbaca,
+    // sehingga laba top up/tarik dan hutang top up selalu 0.
     function getAdmin(transaction) {
       if (!transaction) return 0;
       return normalizeNumber(
+        transaction.admin ??
         transaction.adminFee ??
         transaction.biaya_admin ??
         transaction.fee ?? 0
@@ -356,17 +372,10 @@ if (typeof window.KasCore === 'undefined') {
       var admin = getAdmin(transaction);
 
       switch (category) {
-        case 'jual': return nominal - modal;  // termasuk penjualan hutang
-        case 'top_up':
-          if (getPaymentMethod(transaction) === 'utang') {
-            if (transaction.laba_pelunasan !== undefined) {
-              return normalizeNumber(transaction.laba_pelunasan);
-            }
-            return admin;
-          }
-          return admin;
+        case 'jual': return nominal - modal;  // termasuk penjualan hutang (sesuai tabel: laba tetap dihitung)
+        case 'top_up': return admin;          // sesuai tabel: laba admin, dihitung saat transaksi
         case 'tarik_tunai': return admin;
-        case 'pembelian': return 0;  // tidak mengarang rumus, default 0
+        case 'pembelian': return 0;
         default: return 0;
       }
     }
@@ -380,9 +389,10 @@ if (typeof window.KasCore === 'undefined') {
 
       var category = getCategory(payload);
       var method = getPaymentMethod(payload);
-      var nominal = normalizeNumber(payload.nominal);
-      var admin = normalizeNumber(payload.admin);
-      var modalProduk = normalizeNumber(payload.modal_produk ?? payload.modalProduk ?? payload.modal ?? 0);
+      // FIX: pakai getter yang sama dengan sisi pembaca agar field total/harga_jual dll. ikut dikenali
+      var nominal = getNominal(payload);
+      var admin = getAdmin(payload);
+      var modalProduk = getModalProduk(payload);
       var affectsCashGlobal = getAffectsCashGlobal(payload);
 
       var result = {
@@ -405,7 +415,7 @@ if (typeof window.KasCore === 'undefined') {
 
       switch (category) {
 
-        /* MODAL AWAL — idealnya disimpan di collection "modal" */
+        /* MODAL AWAL — idealnya disimpan lewat saveModalAwal / collection "modal" */
         case 'modal_awal':
           result.cash_in = nominal;
           result.masuk_transaksi = false;
@@ -429,7 +439,7 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = 0;
           break;
 
-        /* JUAL */
+        /* JUAL — tunai ke laci, QRIS/transfer ke bank, hutang belum ada uang */
         case 'jual':
           if (modalProduk > 0) {
             result.digital_out = modalProduk;  // modal produk keluar dari saldo digital
@@ -439,7 +449,6 @@ if (typeof window.KasCore === 'undefined') {
           } else if (method === 'qris' || method === 'transfer') {
             result.bank_in = nominal;
           } else if (method === 'utang') {
-            // belum ada uang diterima
             result.cash_in = 0;
             result.bank_in = 0;
           }
@@ -448,11 +457,11 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = nominal - modalProduk;
           break;
 
-        /* TOP UP */
+        /* TOP UP — tunai masuk laci nominal+admin, hutang belum ada uang */
         case 'top_up':
           result.digital_out = nominal;  // saldo agen/digital berkurang
           if (method === 'tunai') {
-            result.cash_in = nominal + admin;  // nominal + admin masuk kas global
+            result.cash_in = nominal + admin;
           } else if (method === 'qris' || method === 'transfer') {
             result.bank_in = nominal + admin;
           } else if (method === 'utang') {
@@ -461,14 +470,14 @@ if (typeof window.KasCore === 'undefined') {
           }
           result.masuk_transaksi = true;
           result.masuk_penjualan = false;
-          result.laba = admin;  // top up hutang: laba mengikuti pelunasan
+          result.laba = admin;
           break;
 
-        /* TARIK TUNAI */
+        /* TARIK TUNAI — kas berkurang nominal - admin */
         case 'tarik_tunai':
-          result.digital_in = nominal;  // saldo digital bertambah
+          result.digital_in = nominal;
           if (method === 'tunai') {
-            result.cash_out = Math.max(0, nominal - admin);  // kas berkurang nominal - admin
+            result.cash_out = Math.max(0, nominal - admin);
           } else if (method === 'transfer') {
             result.bank_out = Math.max(0, nominal - admin);
           }
@@ -477,7 +486,7 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = admin;
           break;
 
-        /* BAYAR HUTANG */
+        /* BAYAR HUTANG — kas hanya jika dicentang */
         case 'bayar_hutang':
           if (affectsCashGlobal) {
             if (method === 'tunai') {
@@ -499,7 +508,7 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = 0;
           break;
 
-        /* PENGEMBALIAN PINJAMAN */
+        /* PENGEMBALIAN PINJAMAN — kas masuk jika dicentang (aturan approval) */
         case 'pengembalian_pinjaman':
           if (affectsCashGlobal) {
             if (method === 'tunai' || !method) {
@@ -615,6 +624,22 @@ if (typeof window.KasCore === 'undefined') {
     }
 
     /* ==========================================================
+     * 16b. DATA LAMA TANPA FIELD MUTASI
+     * Transaksi lama yang belum punya field mutasi kas/bank/digital
+     * dihitung ulang lewat mapper (aturan tabel tetap berlaku).
+     * ========================================================== */
+
+    var MUTATION_FIELDS = ['cash_in', 'cash_out', 'bank_in', 'bank_out', 'digital_in', 'digital_out'];
+
+    function hasStoredMutations(transaction) {
+      if (!transaction) return false;
+      for (var i = 0; i < MUTATION_FIELDS.length; i++) {
+        if (Object.prototype.hasOwnProperty.call(transaction, MUTATION_FIELDS[i])) return true;
+      }
+      return false;
+    }
+
+    /* ==========================================================
      * 17. CREATE SUMMARY
      * ========================================================== */
 
@@ -698,15 +723,16 @@ if (typeof window.KasCore === 'undefined') {
         var category = classification.category;
         var method = classification.paymentMethod;
 
-        // MUTASI BAKU DARI DATABASE
-        var cashIn = normalizeNumber(tx.cash_in);
-        var cashOut = normalizeNumber(tx.cash_out);
-        var bankIn = normalizeNumber(tx.bank_in);
-        var bankOut = normalizeNumber(tx.bank_out);
-        var digitalIn = normalizeNumber(tx.digital_in);
-        var digitalOut = normalizeNumber(tx.digital_out);
+        // MUTASI BAKU — dari database, atau dihitung mapper untuk data lama
+        var mut = hasStoredMutations(tx) ? tx : mapTransactionMutation(tx);
+        var cashIn = normalizeNumber(mut.cash_in);
+        var cashOut = normalizeNumber(mut.cash_out);
+        var bankIn = normalizeNumber(mut.bank_in);
+        var bankOut = normalizeNumber(mut.bank_out);
+        var digitalIn = normalizeNumber(mut.digital_in);
+        var digitalOut = normalizeNumber(mut.digital_out);
 
-        // KAS GLOBAL — pakai cash_in/cash_out baku dari mapper
+        // KAS GLOBAL
         summary.cashGlobalIn += cashIn;
         summary.cashGlobalOut += cashOut;
 
@@ -847,7 +873,32 @@ if (typeof window.KasCore === 'undefined') {
 
     /* ==========================================================
      * 19. LOAD TRANSACTIONS
+     * FIX: fallback ke field "date" juga saat query date_key
+     *      SUKSES tapi hasilnya kosong (data lama tanpa date_key).
      * ========================================================== */
+
+    function snapshotToArray(snapshot) {
+      var transactions = [];
+      snapshot.forEach(function (doc) {
+        transactions.push(Object.assign({ id: doc.id }, doc.data()));
+      });
+      return transactions;
+    }
+
+    async function queryByField(db, field, startDate, endDate) {
+      var query = db.collection('transactions');
+
+      if (startDate === endDate) {
+        query = query.where(field, '==', startDate);
+      } else {
+        query = query
+          .where(field, '>=', startDate)
+          .where(field, '<=', endDate);
+      }
+
+      var snapshot = await query.get();
+      return snapshotToArray(snapshot);
+    }
 
     async function loadTransactionsByRange(startDate, endDate) {
       var db = getDb();
@@ -856,49 +907,18 @@ if (typeof window.KasCore === 'undefined') {
 
       // PRIMARY: date_key
       try {
-        var query = db.collection('transactions');
-
-        if (startDate === endDate) {
-          query = query.where('date_key', '==', startDate);
-        } else {
-          query = query
-            .where('date_key', '>=', startDate)
-            .where('date_key', '<=', endDate);
-        }
-
-        var snapshot = await query.get();
-        var transactions = [];
-        snapshot.forEach(function (doc) {
-          transactions.push(Object.assign({ id: doc.id }, doc.data()));
-        });
-        return transactions;
-
+        var transactions = await queryByField(db, 'date_key', startDate, endDate);
+        if (transactions.length > 0) return transactions;
       } catch (error) {
-        console.warn('KasCore: query date_key gagal, menggunakan fallback date.', error);
+        console.warn('KasCore: query date_key gagal, mencoba field date.', error);
+      }
 
-        // FALLBACK DATA LAMA
-        try {
-          var fallbackQuery = db.collection('transactions');
-
-          if (startDate === endDate) {
-            fallbackQuery = fallbackQuery.where('date', '==', startDate);
-          } else {
-            fallbackQuery = fallbackQuery
-              .where('date', '>=', startDate)
-              .where('date', '<=', endDate);
-          }
-
-          var fallbackSnapshot = await fallbackQuery.get();
-          var fallbackTransactions = [];
-          fallbackSnapshot.forEach(function (doc) {
-            fallbackTransactions.push(Object.assign({ id: doc.id }, doc.data()));
-          });
-          return fallbackTransactions;
-
-        } catch (fallbackError) {
-          console.error('KasCore: fallback query gagal.', fallbackError);
-          return [];
-        }
+      // FALLBACK DATA LAMA: field date
+      try {
+        return await queryByField(db, 'date', startDate, endDate);
+      } catch (fallbackError) {
+        console.error('KasCore: fallback query gagal.', fallbackError);
+        return [];
       }
     }
 
@@ -976,10 +996,7 @@ if (typeof window.KasCore === 'undefined') {
       // SEMUA USER
       try {
         var snapshot = await db.collection('modal').where('date', '==', date).get();
-        var entries = [];
-        snapshot.forEach(function (doc) {
-          entries.push(Object.assign({ id: doc.id }, doc.data()));
-        });
+        var entries = snapshotToArray(snapshot);
         return {
           date: date,
           entries: entries,
@@ -991,6 +1008,29 @@ if (typeof window.KasCore === 'undefined') {
         console.error('KasCore: gagal mengambil modal summary.', error);
         return { date: date, entries: [], total: 0 };
       }
+    }
+
+    // Simpan modal awal lewat satu pintu (collection "modal").
+    async function saveModalAwal(options) {
+      options = options || {};
+      var db = getDb();
+
+      var date = options.date || formatDateKey(new Date());
+      var userId = options.userId;
+      var amount = normalizeNumber(options.amount);
+
+      if (!userId) throw new Error('KasCore.saveModalAwal: userId wajib diisi.');
+
+      var docId = date + '_' + userId;
+      await db.collection('modal').doc(docId).set({
+        date: date,
+        userId: userId,
+        amount: amount,
+        shiftId: options.shiftId || null,
+        updated_at: Date.now()
+      }, { merge: true });
+
+      return { id: docId, date: date, userId: userId, amount: amount };
     }
 
     /* ==========================================================
@@ -1036,6 +1076,35 @@ if (typeof window.KasCore === 'undefined') {
     }
 
     /* ==========================================================
+     * 23b. ANTI DOBEL MODAL
+     * Sumber modal adalah collection "modal". Jika modal harian sudah
+     * tercatat di sana, transaksi kategori modal_awal TIDAK dihitung
+     * lagi di laci. Jika belum ada (data lama), modal diambil dari
+     * transaksi modal_awal supaya tidak hilang.
+     * ========================================================== */
+
+    function applyModalAntiDouble(transactions, modalFromCollection) {
+      var modalAwal = normalizeNumber(modalFromCollection);
+      var list = transactions.slice();
+
+      if (modalAwal > 0) {
+        // Modal sudah tercatat di collection "modal" — buang duplikat dari transaksi
+        list = list.filter(function (tx) {
+          return getCategory(tx) !== 'modal_awal';
+        });
+      } else {
+        // Data lama: modal hanya ada sebagai transaksi modal_awal
+        modalAwal = list
+          .filter(function (tx) { return getCategory(tx) === 'modal_awal'; })
+          .reduce(function (sum, tx) {
+            return sum + normalizeNumber(tx.cash_in != null ? tx.cash_in : getNominal(tx));
+          }, 0);
+      }
+
+      return { transactions: list, modalAwal: modalAwal };
+    }
+
+    /* ==========================================================
      * 24. KAS FISIK LACI
      * ========================================================== */
 
@@ -1072,9 +1141,17 @@ if (typeof window.KasCore === 'undefined') {
       var shiftId = options.shiftId;
 
       var modalSummary = await getModalSummary({ date: date, userId: userId });
-      var summary = await getDailySummary({ date: date, userId: userId, shiftId: shiftId });
+      var transactions = await getTransactionsByDateRange({
+        startDate: date,
+        endDate: date,
+        userId: userId,
+        shiftId: shiftId
+      });
 
-      var kasFisik = calculateKasFisikLaciFromSummary(modalSummary.total, summary);
+      // FIX: cegah modal terhitung dua kali (collection "modal" + transaksi modal_awal)
+      var guarded = applyModalAntiDouble(transactions, modalSummary.total);
+      var summary = createSummary(guarded.transactions);
+      var kasFisik = calculateKasFisikLaciFromSummary(guarded.modalAwal, summary);
 
       return {
         date: date,
@@ -1186,7 +1263,7 @@ if (typeof window.KasCore === 'undefined') {
     /* ==========================================================
      * 30. KAS LACI DISPLAY
      *
-     * SATU PINTU UNTUK SEMUA PAGE.
+     * SATU PINTU UNTUK SEMUA PAGE (baca).
      * Page TIDAK BOLEH menghitung apa pun lagi —
      * cukup panggil fungsi ini dan tempel angkanya.
      *
@@ -1254,14 +1331,20 @@ if (typeof window.KasCore === 'undefined') {
       var debtsSnapshot = results[2];
 
       // ---------- FILTER SCOPE ----------
-      modalEntries = modalEntries.filter(function (e) { return inScope(e.userId); });
+      // FIX: userId modal diambil juga dari id dokumen "date_uid"
+      modalEntries = modalEntries.filter(function (e) { return inScope(getModalEntryUserId(e)); });
       transactions = transactions.filter(function (tx) { return inScope(getUserId(tx)); });
+
+      // ---------- ANTI DOBEL MODAL ----------
+      var modalFromCollection = modalEntries.reduce(function (s, e) {
+        return s + normalizeNumber(e.amount);
+      }, 0);
+      var guarded = applyModalAntiDouble(transactions, modalFromCollection);
+      transactions = guarded.transactions;
 
       // ---------- SUMMARY BAKU ----------
       var summary = createSummary(transactions);
-      var modalAwal = modalEntries.reduce(function (s, e) {
-        return s + normalizeNumber(e.amount);
-      }, 0);
+      var modalAwal = guarded.modalAwal;
       var kasFisik = calculateKasFisikLaciFromSummary(modalAwal, summary);
 
       // ---------- RINCIAN KATEGORI (mutasi baku, bukan hitungan page) ----------
@@ -1269,7 +1352,8 @@ if (typeof window.KasCore === 'undefined') {
         topupFisik: 0, tarikFisik: 0,
         topupNonTunai: 0, tarikNonTunai: 0,
         pembelianTunai: 0, pembelianNonTunai: 0,
-        pelunasanMasuk: 0
+        pelunasanMasuk: 0,
+        topupAdminTunai: 0
       };
 
       transactions.forEach(function (tx) {
@@ -1282,6 +1366,7 @@ if (typeof window.KasCore === 'undefined') {
             rincian.topupFisik += KAS_CONFIG.adminTopupMasukLaci
               ? normalizeNumber(tx.cash_in)
               : normalizeNumber(tx.nominal);
+            rincian.topupAdminTunai += getAdmin(tx);
           } else if (met === 'qris' || met === 'transfer') {
             rincian.topupNonTunai += normalizeNumber(tx.bank_in);
           }
@@ -1289,13 +1374,10 @@ if (typeof window.KasCore === 'undefined') {
           if (met === 'tunai') rincian.tarikFisik += normalizeNumber(tx.cash_out);
           else if (met === 'transfer') rincian.tarikNonTunai += normalizeNumber(tx.bank_out);
         } else if (cat === 'pembelian') {
-          if (!KAS_CONFIG.pembelianKurangiLaci) return;
           if (met === 'tunai') rincian.pembelianTunai += normalizeNumber(tx.cash_out);
           else if (met === 'qris' || met === 'transfer') rincian.pembelianNonTunai += normalizeNumber(tx.bank_out);
         } else if (cat === 'bayar_hutang' || cat === 'pengembalian_pinjaman') {
-          if (KAS_CONFIG.pelunasanMasukLaci) {
-            rincian.pelunasanMasuk += normalizeNumber(tx.cash_in);
-          }
+          rincian.pelunasanMasuk += normalizeNumber(tx.cash_in);
         }
       });
 
@@ -1319,6 +1401,9 @@ if (typeof window.KasCore === 'undefined') {
 
       // ---------- TOTAL — SEMUA SAKLAR KAS_CONFIG BERLAKU DI SINI ----------
       var totalLaci = kasFisik.totalKasFisikDiLaci;
+      if (!KAS_CONFIG.adminTopupMasukLaci) totalLaci -= rincian.topupAdminTunai;
+      if (!KAS_CONFIG.pembelianKurangiLaci) totalLaci += rincian.pembelianTunai;
+      if (!KAS_CONFIG.pelunasanMasukLaci) totalLaci -= rincian.pelunasanMasuk;
       if (KAS_CONFIG.hitungPiutangKeTotalLaci) {
         totalLaci += piutang;
       }
@@ -1348,6 +1433,173 @@ if (typeof window.KasCore === 'undefined') {
         totalTransaksi: summary.transactionCount,
         totalLaba: summary.totalProfit,
         summary: summary
+      };
+    }
+
+    /* ==========================================================
+     * 30b. SETTLE DEBT — internal, dipakai saveTransaction
+     * ========================================================== */
+
+    async function settleDebt(db, opts) {
+      var amount = normalizeNumber(opts.amount);
+      if (amount <= 0) return null;
+
+      var debtDoc = null;
+
+      if (opts.debtId) {
+        var snap = await db.collection('debts').doc(opts.debtId).get();
+        if (snap.exists) debtDoc = snap;
+      } else {
+        try {
+          var query = db.collection('debts')
+            .where('status', '==', 'active')
+            .where('type', '==', opts.type)
+            .where('userId', '==', opts.userId)
+            .orderBy('created_at', 'asc')
+            .limit(1);
+          var qSnap = await query.get();
+          if (!qSnap.empty) debtDoc = qSnap.docs[0];
+        } catch (e) {
+          // index belum ada — fallback tanpa orderBy
+          var fallback = await db.collection('debts')
+            .where('status', '==', 'active')
+            .where('type', '==', opts.type)
+            .where('userId', '==', opts.userId)
+            .get();
+          if (!fallback.empty) debtDoc = fallback.docs[0];
+        }
+      }
+
+      if (!debtDoc || !debtDoc.exists) return null;
+
+      var debt = debtDoc.data();
+      var remaining = normalizeNumber(debt.remaining != null ? debt.remaining : debt.amount);
+      var newRemaining = Math.max(0, remaining - amount);
+
+      var update = { remaining: newRemaining };
+      if (newRemaining <= 0) {
+        update.status = 'paid';
+        update.paid_at = opts.waktuMs;
+      }
+      if (opts.toKas) update.kasRecorded = true;
+
+      await db.collection('debts').doc(debtDoc.id).update(update);
+      return debtDoc.id;
+    }
+
+    /* ==========================================================
+     * 30c. SAVE TRANSACTION — SATU PINTU UNTUK MENULIS
+     *
+     * Semua menu cukup memanggil ini. KasCore yang mengurus:
+     *   - normalisasi kategori/metode/nominal/admin
+     *   - mutasi baku (cash/bank/digital) sesuai tabel logika
+     *   - date_key, userId, shiftId, waktu
+     *   - pembuatan hutang (jual/top up bon, pinjaman)
+     *   - pelunasan hutang (bayar hutang, pengembalian pinjaman)
+     *
+     * payload:
+     *   kategori         : wajib (jual/top_up/tarik_tunai/kas_masuk/...)
+     *   metode_pembayaran: tunai/qris/transfer/utang
+     *   nominal, admin, modal_produk
+     *   userId           : wajib
+     *   shiftId, customerName, catatan, status : opsional
+     *   pengaruhi_kas_global : checkbox (bayar hutang/pembelian/pengembalian)
+     *   debtId           : opsional, lunasi hutang tertentu
+     *   waktu            : opsional (Date / ms / string), default now
+     * ========================================================== */
+
+    async function saveTransaction(payload) {
+      payload = payload || {};
+      var db = getDb();
+
+      var category = getCategory(payload);
+      if (!category) throw new Error('KasCore.saveTransaction: kategori wajib diisi.');
+
+      var userId = getUserId(payload) || payload.userId;
+      if (!userId) throw new Error('KasCore.saveTransaction: userId wajib diisi.');
+
+      var method = getPaymentMethod(payload);
+      var nominal = getNominal(payload);
+      var admin = getAdmin(payload);
+
+      var waktuDate = parseDateValue(payload.waktu) || new Date();
+      var waktuMs = waktuDate.getTime();
+      var dateKey = payload.date_key || formatDateKey(waktuDate);
+
+      var mutation = mapTransactionMutation(payload);
+
+      var doc = {};
+      ['kategori', 'metode_pembayaran', 'nominal', 'admin', 'modal_produk',
+       'shiftId', 'customerName', 'catatan', 'status', 'pengaruhi_kas_global'
+      ].forEach(function (field) {
+        if (payload[field] !== undefined) doc[field] = payload[field];
+      });
+      Object.assign(doc, mutation);
+      doc.userId = userId;
+      doc.date_key = dateKey;
+      doc.waktu = waktuMs;
+      doc.created_at = waktuMs;
+
+      var ref = await db.collection('transactions').add(doc);
+      var transactionId = ref.id;
+
+      // ---------- HUTANG ----------
+      var debtId = null;
+
+      // Jual / Top Up bon -> hutang baru
+      if ((category === 'jual' || category === 'top_up') && method === 'utang') {
+        var debtAmount = nominal + (category === 'top_up' ? admin : 0);
+        var debtRef = await db.collection('debts').add({
+          type: 'piutang',
+          status: 'active',
+          amount: debtAmount,
+          remaining: debtAmount,
+          kasRecorded: false,
+          date: dateKey,
+          userId: userId,
+          customerName: payload.customerName || '',
+          kategori: category,
+          transactionId: transactionId,
+          created_at: waktuMs
+        });
+        debtId = debtRef.id;
+      }
+
+      // Pinjam uang -> hutang internal
+      else if (category === 'pinjaman_tunai') {
+        var loanRef = await db.collection('debts').add({
+          type: 'pinjaman',
+          status: 'active',
+          amount: nominal,
+          remaining: nominal,
+          kasRecorded: mutation.cash_out > 0,
+          date: dateKey,
+          userId: userId,
+          customerName: payload.customerName || '',
+          kategori: category,
+          transactionId: transactionId,
+          created_at: waktuMs
+        });
+        debtId = loanRef.id;
+      }
+
+      // Bayar hutang / pengembalian pinjaman -> melunasi
+      else if (category === 'bayar_hutang' || category === 'pengembalian_pinjaman') {
+        debtId = await settleDebt(db, {
+          debtId: payload.debtId || null,
+          userId: userId,
+          amount: nominal,
+          type: category === 'bayar_hutang' ? 'piutang' : 'pinjaman',
+          toKas: mutation.cash_in > 0 || mutation.bank_in > 0,
+          waktuMs: waktuMs
+        });
+      }
+
+      return {
+        id: transactionId,
+        debtId: debtId,
+        date_key: dateKey,
+        mutation: mutation
       };
     }
 
@@ -1403,8 +1655,10 @@ if (typeof window.KasCore === 'undefined') {
       getKasFisikLaci: getKasFisikLaci,
       getShiftSummary: getShiftSummary,
 
-      // SATU PINTU UNTUK SEMUA PAGE
-      getKasLaciDisplay: getKasLaciDisplay
+      // SATU PINTU
+      getKasLaciDisplay: getKasLaciDisplay,   // baca
+      saveTransaction: saveTransaction,       // tulis
+      saveModalAwal: saveModalAwal            // tulis modal
     };
 
   })();
