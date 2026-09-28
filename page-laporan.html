@@ -392,6 +392,9 @@
             <button class="btn btn-success" id="btnExport">
               <i class="fas fa-download"></i> Export CSV
             </button>
+            <button class="btn btn-success" id="btnExport"><i class="fas fa-download"></i> Export CSV</button>
+<button class="btn btn-secondary" id="btnExportJSON"><i class="fas fa-file-export"></i> Export JSON</button>
+<button class="btn btn-primary" id="btnImport"><i class="fas fa-upload"></i> Import CSV</button>
           </div>
         </div>
 
@@ -700,6 +703,21 @@
           generateReport();
         };
         document.getElementById('btnExport').onclick = exportCSV;
+        document.getElementById('btnExportJSON').onclick = exportJSON;
+
+document.getElementById('btnImport').onclick = () => {
+  document.getElementById('importProgressBox').style.display = 'none';
+  document.getElementById('importFileName').textContent = '';
+  document.getElementById('importModal').classList.add('open');
+};
+document.getElementById('btnCloseImport').onclick = () => document.getElementById('importModal').classList.remove('open');
+document.getElementById('btnDownloadTemplate').onclick = downloadTemplate;
+
+document.getElementById('importFileInput').onchange = (e) => {
+  importFileSelected = e.target.files[0];
+  document.getElementById('importFileName').textContent = importFileSelected ? '📄 ' + importFileSelected.name : '';
+};
+document.getElementById('btnStartImport').onclick = () => importCSV(importFileSelected);
 
         generateReport();
       }
@@ -756,101 +774,106 @@
           document.getElementById('statRataRata').textContent = Utils.formatRupiah(rataRata);
           document.getElementById('statLaba').textContent = Utils.formatRupiah(summary.totalProfit);
         } else {
-          const masuk = transactions.filter(t => ['topup', 'kas_masuk'].includes(t.type));
-          const keluar = transactions.filter(t => ['tarik', 'kas_keluar'].includes(t.type));
-          document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.netCashFlow);
-          document.getElementById('statTransaksi').textContent = (masuk.length + keluar.length).toLocaleString('id-ID');
-          document.getElementById('statRataRata').textContent = masuk.length + ' Masuk';
-          document.getElementById('statLaba').textContent = keluar.length + ' Keluar';
-        }
-      }
-
+  const masuk = transactions.filter(t => ['top_up','kas_masuk'].includes(KasCore.getCategory(t)));
+  const keluar = transactions.filter(t => ['tarik_tunai','kas_keluar'].includes(KasCore.getCategory(t)));
+  document.getElementById('statPenjualan').textContent = Utils.formatRupiah(summary.netCashFlow);
+  document.getElementById('statTransaksi').textContent = (masuk.length + keluar.length).toLocaleString('id-ID');
+  document.getElementById('statRataRata').textContent = masuk.length + ' Masuk';
+  document.getElementById('statLaba').textContent = keluar.length + ' Keluar';
+}
       // Memisahkan rincian metode pembayaran (Tunai, QRIS, Transfer, dll.)
       function renderSummary(transactions) {
-        const summary = currentSummary || KasCore.summarizeTransactions(transactions);
+  const summary = currentSummary || KasCore.summarizeTransactions(transactions);
+  const tbody = document.getElementById('summaryTableBody');
 
-        const tbody = document.getElementById('summaryTableBody');
-        
-        if (currentReport === 'penjualan') {
-          tbody.innerHTML = `
-            <tr><td>Total Penjualan Keseluruhan</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.totalSales)}</td></tr>
-            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Tunai (Cash)</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.tunai)}</td></tr>
-            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran QRIS</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.qris)}</td></tr>
-            <tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Pembayaran Transfer / Bank</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.transfer)}</td></tr>
-            ${summary.paymentMethods.lainnya > 0 ? `<tr><td style="padding-left: 1.25rem; font-size: 0.82rem; color: var(--text-muted);">&bull; Lainnya</td><td style="text-align: right; font-weight:600; font-size: 0.82rem;">${Utils.formatRupiah(summary.paymentMethods.lainnya)}</td></tr>` : ''}
-          `;
-        } else {
-          tbody.innerHTML = `
-            <tr><td>Layanan Top Up</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
-            <tr><td>Layanan Tarik Tunai</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.withdrawal)}</td></tr>
-            <tr><td>Kas Masuk Lain</td><td style="text-align: right; font-weight:700; color:var(--success);">${Utils.formatRupiah(summary.cashIn)}</td></tr>
-            <tr><td>Kas Keluar Lain</td><td style="text-align: right; font-weight:700; color:var(--danger);">${Utils.formatRupiah(summary.cashOut)}</td></tr>
-          `;
-        }
-      }
+  if (currentReport === 'penjualan') {
+    let pmTunai=0, pmQris=0, pmTransfer=0, pmLainnya=0;
+    transactions.forEach(t => {
+      if (!KasCore.isValidTransaction(t)) return;
+      if (KasCore.getCategory(t) !== 'jual') return;
+      const m = KasCore.getPaymentMethod(t);
+      const n = KasCore.getNominal(t);
+      if (m === 'tunai') pmTunai += n;
+      else if (m === 'qris') pmQris += n;
+      else if (m === 'transfer') pmTransfer += n;
+      else pmLainnya += n;
+    });
+
+    tbody.innerHTML = `
+      <tr><td>Total Penjualan Keseluruhan</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.totalSales)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran Tunai (Cash)</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmTunai)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran QRIS</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmQris)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran Transfer / Bank</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmTransfer)}</td></tr>
+      ${pmLainnya > 0 ? `<tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Lainnya</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmLainnya)}</td></tr>` : ''}
+    `;
+  } else {
+    tbody.innerHTML = `
+      <tr><td>Layanan Top Up</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
+      <tr><td>Layanan Tarik Tunai</td><td style="text-align:right;font-weight:700;color:var(--danger);">${Utils.formatRupiah(summary.withdrawal)}</td></tr>
+      <tr><td>Kas Masuk Lain</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.cashIn)}</td></tr>
+      <tr><td>Kas Keluar Lain</td><td style="text-align:right;font-weight:700;color:var(--danger);">${Utils.formatRupiah(summary.cashOut)}</td></tr>
+    `;
+  }
+}
 
       function renderTransactionList(transactions) {
-        const list = document.getElementById('transactionList');
-        
-        const filtered = transactions.filter(t => {
-          if (!KasCore.isValidTransaction(t)) return false;
-          if (currentReport === 'penjualan') {
-            return t.type === 'penjualan';
-          } else {
-            return ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type);
-          }
-        });
+  const list = document.getElementById('transactionList');
 
-        if (filtered.length === 0) {
-          list.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Tidak ada data transaksi untuk kategori ini</p></div>`;
-          return;
-        }
+  const filtered = transactions.filter(t => {
+    if (!KasCore.isValidTransaction(t)) return false;
+    const cat = KasCore.getCategory(t);
+    if (currentReport === 'penjualan') return cat === 'jual';
+    return ['top_up', 'tarik_tunai', 'kas_masuk', 'kas_keluar'].includes(cat);
+  });
 
-        filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Tidak ada data transaksi untuk kategori ini</p></div>`;
+    return;
+  }
 
-        list.innerHTML = filtered.map(t => {
-          const labels = { penjualan: 'Penjualan', topup: 'Top Up', tarik: 'Tarik Tunai', kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar' };
-          const isIncome = ['penjualan', 'topup', 'kas_masuk'].includes(t.type);
-          const amount = getTxNominal(t);
-          let timeStr = '-';
-          if (t.timestamp) {
-            timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-          }
-          const methodValue = t.paymentMethod || t.paymentType;
-          const methodLabel = methodValue ? ` [Metode: ${String(methodValue).toUpperCase()}]` : '';
+  filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-          return `
-            <div class="transaction-item">
-              <div>
-                <div class="transaction-title">${labels[t.type] || t.type} — ${t.note || t.supplier || '-'}${methodLabel}</div>
-                <div class="transaction-meta">${t.date || ''} ${timeStr} | Kasir: ${t.userName || '-'}</div>
-              </div>
-              <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
-                ${isIncome ? '+' : '-'} ${Utils.formatRupiah(amount)}
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
+  const labels = { jual: 'Penjualan', top_up: 'Top Up', tarik_tunai: 'Tarik Tunai', kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar' };
+
+  list.innerHTML = filtered.map(t => {
+    const cat = KasCore.getCategory(t);
+    const isIncome = ['jual', 'top_up', 'kas_masuk'].includes(cat);
+    const amount = KasCore.getNominal(t);
+    let timeStr = '-';
+    if (t.timestamp) timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const methodValue = KasCore.getPaymentMethod(t);
+    const methodLabel = methodValue ? ` [Metode: ${methodValue.toUpperCase()}]` : '';
+
+    return `
+      <div class="transaction-item">
+        <div>
+          <div class="transaction-title">${labels[cat] || cat} — ${t.note || t.supplier || '-'}${methodLabel}</div>
+          <div class="transaction-meta">${t.date || ''} ${timeStr} | Kasir: ${t.userName || '-'}</div>
+        </div>
+        <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
+          ${isIncome ? '+' : '-'} ${Utils.formatRupiah(amount)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
       function renderChart(transactions) {
         const ctx = document.getElementById('reportChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
 
         const byDate = {};
-        transactions.forEach(t => {
-          if (KasCore.isValidTransaction(t)) {
-            if (currentReport === 'penjualan' && t.type === 'penjualan') {
-              const d = t.date || 'Lainnya';
-              byDate[d] = (byDate[d] || 0) + getTxNominal(t);
-            } else if (currentReport === 'kas' && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
-              const d = t.date || 'Lainnya';
-              const val = getTxNominal(t);
-              const isInc = ['topup', 'kas_masuk'].includes(t.type);
-              byDate[d] = (byDate[d] || 0) + (isInc ? val : -val);
-            }
-          }
-        });
+transactions.forEach(t => {
+  if (!KasCore.isValidTransaction(t)) return;
+  const cat = KasCore.getCategory(t);
+  const d = t.date || 'Lainnya';
+  if (currentReport === 'penjualan' && cat === 'jual') {
+    byDate[d] = (byDate[d] || 0) + KasCore.getNominal(t);
+  } else if (currentReport === 'kas' && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
+    const isInc = ['top_up','kas_masuk'].includes(cat);
+    byDate[d] = (byDate[d] || 0) + (isInc ? KasCore.getNominal(t) : -KasCore.getNominal(t));
+  }
+});
 
         const labels = Object.keys(byDate).sort();
         const data = labels.map(d => byDate[d]);
@@ -886,38 +909,196 @@
       }
 
       function exportCSV() {
-        if (reportData.length === 0) {
-          Utils.showToast('Tidak ada data untuk diexport', 'warning');
-          return;
-        }
-
-        let csv = '';
-        if (currentReport === 'penjualan') {
-          csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
-          reportData.forEach(t => {
-            if (KasCore.isValidTransaction(t) && t.type === 'penjualan') {
-              csv += `"${t.id}","${t.date || ''}","${t.type}","${t.paymentMethod || t.paymentType || 'tunai'}",${getTxNominal(t)},${t.profit || 0},"${t.note || ''}","${t.userName || ''}"\n`;
-            }
-          });
-        } else {
-          csv = 'ID,Tanggal,Tipe,Jumlah,Keterangan,Kasir\n';
-          reportData.forEach(t => {
-            if (KasCore.isValidTransaction(t) && ['topup', 'tarik', 'kas_masuk', 'kas_keluar'].includes(t.type)) {
-              csv += `"${t.id}","${t.date || ''}","${t.type}",${getTxNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
-            }
-          });
-        }
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        Utils.showToast('Laporan berhasil diexport ke CSV', 'success');
+  if (reportData.length === 0) { Utils.showToast('Tidak ada data untuk diexport', 'warning'); return; }
+  let csv = '';
+  if (currentReport === 'penjualan') {
+    csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
+    reportData.forEach(t => {
+      if (KasCore.isValidTransaction(t) && KasCore.getCategory(t) === 'jual') {
+        csv += `"${t.id}","${t.date || ''}","${KasCore.getCategory(t)}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},${KasCore.calculateTransactionProfit(t)},"${t.note || ''}","${t.userName || ''}"\n`;
       }
+    });
+  } else {
+    csv = 'ID,Tanggal,Tipe,Metode,Jumlah,Keterangan,Kasir\n';
+    reportData.forEach(t => {
+      const cat = KasCore.getCategory(t);
+      if (KasCore.isValidTransaction(t) && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
+        csv += `"${t.id}","${t.date || ''}","${cat}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+      }
+    });
+  }
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  Utils.showToast('Laporan berhasil diexport ke CSV', 'success');
+}
+
+  let importFileSelected = null;
+
+function downloadTemplate() {
+  const header = 'date,tipe,metode,nominal,admin,modal,keterangan,user_id\n';
+  const sample =
+    '2026-09-28,penjualan,tunai,15000,0,10000,Contoh jual tunai,kasir01\n' +
+    '2026-09-28,penjualan,qris,25000,0,18000,Contoh jual qris,kasir01\n' +
+    '2026-09-28,topup,tunai,50000,2000,0,Top up pulsa,kasir01\n' +
+    '2026-09-28,tarik,tunai,30000,1500,0,Tarik tunai,kasir01\n' +
+    '2026-09-28,kas_masuk,tunai,100000,0,0,Setoran tambahan,kasir01\n' +
+    '2026-09-28,kas_keluar,tunai,20000,0,0,Beli perlengkapan,kasir01\n';
+  const blob = new Blob([header + sample], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_import_transaksi.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const row = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === ',' && !inQ) { row.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    row.push(cur);
+    rows.push(row);
+  }
+  return rows;
+}
+
+async function importCSV(file) {
+  if (!file) { Utils.showToast('Pilih file dulu', 'warning'); return; }
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if (rows.length < 2) { Utils.showToast('File kosong / tidak ada data', 'error'); return; }
+
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = (k) => header.indexOf(k);
+  for (const k of ['date','tipe','metode','nominal']) {
+    if (idx(k) === -1) { Utils.showToast('Kolom wajib "' + k + '" tidak ditemukan', 'error'); return; }
+  }
+
+  const dataRows = rows.slice(1).filter(r => r.length >= 4 && r[idx('date')]);
+  const total = dataRows.length;
+  if (total === 0) { Utils.showToast('Tidak ada baris data valid', 'error'); return; }
+
+  const db = window.db;
+  const BATCH = 400;
+  let done = 0, failed = 0;
+
+  const progBox = document.getElementById('importProgressBox');
+  const progBar = document.getElementById('importProgress');
+  const progText = document.getElementById('importProgressText');
+  progBox.style.display = 'block';
+  progBar.style.width = '0%';
+  progText.textContent = '0 / ' + total;
+  document.getElementById('btnStartImport').disabled = true;
+
+  for (let i = 0; i < total; i += BATCH) {
+    const batch = db.batch();
+    const slice = dataRows.slice(i, i + BATCH);
+    slice.forEach(r => {
+      const date = (r[idx('date')] || '').trim();
+      const tipe = (r[idx('tipe')] || '').trim().toLowerCase();
+      const metode = (r[idx('metode')] || 'tunai').trim().toLowerCase();
+      const nominal = KasCore.normalizeNumber(r[idx('nominal')]);
+      const admin = idx('admin') >= 0 ? KasCore.normalizeNumber(r[idx('admin')]) : 0;
+      const modal = idx('modal') >= 0 ? KasCore.normalizeNumber(r[idx('modal')]) : 0;
+      const ket = idx('keterangan') >= 0 ? (r[idx('keterangan')] || '') : '';
+      const uid = idx('user_id') >= 0 ? (r[idx('user_id')] || '') : '';
+
+      const mapped = KasCore.mapTransactionMutation({
+        kategori: tipe, metode_pembayaran: metode, nominal, admin, modal_produk: modal
+      });
+
+      const docRef = db.collection('transactions').doc();
+      batch.set(docRef, {
+        date: date, date_key: date,
+        kategori: mapped.kategori, metode_pembayaran: mapped.metode_pembayaran,
+        type: tipe, nominal, admin, modal_produk: modal,
+        cash_in: mapped.cash_in, cash_out: mapped.cash_out,
+        bank_in: mapped.bank_in, bank_out: mapped.bank_out,
+        digital_in: mapped.digital_in, digital_out: mapped.digital_out,
+        laba: mapped.laba, masuk_transaksi: mapped.masuk_transaksi,
+        masuk_penjualan: mapped.masuk_penjualan,
+        pengaruhi_kas_global: mapped.pengaruhi_kas_global,
+        note: ket, userId: uid,
+        timestamp: Date.now(), createdAt: new Date(), status: 'active'
+      });
+    });
+
+    try {
+      await batch.commit();
+      done += slice.length;
+    } catch (e) {
+      console.error('Import batch gagal:', e);
+      failed += slice.length;
+    }
+    const pct = Math.round((done / total) * 100);
+    progBar.style.width = pct + '%';
+    progText.textContent = done + ' / ' + total + (failed ? (' (gagal: ' + failed + ')') : '');
+  }
+
+  document.getElementById('btnStartImport').disabled = false;
+  Utils.showToast('Import selesai: ' + done + ' data' + (failed ? ', gagal ' + failed : ''), failed ? 'warning' : 'success');
+  if (failed === 0) {
+    setTimeout(() => {
+      document.getElementById('importModal').classList.remove('open');
+      progBox.style.display = 'none';
+      importFileSelected = null;
+      document.getElementById('importFileName').textContent = '';
+      document.getElementById('importFileInput').value = '';
+      generateReport();
+    }, 800);
+  }
+}
+
+function exportJSON() {
+  if (reportData.length === 0) { Utils.showToast('Tidak ada data untuk diexport', 'warning'); return; }
+  const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  Utils.showToast('Export JSON berhasil', 'success');
+}
     })();
+
+    <!-- MODAL IMPORT CSV -->
+<div class="custom-modal-backdrop" id="importModal">
+  <div class="custom-dialog-card" style="max-width:460px;text-align:left;">
+    <h3 class="dialog-title" style="text-align:center;"><i class="fas fa-upload" style="color:var(--primary);"></i> Import Transaksi</h3>
+    <p class="dialog-message" style="text-align:center;">Format: CSV dengan kolom <b>date,tipe,metode,nominal,admin,modal,keterangan,user_id</b></p>
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+      <button class="btn btn-secondary" style="flex:1;" id="btnDownloadTemplate"><i class="fas fa-file-csv"></i> Unduh Template</button>
+      <label class="btn btn-primary" style="flex:1;cursor:pointer;">
+        <i class="fas fa-folder-open"></i> Pilih File CSV
+        <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none;">
+      </label>
+    </div>
+
+    <div id="importFileName" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;"></div>
+
+    <div id="importProgressBox" style="display:none;margin-bottom:1rem;">
+      <div style="background:var(--bg-subtle);border-radius:var(--radius-md);height:10px;overflow:hidden;">
+        <div id="importProgress" style="height:100%;width:0%;background:var(--primary);transition:width 0.2s;"></div>
+      </div>
+      <div id="importProgressText" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;text-align:center;">0 / 0</div>
+    </div>
+
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" id="btnCloseImport">Tutup</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnStartImport" style="background:var(--primary);">Mulai Import</button>
+    </div>
+  </div>
+</div>
   </script>
 </body>
 </html>
