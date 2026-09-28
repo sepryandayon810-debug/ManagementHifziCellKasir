@@ -1186,25 +1186,20 @@
         document.getElementById('hutangType').addEventListener('change', updateKasOptionHutang);
 
         function updateKasOptionHutang() {
-          const type = document.getElementById('hutangType').value;
-          const kasBox = document.getElementById('kasOptionBoxHutang');
-          const desc = document.getElementById('kasSublabelDynamic');
-          
-          kasBox.style.display = 'block';
-          const checkbox = document.getElementById('hutangAffectKas');
+  const type = document.getElementById('hutangType').value;
+  const kasBox = document.getElementById('kasOptionBoxHutang');
+  const desc = document.getElementById('kasSublabelDynamic');
 
-          if (type === 'piutang') {
-            // Pinjam Uang sesuai KasCore: bukan transaksi/penjualan, kas berkurang.
-            desc.textContent = 'Pinjam uang: saldo kas berkurang dan menjadi piutang';
-            checkbox.checked = true;
-            checkbox.disabled = true;
-          } else {
-            // Penerimaan pinjaman: dicatat sebagai hutang; kas hanya berubah bila dicentang.
-            desc.textContent = 'Penerimaan pinjaman: saldo kas bertambah jika dicentang';
-            checkbox.disabled = false;
-          }
-        }
+  kasBox.style.display = 'block';
+  const checkbox = document.getElementById('hutangAffectKas');
+  checkbox.disabled = false; // bisa diklik untuk semua tipe
 
+  if (type === 'piutang') {
+    desc.textContent = 'Pinjam uang: saldo kas berkurang jika dicentang';
+  } else {
+    desc.textContent = 'Penerimaan pinjaman: saldo kas bertambah jika dicentang';
+  }
+}
         document.getElementById('btnCloseModal').addEventListener('click', closeModal);
         document.getElementById('btnCancel').addEventListener('click', closeModal);
         document.getElementById('btnClosePaymentModal').addEventListener('click', closePaymentModal);
@@ -1681,7 +1676,8 @@
             }
 
             const nextRemaining = Math.max(0, amount - previouslyPaid);
-            const kasAffect = type === 'piutang' ? true : affectKasInput;
+            const kasAffect = affectKasInput;
+
 
             const hutangPayload = {
               id: hutangId,
@@ -1712,8 +1708,8 @@
             if (!id && !hutangPayload.kasRecorded) {
               let cashTransaction = null;
 
-              if (type === 'piutang') {
-                // Kita meminjamkan uang -> kas keluar -> piutang bertambah.
+              if (type === 'piutang' && kasAffect) {
+  // Kita meminjamkan uang -> kas keluar -> piutang bertambah.
                 cashTransaction = await recordToKas(
                   'keluar',
                   amount,
