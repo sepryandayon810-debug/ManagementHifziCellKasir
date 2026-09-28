@@ -1086,7 +1086,13 @@
           const feeInput = document.getElementById('adminFee');
           adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
           
-          const uangFisikKeluar = Math.max(0, amount - adminFee);
+          const uangFisikKeluar = const preview = KasCore.mapTransactionMutation({
+  kategori: 'tarik_tunai',
+  metode_pembayaran: 'tunai',
+  nominal: amount,
+  admin: adminFee
+});
+const uangFisikKeluar = KasCore.normalizeNumber(preview.cash_out);
 
           document.getElementById('summaryTarik').textContent = Utils.formatRupiah(amount);
           document.getElementById('summaryAdminFee').textContent = Utils.formatRupiah(adminFee);
@@ -1099,10 +1105,12 @@
       ? Utils.getTodayString()
       : new Date().toISOString().split('T')[0];
 
-    const kasLaci = await KasCore.getKasFisikLaci({
-      date: today,
-      userId: user.uid
-    });
+    const kasLaci = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: 'role'
+});
+kasTersedia = KasCore.normalizeNumber(kasLaci.totalLaci);
 
     // Kas Fisik Laci dari KasCore
     kasTersedia = Number(kasLaci.totalKasFisikDiLaci || 0);
