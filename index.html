@@ -1233,11 +1233,23 @@
       document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit || 0);
 
       document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
-      document.getElementById("kasUangMasuk").textContent = "+ " + formatRupiah(scopedSummary.totalCashIn || 0);
-      document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.totalCashOut || 0);
-      document.getElementById("kasPenjualan").textContent = "+ " + formatRupiah(scopedSummary.cashSales || 0);
-      document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupKasFisik);
-      document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikKasFisik);
+      // Uang Masuk Lain = hanya kas_masuk + pengembalian pinjaman (bukan penjualan/topup)
+document.getElementById("kasUangMasuk").textContent  = "+ " + formatRupiah(scopedSummary.cashFlowIn || 0);
+// Kas Keluar Toko = hanya kas_keluar + pinjaman tunai (bukan tarik)
+document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.cashFlowOut || 0);
+document.getElementById("kasPenjualan").textContent  = "+ " + formatRupiah(scopedSummary.cashSales || 0);
+
+// Top Up fisik = cash_in aktual (nominal + admin) untuk metode tunai, bukan summary.topup
+let topupFisik = 0, tarikFisik = 0;
+scopedTransactions.forEach(tx => {
+  if (!KasCore.isValidTransaction(tx)) return;
+  const cat = KasCore.getCategory(tx);
+  const met = KasCore.getPaymentMethod(tx);
+  if (cat === 'top_up' && met === 'tunai')   topupFisik += KasCore.normalizeNumber(tx.cash_in);
+  if (cat === 'tarik_tunai' && met === 'tunai') tarikFisik += KasCore.normalizeNumber(tx.cash_out);
+});
+document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupFisik);
+document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikFisik);
       document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
       // ===== HITUNG NON-TUNAI (QRIS / TRANSFER → BANK) =====
 let topupNonTunai = 0;
