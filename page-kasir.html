@@ -4543,18 +4543,15 @@ async function loadUangGlobal() {
     String(today.getDate()).padStart(2, '0');
 
   try {
-    // Jangan batasi userId agar menghitung total keseluruhan kas toko secara sinkron
-    const [modalSummary, summary] = await Promise.all([
-      KasCore.getModalSummary({ date: todayStr }),
-      KasCore.getDailySummary({ date: todayStr })
-    ]);
+    const user = firebase.auth().currentUser;
+    const kas = await KasCore.getKasLaciDisplay({
+      date: todayStr,
+      userId: user ? user.uid : null,
+      scope: 'role'   // kasir: laci sendiri; owner/admin: seluruh tim — sama seperti Dashboard
+    });
 
-    const kasFisik = KasCore.calculateKasFisikLaciFromSummary(modalSummary.total, summary);
-    
-    document.getElementById('headerUangGlobal').textContent = formatRupiah(kasFisik.total);
-    try {
-      localStorage.setItem('header_uang_global', formatRupiah(kasFisik.total));
-    } catch(e) {}
+    document.getElementById('headerUangGlobal').textContent = formatRupiah(kas.totalLaci);
+    try { localStorage.setItem('header_uang_global', formatRupiah(kas.totalLaci)); } catch (e) {}
   } catch (err) {
     console.error('kasir: gagal memuat uang global', err);
     if (!navigator.onLine) {
