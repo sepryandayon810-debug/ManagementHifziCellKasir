@@ -1086,7 +1086,7 @@
           const feeInput = document.getElementById('adminFee');
           adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
           
-          const uangFisikKeluar = const preview = KasCore.mapTransactionMutation({
+         const preview = KasCore.mapTransactionMutation({
   kategori: 'tarik_tunai',
   metode_pembayaran: 'tunai',
   nominal: amount,
@@ -1185,41 +1185,43 @@ kasTersedia = KasCore.normalizeNumber(kasLaci.totalLaci);
             try {
               Utils.showLoading('Menyimpan transaksi tarik tunai...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-              const transactionId = 'TRK_' + Date.now();
-
-              // =========================================================
-              // BENTUK DATA DASAR TRANSAKSI TARIK TUNAI
-              // =========================================================
-              const transactionBase = {
-                id: transactionId,
-                type: 'tarik',
-                kategori: 'tarik_tunai',
-                metode_pembayaran: 'tunai',
-                amount: amount,
-                total: amount,
-                nominal: amount,
-                adminFee: adminFeeValue,
-                profit: adminFeeValue,
-                admin: adminFeeValue,
-                pengaruhi_kas_global: true,
-                note: note || 'Tarik Tunai',
-                userId: user.uid,
-                userName: userName,
-                date: today,
-                date_key: today,
-                timestamp: Date.now(),
-                status: 'completed',
-                source: 'kasir_tarik'
-              };
-
-              // =========================================================
-              // MINTA KASCORE MENGHITUNG MUTASI & GABUNGKAN DATA
-              // =========================================================
-              const mutation = KasCore.mapTransactionMutation(transactionBase);
-              const transactionData = Object.assign({}, transactionBase, mutation);
+              const timestamp = Date.now();
+const result = await KasCore.saveTransaction({
+  kategori: 'tarik_tunai',
+  metode_pembayaran: 'tunai',
+  nominal: amount,
+  admin: adminFeeValue,
+  catatan: note || 'Tarik Tunai',
+  userId: user.uid,
+  userName: userName,
+  date_key: today,
+  waktu: timestamp,
+  status: 'completed',
+  pengaruhi_kas_global: true
+});
+const transactionData = Object.assign({
+  id: result.id,
+  type: 'tarik',
+  kategori: 'tarik_tunai',
+  metode_pembayaran: 'tunai',
+  amount: amount,
+  total: amount,
+  nominal: amount,
+  adminFee: adminFeeValue,
+  admin: adminFeeValue,
+  profit: adminFeeValue,
+  note: note || 'Tarik Tunai',
+  catatan: note || 'Tarik Tunai',
+  userId: user.uid,
+  userName: userName,
+  date: today,
+  date_key: result.date_key || today,
+  timestamp: timestamp,
+  waktu: timestamp,
+  status: 'completed',
+  source: 'kasir_tarik'
+}, result.mutation || {});
               
-              await db.collection("transactions").doc(transactionId).set(transactionData);
-
               Utils.hideLoading();
               Utils.showToast('Tarik tunai berhasil diproses!', 'success');
 
