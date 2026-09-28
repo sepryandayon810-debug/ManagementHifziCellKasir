@@ -843,14 +843,21 @@
      *
      * Scope kasir = user yang sedang login.
      */
-    const kas = await KasCore.getKasFisikLaci({
+    /*
+     * SATU PINTU BACA KASCORE — getKasLaciDisplay.
+     * Semua saklar KAS_CONFIG (admin top up, pembelian,
+     * pelunasan, piutang) otomatis berlaku di sini.
+     * Page TIDAK menghitung apa pun.
+     */
+    const kas = await KasCore.getKasLaciDisplay({
       date: today,
-      userId: user.uid
+      userId: user.uid,
+      scope: 'own'
     });
 
     const kasLaci =
       KasCore.normalizeNumber(
-        kas.totalKasFisikDiLaci
+        kas.totalLaci
       );
 
     const kasSaatIniEl =
@@ -860,17 +867,6 @@
       kasSaatIniEl.textContent =
         Utils.formatRupiah(kasLaci);
     }
-
-    console.log('[Kas Masuk] KasCore:', {
-      date: today,
-      userId: user.uid,
-      modalAwal: kas.modalAwal,
-      cashIn: kas.cashIn,
-      cashOut: kas.cashOut,
-      saldoKasGlobal: kas.saldoKasGlobal,
-      totalKasFisikDiLaci:
-        kas.totalKasFisikDiLaci
-    });
 
   } catch (error) {
     console.error(
@@ -1036,115 +1032,49 @@ if (saveBtn) {
               .toISOString()
               .split('T')[0];
 
-      const transactionId =
-        'KIN_' + Date.now();
-
-
       /*
        * ========================================================
-       * KASCORE MENENTUKAN MUTASI
+       * SATU PINTU TULIS KASCORE — saveTransaction
        * ========================================================
        *
-       * Kas Masuk:
-       *
-       * Kas Global       = YA
-       * Cash In          = nominal
-       * Cash Out         = 0
-       * Bank In          = 0
-       * Digital In       = 0
-       * Laba             = 0
-       * Masuk Transaksi  = TIDAK
-       * Masuk Penjualan  = TIDAK
+       * Semua perhitungan (mutasi cash/bank/digital, laba,
+       * flag masuk_transaksi / masuk_penjualan, date_key,
+       * waktu, userId) ditulis oleh KasCore.
+       * Page hanya mengirim payload.
        */
-      const mutation =
-        KasCore.mapTransactionMutation({
+      const saved =
+        await KasCore.saveTransaction({
           kategori: 'kas_masuk',
           metode_pembayaran: 'tunai',
           nominal: amount,
-
           admin: 0,
           modal_produk: 0,
-
+          userId: user.uid,
+          status: 'completed',
           pengaruhi_kas_global: true
         });
 
 
       /*
        * ========================================================
-       * DATA TRANSAKSI
-       * ========================================================
-       */
-      const transactionData = {
-
-        // Identitas
-        id: transactionId,
-
-        // Kategori
-        type: 'kas_masuk',
-        source: 'kas_masuk',
-        kategori: 'kas_masuk',
-
-        // Nominal
-        amount: amount,
-        total: amount,
-        nominal: amount,
-
-        // Metode
-        metode_pembayaran: 'tunai',
-
-        // Hasil KasCore
-        cash_in: mutation.cash_in,
-        cash_out: mutation.cash_out,
-
-        bank_in: mutation.bank_in,
-        bank_out: mutation.bank_out,
-
-        digital_in: mutation.digital_in,
-        digital_out: mutation.digital_out,
-
-        laba: mutation.laba,
-
-        masuk_transaksi:
-          mutation.masuk_transaksi,
-
-        masuk_penjualan:
-          mutation.masuk_penjualan,
-
-        pengaruhi_kas_global:
-          mutation.pengaruhi_kas_global,
-
-        // Keterangan
-        note: note,
-
-        // User
-        userId: user.uid,
-        userName: userName,
-
-        // Tanggal
-        date_key: today,
-        date: today,
-
-        // Waktu
-        timestamp: Date.now(),
-
-        createdAt:
-          firebase.firestore.FieldValue.serverTimestamp(),
-
-        // Status
-        status: 'completed'
-      };
-
-
-      /*
-       * ========================================================
-       * SIMPAN KE FIRESTORE
+       * FIELD TAMBAHAN — tampilan saja, BUKAN perhitungan
+       * (dipertahankan agar halaman riwayat lama tetap jalan)
        * ========================================================
        */
       await db
         .collection('transactions')
-        .doc(transactionId)
-        .set(transactionData);
-
+        .doc(saved.id)
+        .update({
+          id: saved.id,
+          type: 'kas_masuk',
+          source: 'kas_masuk',
+          amount: amount,
+          total: amount,
+          note: note,
+          userName: userName,
+          date: today,
+          timestamp: Date.now()
+        });
 
       /*
        * ========================================================
