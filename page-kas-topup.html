@@ -1403,7 +1403,11 @@
             }
 
             const adminFeeValue = parseInt(document.getElementById('adminFee').value) || 0;
-            const total = amount + adminFeeValue;
+            const total = KasCore.getTotalCharge({
+  kategori: 'top_up',
+  nominal: amount,
+  admin: adminFeeValue
+});
             const note = document.getElementById('topupNote').value.trim();
             const shouldPrint = document.getElementById('printReceiptToggle').checked;
 
@@ -1441,53 +1445,29 @@
                 }
               }
 
-              // ====== MUTASI BAKU VIA KAS-CORE (selaras tabel approval) ======
-              // Top Up Tunai : transaksi=ya, penjualan=tidak, kas + (nominal+admin), laba=admin, hutang=tidak
-              // Top Up Hutang: transaksi=ya, penjualan=tidak, kas tidak berubah, laba=0 (mengikuti pelunasan), hutang=ya
-             const result = await KasCore.saveTransaction({
-  transactionId,
+              // ====== SATU PINTU: semua perhitungan dan penyimpanan ======
+// KasCore menghitung mutasi kas, laba, total tagihan,
+// menyimpan transaksi, dan membuat hutang bila metode = utang.
+const result = await KasCore.saveTransaction({
+  transactionId: transactionId,
   kategori: 'top_up',
   metode_pembayaran: paymentMode === 'hutang' ? 'utang' : 'tunai',
   paymentMethod: paymentMode,
   nominal: amount,
   admin: adminFeeValue,
-  customerId,
-  customerName,
+  type: 'topup',
+  note: note || 'Top Up Saldo',
+  catatan: note || 'Top Up Saldo',
+  customerId: customerId || null,
+  customerName: customerName || '',
   userId: user.uid,
-  userName,
+  userName: userName,
   date_key: today,
   waktu: timestamp,
+  status: 'completed',
   source: 'kasir_topup'
 });
-              
-              if (paymentMode === 'hutang') {
-                const debtId = 'debt_' + timestamp;
-                const noteDescription = 'Top Up: ' + (note || 'Top Up Saldo');
-
-                await db.collection("debts").doc(debtId).set({
-                  id: debtId,
-                  transactionId: transactionId,
-                  type: 'piutang',
-                  name: customerName,
-                  customerName: customerName,
-                  customerId: customerId,
-                  amount: total,
-                  totalDebt: total,
-                  remaining: total,
-                  remainingAmount: total,
-                  paidAmount: 0,
-                  note: noteDescription,
-                  description: noteDescription,
-                  date: today,
-                  createdAt: timestamp,
-                  updatedAt: timestamp,
-                  status: 'active',
-                  affectKas: false,
-                  kasRecorded: false,
-                  source: 'kasir_topup',
-                  userId: user.uid,
-                  userName: userName
-                });
+const transactionData = result.transaction;
               }
 
               Utils.hideLoading();
