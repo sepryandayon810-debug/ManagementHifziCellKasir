@@ -6703,23 +6703,45 @@ async function saveBeliBarang() {
     };
     await db.ref('purchases/' + todayStr + '/' + purchaseId).set(purchaseData);
 
-    // 2. Jika dicentang, simpan juga ke Kas Keluar
-    if (kurangiSaldo) {
-      const kasId = 'KASOUT' + timestamp;
-      await db.ref('transactions/' + todayStr + '/' + kasId).set({
-        type: 'kas_keluar',
-        status: 'completed',
-        amount: grandTotal,
-        description: 'Pembelian: ' + savedItems.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
-        category: 'pembelian',
-        relatedPurchaseId: purchaseId,
-        timestamp: timestamp,
-        date: todayStr,
-        userId: user ? user.uid : 'unknown',
-        userName: document.getElementById('userName').textContent
-      });
-    }
+    // 2. Jika dicentang, simpan juga ke Kas Keluar (mutasi baku via KasCore)
+if (kurangiSaldo) {
+  const kasId = 'KASOUT' + timestamp;
 
+  const mutation = KasCore.mapTransactionMutation({
+    kategori: 'pembelian',
+    metode_pembayaran: 'tunai',
+    nominal: grandTotal,
+    pengaruhi_kas_global: true
+  });
+
+  await db.ref('transactions/' + todayStr + '/' + kasId).set({
+    id: kasId,
+    type: 'kas_keluar',
+    kategori: 'pembelian',
+    metode_pembayaran: 'tunai',
+    status: 'completed',
+    amount: grandTotal,
+    nominal: grandTotal,
+    cash_in: mutation.cash_in,           // ⭐ field yang dibaca KasCore
+    cash_out: mutation.cash_out,         // ⭐ ini yang mengurangi uang laci
+    bank_in: mutation.bank_in,
+    bank_out: mutation.bank_out,
+    digital_in: mutation.digital_in,
+    digital_out: mutation.digital_out,
+    laba: mutation.laba,
+    masuk_transaksi: mutation.masuk_transaksi,     // false
+    masuk_penjualan: mutation.masuk_penjualan,     // false
+    pengaruhi_kas_global: true,
+    description: 'Pembelian: ' + savedItems.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
+    category: 'pembelian',
+    relatedPurchaseId: purchaseId,
+    timestamp: timestamp,
+    date: todayStr,
+    date_key: todayStr,
+    userId: user ? user.uid : 'unknown',
+    userName: document.getElementById('userName').textContent
+  });
+}
     // Refresh produk, statistik header, dan uang global tanpa perlu pindah menu
     await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
 
