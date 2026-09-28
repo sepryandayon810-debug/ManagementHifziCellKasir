@@ -5365,144 +5365,73 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
           const profit = getCartProfit();
           const taxAmount = 0;
 
-          // ⭐ MUTASI BAKU: Jual Hutang — penjualan ✅, kas ❌, laba ✅, hutang ✅
-          const hutangMutation = KasCore.mapTransactionMutation({
-            kategori: 'jual',
-            metode_pembayaran: 'utang',
-            nominal: total,
-            modal_produk: getCartModal()
-          });
-
-          // 1. Simpan transaksi kasir
-          const transaction = {
-            id: transactionId,
-            type: 'penjualan',
-            kategori: 'jual',
-            metode_pembayaran: 'utang',
-            nominal: total,
-            items: cart,
-            productSummary: productSummary,
-            subtotal,
-            tax: taxAmount,
-            discount,
-            total,
-            profit,
-            laba: hutangMutation.laba,
-            cash_in: hutangMutation.cash_in,         // 0 — uang belum diterima
-            cash_out: hutangMutation.cash_out,
-            bank_in: hutangMutation.bank_in,
-            bank_out: hutangMutation.bank_out,
-            digital_in: hutangMutation.digital_in,
-            digital_out: hutangMutation.digital_out,  // modal keluar dari saldo digital
-            masuk_transaksi: hutangMutation.masuk_transaksi,     // true
-            masuk_penjualan: hutangMutation.masuk_penjualan,     // true
-            pengaruhi_kas_global: hutangMutation.pengaruhi_kas_global, // false
-            paymentMethod: 'hutang',
-            paymentAmount: piutangPayment,
-            change: 0,
-            remainingPiutang: remainingDebt > 0 ? remainingDebt : 0,
-            cashierId: user ? user.uid : 'unknown',
-            cashierName: document.getElementById('userName').textContent,
-            note: productSummary,
-            customerName: piutangName,
-            timestamp: Date.now(),
-            date: todayStr,
-            date_key: todayStr,                        // ⭐ KUNCI: agar terbaca KasCore
-            status: 'completed',
-            isHutang: true,
-            hutangName: piutangName,
-            source: 'kasir',
-            flowType: remainingDebt > 0 ? 'penjualan_kredit' : 'penjualan_lunas'
-          };
-
           const db = createFirestoreCompat();
 
-          // Auto-save customer jika belum ada
-          const customerExists = Object.values(customers).some(c =>
-            c.name && c.name.toLowerCase() === piutangName.toLowerCase()
-          );
+// Auto-save customer jika belum ada
+const customerExists = Object.values(customers).some(c =>
+  c.name && c.name.toLowerCase() === piutangName.toLowerCase()
+);
+if (!customerExists) {
+  const newCustomerId = 'cust_' + Date.now();
+  await db.ref('customers/' + newCustomerId).set({
+    name: piutangName,
+    phone: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  customers[newCustomerId] = { name: piutangName, phone: null };
+}
 
-          if (!customerExists) {
-            const newCustomerId = 'cust_' + Date.now();
-            await db.ref('customers/' + newCustomerId).set({
-              name: piutangName,
-              phone: null,
-              createdAt: Date.now(),
-              updatedAt: Date.now()
-            });
-            customers[newCustomerId] = { name: piutangName, phone: null };
-          }
+// 1. Simpan transaksi jual hutang via pintu tunggal KasCore
+const result = await KasCore.saveTransaction({
+  kategori: 'jual',
+  metode_pembayaran: 'utang',
+  nominal: total,
+  modal_produk: getCartModal(),
+  userId: user ? user.uid : 'unknown',
+  shiftId: localStorage.getItem('active_shift_id') || null,
+  customerName: piutangName,
+  catatan: productSummary,
+  waktu: Date.now()
+});
 
-          await db.ref(`transactions/${todayStr}/${transactionId}`).set(transaction);
+// 2. Update dokumen hutang: tambah dueDate, items, productSummary
+const dueDate = document.getElementById('piutangDueDate').value || null;
+await db.collection('debts').doc(result.debtId).update({
+  dueDate: dueDate,
+  items: cart,
+  note: productSummary,
+  flowType: 'piutang_penjualan',
+  source: 'kasir',
+  invoiceNumber: result.id
+});
 
-          // 2. Simpan ke debts/ dengan nama pelanggan & rincian produk yang pasti terisi
-          const debtId = 'debt_' + Date.now();
-          const dueDate = document.getElementById('piutangDueDate').value || null;
-          await db.ref(`debts/${debtId}`).set({
-            id: debtId,
-            type: 'piutang',
-            date: todayStr,
-            name: piutangName,           // Memastikan nama pelanggan tidak kosong
-            customerName: piutangName,
-            amount: remainingDebt > 0 ? remainingDebt : 0,
-            remaining: remainingDebt > 0 ? remainingDebt : 0,
-            dueDate: dueDate,
-            note: productSummary,        // Berisi nama produk (bukan lagi kode TRX)
-            items: cart,                 // Menyimpan daftar barang
-            status: 'active',
-            userId: user ? user.uid : 'unknown',
-            userName: document.getElementById('userName').textContent,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            affectKas: piutangPayment > 0,
-            source: 'kasir',
-            flowType: 'piutang_penjualan',
-            kasRecorded: true,
-            sourceTransactionId: transactionId,
-            invoiceNumber: transactionId
-          });
+// 3. Pembayaran sebagian → kas masuk via KasCore
+if (piutangPayment > 0) {
+  await KasCore.saveTransaction({
+    kategori: 'kas_masuk',
+    metode_pembayaran: 'tunai',
+    nominal: piutangPayment,
+    userId: user ? user.uid : 'unknown',
+    catatan: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
+    waktu: Date.now()
+  });
+}
 
-                    // 2b. Jika ada pembayaran sebagian, catat sebagai kas masuk
-            if (piutangPayment > 0) {
-            const kasId = 'kas_' + Date.now();
-
-            // ⭐ MUTASI BAKU: kas masuk tunai — bukan transaksi, bukan penjualan, masuk laci
-            const kasMasukMutation = KasCore.mapTransactionMutation({
-              kategori: 'kas_masuk',
-              metode_pembayaran: 'tunai',
-              nominal: piutangPayment
-            });
-
-            await db.ref(`transactions/${todayStr}/${kasId}`).set({
-              id: kasId,
-               type: 'kas_masuk',
-               kategori: 'kas_masuk',
-               metode_pembayaran: 'tunai',
-               nominal: piutangPayment,
-               cash_in: kasMasukMutation.cash_in,     // ⭐ piutangPayment masuk laci
-               cash_out: kasMasukMutation.cash_out,
-               bank_in: kasMasukMutation.bank_in,
-               bank_out: kasMasukMutation.bank_out,
-               laba: 0,
-               masuk_transaksi: false,
-               masuk_penjualan: false,
-               pengaruhi_kas_global: true,
-               category: 'penerimaan_piutang_penjualan',
-               source: 'penjualan',
-               flowType: 'pembayaran_sebagian_piutang',
-               cashDirection: 'in',
-               relatedTransactionId: transactionId,
-              amount: piutangPayment,
-              note: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
-              userId: user ? user.uid : 'unknown',
-              userName: document.getElementById('userName').textContent,
-              timestamp: Date.now(),
-              date: todayStr,
-              date_key: todayStr,                     // ⭐ KUNCI
-              status: 'completed',
-              sourceTransactionId: transactionId
-            });
-          }
+// data tambahan untuk struk
+const transaction = {
+  id: result.id,
+  items: cart,
+  subtotal,
+  discount,
+  total,
+  paymentMethod: 'hutang',
+  paymentAmount: piutangPayment,
+  remainingPiutang: remainingDebt > 0 ? remainingDebt : 0,
+  customerName: piutangName,
+  cashierName: document.getElementById('userName').textContent,
+  timestamp: Date.now()
+};
 
           // 3. Update stok (barang tetap keluar)
           for (const item of cart) {
@@ -5577,49 +5506,32 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
         const taxAmount = 0; // PPN dihapus dari UI, default 0
 
         // ⭐ MUTASI BAKU: Jual Tunai/QRIS/Transfer — sesuai tabel approval
-        const mutation = KasCore.mapTransactionMutation({
-          kategori: 'jual',
-          metode_pembayaran: metodeKasCore,
-          nominal: total,
-          modal_produk: getCartModal()
-        });
-
-        const transaction = {
-          id: transactionId,
-          type: 'penjualan',
-          kategori: 'jual',
-          metode_pembayaran: mutation.metode_pembayaran,
-          nominal: total,
-          items: cart,
-          subtotal,
-          tax: taxAmount,
-          discount,
-          total,
-          profit,
-          laba: mutation.laba,
-          cash_in: mutation.cash_in,                 // ⭐ tunai masuk laci
-          cash_out: mutation.cash_out,
-          bank_in: mutation.bank_in,                 // ⭐ QRIS/transfer masuk bank
-          bank_out: mutation.bank_out,
-          digital_in: mutation.digital_in,
-          digital_out: mutation.digital_out,         // ⭐ modal keluar saldo digital
-          masuk_transaksi: mutation.masuk_transaksi,     // true
-          masuk_penjualan: mutation.masuk_penjualan,     // true
-          pengaruhi_kas_global: mutation.pengaruhi_kas_global,
-          paymentMethod,
-          paymentAmount,
-          change: paymentAmount - total,
-          cashierId: user ? user.uid : 'unknown',
-          cashierName: document.getElementById('userName').textContent,
-          note: localStorage.getItem('kasir_note') || '',
-          timestamp: Date.now(),
-          date: todayStr,
-          date_key: todayStr,                        // ⭐ KUNCI: agar terbaca KasCore
-          status: 'completed'
-        };
-
         const db = createFirestoreCompat();
-        await db.ref(`transactions/${todayStr}/${transactionId}`).set(transaction);
+const result = await KasCore.saveTransaction({
+  kategori: 'jual',
+  metode_pembayaran: metodeKasCore,
+  nominal: total,
+  modal_produk: getCartModal(),
+  userId: user ? user.uid : 'unknown',
+  shiftId: localStorage.getItem('active_shift_id') || null,
+  customerName: '',
+  catatan: localStorage.getItem('kasir_note') || '',
+  waktu: Date.now()
+});
+
+// data tambahan untuk struk (KasCore tidak simpan items)
+const transaction = {
+  id: result.id,
+  items: cart,
+  subtotal,
+  discount,
+  total,
+  paymentMethod,
+  paymentAmount,
+  change: paymentAmount - total,
+  cashierName: document.getElementById('userName').textContent,
+  timestamp: Date.now()
+};
 
         // Update stok produk
         for (const item of cart) {
@@ -6798,41 +6710,14 @@ async function saveBeliBarang() {
 
     // 2. Jika dicentang, simpan juga ke Kas Keluar (mutasi baku via KasCore)
 if (kurangiSaldo) {
-  const kasId = 'KASOUT' + timestamp;
-
-  const mutation = KasCore.mapTransactionMutation({
+  await KasCore.saveTransaction({
     kategori: 'pembelian',
     metode_pembayaran: 'tunai',
     nominal: grandTotal,
-    pengaruhi_kas_global: true
-  });
-
-  await db.ref('transactions/' + todayStr + '/' + kasId).set({
-    id: kasId,
-    type: 'kas_keluar',
-    kategori: 'pembelian',
-    metode_pembayaran: 'tunai',
-    status: 'completed',
-    amount: grandTotal,
-    nominal: grandTotal,
-    cash_in: mutation.cash_in,           // ⭐ field yang dibaca KasCore
-    cash_out: mutation.cash_out,         // ⭐ ini yang mengurangi uang laci
-    bank_in: mutation.bank_in,
-    bank_out: mutation.bank_out,
-    digital_in: mutation.digital_in,
-    digital_out: mutation.digital_out,
-    laba: mutation.laba,
-    masuk_transaksi: mutation.masuk_transaksi,     // false
-    masuk_penjualan: mutation.masuk_penjualan,     // false
-    pengaruhi_kas_global: true,
-    description: 'Pembelian: ' + savedItems.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
-    category: 'pembelian',
-    relatedPurchaseId: purchaseId,
-    timestamp: timestamp,
-    date: todayStr,
-    date_key: todayStr,
     userId: user ? user.uid : 'unknown',
-    userName: document.getElementById('userName').textContent
+    catatan: 'Pembelian: ' + savedItems.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
+    pengaruhi_kas_global: true,
+    waktu: timestamp
   });
 }
     // Refresh produk, statistik header, dan uang global tanpa perlu pindah menu
