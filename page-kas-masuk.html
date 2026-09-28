@@ -826,60 +826,39 @@
       async function initKasMasuk(user, userName, userData) {
         let amount = 0;
 
-        async function loadCurrentKas() {
-  try {
-    const today =
-      Utils.getTodayString
-        ? Utils.getTodayString()
-        : new Date().toISOString().split('T')[0];
+        
+async function loadCurrentKas() {
+  const kasSaatIniEl =
+    document.getElementById('kasSaatIni');
 
-    /*
-     * Gunakan KasCore langsung.
-     *
-     * Kas fisik laci =
-     * Modal Awal
-     * + Kas Global masuk
-     * - Kas Global keluar
-     *
-     * Scope kasir = user yang sedang login.
-     */
-    /*
-     * SATU PINTU BACA KASCORE — getKasLaciDisplay.
-     * Semua saklar KAS_CONFIG (admin top up, pembelian,
-     * pelunasan, piutang) otomatis berlaku di sini.
-     * Page TIDAK menghitung apa pun.
-     */
+  try {
+    const today = Utils.getTodayString();
+
+    // Ambil saldo langsung dari KasCore.
     const kas = await KasCore.getKasLaciDisplay({
       date: today,
       userId: user.uid,
       scope: 'own'
     });
 
-    const kasLaci =
-      KasCore.normalizeNumber(
-        kas.totalLaci
-      );
-
-    const kasSaatIniEl =
-      document.getElementById('kasSaatIni');
+    const saldo = KasCore.normalizeNumber(
+      kas.totalLaci
+    );
 
     if (kasSaatIniEl) {
       kasSaatIniEl.textContent =
-        Utils.formatRupiah(kasLaci);
+        Utils.formatRupiah(saldo);
     }
 
   } catch (error) {
     console.error(
-      '[Kas Masuk] Gagal memuat kas tersedia:',
+      '[Kas Masuk] Gagal membaca saldo:',
       error
     );
 
-    const kasSaatIniEl =
-      document.getElementById('kasSaatIni');
-
     if (kasSaatIniEl) {
       kasSaatIniEl.textContent =
-        Utils.formatRupiah(0);
+        'Gagal memuat saldo';
     }
   }
 }
@@ -1042,39 +1021,31 @@ if (saveBtn) {
        * waktu, userId) ditulis oleh KasCore.
        * Page hanya mengirim payload.
        */
-      const saved =
-        await KasCore.saveTransaction({
-          kategori: 'kas_masuk',
-          metode_pembayaran: 'tunai',
-          nominal: amount,
-          admin: 0,
-          modal_produk: 0,
-          userId: user.uid,
-          status: 'completed',
-          pengaruhi_kas_global: true
-        });
+      const saved = await KasCore.saveTransaction({
+  kategori: 'kas_masuk',
+  metode_pembayaran: 'tunai',
+  nominal: amount,
+  admin: 0,
+  modal_produk: 0,
+  userId: user.uid,
+  catatan: note,
+  status: 'completed',
+  pengaruhi_kas_global: true
+});
 
-
-      /*
-       * ========================================================
-       * FIELD TAMBAHAN — tampilan saja, BUKAN perhitungan
-       * (dipertahankan agar halaman riwayat lama tetap jalan)
-       * ========================================================
-       */
-      await db
-        .collection('transactions')
-        .doc(saved.id)
-        .update({
-          id: saved.id,
-          type: 'kas_masuk',
-          source: 'kas_masuk',
-          amount: amount,
-          total: amount,
-          note: note,
-          userName: userName,
-          date: today,
-          timestamp: Date.now()
-        });
+// Data tambahan untuk tampilan riwayat.
+// Tidak mengubah mutasi atau perhitungan KasCore.
+await db.collection('transactions')
+  .doc(saved.id)
+  .update({
+    type: 'kas_masuk',
+    source: 'kas_masuk',
+    amount: amount,
+    total: amount,
+    note: note,
+    userName: userName,
+    date: today
+  });
 
       /*
        * ========================================================
