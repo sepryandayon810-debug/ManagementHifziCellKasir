@@ -1696,60 +1696,73 @@
               affectKas: kasAffect,
               kasRecorded: existing?.kasRecorded === true,
               source: existing?.source || 'hutang_page',
-              kasCoreCategory: type === 'piutang' ? 'pinjaman_tunai' : 'kas_masuk',
+              kasCoreCategory: type === 'piutang' ? 'kas_keluar' : 'kas_masuk',
               kasCoreVersion: '1'
             };
 
-            // Simpan data hutang/piutang terlebih dahulu.
-            await firestoreDb.ref('debts/' + hutangId).set(hutangPayload);
-
-            // Hanya transaksi BARU yang membuat arus kas awal.
-            // Edit tidak membuat transaksi kas kedua.
-            if (!id && !hutangPayload.kasRecorded) {
-              let cashTransaction = null;
-
-              if (type === 'piutang' && kasAffect) {
-  // Kita meminjamkan uang -> kas keluar -> piutang bertambah.
-                cashTransaction = await recordToKas(
-                  'keluar',
-                  amount,
-                  `Pemberian pinjaman - ${name}`,
-                  user,
-                  'pinjaman_tunai',
-                  hutangId,
-                  {
-                    affectsCashGlobal: true,
-                    debtType: 'piutang',
-                    flowType: 'pemberian_pinjaman'
-                  }
-                );
-              } else if (kasAffect) {
-                // Kita menerima pinjaman -> kas masuk -> hutang bertambah.
-                cashTransaction = await recordToKas(
-                  'masuk',
-                  amount,
-                  `Penerimaan pinjaman - ${name}`,
-                  user,
-                  'kas_masuk',
-                  hutangId,
-                  {
-                    affectsCashGlobal: true,
-                    debtType: 'hutang',
-                    flowType: 'penerimaan_pinjaman'
-                  }
-                );
-              }
-
-              if (cashTransaction?.id) {
-                await firestoreDb.ref('debts/' + hutangId).update({
-                  cashTransactionId: cashTransaction.id,
-                  cashSource: 'hutang_piutang',
-                  kasRecorded: true,
-                  updatedAt: Date.now()
-                });
-              }
-            }
-
+           let cashTransaction = null;
+// Untuk data baru yang memengaruhi kas,
+// catat transaksi melalui KasCore terlebih dahulu.
+if (!id && kasAffect) {
+  await ensureKasCore();
+  if (type === 'piutang') {
+    // Memberikan pinjaman: uang keluar dari kas.
+    cashTransaction = await recordToKas(
+      'keluar',
+      amount,
+      `Pemberian pinjaman - ${name}`,
+      user,
+      'kas_keluar',
+      hutangId,
+      {
+        affectsCashGlobal: true,
+        debtType: 'piutang',
+        flowType: 'pemberian_pinjaman'
+      }
+    );
+  } else {
+    // Menerima pinjaman: uang masuk ke kas.
+    cashTransaction = await recordToKas(
+      'masuk',
+      amount,
+      `Penerimaan pinjaman - ${name}`,
+      user,
+      'kas_masuk',
+      hutangId,
+      {
+        affectsCashGlobal: true,
+        debtType: 'hutang',
+        flowType: 'penerimaan_pinjaman'
+      }
+    );
+  }
+}
+const debtToSave = {
+  ...hutangPayload,
+  ...(cashTransaction?.id
+    ? {
+        cashTransactionId: cashTransaction.id,
+        cashSource: 'hutang_piutang',
+        kasRecorded: true,
+        updatedAt: Date.now()
+      }
+    : {})
+};
+try {
+  // Data hutang baru disimpan setelah transaksi kas berhasil.
+  await firestoreDb.ref('debts/' + hutangId).set(debtToSave);
+} catch (debtError) {
+  // Jika penyimpanan hutang gagal, hapus transaksi kas yang sudah dibuat.
+  if (cashTransaction?.id) {
+    await firebase.firestore()
+      .collection('transactions')
+      .doc(cashTransaction.id)
+      .delete()
+      .catch(() => {});
+  }
+  throw debtError;
+}
+            
             Utils.showToast('Data berhasil disimpan', 'success');
             closeModal();
             await loadAllData();
@@ -2014,8 +2027,8 @@
                 if (remaining <= 0) continue;
 
                 const category = item.type === 'hutang'
-                  ? 'bayar_hutang'
-                  : 'pengembalian_pinjaman';
+  ? 'kas_keluar'
+  : 'kas_masuk';
 
                 const now = Date.now();
                 let kasRecord = null;
@@ -2059,9 +2072,13 @@
                     timestamp: now
                   });
                 } catch (itemError) {
-                  if (kasRecord?.date_key && kasRecord?.id) {
-                    await firestoreDb.ref('transactions/' + kasRecord.date_key + '/' + kasRecord.id).remove().catch(() => {});
-                  }
+                  if (kasRecord?.id) {
+  await firebase.firestore()
+    .collection('transactions')
+    .doc(kasRecord.id)
+    .delete()
+    .catch(() => {});
+}
                   throw itemError;
                 }
               }
@@ -2120,25 +2137,26 @@
             return;
           }
 
-          Utils.showLoading();
-
-          try {
-            const newRemaining = Math.max(0, remaining - paymentAmount);
+         Utils.showLoading();
+let previousDebt = null;
+let paymentPath = null;
+let kasRecord = null;
+try {
+  const newRemaining = Math.max(0, remaining - paymentAmount);
             const isFullyPaid = newRemaining === 0;
             const category = item.type === 'hutang'
-              ? 'bayar_hutang'
-              : 'pengembalian_pinjaman';
+  ? 'kas_keluar'
+  : 'kas_masuk';
             const now = Date.now();
-            const previousDebt = {
-              remaining: item.remaining,
-              status: item.status,
-              paidAt: item.paidAt ?? null,
-              updatedAt: item.updatedAt ?? null
-            };
-            const paymentPath = 'debt_payments/' + currentPaymentId + '/' + now;
+            previousDebt = {
+  remaining: item.remaining,
+  status: item.status,
+  paidAt: item.paidAt ?? null,
+  updatedAt: item.updatedAt ?? null
+};
+paymentPath = 'debt_payments/' + currentPaymentId + '/' + now;
 
             // 1. Catat kas terlebih dahulu. Jika KasCore gagal, hutang TIDAK diubah.
-            let kasRecord = null;
             if (affectKas) {
               kasRecord = await recordToKas(
                 item.type === 'hutang' ? 'keluar' : 'masuk',
@@ -2195,11 +2213,21 @@
             console.error('Error processing payment:', error);
             // Jika kas sudah tercatat tetapi update hutang gagal, hapus transaksi kas tadi.
             try {
-              if (typeof kasRecord !== 'undefined' && kasRecord && kasRecord.date_key && kasRecord.id) {
-                await firestoreDb.ref('transactions/' + kasRecord.date_key + '/' + kasRecord.id).remove();
-              }
-              await firestoreDb.ref(paymentPath).remove().catch(() => {});
-              await firestoreDb.ref('debts/' + currentPaymentId).update(previousDebt).catch(() => {});
+              if (kasRecord?.id) {
+  await firebase.firestore()
+    .collection('transactions')
+    .doc(kasRecord.id)
+    .delete()
+    .catch(() => {});
+}
+if (paymentPath) {
+  await firestoreDb.ref(paymentPath).remove().catch(() => {});
+}
+if (previousDebt) {
+  await firestoreDb.ref('debts/' + currentPaymentId)
+    .update(previousDebt)
+    .catch(() => {});
+}
             } catch (rollbackError) {
               console.error('Rollback pembayaran gagal:', rollbackError);
             }
@@ -2210,9 +2238,9 @@
         }
 
         async function ensureKasCore() {
-          if (window.KasCore && typeof window.KasCore.mapTransactionMutation === 'function') {
-            return window.KasCore;
-          }
+          if (window.KasCore && typeof window.KasCore.saveTransaction === 'function') {
+  return window.KasCore;
+}
 
           await new Promise((resolve, reject) => {
             const existing = document.querySelector('script[data-kas-core-loader="1"]');
@@ -2230,96 +2258,58 @@
             document.head.appendChild(script);
           });
 
-          if (!window.KasCore || typeof window.KasCore.mapTransactionMutation !== 'function') {
-            throw new Error('KasCore gagal diinisialisasi. Periksa file ./js/kas-core.js.');
-          }
+         if (!window.KasCore || typeof window.KasCore.saveTransaction !== 'function') {
+  throw new Error('KasCore gagal diinisialisasi. Periksa file ./js/kas-core.js.');
+}
 
           return window.KasCore;
         }
 
-        async function recordToKas(type, amount, description, user, category = 'kas_masuk', relatedDebtId = null, extra = {}) {
-          await ensureKasCore();
+        async function recordToKas(
+  type,
+  amount,
+  description,
+  user,
+  category = 'kas_masuk',
+  relatedDebtId = null,
+  extra = {}
+) {
+  const core = await ensureKasCore();
 
-          const nominal = Math.max(0, Number(amount) || 0);
-          if (nominal <= 0) return null;
+  const nominal = Math.max(0, Number(amount) || 0);
+  if (nominal <= 0) return null;
 
-          const now = new Date();
-          const today = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0');
-          const kasId = 'kas_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-          const affectsCashGlobal = extra.affectsCashGlobal !== undefined
-            ? !!extra.affectsCashGlobal
-            : true;
+  const now = Date.now();
+  const today = Utils.getTodayString
+    ? Utils.getTodayString()
+    : new Date().toISOString().split('T')[0];
 
-          const mutation = window.KasCore.mapTransactionMutation({
-            kategori: category,
-            metode_pembayaran: extra.paymentMethod || 'tunai',
-            nominal,
-            admin: Number(extra.admin || 0),
-            modal_produk: Number(extra.modal_produk || 0),
-            pengaruhi_kas_global: affectsCashGlobal,
-            masuk_transaksi: false,
-            masuk_penjualan: false
-          });
+  const affectsCashGlobal = extra.affectsCashGlobal !== undefined
+    ? Boolean(extra.affectsCashGlobal)
+    : true;
 
-          const cashIn = Number(mutation.cash_in || 0);
-          const cashOut = Number(mutation.cash_out || 0);
-          const bankIn = Number(mutation.bank_in || 0);
-          const bankOut = Number(mutation.bank_out || 0);
-          const digitalIn = Number(mutation.digital_in || 0);
-          const digitalOut = Number(mutation.digital_out || 0);
+  const result = await core.saveTransaction({
+    kategori: category,
+    metode_pembayaran: extra.paymentMethod || 'tunai',
+    nominal,
+    admin: Number(extra.admin || 0),
+    catatan: description,
+    userId: user.uid,
+    date_key: today,
+    waktu: now,
+    status: 'completed',
+    pengaruhi_kas_global: affectsCashGlobal
+  });
 
-          const hasOut = cashOut > 0 || bankOut > 0 || digitalOut > 0;
-          const hasIn = cashIn > 0 || bankIn > 0 || digitalIn > 0;
-
-          if (affectsCashGlobal && !hasOut && !hasIn) {
-            throw new Error('KasCore tidak menghasilkan arus kas untuk kategori ' + category + '.');
-          }
-
-          let cashDirection = 'none';
-          if (hasOut) cashDirection = 'out';
-          else if (hasIn) cashDirection = 'in';
-
-          const transactionData = {
-            id: kasId,
-            type: hasOut ? 'kas_keluar' : (hasIn ? 'kas_masuk' : 'non_cash'),
-            kategori: mutation.kategori,
-            category: mutation.kategori,
-            metode_pembayaran: mutation.metode_pembayaran,
-            nominal: mutation.nominal,
-            admin: mutation.admin,
-            modal_produk: mutation.modal_produk,
-            pengaruhi_kas_global: mutation.pengaruhi_kas_global,
-            masuk_transaksi: mutation.masuk_transaksi,
-            masuk_penjualan: mutation.masuk_penjualan,
-            laba: mutation.laba,
-            cash_in: cashIn,
-            cash_out: cashOut,
-            bank_in: bankIn,
-            bank_out: bankOut,
-            digital_in: digitalIn,
-            digital_out: digitalOut,
-            source: 'hutang_piutang',
-            flowType: extra.flowType || mutation.kategori,
-            cashDirection,
-            relatedDebtId: relatedDebtId || null,
-            debtType: extra.debtType || null,
-            amount: nominal,
-            note: description,
-            date: today,
-            date_key: today,
-            timestamp: Date.now(),
-            createdAt: Date.now(),
-            userId: user?.uid || null,
-            userName: user?.displayName || user?.name || user?.email || 'User',
-            status: 'completed'
-          };
-
-          await firestoreDb.ref('transactions/' + today + '/' + kasId).set(transactionData);
-          return transactionData;
-        }
-
+  return {
+    id: result.id,
+    date_key: result.date_key,
+    debtId: result.debtId || null,
+    mutation: result.mutation || {},
+    relatedDebtId
+  };
+}
+        
         function exportData() {
           const dataToExport = Object.values(hutangData).map(item => ({
             name: item.name,
