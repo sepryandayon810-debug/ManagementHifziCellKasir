@@ -957,23 +957,28 @@
       const classification =
         KasCore.classifyTransaction(t);
 
+      // Mutasi baku diambil dari KasCore (data lama tanpa field mutasi
+      // otomatis dihitung ulang oleh mapper — sama persis seperti createSummary).
+      const mut =
+        KasCore.mapTransactionMutation(t);
+
       const cashIn =
-        Number(t.cash_in || 0);
+        Number(mut.cash_in || 0);
 
       const cashOut =
-        Number(t.cash_out || 0);
+        Number(mut.cash_out || 0);
 
       const bankIn =
-        Number(t.bank_in || 0);
+        Number(mut.bank_in || 0);
 
       const bankOut =
-        Number(t.bank_out || 0);
+        Number(mut.bank_out || 0);
 
       const digitalIn =
-        Number(t.digital_in || 0);
+        Number(mut.digital_in || 0);
 
       const digitalOut =
-        Number(t.digital_out || 0);
+        Number(mut.digital_out || 0);
 
 
       /*
@@ -1118,24 +1123,22 @@
             'Transaksi';
 
 
-          /*
-           * =====================================================
-           * TENTUKAN INCOME / EXPENSE
-           *
-           * Prioritas berdasarkan MUTASI KAS.
-           * =====================================================
-           */
+          // Mutasi baku dari KasCore (bukan field mentah) supaya data lama
+          // tanpa field mutasi tetap benar income/expense-nya.
+          const mut =
+            KasCore.mapTransactionMutation(t);
+
           const cashIn =
-            Number(t.cash_in || 0);
+            Number(mut.cash_in || 0);
 
           const cashOut =
-            Number(t.cash_out || 0);
+            Number(mut.cash_out || 0);
 
           const bankIn =
-            Number(t.bank_in || 0);
+            Number(mut.bank_in || 0);
 
           const bankOut =
-            Number(t.bank_out || 0);
+            Number(mut.bank_out || 0);
 
 
           const isIncome =
