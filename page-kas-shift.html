@@ -757,7 +757,7 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initKasShift(user);
+          initKasShift(user, userData);
         });
       });
 
@@ -835,13 +835,13 @@
         }
       }
 
-      function initKasShift(user) {
+      function initKasShift(user, userData) {
 
   // ==========================================================
   // LOAD STATUS SHIFT
   // ==========================================================
-  checkShiftStatus(user);
-
+    checkShiftStatus(user, userData);
+  
   // ==========================================================
   // LOAD RIWAYAT SHIFT
   // ==========================================================
@@ -858,7 +858,7 @@
       if (isShiftOpen) {
         window.location.href = 'page-closing.html';
       } else {
-        openShift(user);
+        openShift(user, userData);
       }
 
     });
@@ -943,7 +943,7 @@
   }
 }
       
-      async function checkShiftStatus(user) {
+      async function checkShiftStatus(user, userData) {
         const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
         try {
@@ -959,7 +959,7 @@
             currentShiftId = null;
             updateShiftUI(false);
           }
-          loadKasLaciSummary(user);
+          loadKasLaciSummary(user, userData);
         } catch (error) {
           console.error('Error checking shift status:', error);
         }
@@ -993,7 +993,7 @@
         }
       }
 
-          async function openShift(user) {
+          async function openShift(user, userData) {
   Utils.showLoading('Membuka shift kerja...');
 
   try {
@@ -1053,7 +1053,7 @@
       'success'
     );
 
-    await checkShiftStatus(user);
+    await checkShiftStatus(user, userData);
 
   } catch (error) {
 
@@ -1072,175 +1072,96 @@
   }
 }
       
-     async function loadKasLaciSummary(user) {
+     async function loadKasLaciSummary(user, userData) {
   const today = Utils.getTodayString
     ? Utils.getTodayString()
     : new Date().toISOString().split('T')[0];
-
   try {
-
-    // ==========================================================
-    // 1. AMBIL HASIL KAS FISIK DARI KASCORE
-    // ==========================================================
-    const kasLaci = await KasCore.getKasFisikLaci({
+    /*
+     * Scope kas mengikuti role user.
+     * KasCore tetap menjadi satu-satunya sumber perhitungan.
+     */
+    const role = String(
+      (userData && userData.role) || 'kasir'
+    ).trim().toLowerCase();
+    const scope =
+      role === 'owner' ||
+      role === 'admin' ||
+      role === 'developer'
+        ? 'role'
+        : 'own';
+    /*
+     * Ambil seluruh ringkasan kas dari KasCore.
+     */
+    const kasLaci = await KasCore.getKasLaciDisplay({
       date: today,
-      userId: user.uid
+      userId: user.uid,
+      scope: scope
     });
-
-    const modalAwal       = Number(kasLaci.modalAwal || 0);
-const s               = kasLaci.summary || {};
-const penjualanProduk = Number(s.salesCash || 0);          // penjualan tunai
-const uangMasukLain   = Number(s.cashFlowIn || 0);         // kas_masuk + pengembalian pinjaman
-const kasKeluarToko   = Number(s.cashFlowOut || 0);        // kas_keluar + pinjaman tunai
-const topupKasFisik   = Number(kasLaci.topupKasFisik || 0);
-const tarikKasFisik   = Number(kasLaci.tarikKasFisik || 0);
-const totalKasFisik   = Number(kasLaci.total || 0);
-
-    // ==========================================================
-    // 2. TAMPILKAN KOMPONEN KAS FISIK
-    // ==========================================================
-
+    const summary = kasLaci.summary || {};
+    const modalAwal =
+      KasCore.normalizeNumber(kasLaci.modalAwal);
+    const penjualanProduk =
+      KasCore.normalizeNumber(summary.salesCash);
+    const uangMasukLain =
+      KasCore.normalizeNumber(summary.cashFlowIn);
+    const kasKeluarToko =
+      KasCore.normalizeNumber(summary.cashFlowOut);
+    const topupKasFisik =
+      KasCore.normalizeNumber(kasLaci.topupFisik);
+    const tarikKasFisik =
+      KasCore.normalizeNumber(kasLaci.tarikFisik);
+    const totalKasFisik =
+      KasCore.normalizeNumber(kasLaci.totalLaci);
+    const totalQRIS =
+      KasCore.normalizeNumber(kasLaci.penjualanQris);
+    const totalTransfer =
+      KasCore.normalizeNumber(kasLaci.penjualanTransfer);
+    const totalNonTunai =
+      KasCore.normalizeNumber(kasLaci.penjualanNonTunai);
+    /*
+     * Tampilkan komponen kas fisik.
+     */
     document.getElementById('summaryModal').textContent =
       Utils.formatRupiah(modalAwal);
-
     document.getElementById('summaryPenjualan').textContent =
       '+ ' + Utils.formatRupiah(penjualanProduk);
-
     document.getElementById('summaryKasMasuk').textContent =
       '+ ' + Utils.formatRupiah(uangMasukLain);
-
     document.getElementById('summaryKasKeluar').textContent =
       '- ' + Utils.formatRupiah(kasKeluarToko);
-
     document.getElementById('summaryTopup').textContent =
       '+ ' + Utils.formatRupiah(topupKasFisik);
-
     document.getElementById('summaryTarik').textContent =
       '- ' + Utils.formatRupiah(tarikKasFisik);
-
-    // ==========================================================
-    // 3. TOTAL KAS FISIK LACI
-    //
-    // QRIS / TRANSFER TIDAK DITAMBAHKAN KE KAS FISIK
-    // ==========================================================
-
+    /*
+     * Total kas fisik juga langsung dari KasCore.
+     */
     document.getElementById('summaryKasSistem').textContent =
       Utils.formatRupiah(totalKasFisik);
-
     document.getElementById('headerKasLaci').textContent =
       Utils.formatRupiah(totalKasFisik);
-
-
-    // ==========================================================
-    // 4. NON TUNAI
-    //
-    // Untuk tampilan QRIS / Transfer kita baca transaksi,
-    // tetapi TIDAK mengubah perhitungan kas fisik.
-    // ==========================================================
-
-    const transactions =
-      await KasCore.getTransactionsByDateRange({
-        startDate: today,
-        endDate: today,
-        userId: user.uid
-      });
-
-    let totalQRIS = 0;
-    let totalTransfer = 0;
-
-    transactions.forEach(t => {
-
-      if (
-        typeof KasCore.isValidTransaction === 'function' &&
-        !KasCore.isValidTransaction(t)
-      ) {
-        return;
-      }
-
-      const metode = String(
-        t.metode_pembayaran ||
-        t.paymentMethod ||
-        t.metodePembayaran ||
-        ''
-      ).toLowerCase();
-
-      /*
-       * HANYA TAMPILKAN TRANSAKSI PENJUALAN
-       * sebagai QRIS / Transfer pada ringkasan ini.
-       *
-       * Jadi kas masuk transfer, pembayaran lain, dsb.
-       * tidak ikut dianggap sebagai "Transaksi QRIS/Transfer".
-       */
-
-      const isPenjualan =
-  typeof KasCore.isSaleTransaction === 'function'
-    ? KasCore.isSaleTransaction(t)
-    : t.masuk_penjualan === true;
-
-if (!isPenjualan) {
-  return;
-}
-      
-      const nominal = Number(
-        t.nominal ??
-        t.amount ??
-        t.total ??
-        0
-      ) || 0;
-
-      if (nominal <= 0) {
-        return;
-      }
-
-      if (metode === 'qris') {
-        totalQRIS += nominal;
-      }
-
-      else if (metode === 'transfer') {
-        totalTransfer += nominal;
-      }
-    });
-
-
-    // ==========================================================
-    // 5. TOTAL NON TUNAI
-    // ==========================================================
-
-    const totalNonTunai =
-      totalQRIS +
-      totalTransfer;
-
-
-    // ==========================================================
-    // 6. TAMPILKAN NON TUNAI
-    // ==========================================================
-
+    /*
+     * Tampilkan transaksi non-tunai dari KasCore.
+     */
     const qrisEl =
       document.getElementById('summaryQRIS');
-
     const transferEl =
       document.getElementById('summaryTransfer');
-
     const nonTunaiEl =
       document.getElementById('summaryNonTunai');
-
-
     if (qrisEl) {
       qrisEl.textContent =
         '+ ' + Utils.formatRupiah(totalQRIS);
     }
-
     if (transferEl) {
       transferEl.textContent =
         '+ ' + Utils.formatRupiah(totalTransfer);
     }
-
     if (nonTunaiEl) {
       nonTunaiEl.textContent =
         Utils.formatRupiah(totalNonTunai);
     }
-
-
     console.log('KAS & SHIFT:', {
       tanggal: today,
       modalAwal,
@@ -1254,14 +1175,11 @@ if (!isPenjualan) {
       totalTransfer,
       totalNonTunai
     });
-
   } catch (error) {
-
     console.error(
       'kas-shift: gagal memuat ringkasan kas',
       error
     );
-
     Utils.showToast(
       'Gagal memuat ringkasan kas: ' +
       (error.message || 'Terjadi kesalahan'),
@@ -1269,7 +1187,7 @@ if (!isPenjualan) {
     );
   }
 }
-
+      
 async function loadShiftHistory(filterType = 'today', from = null, to = null) {
   const historyEl = document.getElementById('shiftHistory');
   const countEl = document.getElementById('totalShiftCount');
