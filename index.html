@@ -1163,118 +1163,30 @@
   // ==========================================
   // PERBAIKAN UTAMA DI FUNGSI INI
   // ==========================================
-  async function loadDashboardStats(user) {
-    const today = getTodayString();
-    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
-    const isAdmin = currentUserRole === "admin";
-
-    try {
-      const usersSnap = await db.collection("users").get();
-      const usersMap = {};
-      usersSnap.forEach(doc => {
-        usersMap[doc.id] = { id: doc.id, ...doc.data() };
-      });
-
-      const [modalSummary, allTransactions, debtsSnapshot] = await Promise.all([
-        KasCore.getModalSummary({ date: today }),
-        KasCore.getTransactionsByDateRange({ startDate: today, endDate: today }),
-        db.collection("debts").where("type", "==", "piutang").where("status", "==", "active").get()
-      ]);
-
-      const scopedModalEntries = modalSummary.entries.filter(entry => {
-        const targetUser = usersMap[entry.userId] || {};
-        const targetRole = (targetUser.role || "kasir").toLowerCase();
-        if (isBoss) return true;
-        if (isAdmin) return targetRole === "kasir";
-        return entry.userId === user.uid;
-      });
-
-      const scopedTransactions = allTransactions.filter(transaction => {
-        const transactionUserId = KasCore.getUserId(transaction);
-        const targetUser = usersMap[transactionUserId] || {};
-        const targetRole = (targetUser.role || "kasir").toLowerCase();
-        if (isBoss) return true;
-        if (isAdmin) return targetRole === "kasir" || transactionUserId === user.uid;
-        return transactionUserId === user.uid;
-      });
-
-      // 1. Dapatkan Rangkuman KasCore Baru
-      const scopedSummary = KasCore.summarizeTransactions(scopedTransactions);
-      const modalAwal = scopedModalEntries.reduce((sum, entry) => sum + KasCore.normalizeNumber(entry.amount), 0);
-      const kasLaciSummary = KasCore.calculateKasFisikLaciFromSummary(modalAwal, scopedSummary);
-      
-      // Mengambil nilai mutasi baku baru
-      const topupKasFisik = kasLaciSummary.topupKasFisik || 0;
-      const tarikKasFisik = kasLaciSummary.tarikKasFisik || 0;
-      const kasLaci = kasLaciSummary.totalKasFisikDiLaci || 0;
-
-      let piutang = 0;
-      debtsSnapshot.forEach(doc => {
-        const debt = doc.data();
-        if (debt.date !== today || debt.kasRecorded === false) return;
-        const targetUser = usersMap[debt.userId] || {};
-        const targetRole = (targetUser.role || "kasir").toLowerCase();
-        if (!isBoss) {
-          if (isAdmin && targetRole !== "kasir" && debt.userId !== user.uid) return;
-          if (!isAdmin && debt.userId !== user.uid) return;
-        }
-        piutang += KasCore.normalizeNumber(debt.remaining != null ? debt.remaining : debt.amount);
-      });
-
-      // 2. Render Angka ke UI (Dengan Proteksi Fallback || 0)
-      document.getElementById("kasDitangan").textContent = formatRupiah(kasLaci);
-      document.getElementById("totalPenjualan").textContent = formatRupiah(scopedSummary.totalSales || 0);
-      document.getElementById("modalAwal").textContent = formatRupiah(modalAwal);
-      
-      // FIX PERBAIKAN ERROR TOSTRING: Menggunakan transactionCount bawaan KasCore baru
-      const trxCount = scopedSummary.transactionCount || scopedSummary.salesServiceTransactionCount || 0;
-      document.getElementById("totalTransaksi").textContent = trxCount.toString();
-      
-      document.getElementById("totalLaba").textContent = formatRupiah(scopedSummary.totalProfit || 0);
-
-      document.getElementById("kasModalAwal").textContent = formatRupiah(modalAwal);
-      // Uang Masuk Lain = hanya kas_masuk + pengembalian pinjaman (bukan penjualan/topup)
-document.getElementById("kasUangMasuk").textContent  = "+ " + formatRupiah(scopedSummary.cashFlowIn || 0);
-// Kas Keluar Toko = hanya kas_keluar + pinjaman tunai (bukan tarik)
-document.getElementById("kasUangKeluar").textContent = "- " + formatRupiah(scopedSummary.cashFlowOut || 0);
-document.getElementById("kasPenjualan").textContent  = "+ " + formatRupiah(scopedSummary.cashSales || 0);
-
-// Top Up fisik = cash_in aktual (nominal + admin) untuk metode tunai, bukan summary.topup
-let topupFisik = 0, tarikFisik = 0;
-scopedTransactions.forEach(tx => {
-  if (!KasCore.isValidTransaction(tx)) return;
-  const cat = KasCore.getCategory(tx);
-  const met = KasCore.getPaymentMethod(tx);
-  if (cat === 'top_up' && met === 'tunai')   topupFisik += KasCore.normalizeNumber(tx.cash_in);
-  if (cat === 'tarik_tunai' && met === 'tunai') tarikFisik += KasCore.normalizeNumber(tx.cash_out);
-});
-document.getElementById("kasTopUp").textContent = "+ " + formatRupiah(topupFisik);
-document.getElementById("kasTarik").textContent = "- " + formatRupiah(tarikFisik);
-      document.getElementById("kasPiutang").textContent = formatRupiah(piutang);
-      // ===== HITUNG NON-TUNAI (QRIS / TRANSFER → BANK) =====
-let topupNonTunai = 0;
-let tarikNonTunai = 0;
-
-scopedTransactions.forEach(tx => {
-  if (!KasCore.isValidTransaction(tx)) return;
-  const cat = KasCore.getCategory(tx);
-  const met = KasCore.getPaymentMethod(tx);
-  if (met !== 'qris' && met !== 'transfer') return;
-
-  const nominal = KasCore.getNominal(tx);
-  const admin = KasCore.getAdmin(tx);
-
-  if (cat === 'top_up') topupNonTunai += nominal + admin;
-  if (cat === 'tarik_tunai') tarikNonTunai += Math.max(0, nominal - admin);
+ const kas = await KasCore.getKasLaciDisplay({
+  date: today,
+  userId: user.uid,
+  scope: 'role'          // owner/admin lihat tim, kasir lihat sendiri
 });
 
-const penjualanNonTunai = (scopedSummary.salesQris || 0) + (scopedSummary.salesTransfer || 0);
-
-document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(penjualanNonTunai);
-document.getElementById("kasTopUpNonTunai").textContent   = "+ " + formatRupiah(topupNonTunai);
-document.getElementById("kasTarikNonTunai").textContent   = "- " + formatRupiah(tarikNonTunai);
-document.getElementById("kasBank").textContent            = formatRupiah(scopedSummary.saldoBank || 0);
-      document.getElementById("kasGlobal").textContent = formatRupiah(kasLaci);
+// tinggal tempel angkanya dari kas.*
+document.getElementById("kasDitangan").textContent      = formatRupiah(kas.totalLaci);
+document.getElementById("totalPenjualan").textContent  = formatRupiah(kas.totalPenjualan);
+document.getElementById("modalAwal").textContent       = formatRupiah(kas.modalAwal);
+document.getElementById("totalTransaksi").textContent   = kas.totalTransaksi.toString();
+document.getElementById("totalLaba").textContent        = formatRupiah(kas.totalLaba);
+document.getElementById("kasModalAwal").textContent     = formatRupiah(kas.modalAwal);
+document.getElementById("kasUangMasuk").textContent     = "+ " + formatRupiah(kas.uangMasukLain);
+document.getElementById("kasUangKeluar").textContent    = "- " + formatRupiah(kas.kasKeluarToko);
+document.getElementById("kasPenjualan").textContent    = "+ " + formatRupiah(kas.penjualanTunai);
+document.getElementById("kasTopUp").textContent        = "+ " + formatRupiah(kas.topupFisik);
+document.getElementById("kasTarik").textContent        = "- " + formatRupiah(kas.tarikFisik);
+document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(kas.penjualanNonTunai);
+document.getElementById("kasTopUpNonTunai").textContent    = "+ " + formatRupiah(kas.topupNonTunai);
+document.getElementById("kasTarikNonTunai").textContent    = "- " + formatRupiah(kas.tarikNonTunai);
+document.getElementById("kasPiutang").textContent       = formatRupiah(kas.piutang);
+document.getElementById("kasBank").textContent         = formatRupiah(kas.totalBank);
+document.getElementById("kasGlobal").textContent       = formatRupiah(kas.totalLaci);
       
 
       // 3. Render Performa Staf
