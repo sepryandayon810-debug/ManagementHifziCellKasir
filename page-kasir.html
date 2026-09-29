@@ -5408,6 +5408,18 @@ await firebase.firestore().collection('debts').doc(result.debtId).update({
   invoiceNumber: result.id
 });
 
+          // ⬇️ TAMBAH: tempel rincian produk + nama kasir ke dokumen transaksi agar muncul di Riwayat
+await firebase.firestore().collection('transactions').doc(result.id).update({
+  items: cart.map(i => ({
+    productId: i.productId,
+    name: i.name,
+    price: i.price,
+    quantity: i.quantity,
+    total: i.total
+  })),
+  userName: document.getElementById('userName').textContent
+});
+
 
 // data tambahan untuk struk
 const transaction = {
@@ -5508,6 +5520,18 @@ const result = await KasCore.saveTransaction({
   customerName: '',
   catatan: localStorage.getItem('kasir_note') || '',
   waktu: Date.now()
+});
+
+        // ⬇️ TAMBAH: tempel rincian produk + nama kasir untuk Riwayat (mutasi KasCore tetap utuh)
+await firebase.firestore().collection('transactions').doc(result.id).update({
+  items: cart.map(i => ({
+    productId: i.productId,
+    name: i.name,
+    price: i.price,
+    quantity: i.quantity,
+    total: i.total
+  })),
+  userName: document.getElementById('userName').textContent
 });
 
 // data tambahan untuk struk (KasCore tidak simpan items)
