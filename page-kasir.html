@@ -3939,6 +3939,8 @@ html,body{overflow-x:hidden;max-width:100vw}
         <span id="activeCatIcon"></span>
         <span id="activeCatName">Kategori</span>
       </div>
+      <!-- Pills kategori di layer produk (khusus mode pills) -->
+    <div class="category-pills" id="catPillsBar" style="display:none;padding-bottom:.25rem;"></div>
       <div class="search-box" style="flex:1;min-width:120px;">
         <i class="fas fa-search"></i>
         <input type="text" id="productSearch" placeholder="Cari produk...">
@@ -6813,12 +6815,16 @@ if (kurangiSaldo) {
       btn.querySelector('i').className = categoryViewMode === 'grid' ? 'fas fa-list' : 'fas fa-th-large';
     }
   
-function toggleCategoryViewMode() {
-  categoryViewMode = categoryViewMode === 'grid' ? 'pills' : 'grid';
-  localStorage.setItem('kasir_cat_view', categoryViewMode);
-  updateCatViewIcon();
-  renderCategoryGrid();
-}
+    function toggleCategoryViewMode() {
+      categoryViewMode = categoryViewMode === 'grid' ? 'pills' : 'grid';
+      localStorage.setItem('kasir_cat_view', categoryViewMode);
+      updateCatViewIcon();
+      renderCategoryGrid();
+      // ⭐ Mode pills: langsung tampilkan daftar produk tanpa perlu klik
+      if (categoryViewMode === 'pills') {
+        showLayerProduk('all', 'Semua Produk', '📦', 'var(--primary)');
+      }
+    }
   
     function renderCategoryGrid() {
       const grid = document.getElementById('categoryGrid');
@@ -6868,6 +6874,19 @@ function toggleCategoryViewMode() {
       grid.innerHTML = html;
     }
 
+      // ===== RENDER PILLS DI DALAM LAYER PRODUK =====
+    function renderCatPillsBar() {
+      const bar = document.getElementById('catPillsBar');
+      if (!bar) return;
+      let html = '<button class="category-pill' + (currentCategory === 'all' ? ' active' : '') + '" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
+      categories.forEach(function(cat) {
+        var safeName = (cat.name || '').replace(/'/g, "\\'");
+        var icon = cat.icon || '🏷️';
+        html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'\')">' + icon + ' ' + cat.name + '</button>';
+      });
+      bar.innerHTML = html;
+    }
+
     // ===== TAMPILKAN LAYER PRODUK (klik kategori) =====
     function showLayerProduk(categoryId, categoryName, icon, color) {
       currentCategory = categoryId;
@@ -6875,6 +6894,16 @@ function toggleCategoryViewMode() {
       var nameEl = document.getElementById('activeCatName');
       if (iconEl) iconEl.textContent = icon + ' ';
       if (nameEl) nameEl.textContent = categoryName;
+            // ⭐ Tampilkan pills di layer produk kalau mode pills aktif
+      var bar = document.getElementById('catPillsBar');
+      if (bar) {
+        if (categoryViewMode === 'pills') {
+          renderCatPillsBar();
+          bar.style.display = 'flex';
+        } else {
+          bar.style.display = 'none';
+        }
+      }
       document.getElementById('layerKategori').style.display = 'none';
       document.getElementById('layerProduk').style.display = 'block';
       renderProducts();
