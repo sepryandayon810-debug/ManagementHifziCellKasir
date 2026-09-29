@@ -396,6 +396,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
 </head>
@@ -1160,19 +1161,11 @@
       });
       prevInput.value = detectedUnpaid;
 
-      const snap = await db.collection("debts").where("status", "==", "active").get();
-      activeStaffDebts = [];
+      activeStaffDebts = await KasCore.getActiveStaffDebts({
+  staffId: staffId,
+  staffName: staffName
+});
       
-      snap.forEach(doc => {
-        const d = doc.data();
-        const dUserId = d.userId || "";
-        const dName = (d.name || "").toLowerCase().trim();
-
-        if (dUserId === staffId || (sNameLower && dName === sNameLower)) {
-          activeStaffDebts.push({ id: doc.id, ...d });
-        }
-      });
-
       if (activeStaffDebts.length === 0) {
         container.innerHTML = '<span style="color:var(--text-muted)">Staf ini tidak memiliki catatan hutang aktif di sistem.</span>';
         calculateTakeHomePay();
@@ -1214,6 +1207,107 @@
     const net = (base + prev) - totalDeduction;
     document.getElementById("netSalaryLabel").textContent = formatRupiah(net);
   };
+
+  async function savePayroll(options) {
+  options = options || {};
+
+  var db = getDb();
+
+  var staffId = String(options.staffId || '').trim();
+  var staffName = String(options.staffName || '').trim();
+
+  if (!staffId || !staffName) {
+    throw new Error('KasCore.savePayroll: staff wajib dipilih.');
+  }
+
+  var period = String(options.period || '').trim();
+  var periodName = String(options.periodName || '').trim();
+
+  var baseSalary = normalizeNumber(options.baseSalary);
+  var prevUnpaidSalary = normalizeNumber(options.prevUnpaidSalary);
+  var status = options.status || 'unpaid';
+
+  var debtIds = Array.isArray(options.debtIds)
+    ? options.debtIds
+    : [];
+
+  var selectedDebts = [];
+  var totalDebtDeduction = 0;
+
+  /*
+   * Ambil ulang hutang dari KasCore.
+   * Jangan percaya nominal yang dikirim dari page.
+   */
+  var activeDebts = await getActiveStaffDebts({
+    staffId: staffId,
+    staffName: staffName
+  });
+
+  debtIds.forEach(function(debtId) {
+    var debt = activeDebts.find(function(d) {
+      return d.id === debtId;
+    });
+
+    if (!debt) return;
+
+    var amount = normalizeNumber(debt.remaining);
+
+    if (amount <= 0) return;
+
+    totalDebtDeduction += amount;
+
+    selectedDebts.push({
+      id: debt.id,
+      name: debt.customerName || debt.name || staffName,
+      amountDeducted: amount
+    });
+  });
+
+  var netSalary =
+    (baseSalary + prevUnpaidSalary) -
+    totalDebtDeduction;
+
+  var payrollRef = db.collection('payrolls').doc();
+
+  var batch = db.batch();
+
+  batch.set(payrollRef, {
+    staffId: staffId,
+    staffName: staffName,
+    period: period,
+    periodName: periodName,
+    baseSalary: baseSalary,
+    prevUnpaidSalary: prevUnpaidSalary,
+    totalDebtDeduction: totalDebtDeduction,
+    netSalary: netSalary,
+    selectedDebts: selectedDebts,
+    status: status,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  selectedDebts.forEach(function(debt) {
+    var debtRef = db.collection('debts').doc(debt.id);
+
+    batch.update(debtRef, {
+      remaining: 0,
+      status: 'paid',
+      paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+      paidViaPayrollId: payrollRef.id
+    });
+  });
+
+  await batch.commit();
+
+  return {
+    id: payrollRef.id,
+    staffId: staffId,
+    staffName: staffName,
+    period: period,
+    totalDebtDeduction: totalDebtDeduction,
+    netSalary: netSalary,
+    selectedDebts: selectedDebts
+  };
+}
 
   async function savePayrollRecord() {
     const staffId = document.getElementById("selectedStaffId").value;
@@ -1257,38 +1351,40 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
     try {
-      const batch = db.batch();
+  const debtIds = selectedDebts.map(d => d.id);
 
-      const payrollRef = db.collection("payrolls").doc();
-      batch.set(payrollRef, {
-        staffId,
-        staffName,
-        period,
-        periodName,
-        baseSalary,
-        prevUnpaidSalary,
-        totalDebtDeduction,
-        netSalary,
-        selectedDebts,
-        status,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+  await KasCore.savePayroll({
+    staffId: staffId,
+    staffName: staffName,
+    period: period,
+    periodName: periodName,
+    baseSalary: baseSalary,
+    prevUnpaidSalary: prevUnpaidSalary,
+    status: status,
+    debtIds: debtIds
+  });
 
-      selectedDebts.forEach(d => {
-        const debtRef = db.collection("debts").doc(d.id);
-        batch.update(debtRef, {
-          remaining: 0,
-          status: "paid",
-          paidAt: firebase.firestore.FieldValue.serverTimestamp(),
-          paidViaPayrollId: payrollRef.id
-        });
-      });
+  toast(
+    "Data penggajian berhasil disimpan & hutang staf diperbarui!",
+    "success"
+  );
 
-      await batch.commit();
+  closePayrollModal();
+  loadStaffAndPayrolls();
 
-      toast("Data penggajian berhasil disimpan & hutang staf diperbarui!", "success");
-      closePayrollModal();
-      loadStaffAndPayrolls();
+} catch(err) {
+  console.error(err);
+
+  toast(
+    "Gagal menyimpan penggajian: " + err.message,
+    "error"
+  );
+
+} finally {
+  btn.disabled = false;
+  btn.innerHTML = "Simpan Data Penggajian";
+}
+    
     } catch(err) {
       console.error(err);
       toast("Gagal menyimpan penggajian: " + err.message, "error");
