@@ -300,9 +300,9 @@
     .transaction-type{
       display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:50px;font-size:.68rem;font-weight:700;white-space:nowrap;text-transform:uppercase;
     }
-    .transaction-type.penjualan{background:var(--primary-light);color:var(--primary)}
-    .transaction-type.topup{background:var(--success-light);color:var(--success)}
-    .transaction-type.tarik{background:var(--danger-light);color:var(--danger)}
+    .transaction-type.jual{background:var(--primary-light);color:var(--primary)}
+.transaction-type.top_up{background:var(--success-light);color:var(--success)}
+.transaction-type.tarik_tunai{background:var(--danger-light);color:var(--danger)}
     .transaction-type.kas_masuk{background:var(--success-light);color:var(--success)}
     .transaction-type.kas_keluar{background:var(--danger-light);color:var(--danger)}
     .transaction-type.pembelian{background:var(--warning-light);color:var(--warning)}
@@ -749,6 +749,7 @@
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
+  <script src="js/kas-core.js"></script>
 
   <script>
     (function() {
@@ -767,22 +768,17 @@
       let storeSettings = {};
 
       const TYPE_LABELS = {
-        penjualan: 'Penjualan',
-        topup: 'Top Up',
-        tarik: 'Tarik Tunai',
-        kas_masuk: 'Kas Masuk',
-        kas_keluar: 'Kas Keluar',
-        pembelian: 'Pembelian'
-      };
-
-      const TYPE_ICONS = {
-        penjualan: 'fa-shopping-bag',
-        topup: 'fa-arrow-up',
-        tarik: 'fa-arrow-down',
-        kas_masuk: 'fa-plus-circle',
-        kas_keluar: 'fa-minus-circle',
-        pembelian: 'fa-truck-loading'
-      };
+  jual: 'Penjualan', top_up: 'Top Up', tarik_tunai: 'Tarik Tunai',
+  kas_masuk: 'Kas Masuk', kas_keluar: 'Kas Keluar', pembelian: 'Pembelian',
+  modal_awal: 'Modal Awal', bayar_hutang: 'Bayar Hutang',
+  pinjaman_tunai: 'Pinjaman', pengembalian_pinjaman: 'Pengembalian'
+};
+const TYPE_ICONS = {
+  jual: 'fa-shopping-bag', top_up: 'fa-arrow-up', tarik_tunai: 'fa-arrow-down',
+  kas_masuk: 'fa-plus-circle', kas_keluar: 'fa-minus-circle', pembelian: 'fa-truck-loading',
+  modal_awal: 'fa-wallet', bayar_hutang: 'fa-hand-holding-usd',
+  pinjaman_tunai: 'fa-hand-holding', pengembalian_pinjaman: 'fa-undo'
+};
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -981,7 +977,7 @@
       }
 
       function getTimestampMillis(transaction) {
-        const value = transaction && (transaction.timestamp ?? transaction.createdAt ?? transaction.updatedAt);
+        const value = transaction && (transaction.waktu ?? transaction.timestamp ?? transaction.createdAt ?? transaction.updatedAt);
         if (value && typeof value.toDate === 'function') return value.toDate().getTime();
         if (typeof value === 'number') return value < 100000000000 ? value * 1000 : value;
         if (value) {
@@ -992,6 +988,10 @@
           const parsedDate = new Date(transaction.date + 'T00:00:00').getTime();
           if (!Number.isNaN(parsedDate)) return parsedDate;
         }
+        if (transaction && transaction.date_key) {
+  const parsedKey = new Date(transaction.date_key + 'T00:00:00').getTime();
+  if (!Number.isNaN(parsedKey)) return parsedKey;
+}
         return 0;
       }
 
@@ -1012,38 +1012,42 @@
           const startStr = startDate;
           const endStr = endDate;
 
-          const txSnapshot = await db.collection("transactions")
-            .where("date", ">=", startStr)
-            .where("date", "<=", endStr)
-            .get();
-
-          allTransactions = [];
-          txSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.status !== 'cancelled') {
-              allTransactions.push({ id: doc.id, ...data });
-            }
-          });
-
+        const txs = await KasCore.getTransactionsByDateRange({
+  startDate: startStr,
+  endDate: endStr
+});
+allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
+          
           try {
             const purSnapshot = await db.collection("purchases")
               .where("date", ">=", startStr)
               .where("date", "<=", endStr)
               .get();
 
-            purSnapshot.forEach(doc => {
-              const data = doc.data();
-              if (data.status !== 'cancelled') {
-                if (!allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) {
-                  allTransactions.push({
-                    id: doc.id,
-                    type: 'pembelian',
-                    total: data.grandTotal || data.total || 0,
-                    amount: data.grandTotal || data.total || 0,
-                    note: 'Pembelian: ' + (data.supplier || 'Supplier Umum'),
-                    paymentMethod: 'Kas',
-                    ...data
-                  });
+            ppurSnapshot.forEach(doc => {
+  const data = doc.data();
+  if (data.status === 'cancelled') return;
+  if (allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) return;
+
+  const payload = {
+    id: doc.id,
+    kategori: 'pembelian',
+    metode_pembayaran: (data.metode_pembayaran || 'tunai').toLowerCase(),
+    nominal: data.grandTotal || data.total || 0,
+    supplier: data.supplier || 'Supplier Umum',
+    catatan: 'Pembelian: ' + (data.supplier || 'Supplier Umum'),
+    items: data.items || [],
+    totalItem: data.totalItem || (data.items ? data.items.length : 1),
+    userId: data.userId,
+    userName: data.userName,
+    waktu: data.timestamp || data.waktu,
+    date_key: data.date,
+    status: data.status || 'completed'
+  };
+  const mut = KasCore.mapTransactionMutation(payload);
+  allTransactions.push({ ...payload, ...mut });
+});
+            
                 }
               }
             });
@@ -1063,14 +1067,19 @@
 
         if (currentFilter !== 'all') {
           filtered = filtered.filter(t => {
-            if (currentFilter === 'buku_kasir') {
-              return t.type === 'penjualan' || t.type === 'topup' || t.type === 'tarik';
-            }
-            if (currentFilter === 'penjualan') return t.type === 'penjualan';
-            if (currentFilter === 'topup_tarik') return t.type === 'topup' || t.type === 'tarik';
-            if (currentFilter === 'operasional') {
-              return t.type === 'kas_masuk' || t.type === 'kas_keluar' || t.type === 'pembelian' || t.category === 'pembelian';
-            }
+           if (currentFilter === 'buku_kasir') {
+  const c = KasCore.getCategory(t);
+  return c === 'jual' || c === 'top_up' || c === 'tarik_tunai';
+}
+if (currentFilter === 'penjualan') return KasCore.getCategory(t) === 'jual';
+if (currentFilter === 'topup_tarik') {
+  const c = KasCore.getCategory(t);
+  return c === 'top_up' || c === 'tarik_tunai';
+}
+if (currentFilter === 'operasional') {
+  const c = KasCore.getCategory(t);
+  return c === 'kas_masuk' || c === 'kas_keluar' || c === 'pembelian';
+}
             return true;
           });
         }
@@ -1103,17 +1112,18 @@
       }
 
       function getTransactionDesc(t) {
-        if (t.type === 'penjualan' && t.items && t.items.length > 0) {
-          const names = t.items.map(i => i.name || i.productName).filter(Boolean);
-          if (names.length === 1) return names[0];
-          return names[0] + ' +' + (names.length - 1) + ' lainnya';
-        }
-        if (t.type === 'pembelian') {
-          return t.supplier ? `Pembelian (${t.supplier})` : 'Pembelian Restock';
-        }
-        return t.note || t.catatan || TYPE_LABELS[t.type] || t.type || '-';
-      }
-
+  const cat = KasCore.getCategory(t);
+  if (cat === 'jual' && t.items && t.items.length > 0) {
+    const names = t.items.map(i => i.name || i.productName).filter(Boolean);
+    if (names.length === 1) return names[0];
+    return names[0] + ' +' + (names.length - 1) + ' lainnya';
+  }
+  if (cat === 'pembelian') {
+    return t.supplier ? `Pembelian (${t.supplier})` : 'Pembelian Restock';
+  }
+  return t.note || t.catatan || TYPE_LABELS[cat] || cat || '-';
+}
+      
       function renderTable(transactions) {
         const tbody = document.getElementById('transactionList');
         document.getElementById('trxCount').textContent = transactions.length + ' transaksi';
@@ -1124,11 +1134,12 @@
         }
 
         tbody.innerHTML = transactions.map(t => {
-          const desc = getTransactionDesc(t);
-          const icon = TYPE_ICONS[t.type] || 'fa-circle';
-          const itemsHtml = buildDetailItems(t);
-          const amountValue = t.total ?? t.amount ?? t.grandTotal ?? 0;
-          const displaySeq = t.inputSequence || '-';
+          const cat = KasCore.getCategory(t);
+const desc = getTransactionDesc(t);
+const icon = TYPE_ICONS[cat] || 'fa-circle';
+const itemsHtml = buildDetailItems(t);
+const amountValue = KasCore.getNominal(t);
+const displaySeq = t.inputSequence || '-';
 
           return `
             <tr class="data-row">
@@ -1137,9 +1148,9 @@
               <td>
                 <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
               </td>
-              <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.timestamp)}</td>
-              <td><span class="transaction-type ${t.type}">${TYPE_LABELS[t.type] || t.type}</span></td>
-              <td class="hide-on-mobile">${t.paymentMethod || 'Tunai'}</td>
+              <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.waktu || t.timestamp)}</td>
+              <td><span class="transaction-type ${cat}">${TYPE_LABELS[cat] || cat}</span></td>
+              <td class="hide-on-mobile">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</td>
               <td class="hide-on-mobile">${t.userName || '-'}</td>
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
               <td style="text-align:center; white-space:nowrap;">
@@ -1162,10 +1173,10 @@
           <div class="detail-panel-grid">
             <div class="detail-panel-item"><div class="detail-panel-label">ID Transaksi</div><div class="detail-panel-value" style="font-family:monospace;">${t.id}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Petugas / Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
-            <div class="detail-panel-item"><div class="detail-panel-label">Metode Bayar</div><div class="detail-panel-value">${t.paymentMethod || 'Tunai'}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">Metode Bayar</div><div class="detail-panel-value">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
-            <div class="detail-panel-item"><div class="detail-panel-label">${t.type === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${t.type === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(t.profit || t.adminFee || 0)}</div></div>
-          </div>
+            <div class="detail-panel-item"><div class="detail-panel-label">${KasCore.getCategory(t) === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${KasCore.getCategory(t) === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(KasCore.calculateTransactionProfit(t))}</div></div>
+
         `;
 
         if (t.items && t.items.length > 0) {
@@ -1219,8 +1230,8 @@
           let omset = 0;
           let laba = 0;
           transactions.forEach(t => {
-            omset += (t.total || t.amount || 0);
-            laba += (t.profit || t.adminFee || 0);
+            omset += KasCore.getNominal(t);
+laba += KasCore.calculateTransactionProfit(t);
           });
 
           card1Title = 'OMSET BUKU KASIR';
@@ -1237,9 +1248,10 @@
           let totalKasKeluar = 0;
           let totalBeli = 0;
           transactions.forEach(t => {
-            const nominal = (t.amount || t.grandTotal || t.total || 0);
-            if (t.type === 'kas_keluar') totalKasKeluar += nominal;
-            if (t.type === 'pembelian') totalBeli += nominal;
+           const nominal = KasCore.getNominal(t);
+const cat = KasCore.getCategory(t);
+if (cat === 'kas_keluar') totalKasKeluar += nominal;
+if (cat === 'pembelian') totalBeli += nominal;
           });
 
           card1Title = 'PENGELUARAN RESTOCK';
@@ -1256,7 +1268,7 @@
           let totalBeli = 0;
           let totalItemsBeli = 0;
           transactions.forEach(t => {
-            totalBeli += (t.grandTotal || t.total || t.amount || 0);
+            totalBeli += KasCore.getNominal(t);
             totalItemsBeli += (t.totalItem || (t.items ? t.items.reduce((s, i) => s + (i.qty || i.quantity || 1), 0) : 1));
           });
 
@@ -1274,8 +1286,8 @@
           let totalPenjualan = 0;
           let totalLaba = 0;
           transactions.forEach(t => {
-            totalPenjualan += (t.total || 0);
-            totalLaba += (t.profit || 0);
+            totalPenjualan += KasCore.getNominal(t);
+totalLaba += KasCore.calculateTransactionProfit(t);
           });
 
           card1Title = 'TOTAL PENJUALAN';
@@ -1292,8 +1304,8 @@
           let totalNominal = 0;
           let totalFee = 0;
           transactions.forEach(t => {
-            totalNominal += (t.amount || t.total || 0);
-            totalFee += (t.adminFee || 0);
+            totalNominal += KasCore.getNominal(t);
+totalFee += KasCore.getAdmin(t);
           });
 
           card1Title = 'TOTAL PERPUTARAN';
@@ -1311,12 +1323,13 @@
           let totalKeluar = 0;
 
           transactions.forEach(t => {
-            const amount = Number(t.total ?? t.amount ?? t.grandTotal ?? 0);
-            if (t.type === 'penjualan' || t.type === 'kas_masuk' || t.type === 'topup') {
-              totalMasuk += amount;
-            } else {
-              totalKeluar += amount;
-            }
+            const amount = KasCore.getNominal(t);
+const cat = KasCore.getCategory(t);
+if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
+  totalMasuk += amount;
+} else {
+  totalKeluar += amount;
+}
           });
 
           card1Title = 'TOTAL ARUS MASUK';
@@ -1367,7 +1380,7 @@
         const address = storeSettings.address || '';
         const phone = storeSettings.phone || '';
 
-        let itemsText = TYPE_LABELS[t.type] || t.type || '-';
+        let itemsText = TYPE_LABELS[KasCore.getCategory(t)] || KasCore.getCategory(t)
         if (t.items && Array.isArray(t.items) && t.items.length > 0) {
           itemsText = t.items.map(function(i) {
             const name = i.name || i.productName || 'Barang';
@@ -1378,8 +1391,8 @@
           }).join('\n');
         }
 
-        const totalNominal = Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0);
-        const paymentMethod = (t.paymentMethod || 'Tunai').toUpperCase();
+        const totalNominal = Utils.formatRupiah(KasCore.getNominal(t));
+        const paymentMethod = (KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()
         const headerStore = storeName.toUpperCase();
         const addressText = address ? '  ' + address + '\n' : '';
         const phoneText = phone ? '  Telp: ' + phone + '\n' : '';
@@ -1393,7 +1406,7 @@ phoneText +
 '================================\n' +
 ' No.    : ' + String(t.inputSequence || '-') + '\n' +
 ' ID     : ' + t.id + '\n' +
-' Waktu  : ' + formatDateTime(t.timestamp) + '\n' +
+' Waktu  : ' + formatDateTime(t.waktu || t.timestamp) + '\n' +
 ' Kasir  : ' + (t.userName || '-') + '\n' +
 '--------------------------------\n' +
 itemsText + '\n' +
@@ -1440,7 +1453,7 @@ itemsText + '\n' +
             });
           }
           c += '--------------------------------\x0A';
-          c += 'TOTAL: ' + Utils.formatRupiah(t.total || t.amount || t.grandTotal || 0) + '\x0A================================\x0A\x1B\x61\x01Terima Kasih\x0A\x0A\x0A\x1D\x56\x41\x03';
+          c += 'TOTAL: ' + Utils.formatRupiah(KasCore.getNominal(t)) + '\x0A================================\x0A\x1B\x61\x01Terima Kasih\x0A\x0A\x0A\x1D\x56\x41\x03';
 
           await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
           await new Promise(res => bluetoothSerial.disconnect(res, res));
@@ -1468,7 +1481,7 @@ itemsText + '\n' +
       }
 
       async function restoreStockForTransaction(transaction) {
-        if (transaction.type !== 'penjualan') return { restored: 0 };
+        if (KasCore.getCategory(transaction) !== 'jual') return { restored: 0 };
         if (!Array.isArray(transaction.items) || transaction.items.length === 0) {
           throw new Error('Detail item penjualan tidak ditemukan. Transaksi tidak dihapus agar stok tidak salah.');
         }
@@ -1526,7 +1539,7 @@ itemsText + '\n' +
         if (!transaction) return;
 
         pendingDeleteId = id;
-        const message = transaction.type === 'penjualan'
+        const message = KasCore.getCategory(transaction) === 'jual'
           ? 'Transaksi penjualan ini akan dihapus dan stok setiap item akan dikembalikan ke data Produk.'
           : 'Transaksi ini akan dihapus permanen dari riwayat.';
         document.getElementById('deleteConfirmMessage').textContent = message;
@@ -1548,14 +1561,22 @@ itemsText + '\n' +
 
         closeDeleteConfirmModal();
         try {
-          Utils.showLoading(transaction.type === 'penjualan' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
+          Utils.showLoading(KasCore.getCategory(transaction) === 'jual' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
           const stockResult = await restoreStockForTransaction(transaction);
           
-          if (transaction.type === 'pembelian') {
+          if (KasCore.getCategory(transaction) === 'pembelian') {
             await db.collection('purchases').doc(id).delete();
           }
-          await db.collection('transactions').doc(id).delete();
-
+const cat = KasCore.getCategory(transaction);
+const met = KasCore.getPaymentMethod(transaction);
+if ((cat === 'jual' || cat === 'top_up') && met === 'utang') {
+  await db.collection('debts').where('transactionId','==',id).get()
+    .then(s => Promise.all(s.docs.map(d => d.ref.delete())));
+} else if (cat === 'pinjaman_tunai') {
+  await db.collection('debts').where('transactionId','==',id).get()
+    .then(s => Promise.all(s.docs.map(d => d.ref.delete())));
+}
+await db.collection('transactions').doc(id).delete();
           Utils.hideLoading();
           Utils.showToast(
             stockResult.restored
@@ -1577,15 +1598,18 @@ itemsText + '\n' +
         editingTransactionId = id;
         document.getElementById('editTransactionInfo').textContent =
           'No. ' + String(transaction.inputSequence || '-') +
-          ' • ' + (TYPE_LABELS[transaction.type] || transaction.type);
+          ' • ' + (TYPE_LABELS[KasCore.getCategory(transaction)] || transaction.type);
         document.getElementById('editNote').value = transaction.note || transaction.catatan || '';
-        document.getElementById('editPaymentMethod').value = transaction.paymentMethod || 'Tunai';
+        const curMethod = (KasCore.getPaymentMethod(transaction) || 'tunai');
+document.getElementById('editPaymentMethod').value =
+  curMethod.charAt(0).toUpperCase() + curMethod.slice(1) === 'Utang' ? 'Hutang' :
+  (curMethod === 'tunai' ? 'Tunai' : curMethod === 'transfer' ? 'Transfer' : curMethod === 'qris' ? 'QRIS' : 'Hutang');
 
         const amountGroup = document.getElementById('editAmountGroup');
         const amountInput = document.getElementById('editAmount');
-        const isProductSale = transaction.type === 'penjualan';
+        const isProductSale = KasCore.getCategory(transaction) === 'jual';
         amountGroup.style.display = isProductSale ? 'none' : 'block';
-        amountInput.value = transaction.amount ?? transaction.total ?? transaction.grandTotal ?? 0;
+        amountInput.value = KasCore.getNominal(transaction);
         document.getElementById('transactionEditModal').classList.add('active');
       };
 
@@ -1602,23 +1626,34 @@ itemsText + '\n' +
         const saveButton = document.getElementById('btnSaveTransactionEdit');
         saveButton.disabled = true;
         try {
-          const updates = {
-            note: document.getElementById('editNote').value.trim(),
-            paymentMethod: document.getElementById('editPaymentMethod').value,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const newMethod = document.getElementById('editPaymentMethod').value.toLowerCase();
+const updates = {
+  catatan: document.getElementById('editNote').value.trim(),
+  metode_pembayaran: newMethod,
+  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+};
 
-          if (transaction.type !== 'penjualan') {
-            const amount = Number(document.getElementById('editAmount').value);
-            if (!Number.isFinite(amount) || amount < 0) {
-              Utils.showToast('Nominal transaksi tidak valid', 'error');
-              return;
-            }
-            if (Object.prototype.hasOwnProperty.call(transaction, 'amount')) updates.amount = amount;
-            else updates.total = amount;
-          }
-
-          if (transaction.type === 'pembelian') {
+if (KasCore.getCategory(transaction) !== 'jual') {
+  const amount = Number(document.getElementById('editAmount').value);
+  if (!Number.isFinite(amount) || amount < 0) {
+    Utils.showToast('Nominal transaksi tidak valid', 'error');
+    return;
+  }
+  updates.nominal = amount;
+  // hitung ulang mutasi baku lewat KasCore
+  const mut = KasCore.mapTransactionMutation({
+    ...transaction,
+    nominal: amount,
+    metode_pembayaran: newMethod
+  });
+  Object.assign(updates, {
+    cash_in: mut.cash_in, cash_out: mut.cash_out,
+    bank_in: mut.bank_in, bank_out: mut.bank_out,
+    digital_in: mut.digital_in, digital_out: mut.digital_out,
+    laba: mut.laba
+  });
+}
+          if (KasCore.getCategory(transaction) === 'pembelian') {
             await db.collection('purchases').doc(id).update(updates);
           }
           await db.collection('transactions').doc(id).update(updates);
@@ -1640,7 +1675,10 @@ itemsText + '\n' +
         }
         let csv = 'No,ID,Tanggal,Tipe,Metode,Kasir,Total\n';
         allTransactions.forEach(t => {
-          csv += [String(t.inputSequence || '-'), t.id, formatDateTime(t.timestamp), TYPE_LABELS[t.type] || t.type, t.paymentMethod || 'Tunai', t.userName || '-', t.total || t.amount || t.grandTotal || 0].join(',') + '\n';
+          csv += [String(t.inputSequence || '-'), t.id, formatDateTime(t.waktu || t.timestamp),
+  TYPE_LABELS[KasCore.getCategory(t)] || KasCore.getCategory(t),
+  (KasCore.getPaymentMethod(t) || 'tunai').toUpperCase(),
+  t.userName || '-', KasCore.getNominal(t)].join(',') + '\n';
         });
         const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -1658,7 +1696,7 @@ itemsText + '\n' +
         const templateData = [
           {
             "Tanggal": "2026-09-24",
-            "Tipe": "penjualan",
+            "Tipe": "jual",
             "Total": 50000,
             "Metode": "Tunai",
             "Kasir": "Admin",
@@ -1666,7 +1704,7 @@ itemsText + '\n' +
           },
           {
             "Tanggal": "2026-09-24",
-            "Tipe": "topup",
+            "Tipe": "top_up",
             "Total": 100000,
             "Metode": "Transfer",
             "Kasir": "Admin",
@@ -1738,27 +1776,35 @@ itemsText + '\n' +
                 
                 const total = Number(item["Total"] || item["Nominal"] || item["total"] || item["amount"] || 0);
                 const typeRaw = String(item["Tipe"] || item["tipe"] || item["type"] || "penjualan").toLowerCase();
-                const type = typeRaw.includes("top") ? "topup" : (typeRaw.includes("tarik") ? "tarik" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "penjualan"))));
+                const type = typeRaw.includes("top") ? "top_up" : (typeRaw.includes("tarik") ? "tarik_tunai" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "jual"))));
+
                 const date = String(item["Tanggal"] || item["tanggal"] || item["date"] || new Date().toISOString().split('T')[0]);
                 const paymentMethod = String(item["Metode"] || item["metode"] || item["paymentMethod"] || "Tunai");
                 const note = String(item["Keterangan"] || item["keterangan"] || item["note"] || "Import Transaksi");
                 const userName = String(item["Kasir"] || item["kasir"] || (user ? user.email : "Admin"));
 
-                batch.set(ref, {
-                  id,
-                  total,
-                  amount: total,
-                  type,
-                  paymentMethod,
-                  note,
-                  date,
-                  timestamp: Date.now(),
-                  userId: user ? user.uid : 'unknown',
-                  userName,
-                  status: 'completed',
-                  imported: true
-                }, { merge: true });
+                const waktu = new Date(date + 'T00:00:00');
+const payload = {
+  kategori: type,
+  metode_pembayaran: paymentMethod.toLowerCase(),
+  nominal: total,
+  userId: user ? user.uid : 'unknown',
+  catatan: note,
+  status: 'completed'
+};
+// hitung mutasi baku lewat KasCore
+const mut = KasCore.mapTransactionMutation(payload);
 
+batch.set(ref, {
+  id,
+  ...payload,
+  ...mut,
+  date_key: date,
+  waktu: waktu.getTime(),
+  created_at: waktu.getTime(),
+  userName,
+  imported: true
+}, { merge: true });
                 successCount++;
               });
 
