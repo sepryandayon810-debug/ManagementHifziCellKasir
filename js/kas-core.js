@@ -1613,12 +1613,9 @@ if (typeof window.KasCore === 'undefined') {
         mutation: mutation
       };
     }
-
-       // PAYROLL / HUTANG STAFF
-      getActiveStaffDebts: getActiveStaffDebts
-    }
-
-    /* ==========================================================
+   }
+                    
+/* ==========================================================
  * PAYROLL / STAFF DEBT
  * Satu pintu untuk page-penggajian
  * ========================================================== */
