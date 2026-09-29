@@ -1024,7 +1024,7 @@ allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
               .where("date", "<=", endStr)
               .get();
 
-            ppurSnapshot.forEach(doc => {
+            purSnapshot.forEach(doc => {
   const data = doc.data();
   if (data.status === 'cancelled') return;
   if (allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) return;
@@ -1048,10 +1048,9 @@ allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
   allTransactions.push({ ...payload, ...mut });
 });
             
-                }
-              }
-            });
-          } catch(e) {}
+}
+});
+} catch(e) {}
 
           filterAndRender();
           Utils.hideLoading();
@@ -1229,9 +1228,12 @@ const displaySeq = t.inputSequence || '-';
         if (currentFilter === 'buku_kasir') {
           let omset = 0;
           let laba = 0;
-          transactions.forEach(t => {
-            omset += KasCore.getNominal(t);
-laba += KasCore.calculateTransactionProfit(t);
+          const summary = KasCore.createSummary(transactions);
+const omset =
+  summary.totalSales +
+  summary.topup +
+  summary.withdrawal;
+const laba = summary.totalProfit;
           });
 
           card1Title = 'OMSET BUKU KASIR';
