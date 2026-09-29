@@ -2139,62 +2139,17 @@ try {
           }
 
          Utils.showLoading();
-let previousDebt = null;
-let paymentPath = null;
-let kasRecord = null;
-try {
-  const newRemaining = Math.max(0, remaining - paymentAmount);
-            const isFullyPaid = newRemaining === 0;
-            const category = item.type === 'hutang'
-  ? 'kas_keluar'
-  : 'kas_masuk';
-            const now = Date.now();
-            previousDebt = {
-  remaining: item.remaining,
-  status: item.status,
-  paidAt: item.paidAt ?? null,
-  updatedAt: item.updatedAt ?? null
-};
-paymentPath = 'debt_payments/' + currentPaymentId + '/' + now;
-
-            // 1. Catat kas terlebih dahulu. Jika KasCore gagal, hutang TIDAK diubah.
-            if (affectKas) {
-              kasRecord = await recordToKas(
-                item.type === 'hutang' ? 'keluar' : 'masuk',
-                paymentAmount,
-                item.type === 'hutang'
-                  ? `Pelunasan hutang - ${item.name}`
-                  : `Pengembalian pinjaman - ${item.name}`,
-                user,
-                category,
-                item.id,
-                {
-                  affectsCashGlobal: true,
-                  debtType: item.type === 'hutang' ? 'hutang' : 'piutang',
-                  flowType: item.type === 'hutang'
-                    ? 'pelunasan_hutang'
-                    : 'penerimaan_piutang'
-                }
-              );
-            }
-
-            // 2. Setelah kas sukses, baru ubah saldo hutang/piutang.
-            await firestoreDb.ref('debts/' + currentPaymentId).update({
-              remaining: newRemaining,
-              status: isFullyPaid ? 'paid' : 'active',
-              paidAt: isFullyPaid ? now : null,
-              updatedAt: now
-            });
-
-            // 3. Simpan histori pembayaran.
-            await firestoreDb.ref(paymentPath).set({
-              category,
-              amount: paymentAmount,
-              note,
-              affectKas,
+          try {
+            const core = await ensureKasCore();
+            await core.saveTransaction({
+              kategori: 'bayar_hutang',
+              metode_pembayaran: 'tunai',
+              nominal: paymentAmount,
               userId: user.uid,
-              userName: user.name || user.email,
-              timestamp: now
+              debtId: currentPaymentId,
+              customerName: item.name || '',
+              catatan: note || '',
+              pengaruhi_kas_global: affectKas
             });
 
             Utils.showToast(
@@ -2212,32 +2167,12 @@ paymentPath = 'debt_payments/' + currentPaymentId + '/' + now;
             }
           } catch (error) {
             console.error('Error processing payment:', error);
-            // Jika kas sudah tercatat tetapi update hutang gagal, hapus transaksi kas tadi.
-            try {
-              if (kasRecord?.id) {
-  await firebase.firestore()
-    .collection('transactions')
-    .doc(kasRecord.id)
-    .delete()
-    .catch(() => {});
-}
-if (paymentPath) {
-  await firestoreDb.ref(paymentPath).remove().catch(() => {});
-}
-if (previousDebt) {
-  await firestoreDb.ref('debts/' + currentPaymentId)
-    .update(previousDebt)
-    .catch(() => {});
-}
-            } catch (rollbackError) {
-              console.error('Rollback pembayaran gagal:', rollbackError);
-            }
             Utils.showToast('Gagal memproses pembayaran: ' + error.message, 'error');
           } finally {
             Utils.hideLoading();
           }
         }
-
+        
         async function ensureKasCore() {
           if (window.KasCore && typeof window.KasCore.saveTransaction === 'function') {
   return window.KasCore;
