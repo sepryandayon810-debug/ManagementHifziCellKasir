@@ -1228,10 +1228,13 @@
     let totalProduk = productsList.length;
 
     productsList.forEach(p => {
-      if (!p.isUnlimited) {
-        const modal = (parseInt(p.costPrice) || 0) * (parseInt(p.stock) || 0);
-        totalModal += modal;
-        totalStok += (parseInt(p.stock) || 0);
+      const stok = parseInt(p.stock) || 0;
+      // ⭐ Stok 9999 ke atas dianggap unlimited (pulsa/digital), jangan dihitung
+      const isUnlimited = !!p.isUnlimited || stok >= 9999;
+
+      if (!isUnlimited) {
+        totalModal += (parseInt(p.costPrice) || 0) * stok;
+        totalStok += stok;
       }
     });
 
