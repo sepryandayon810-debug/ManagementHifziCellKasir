@@ -451,6 +451,14 @@ if (typeof window.KasCore === 'undefined') {
           } else if (method === 'utang') {
             result.cash_in = 0;
             result.bank_in = 0;
+            var dibayar = normalizeNumber(payload.bayar_sekarang || 0);
+            if (dibayar > 0) {
+              if (payload.metode_bayar_sekarang === 'qris' || payload.metode_bayar_sekarang === 'transfer') {
+                result.bank_in = dibayar;
+              } else {
+                result.cash_in = dibayar;
+              }
+            }
           }
           result.masuk_transaksi = true;
           result.masuk_penjualan = true;
@@ -1549,12 +1557,15 @@ if (typeof window.KasCore === 'undefined') {
       // Jual / Top Up bon -> hutang baru
       if ((category === 'jual' || category === 'top_up') && method === 'utang') {
         var debtAmount = nominal + (category === 'top_up' ? admin : 0);
+        var dibayarSekarang = Math.min(normalizeNumber(payload.bayar_sekarang || 0), debtAmount);
+        var debtRemaining = Math.max(0, debtAmount - dibayarSekarang);
         var debtRef = await db.collection('debts').add({
           type: 'piutang',
-          status: 'active',
+          status: debtRemaining <= 0 ? 'paid' : 'active',
           amount: debtAmount,
-          remaining: debtAmount,
-          kasRecorded: false,
+          remaining: debtRemaining,
+          dibayar_sekarang: dibayarSekarang,
+          kasRecorded: mutation.cash_in > 0 || mutation.bank_in > 0,
           date: dateKey,
           userId: userId,
           customerName: payload.customerName || '',
