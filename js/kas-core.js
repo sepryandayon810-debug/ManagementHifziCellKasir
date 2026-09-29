@@ -1613,11 +1613,9 @@ if (typeof window.KasCore === 'undefined') {
         mutation: mutation
       };
     }
-   }
-                    
+
 /* ==========================================================
  * PAYROLL / STAFF DEBT
- * Satu pintu untuk page-penggajian
  * ========================================================== */
 
 async function getActiveStaffDebts(options) {
