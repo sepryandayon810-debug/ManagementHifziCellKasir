@@ -1724,7 +1724,7 @@ async function getActiveStaffDebts(options) {
       // SATU PINTU
       getKasLaciDisplay: getKasLaciDisplay,   // baca
       saveTransaction: saveTransaction,       // tulis
-      saveModalAwal: saveModalAwal            // tulis modal
+      saveModalAwal: saveModalAwal,            // tulis modal
 
       // PAYROLL / HUTANG STAFF
       getActiveStaffDebts: getActiveStaffDebts,
