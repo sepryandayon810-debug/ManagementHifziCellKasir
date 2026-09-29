@@ -1671,8 +1671,94 @@ async function getActiveStaffDebts(options) {
 
 async function savePayroll(options) {
   options = options || {};
+
   var db = getDb();
-  // ... isi sama persis dengan yang Anda hapus dari page ...
+
+  var staffId = String(options.staffId || '').trim();
+  var staffName = String(options.staffName || '').trim();
+
+  if (!staffId || !staffName) {
+    throw new Error('KasCore.savePayroll: staff wajib dipilih.');
+  }
+
+  var period = String(options.period || '').trim();
+  var periodName = String(options.periodName || '').trim();
+
+  var baseSalary = normalizeNumber(options.baseSalary);
+  var prevUnpaidSalary = normalizeNumber(options.prevUnpaidSalary);
+  var status = options.status || 'unpaid';
+
+  var debtIds = Array.isArray(options.debtIds)
+    ? options.debtIds
+    : [];
+
+  var selectedDebts = [];
+  var totalDebtDeduction = 0;
+
+  /*
+   * Ambil ulang hutang dari KasCore.
+   * Jangan percaya nominal yang dikirim dari page.
+   */
+  var activeDebts = await getActiveStaffDebts({
+    staffId: staffId,
+    staffName: staffName
+  });
+
+  debtIds.forEach(function(debtId) {
+    var debt = activeDebts.find(function(d) {
+      return d.id === debtId;
+    });
+
+    if (!debt) return;
+
+    var amount = normalizeNumber(debt.remaining);
+
+    if (amount <= 0) return;
+
+    totalDebtDeduction += amount;
+
+    selectedDebts.push({
+      id: debt.id,
+      name: debt.customerName || debt.name || staffName,
+      amountDeducted: amount
+    });
+  });
+
+  var netSalary =
+    (baseSalary + prevUnpaidSalary) -
+    totalDebtDeduction;
+
+  var payrollRef = db.collection('payrolls').doc();
+
+  var batch = db.batch();
+
+  batch.set(payrollRef, {
+    staffId: staffId,
+    staffName: staffName,
+    period: period,
+    periodName: periodName,
+    baseSalary: baseSalary,
+    prevUnpaidSalary: prevUnpaidSalary,
+    totalDebtDeduction: totalDebtDeduction,
+    netSalary: netSalary,
+    selectedDebts: selectedDebts,
+    status: status,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  selectedDebts.forEach(function(debt) {
+    var debtRef = db.collection('debts').doc(debt.id);
+
+    batch.update(debtRef, {
+      remaining: 0,
+      status: 'paid',
+      paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+      paidViaPayrollId: payrollRef.id
+    });
+  });
+
+  await batch.commit();
+
   return {
     id: payrollRef.id,
     staffId: staffId,
