@@ -1614,62 +1614,8 @@ if (typeof window.KasCore === 'undefined') {
       };
     }
 
-    /* ==========================================================
-     * 31. PUBLIC API
-     * ========================================================== */
-
-    return {
-
-      // UTILITIES
-      normalizeNumber: normalizeNumber,
-      normalizeBoolean: normalizeBoolean,
-      parseDateValue: parseDateValue,
-      formatDateKey: formatDateKey,
-      getTransactionDate: getTransactionDate,
-      getUserId: getUserId,
-      getShiftId: getShiftId,
-      getCategory: getCategory,
-      getPaymentMethod: getPaymentMethod,
-      getNominal: getNominal,
-      getModalProduk: getModalProduk,
-      getAdmin: getAdmin,
-
-      // CONFIG (saklar global — bisa dibaca/ubah dari console juga)
-      config: KAS_CONFIG,
-
-      // CLASSIFICATION
-      isValidTransaction: isValidTransaction,
-      isSaleTransaction: isSaleTransaction,
-      isIncludedInTransactions: isIncludedInTransactions,
-      getAffectsCashGlobal: getAffectsCashGlobal,
-      classifyTransaction: classifyTransaction,
-
-      // MAPPER
-      mapTransactionMutation: mapTransactionMutation,
-      calculateTransactionProfit: calculateTransactionProfit,
-
-      // SUMMARY
-      summarizeTransactions: createSummary,
-      createSummary: createSummary,
-      getSalesSummary: getSalesSummary,
-      getProfitSummary: getProfitSummary,
-      getCashGlobalSummary: getCashGlobalSummary,
-
-      // FIRESTORE
-      getTransactionsByDateRange: getTransactionsByDateRange,
-      getModalSummary: getModalSummary,
-      getDailySummary: getDailySummary,
-      getPeriodSummary: getPeriodSummary,
-
-      // KAS
-      calculateKasFisikLaciFromSummary: calculateKasFisikLaciFromSummary,
-      getKasFisikLaci: getKasFisikLaci,
-      getShiftSummary: getShiftSummary,
-
-      // SATU PINTU
-      getKasLaciDisplay: getKasLaciDisplay,   // baca
-      saveTransaction: saveTransaction,       // tulis
-      saveModalAwal: saveModalAwal            // tulis modal
+       // PAYROLL / HUTANG STAFF
+      getActiveStaffDebts: getActiveStaffDebts
     }
 
     /* ==========================================================
@@ -1727,6 +1673,63 @@ async function getActiveStaffDebts(options) {
 
   return debts;
 }
+
+    /* ==========================================================
+     * 31. PUBLIC API
+     * ========================================================== */
+
+    return {
+
+      // UTILITIES
+      normalizeNumber: normalizeNumber,
+      normalizeBoolean: normalizeBoolean,
+      parseDateValue: parseDateValue,
+      formatDateKey: formatDateKey,
+      getTransactionDate: getTransactionDate,
+      getUserId: getUserId,
+      getShiftId: getShiftId,
+      getCategory: getCategory,
+      getPaymentMethod: getPaymentMethod,
+      getNominal: getNominal,
+      getModalProduk: getModalProduk,
+      getAdmin: getAdmin,
+
+      // CONFIG (saklar global — bisa dibaca/ubah dari console juga)
+      config: KAS_CONFIG,
+
+      // CLASSIFICATION
+      isValidTransaction: isValidTransaction,
+      isSaleTransaction: isSaleTransaction,
+      isIncludedInTransactions: isIncludedInTransactions,
+      getAffectsCashGlobal: getAffectsCashGlobal,
+      classifyTransaction: classifyTransaction,
+
+      // MAPPER
+      mapTransactionMutation: mapTransactionMutation,
+      calculateTransactionProfit: calculateTransactionProfit,
+
+      // SUMMARY
+      summarizeTransactions: createSummary,
+      createSummary: createSummary,
+      getSalesSummary: getSalesSummary,
+      getProfitSummary: getProfitSummary,
+      getCashGlobalSummary: getCashGlobalSummary,
+
+      // FIRESTORE
+      getTransactionsByDateRange: getTransactionsByDateRange,
+      getModalSummary: getModalSummary,
+      getDailySummary: getDailySummary,
+      getPeriodSummary: getPeriodSummary,
+
+      // KAS
+      calculateKasFisikLaciFromSummary: calculateKasFisikLaciFromSummary,
+      getKasFisikLaci: getKasFisikLaci,
+      getShiftSummary: getShiftSummary,
+
+      // SATU PINTU
+      getKasLaciDisplay: getKasLaciDisplay,   // baca
+      saveTransaction: saveTransaction,       // tulis
+      saveModalAwal: saveModalAwal            // tulis modal
 
   })();
 }
