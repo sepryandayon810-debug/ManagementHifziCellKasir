@@ -1191,19 +1191,13 @@ const displaySeq = t.inputSequence || '-';
         let card2Title = 'TOTAL TRANSAKSI', card2Value = transactions.length, card2Sub = 'transaksi terdata', card2Icon = 'fa-receipt', card2Class = 'summary-card-2';
         let card3Title = '', card3Value = 0, card3Sub = '', card3Icon = 'fa-chart-line', card3Class = 'summary-card-3';
 
-        if (currentFilter === 'buku_kasir') {
-          let omset = 0;
-          let laba = 0;
-          const summary = KasCore.createSummary(transactions);
-const omset =
-  summary.totalSales +
-  summary.topup +
-  summary.withdrawal;
-const laba = summary.totalProfit;
-          });
+      if (currentFilter === 'buku_kasir') {
+  const summary = KasCore.createSummary(transactions);
+  const omset = summary.totalSales + summary.topup + summary.withdrawal;
+  const laba  = summary.totalProfit;
 
-          card1Title = 'OMSET BUKU KASIR';
-          card1Value = Utils.formatRupiah(omset);
+  card1Title = 'OMSET BUKU KASIR';
+  card1Value = Utils.formatRupiah(omset);
           card1Sub = 'penjualan, top up & tarik';
           card1Icon = 'fa-cash-register';
           card2Sub = 'transaksi kasir';
@@ -1413,7 +1407,7 @@ itemsText + '\n' +
           c += '--------------------------------\x0A\x1B\x61\x00';
           c += 'No   : ' + String(t.inputSequence || '-') + '\x0A';
           c += 'ID   : ' + t.id + '\x0A';
-          c += 'Tgl  : ' + formatDateTime(t.timestamp) + '\x0A';
+          c += 'Tgl  : ' + formatDateTime(t.waktu || t.timestamp) + '\x0A';
           c += 'Kasir: ' + (t.userName || '-') + '\x0A--------------------------------\x0A';
           if (t.items) {
             t.items.forEach(i => {
