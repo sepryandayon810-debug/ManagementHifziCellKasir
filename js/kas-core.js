@@ -1670,7 +1670,63 @@ if (typeof window.KasCore === 'undefined') {
       getKasLaciDisplay: getKasLaciDisplay,   // baca
       saveTransaction: saveTransaction,       // tulis
       saveModalAwal: saveModalAwal            // tulis modal
-    };
+    }
+
+    /* ==========================================================
+ * PAYROLL / STAFF DEBT
+ * Satu pintu untuk page-penggajian
+ * ========================================================== */
+
+async function getActiveStaffDebts(options) {
+  options = options || {};
+
+  var db = getDb();
+  var staffId = String(options.staffId || '').trim();
+  var staffName = String(options.staffName || '').trim().toLowerCase();
+
+  var snapshot = await db.collection('debts')
+    .where('status', '==', 'active')
+    .get();
+
+  var debts = [];
+
+  snapshot.forEach(function(doc) {
+    var d = doc.data() || {};
+
+    var debtUserId = String(d.userId || '').trim();
+    var debtCustomerName = String(
+      d.customerName || d.name || ''
+    ).trim().toLowerCase();
+
+    var sameStaff =
+      (staffId && debtUserId === staffId) ||
+      (staffName && debtCustomerName === staffName);
+
+    if (!sameStaff) return;
+
+    var remaining = normalizeNumber(
+      d.remaining != null ? d.remaining : d.amount
+    );
+
+    if (remaining <= 0) return;
+
+    debts.push({
+      id: doc.id,
+      type: d.type || 'hutang',
+      status: d.status || 'active',
+      amount: normalizeNumber(d.amount),
+      remaining: remaining,
+      customerName: d.customerName || d.name || '',
+      note: d.note || d.catatan || '',
+      kategori: d.kategori || '',
+      userId: d.userId || '',
+      date: d.date || '',
+      transactionId: d.transactionId || null
+    });
+  });
+
+  return debts;
+}
 
   })();
 }
