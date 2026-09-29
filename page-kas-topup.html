@@ -1334,11 +1334,7 @@
         function updateSummary() {
           const feeInput = document.getElementById('adminFee');
           adminFee = feeInput ? (parseInt(feeInput.value) || 0) : 0;
-          const total = KasCore.getTotalCharge({
-  kategori: 'top_up',
-  nominal: amount,
-  admin: adminFee
-});
+          const total = amount + adminFee;
           document.getElementById('summaryTopup').textContent = Utils.formatRupiah(amount);
           document.getElementById('summaryAdminFee').textContent = Utils.formatRupiah(adminFee);
           document.getElementById('summaryTotal').textContent = Utils.formatRupiah(total);
@@ -1407,11 +1403,7 @@ kasTersedia = kasLaci.totalLaci;
             }
 
             const adminFeeValue = parseInt(document.getElementById('adminFee').value) || 0;
-            const total = KasCore.getTotalCharge({
-  kategori: 'top_up',
-  nominal: amount,
-  admin: adminFeeValue
-});
+            const total = amount + adminFeeValue;
             const note = document.getElementById('topupNote').value.trim();
             const shouldPrint = document.getElementById('printReceiptToggle').checked;
 
@@ -1471,7 +1463,17 @@ const result = await KasCore.saveTransaction({
   status: 'completed',
   source: 'kasir_topup'
 });
-const transactionData = result.transaction;
+const transactionData = {
+                id: result.id,
+                timestamp: timestamp,
+                userName: userName,
+                note: note || 'Top Up Saldo',
+                paymentMethod: paymentMode,
+                customerName: customerName,
+                amount: amount,
+                adminFee: adminFeeValue,
+                total: total
+              };
 Utils.hideLoading();
 
               Utils.showToast(paymentMode === 'hutang' ? 'Top up disimpan ke Piutang / Hutang Pelanggan!' : 'Top up kas berhasil disimpan!', 'success');
