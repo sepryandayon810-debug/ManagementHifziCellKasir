@@ -5388,6 +5388,8 @@ const result = await KasCore.saveTransaction({
   metode_pembayaran: 'utang',
   nominal: total,
   modal_produk: getCartModal(),
+  bayar_sekarang: piutangPayment,
+  metode_bayar_sekarang: 'tunai',
   userId: user ? user.uid : 'unknown',
   shiftId: localStorage.getItem('active_shift_id') || null,
   customerName: piutangName,
@@ -5406,17 +5408,6 @@ await firebase.firestore().collection('debts').doc(result.debtId).update({
   invoiceNumber: result.id
 });
 
-// 3. Pembayaran sebagian → kas masuk via KasCore
-if (piutangPayment > 0) {
-  await KasCore.saveTransaction({
-    kategori: 'kas_masuk',
-    metode_pembayaran: 'tunai',
-    nominal: piutangPayment,
-    userId: user ? user.uid : 'unknown',
-    catatan: `Pembayaran sebagian dari ${piutangName} | Sisa: ${formatRupiah(remainingDebt)}`,
-    waktu: Date.now()
-  });
-}
 
 // data tambahan untuk struk
 const transaction = {
