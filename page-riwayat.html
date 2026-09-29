@@ -1012,45 +1012,11 @@ const TYPE_ICONS = {
           const startStr = startDate;
           const endStr = endDate;
 
-        const txs = await KasCore.getTransactionsByDateRange({
-  startDate: startStr,
-  endDate: endStr
-});
-allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
-          
-          try {
-            const purSnapshot = await db.collection("purchases")
-              .where("date", ">=", startStr)
-              .where("date", "<=", endStr)
-              .get();
-
-            purSnapshot.forEach(doc => {
-  const data = doc.data();
-  if (data.status === 'cancelled') return;
-  if (allTransactions.some(t => t.id === doc.id || t.relatedPurchaseId === doc.id)) return;
-
-  const payload = {
-    id: doc.id,
-    kategori: 'pembelian',
-    metode_pembayaran: (data.metode_pembayaran || 'tunai').toLowerCase(),
-    nominal: data.grandTotal || data.total || 0,
-    supplier: data.supplier || 'Supplier Umum',
-    catatan: 'Pembelian: ' + (data.supplier || 'Supplier Umum'),
-    items: data.items || [],
-    totalItem: data.totalItem || (data.items ? data.items.length : 1),
-    userId: data.userId,
-    userName: data.userName,
-    waktu: data.timestamp || data.waktu,
-    date_key: data.date,
-    status: data.status || 'completed'
-  };
-  const mut = KasCore.mapTransactionMutation(payload);
-  allTransactions.push({ ...payload, ...mut });
-});
-}            
-}
-});
-} catch(e) {}
+          const txs = await KasCore.getTransactionsByDateRange({
+            startDate: startStr,
+            endDate: endStr
+          });
+          allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
 
           filterAndRender();
           Utils.hideLoading();
