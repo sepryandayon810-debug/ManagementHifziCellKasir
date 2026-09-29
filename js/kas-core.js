@@ -1728,6 +1728,10 @@ async function getActiveStaffDebts(options) {
       saveTransaction: saveTransaction,       // tulis
       saveModalAwal: saveModalAwal            // tulis modal
 
+      // PAYROLL / HUTANG STAFF
+      getActiveStaffDebts: getActiveStaffDebts,
+      savePayroll: savePayroll
+
   })();
 }
 
