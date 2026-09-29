@@ -1729,7 +1729,7 @@ async function getActiveStaffDebts(options) {
       // PAYROLL / HUTANG STAFF
       getActiveStaffDebts: getActiveStaffDebts,
       savePayroll: savePayroll
-
+};
   })();
 }
 
