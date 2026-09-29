@@ -1669,6 +1669,21 @@ async function getActiveStaffDebts(options) {
   return debts;
 }
 
+async function savePayroll(options) {
+  options = options || {};
+  var db = getDb();
+  // ... isi sama persis dengan yang Anda hapus dari page ...
+  return {
+    id: payrollRef.id,
+    staffId: staffId,
+    staffName: staffName,
+    period: period,
+    totalDebtDeduction: totalDebtDeduction,
+    netSalary: netSalary,
+    selectedDebts: selectedDebts
+  };
+}
+
     /* ==========================================================
      * 31. PUBLIC API
      * ========================================================== */
