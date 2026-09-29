@@ -3916,9 +3916,14 @@ html,body{overflow-x:hidden;max-width:100vw}
   <!-- ===== LAYER 1: KATEGORI ===== -->
   <div id="layerKategori">
     <div class="layer-header">
-      <span class="layer-title"><i class="fas fa-th-large"></i> Pilih Kategori</span>
-      <span class="layer-count" id="categoryCount">— kategori</span>
-    </div>
+  <span class="layer-title"><i class="fas fa-th-large"></i> Pilih Kategori</span>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span class="layer-count" id="categoryCount">— kategori</span>
+    <button class="btn-icon-box" id="btnToggleCatView" title="Ganti tampilan kategori" style="width:32px;height:32px;border-radius:0.6rem;">
+      <i class="fas fa-list"></i>
+    </button>
+  </div>
+</div>
     <div class="category-grid" id="categoryGrid">
       <!-- diisi JS -->
     </div>
@@ -4620,7 +4625,7 @@ async function loadHeaderStats() {
     let paymentMethod = 'cash';
     let customers = {};
     const TAX_RATE = 0.11;
-
+    let categoryViewMode = localStorage.getItem('kasir_cat_view') || 'grid'; // 'grid' atau 'pills'
     // ===== ANGKA, HARGA, DAN SETTING TERPUSAT =====
     function toMoney(value) { const n=Number(String(value==null?0:value).replace(/[^0-9-]/g,'')); return Number.isFinite(n)?Math.round(n):0; }
     function getCartSubtotal() { return cart.reduce(function(s,i){return s+toMoney(i.price)*Math.max(0,toMoney(i.quantity));},0); }
@@ -5814,6 +5819,9 @@ document.getElementById('btnMinimizeCart').addEventListener('click', () => {
     }
 
 // ===== VIEW TOGGLE =====
+  // Toggle tampilan kategori grid/pills
+const btnToggleCatView = document.getElementById('btnToggleCatView');
+if (btnToggleCatView) btnToggleCatView.addEventListener('click', toggleCategoryViewMode);
 document.querySelectorAll('.view-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
@@ -6764,6 +6772,7 @@ if (kurangiSaldo) {
       loadHeaderStats();
       loadUangGlobal();
       applyCurrentView();
+      updateCatViewIcon();
       initLongPressOnProducts();
       // ⭐ Safety: matikan loading overlay
       document.getElementById('loadingOverlay').classList.remove('active');
@@ -6797,11 +6806,40 @@ if (kurangiSaldo) {
     }, 5000);
 
     // ===== LAYERED NAVIGATION: RENDER CATEGORY GRID =====
+
+     // ===== TOGGLE TAMPILAN KATEGORI (GRID vs PILLS) =====
+function toggleCategoryViewMode() {
+  categoryViewMode = categoryViewMode === 'grid' ? 'pills' : 'grid';
+  localStorage.setItem('kasir_cat_view', categoryViewMode);
+  updateCatViewIcon();
+  renderCategoryGrid();
+}
+  
     function renderCategoryGrid() {
       const grid = document.getElementById('categoryGrid');
       const countEl = document.getElementById('categoryCount');
       if (!grid) return;
       if (countEl) countEl.textContent = categories.length + ' kategori';
+       // ⭐ BARU: mode pills (scroll kiri-kanan seperti gambar 2)
+  if (categoryViewMode === 'pills') {
+    const pillColors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
+    let html = '<div class="category-pills" style="grid-column:1/-1;padding-bottom:.25rem;">';
+    html += '<button class="category-pill active" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
+    categories.forEach(function(cat) {
+      var safeName = (cat.name || '').replace(/'/g, "\\'");
+      var icon = cat.icon || '🏷️';
+      html += '<button class="category-pill" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'' + (pillColors[0]) + '\')">' + icon + ' ' + cat.name + '</button>';
+    });
+    html += '</div>';
+    grid.innerHTML = html;
+    return; // sisanya (grid tiles) tidak dirender
+  }
+
+function updateCatViewIcon() {
+  const btn = document.getElementById('btnToggleCatView');
+  if (!btn) return;
+  btn.querySelector('i').className = categoryViewMode === 'grid' ? 'fas fa-list' : 'fas fa-th-large';
+}
 
       const colors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
       const countByCategory = {};
