@@ -1858,7 +1858,7 @@ const debtToSave = {
 };
 try {
   // Data hutang baru disimpan setelah transaksi kas berhasil.
-  const core = await ensureKasCore();
+ const core = await ensureKasCore();
 
 const saved = await core.saveTransaction({
   kategori: hutangType === 'piutang'
@@ -1876,6 +1876,26 @@ const saved = await core.saveTransaction({
   status: 'completed',
   waktu: Date.now()
 });
+
+if (!saved || !saved.debtId) {
+  throw new Error(
+    'Hutang berhasil diproses tetapi debtId tidak ditemukan'
+  );
+}
+
+await firebase.firestore()
+  .collection('debts')
+  .doc(saved.debtId)
+  .set({
+    name: name,
+    customerName: name,
+    dueDate: dueDate || '',
+    note: note || '',
+    catatan: note || '',
+    updatedAt: Date.now()
+  }, {
+    merge: true
+  });
             
             Utils.showToast('Data berhasil disimpan', 'success');
             closeModal();
