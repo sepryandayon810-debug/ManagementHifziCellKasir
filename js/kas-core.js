@@ -188,7 +188,12 @@ if (typeof window.KasCore === 'undefined') {
 
     function getPaymentMethod(transaction) {
       if (!transaction) return '';
-      var raw = transaction.metode_pembayaran || transaction.paymentMethod || transaction.metode || '';
+      var raw =
+  transaction.metode_pembayaran ||
+  transaction.paymentMethod ||
+  transaction.paymentType ||
+  transaction.metode ||
+  '';
       var method = String(raw).trim().toLowerCase();
 
       if (method === 'cash') return 'tunai';
@@ -909,27 +914,39 @@ if (typeof window.KasCore === 'undefined') {
     }
 
     async function loadTransactionsByRange(startDate, endDate) {
-      var db = getDb();
+  var db = getDb();
+  var resultById = {};
 
-      if (!startDate || !endDate) return [];
+  async function collectByField(field) {
+    try {
+      var rows = await queryByField(
+        db,
+        field,
+        startDate,
+        endDate
+      );
 
-      // PRIMARY: date_key
-      try {
-        var transactions = await queryByField(db, 'date_key', startDate, endDate);
-        if (transactions.length > 0) return transactions;
-      } catch (error) {
-        console.warn('KasCore: query date_key gagal, mencoba field date.', error);
-      }
-
-      // FALLBACK DATA LAMA: field date
-      try {
-        return await queryByField(db, 'date', startDate, endDate);
-      } catch (fallbackError) {
-        console.error('KasCore: fallback query gagal.', fallbackError);
-        return [];
-      }
+      rows.forEach(function (row) {
+        if (!resultById[row.id]) {
+          resultById[row.id] = row;
+        }
+      });
+    } catch (error) {
+      console.warn(
+        'KasCore: query field ' + field + ' gagal.',
+        error
+      );
     }
+  }
 
+  // Baca data baru
+  await collectByField('date_key');
+
+  // Baca data lama
+  await collectByField('date');
+
+  return Object.values(resultById);
+}
     /* ==========================================================
      * 20. GET TRANSACTIONS BY RANGE
      * ========================================================== */
@@ -963,21 +980,57 @@ if (typeof window.KasCore === 'undefined') {
      * ========================================================== */
 
     async function loadModalEntry(date, userId) {
-      var db = getDb();
+  var db = getDb();
 
-      if (!userId) return null;
+  if (!userId) return null;
 
-      try {
-        var directDoc = await db.collection('modal').doc(date + '_' + userId).get();
-        if (directDoc.exists) {
-          return Object.assign({ id: directDoc.id }, directDoc.data());
-        }
-      } catch (error) {
-        console.error('KasCore: gagal membaca modal harian.', error);
+  // Format baru: YYYY-MM-DD_userId
+  try {
+    var userDoc = await db
+      .collection('modal')
+      .doc(date + '_' + userId)
+      .get();
+
+    if (userDoc.exists) {
+      return Object.assign(
+        { id: userDoc.id },
+        userDoc.data()
+      );
+    }
+  } catch (error) {
+    console.warn('KasCore: gagal membaca modal user.', error);
+  }
+
+  // Format lama: YYYY-MM-DD
+  try {
+    var oldDoc = await db
+      .collection('modal')
+      .doc(date)
+      .get();
+
+    if (oldDoc.exists) {
+      var oldData = oldDoc.data() || {};
+
+      // Jika data lama memiliki userId,
+      // pastikan userId-nya sesuai.
+      if (
+        oldData.userId &&
+        oldData.userId !== userId
+      ) {
+        return null;
       }
 
-      return null;
+      return Object.assign(
+        { id: oldDoc.id },
+        oldData
+      );
     }
+  } catch (error) {
+    console.warn('KasCore: gagal membaca modal lama.', error);
+  }
+
+  return null;
+}
 
     async function getModalSummary(options) {
       options = options || {};
