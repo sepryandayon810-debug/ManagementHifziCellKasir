@@ -1771,49 +1771,137 @@ let failedCount = 0;
               const batch = db.batch();
 
               chunk.forEach((item, index) => {
-                const rowIdx = i + index;
-                const id = item.id || ('TRX_' + Date.now() + '_' + rowIdx);
-                const ref = db.collection('transactions').doc(id);
-                
-                const total = Number(item["Total"] || item["Nominal"] || item["total"] || item["amount"] || 0);
-                const typeRaw = String(item["Tipe"] || item["tipe"] || item["type"] || "penjualan").toLowerCase();
-                const type = typeRaw.includes("top") ? "top_up" : (typeRaw.includes("tarik") ? "tarik_tunai" : (typeRaw.includes("masuk") ? "kas_masuk" : (typeRaw.includes("keluar") ? "kas_keluar" : (typeRaw.includes("beli") ? "pembelian" : "jual"))));
+  const rowIdx = i + index;
+  const id =
+    item.id ||
+    ('TRX_IMPORT_' + Date.now() + '_' + rowIdx);
 
-                const date = String(item["Tanggal"] || item["tanggal"] || item["date"] || new Date().toISOString().split('T')[0]);
-                const paymentMethod = String(item["Metode"] || item["metode"] || item["paymentMethod"] || "Tunai");
-                const note = String(item["Keterangan"] || item["keterangan"] || item["note"] || "Import Transaksi");
-                const userName = String(item["Kasir"] || item["kasir"] || (user ? user.email : "Admin"));
+  const ref = db
+    .collection('transactions')
+    .doc(String(id));
 
-                const waktu = new Date(date + 'T00:00:00');
-const payload = {
-  kategori: type,
-  metode_pembayaran: paymentMethod.toLowerCase(),
-  nominal: total,
-  userId: user ? user.uid : 'unknown',
-  catatan: note,
-  status: 'completed'
-};
-// hitung mutasi baku lewat KasCore
-const mut = KasCore.mapTransactionMutation(payload);
+  const total = Number(
+    item["Total"] ||
+    item["Nominal"] ||
+    item["total"] ||
+    item["amount"] ||
+    0
+  );
 
-batch.set(ref, {
-  id,
-  ...payload,
-  ...mut,
-  date_key: date,
-  waktu: waktu.getTime(),
-  created_at: waktu.getTime(),
-  userName,
-  imported: true
-}, { merge: true });
-                successCount++;
-              });
+  if (!Number.isFinite(total) || total <= 0) {
+    skippedCount++;
+    return;
+  }
 
-             const processed = Math.min(
+  const typeRaw = String(
+    item["Tipe"] ||
+    item["tipe"] ||
+    item["Type"] ||
+    item["type"] ||
+    "jual"
+  )
+    .trim()
+    .toLowerCase();
+
+  const type =
+    typeRaw.includes("top")
+      ? "top_up"
+      : typeRaw.includes("tarik")
+        ? "tarik_tunai"
+        : typeRaw.includes("masuk")
+          ? "kas_masuk"
+          : typeRaw.includes("keluar")
+            ? "kas_keluar"
+            : typeRaw.includes("beli")
+              ? "pembelian"
+              : "jual";
+
+  const date = String(
+    item["Tanggal"] ||
+    item["tanggal"] ||
+    item["DATE"] ||
+    item["date"] ||
+    ""
+  ).trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    skippedCount++;
+    return;
+  }
+
+  const paymentMethod = String(
+    item["Metode"] ||
+    item["metode"] ||
+    item["Payment Method"] ||
+    item["paymentMethod"] ||
+    "tunai"
+  )
+    .trim()
+    .toLowerCase();
+
+  const note = String(
+    item["Keterangan"] ||
+    item["keterangan"] ||
+    item["Description"] ||
+    item["description"] ||
+    type
+  ).trim();
+
+  const userName = String(
+    item["Kasir"] ||
+    item["kasir"] ||
+    item["Cashier"] ||
+    (user ? user.email : "Admin")
+  ).trim();
+
+  const waktu = new Date(
+    `${date}T00:00:00`
+  ).getTime();
+
+  const payload = {
+    kategori: type,
+    metode_pembayaran: paymentMethod,
+    nominal: total,
+    userId: user ? user.uid : "unknown",
+    catatan: note,
+    status: "completed"
+  };
+
+  const mut =
+    KasCore.mapTransactionMutation(payload);
+
+  batch.set(
+    ref,
+    {
+      id: String(id),
+      ...payload,
+      ...mut,
+      date,
+      date_key: date,
+      waktu,
+      created_at: waktu,
+      userName,
+      imported: true,
+      importedAt: Date.now()
+    },
+    {
+      merge: true
+    }
+  );
+
+  successCount++;
+});
+
+/*
+ * INI BARIS PALING PENTING.
+ * Tanpa ini, batch.set() tidak dikirim ke Firestore.
+ */
+await batch.commit();
+
+const processed = Math.min(
   i + chunk.length,
   totalRows
 );
-
 const percent = Math.round(
   (processed / totalRows) * 100
 );
@@ -1832,7 +1920,10 @@ loadingText.textContent =
             }
 
             overlay.classList.remove('active');
-            Utils.showToast(`Berhasil mengimpor ${successCount} data transaksi!`, 'success');
+            Utils.showToast(
+  `Import selesai. Berhasil: ${successCount}, Dilewati: ${skippedCount}`,
+  successCount > 0 ? 'success' : 'warning'
+);
             closeImportModal();
             loadTransactions();
           } catch(err) {
