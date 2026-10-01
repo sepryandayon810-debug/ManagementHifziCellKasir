@@ -2684,60 +2684,6 @@ async function importData() {
   }
 }
 
-        window.downloadDebtTemplate = function() {
-  const rows = [
-    {
-      "Nama": "Budi",
-      "Tipe": "piutang",
-      "Nominal": 200000,
-      "Sisa": 200000,
-      "Tempo": "2026-10-10",
-      "Keterangan": "Penjualan kredit",
-      "Status": "active"
-    }
-  ];
-
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Template Hutang"
-  );
-
-  XLSX.writeFile(
-    workbook,
-    "Template_Hutang_Piutang.xlsx"
-  );
-};
-        
-        function exportData() {
-          const dataToExport = Object.values(hutangData).map(item => ({
-            name: item.name,
-            type: item.type,
-            amount: item.amount,
-            remaining: item.remaining,
-            dueDate: item.dueDate || '',
-            note: item.note || '',
-            status: item.status,
-            createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : ''
-          }));
-
-          const jsonStr = JSON.stringify(dataToExport, null, 2);
-          const blob = new Blob([jsonStr], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `hutang_export_${new Date().toISOString().split('T')[0]}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          
-          Utils.showToast('Data berhasil diexport', 'success');
-        }
-
         function importData() {
           const fileInput = document.getElementById('importFile');
           const overwrite = document.getElementById('importOverwrite').checked;
