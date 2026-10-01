@@ -1858,18 +1858,24 @@ const debtToSave = {
 };
 try {
   // Data hutang baru disimpan setelah transaksi kas berhasil.
-  await firestoreDb.ref('debts/' + hutangId).set(debtToSave);
-} catch (debtError) {
-  // Jika penyimpanan hutang gagal, hapus transaksi kas yang sudah dibuat.
-  if (cashTransaction?.id) {
-    await firebase.firestore()
-      .collection('transactions')
-      .doc(cashTransaction.id)
-      .delete()
-      .catch(() => {});
-  }
-  throw debtError;
-}
+  const core = await ensureKasCore();
+
+const saved = await core.saveTransaction({
+  kategori: hutangType === 'piutang'
+    ? 'jual'
+    : 'pinjaman_tunai',
+
+  metode_pembayaran: hutangType === 'piutang'
+    ? 'utang'
+    : 'tunai',
+
+  nominal: amount,
+  customerName: name,
+  userId: user.uid,
+  catatan: note || '',
+  status: 'completed',
+  waktu: Date.now()
+});
             
             Utils.showToast('Data berhasil disimpan', 'success');
             closeModal();
