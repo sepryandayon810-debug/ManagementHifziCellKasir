@@ -11,6 +11,7 @@ if (!window.firebaseConfigInitialized) {
   appId: "1:543101815187:web:99f0dbc95766e4c2434066"
 };
 
+
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   }
