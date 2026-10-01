@@ -689,6 +689,36 @@
             <div class="card" style="margin-top: 1.15rem;">
               <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-history" style="color: var(--success);"></i> Riwayat Pembelian</h3>
+                <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
+  <button
+    class="btn btn-outline btn-sm"
+    onclick="downloadPurchaseTemplate()"
+  >
+    <i class="fas fa-file-download"></i> Template
+  </button>
+
+  <button
+    class="btn btn-outline btn-sm"
+    onclick="exportPurchases()"
+  >
+    <i class="fas fa-file-export"></i> Export
+  </button>
+
+  <button
+    class="btn btn-primary btn-sm"
+    onclick="document.getElementById('purchaseImportFile').click()"
+  >
+    <i class="fas fa-file-import"></i> Import
+  </button>
+
+  <input
+    type="file"
+    id="purchaseImportFile"
+    accept=".csv,.xlsx,.xls"
+    style="display:none;"
+    onchange="importPurchases(event)"
+  >
+</div>
                 <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
                   <button class="filter-btn active" data-filter="today">Hari Ini</button>
                   <button class="filter-btn" data-filter="week">Minggu Ini</button>
@@ -1424,5 +1454,185 @@ await db
       }
     })();
   </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+function downloadPurchaseTemplate() {
+  const rows = [
+    {
+      "Tanggal": "2026-10-01",
+      "Supplier": "Supplier Umum",
+      "Kode SKU": "PRD-001",
+      "Nama Produk": "Kartu Perdana",
+      "Jumlah": 10,
+      "Harga Modal": 5000,
+      "Total": 50000,
+      "Kurangi Kas": "Ya",
+      "Keterangan": "Restock"
+    }
+  ];
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    book,
+    sheet,
+    "Template Pembelian"
+  );
+
+  XLSX.writeFile(
+    book,
+    "Template_Pembelian.xlsx"
+  );
+}
+
+async function exportPurchases() {
+  const snapshot = await db
+    .collection("purchases")
+    .get();
+
+  const rows = [];
+
+  snapshot.forEach(doc => {
+    const data = doc.data() || {};
+
+    rows.push({
+      "Tanggal": data.date || "",
+      "Supplier": data.supplier || "",
+      "Total": data.total || data.grandTotal || 0,
+      "Keterangan": data.note || data.catatan || ""
+    });
+  });
+
+  if (!rows.length) {
+    Utils.showToast(
+      "Belum ada data pembelian",
+      "warning"
+    );
+    return;
+  }
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    book,
+    sheet,
+    "Data Pembelian"
+  );
+
+  XLSX.writeFile(
+    book,
+    "Data_Pembelian.xlsx"
+  );
+}
+
+async function importPurchases(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array"
+    });
+
+    const sheet =
+      workbook.Sheets[workbook.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows.length) {
+      throw new Error("File kosong");
+    }
+
+    Utils.showLoading(
+      "Membaca data pembelian..."
+    );
+
+    let berhasil = 0;
+    let dilewati = 0;
+
+    for (const row of rows) {
+      const date =
+        row["Tanggal"] ||
+        row["tanggal"] ||
+        Utils.getTodayString();
+
+      const supplier =
+        row["Supplier"] ||
+        row["supplier"] ||
+        "Supplier Umum";
+
+      const total = Number(
+        row["Total"] ||
+        row["total"] ||
+        0
+      );
+
+      const note =
+        row["Keterangan"] ||
+        row["keterangan"] ||
+        "Import pembelian";
+
+      if (!total || total <= 0) {
+        dilewati++;
+        continue;
+      }
+
+      const purchaseId =
+        "PUR_IMPORT_" +
+        Date.now() +
+        "_" +
+        Math.random()
+          .toString(36)
+          .slice(2, 8);
+
+      await db
+        .collection("purchases")
+        .doc(purchaseId)
+        .set({
+          id: purchaseId,
+          date,
+          supplier,
+          total,
+          grandTotal: total,
+          note,
+          imported: true,
+          createdAt: Date.now(),
+          userId: auth.currentUser
+            ? auth.currentUser.uid
+            : ""
+        });
+
+      berhasil++;
+    }
+
+    Utils.hideLoading();
+
+    Utils.showToast(
+      `Import selesai. Berhasil: ${berhasil}, ` +
+      `dilewati: ${dilewati}`,
+      "success"
+    );
+
+    await loadRiwayat("today");
+
+  } catch (error) {
+    Utils.hideLoading();
+
+    Utils.showToast(
+      "Gagal import pembelian: " +
+      error.message,
+      "error"
+    );
+  } finally {
+    event.target.value = "";
+  }
+}
+</script>
 </body>
 </html>
