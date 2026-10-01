@@ -742,11 +742,13 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
             return;
           }
 
-          const allTransactions = await fetchTransactionsByDate(dateFrom, dateTo);
-const summary = KasCore.summarizeTransactions(allTransactions); // mesin KasCore tetap dipakai
+         const summary = await KasCore.getPeriodSummary({
+  startDate: dateFrom,
+  endDate: dateTo
+});
 
-          currentSummary = summary;
-          reportData = allTransactions.filter(KasCore.isValidTransaction);
+currentSummary = summary;
+reportData = summary.validTransactions || [];
           calculateStats(reportData);
           renderSummary(reportData);
           renderTransactionList(reportData);
@@ -767,48 +769,7 @@ const summary = KasCore.summarizeTransactions(allTransactions); // mesin KasCore
         if (!t) return 0;
         return Number(t.nominal ?? t.total ?? t.harga_jual ?? t.hargaJual ?? t.amount ?? t.nilai ?? 0) || 0;
       }
-
-      // ⭐ FETCH SESUAI FORMAT YANG DITULIS KASIR (field 'date')
-async function fetchTransactionsByDate(dateFrom, dateTo) {
-  const db = window.db;
-  const seen = {};
-  const result = [];
-
-  // Query 1: field 'date' (format yang dipakai page-kasir)
-  try {
-    const snap = await db.collection('transactions')
-      .where('date', '>=', dateFrom)
-      .where('date', '<=', dateTo)
-      .get();
-    snap.forEach(doc => {
-      if (!seen[doc.id]) {
-        seen[doc.id] = true;
-        result.push(Object.assign({ id: doc.id }, doc.data()));
-      }
-    });
-  } catch (e) {
-    console.warn('Query date gagal:', e);
-  }
-
-  // Query 2: field 'date_key' (jika ada data dari import CSV / page lain)
-  try {
-    const snap = await db.collection('transactions')
-      .where('date_key', '>=', dateFrom)
-      .where('date_key', '<=', dateTo)
-      .get();
-    snap.forEach(doc => {
-      if (!seen[doc.id]) {
-        seen[doc.id] = true;
-        result.push(Object.assign({ id: doc.id }, doc.data()));
-      }
-    });
-  } catch (e) {
-    console.warn('Query date_key gagal:', e);
-  }
-
-  return result;
-}
-
+      
       function calculateStats(transactions) {
         const summary = currentSummary || KasCore.summarizeTransactions(transactions);
         const salesCount = summary.salesCount || 0;
