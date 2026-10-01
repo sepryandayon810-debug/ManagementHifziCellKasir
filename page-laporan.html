@@ -231,7 +231,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
   <script src="js/firebase-config.js"></script>
   <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
@@ -982,8 +983,43 @@ function parseCSV(text) {
 
 async function importCSV(file) {
   if (!file) { Utils.showToast('Pilih file dulu', 'warning'); return; }
+  let rows = [];
+
+if (
+  file.name.endsWith(".xlsx") ||
+  file.name.endsWith(".xls")
+) {
+  const buffer = await file.arrayBuffer();
+
+  const workbook = XLSX.read(buffer, {
+    type: "array"
+  });
+
+  const sheet =
+    workbook.Sheets[workbook.SheetNames[0]];
+
+  const objects = XLSX.utils.sheet_to_json(sheet);
+
+  if (!objects.length) {
+    Utils.showToast(
+      "File Excel kosong",
+      "error"
+    );
+    return;
+  }
+
+  const headers = Object.keys(objects[0]);
+
+  rows = [
+    headers,
+    ...objects.map(item =>
+      headers.map(header => item[header] ?? "")
+    )
+  ];
+} else {
   const text = await file.text();
-  const rows = parseCSV(text);
+  rows = parseCSV(text);
+}
   if (rows.length < 2) { Utils.showToast('File kosong / tidak ada data', 'error'); return; }
 
   const header = rows[0].map(h => h.trim().toLowerCase());
@@ -1079,7 +1115,12 @@ async function importCSV(file) {
       <button class="btn btn-secondary" style="flex:1;" id="btnDownloadTemplate"><i class="fas fa-file-csv"></i> Unduh Template</button>
       <label class="btn btn-primary" style="flex:1;cursor:pointer;">
         <i class="fas fa-folder-open"></i> Pilih File CSV
-        <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none;">
+<input
+  type="file"
+  id="importFileInput"
+  accept=".csv,.xlsx,.xls,text/csv"
+  style="display:none;"
+>
       </label>
     </div>
 
