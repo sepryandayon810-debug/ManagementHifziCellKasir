@@ -247,10 +247,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-  <script src="js/role-guard.js"></script>
+ <script src="js/firebase-config.js"></script>
+<script src="js/kas-core.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/sidebar-filter.js"></script>
+<script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -673,14 +674,27 @@
 
         try {
           if (forceRefresh || !isDataLoaded || globalTransactions.length === 0) {
-            const snap = await db.collection("transactions").get();
-            globalTransactions = [];
-            snap.forEach(doc => {
-              const data = doc.data();
-              if (data.type === 'penjualan' && data.status !== 'cancelled' && data.status !== 'voided') {
-                globalTransactions.push(data);
-              }
-            });
+            const snap = await db.collection('transactions').get();
+
+globalTransactions = [];
+
+snap.forEach(doc => {
+  const data = {
+    id: doc.id,
+    ...doc.data()
+  };
+
+  /*
+   * Validasi status dan kategori dilakukan KasCore.
+   * Ini kompatibel dengan data lama maupun data baru.
+   */
+  if (
+    KasCore.isValidTransaction(data) &&
+    KasCore.getCategory(data) === 'jual'
+  ) {
+    globalTransactions.push(data);
+  }
+});
             isDataLoaded = true;
           }
           processReportData();
@@ -716,11 +730,22 @@
         let totalRevenue = 0;
 
         globalTransactions.forEach(t => {
-          if (startDate && t.date) {
-            const tDate = new Date(t.date);
-            if (tDate < startDate) return;
-          }
+          if (startDate) {
+  const transactionDate =
+    KasCore.getTransactionDate(t);
 
+  const tDate = transactionDate
+    ? new Date(transactionDate)
+    : KasCore.parseDateValue(
+        t.waktu ||
+        t.timestamp ||
+        t.createdAt
+      );
+
+  if (tDate && tDate < startDate) {
+    return;
+  }
+}
           const items = t.items || [];
           items.forEach(item => {
             const pId = item.productId || item.id;
