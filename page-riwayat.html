@@ -767,8 +767,10 @@
       transition:width .2s;
     "
   ></div>
+  </div>
 </div>
-  <div class="toast-container" id="toastContainer"></div>
+
+<div class="toast-container" id="toastContainer"></div>
 
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
@@ -1807,8 +1809,26 @@ batch.set(ref, {
                 successCount++;
               });
 
-              await batch.commit();
-              loadingText.textContent = `Mengimpor... (${successCount}/${totalRows} data)`;
+             const processed = Math.min(
+  i + chunk.length,
+  totalRows
+);
+
+const percent = Math.round(
+  (processed / totalRows) * 100
+);
+
+const progressBar =
+  document.getElementById(
+    "importProgressBar"
+  );
+
+if (progressBar) {
+  progressBar.style.width = percent + "%";
+}
+
+loadingText.textContent =
+  `Mengimpor... ${processed}/${totalRows} (${percent}%)`;
             }
 
             overlay.classList.remove('active');
