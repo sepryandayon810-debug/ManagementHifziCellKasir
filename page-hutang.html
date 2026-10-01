@@ -777,7 +777,10 @@
           <input type="file" class="form-input" id="importFile" accept=".json,.csv,.xls,.xlsx" style="padding: 0.5rem;">
           <small style="color: var(--text-muted); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
             Format yang didukung: JSON, CSV, atau XLS/XLSX.<br>
-            Kolom: <strong>name | type | amount | dueDate | note | status</strong>
+            Kolom:
+<strong>
+name | type | amount | remaining | dueDate | note | status
+</strong>
           </small>
         </div>
         <div class="form-group" style="margin-bottom:0;">
@@ -1225,6 +1228,7 @@
         });
         document.getElementById('btnExport').addEventListener('click', exportData);
         document.getElementById('btnConfirmImport').addEventListener('click', importData);
+        document.getElementById('btnDownloadDebtTemplate').addEventListener('click', downloadDebtTemplate);
 
         const sidebar = document.getElementById('sidebar');
         const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -2252,36 +2256,432 @@ try {
   };
 }
 
-        document
-  .getElementById("btnDownloadDebtTemplate")
-  .addEventListener("click", downloadDebtTemplate);
+       /* =========================================================
+   EXPORT / IMPORT HUTANG PIUTANG
+   ========================================================= */
 
-function downloadDebtTemplate() {
+function normalizeDebtHeader(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_\-\/]+/g, '');
+}
+
+function getDebtField(row, names) {
+  const normalizedRow = {};
+
+  Object.keys(row || {}).forEach((key) => {
+    normalizedRow[normalizeDebtHeader(key)] = row[key];
+  });
+
+  for (const name of names) {
+    const value = normalizedRow[normalizeDebtHeader(name)];
+
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function normalizeDebtType(value) {
+  const type = String(value || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    type === 'piutang' ||
+    type === 'piutang aktif' ||
+    type === 'receivable'
+  ) {
+    return 'piutang';
+  }
+
+  return 'hutang';
+}
+
+function normalizeDebtStatus(value) {
+  const status = String(value || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    status === 'lunas' ||
+    status === 'paid' ||
+    status === 'selesai' ||
+    status === 'closed' ||
+    status === 'inactive'
+  ) {
+    return 'paid';
+  }
+
+  return 'active';
+}
+
+function parseDebtAmount(value) {
+  if (typeof value === 'number') {
+    return Math.round(value);
+  }
+
+  const cleaned = String(value || '')
+    .replace(/rp/gi, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .replace(/[^\d-]/g, '');
+
+  return parseInt(cleaned, 10) || 0;
+}
+
+function formatDebtDate(value) {
+  if (!value) return null;
+
+  if (typeof value === 'number') {
+    const parsed = XLSX.SSF.parse_date_code(value);
+
+    if (parsed) {
+      return [
+        parsed.y,
+        String(parsed.m).padStart(2, '0'),
+        String(parsed.d).padStart(2, '0')
+      ].join('-');
+    }
+  }
+
+  const text = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+
+  if (match) {
+    return [
+      match[3],
+      String(match[2]).padStart(2, '0'),
+      String(match[1]).padStart(2, '0')
+    ].join('-');
+  }
+
+  return text;
+}
+
+window.downloadDebtTemplate = function() {
   const rows = [
     {
-      "Nama": "Budi",
-      "Tipe": "piutang",
-      "Nominal": 200000,
-      "Sisa": 200000,
-      "Tempo": "2026-10-10",
-      "Keterangan": "Penjualan kredit",
-      "Status": "active"
+      name: 'Budi Santoso',
+      type: 'piutang',
+      amount: 200000,
+      remaining: 200000,
+      dueDate: '2026-10-10',
+      note: 'Penjualan kredit',
+      status: 'active'
     }
   ];
 
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  const book = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(
-    book,
-    sheet,
-    "Template Hutang"
+    workbook,
+    worksheet,
+    'Template Hutang'
   );
 
   XLSX.writeFile(
-    book,
-    "Template_Hutang_Piutang.xlsx"
+    workbook,
+    'Template_Hutang_Piutang.xlsx'
   );
+};
+
+function exportData() {
+  try {
+    const rows = Object.values(hutangData || {}).map((item) => ({
+      id: item.id || '',
+      name: item.name || '',
+      type: item.type || 'hutang',
+      amount: Number(item.amount || 0),
+      remaining: Number(
+        item.remaining !== undefined
+          ? item.remaining
+          : item.amount || 0
+      ),
+      dueDate: item.dueDate || '',
+      note: item.note || '',
+      status: item.status || 'active',
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : ''
+    }));
+
+    if (!rows.length) {
+      Utils.showToast(
+        'Tidak ada data hutang/piutang untuk diexport',
+        'warning'
+      );
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Data Hutang'
+    );
+
+    const today = new Date()
+      .toISOString()
+      .split('T')[0];
+
+    XLSX.writeFile(
+      workbook,
+      `Data_Hutang_Piutang_${today}.xlsx`
+    );
+
+    Utils.showToast(
+      'Data hutang/piutang berhasil diexport',
+      'success'
+    );
+  } catch (error) {
+    console.error('Export hutang gagal:', error);
+
+    Utils.showToast(
+      'Export gagal: ' + error.message,
+      'error'
+    );
+  }
+}
+
+async function importData() {
+  const fileInput = document.getElementById('importFile');
+  const overwrite = document.getElementById('importOverwrite').checked;
+
+  if (!fileInput || !fileInput.files.length) {
+    Utils.showToast(
+      'Pilih file terlebih dahulu',
+      'warning'
+    );
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  Utils.showLoading();
+
+  try {
+    let importedData = [];
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith('.json')) {
+      const text = await file.text();
+      importedData = JSON.parse(text);
+    } else {
+      const buffer = await file.arrayBuffer();
+
+      const workbook = XLSX.read(buffer, {
+        type: 'array',
+        cellDates: false
+      });
+
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      importedData = XLSX.utils.sheet_to_json(firstSheet, {
+        defval: ''
+      });
+    }
+
+    if (!Array.isArray(importedData)) {
+      throw new Error(
+        'Format file harus berupa daftar data'
+      );
+    }
+
+    const currentUser = Auth.getCurrentUser
+      ? Auth.getCurrentUser()
+      : null;
+
+    let berhasil = 0;
+    let dilewati = 0;
+
+    for (const row of importedData) {
+      const name = String(
+        getDebtField(row, [
+          'name',
+          'nama',
+          'nama pelanggan',
+          'pelanggan',
+          'customer name'
+        ])
+      ).trim();
+
+      const type = normalizeDebtType(
+        getDebtField(row, [
+          'type',
+          'tipe',
+          'jenis',
+          'jenis transaksi'
+        ])
+      );
+
+      const amount = parseDebtAmount(
+        getDebtField(row, [
+          'amount',
+          'jumlah',
+          'nominal',
+          'total'
+        ])
+      );
+
+      const importedRemaining = parseDebtAmount(
+        getDebtField(row, [
+          'remaining',
+          'sisa',
+          'sisa hutang',
+          'sisa piutang'
+        ])
+      );
+
+      const dueDate = formatDebtDate(
+        getDebtField(row, [
+          'dueDate',
+          'due date',
+          'tanggal jatuh tempo',
+          'tempo',
+          'tanggal'
+        ])
+      );
+
+      const note = String(
+        getDebtField(row, [
+          'note',
+          'catatan',
+          'keterangan'
+        ]) || ''
+      ).trim();
+
+      const status = normalizeDebtStatus(
+        getDebtField(row, [
+          'status',
+          'status transaksi'
+        ])
+      );
+
+      if (!name || amount <= 0) {
+        dilewati++;
+        continue;
+      }
+
+      const remaining = status === 'paid'
+        ? 0
+        : importedRemaining > 0
+          ? Math.min(importedRemaining, amount)
+          : amount;
+
+      const importedId = String(
+        getDebtField(row, [
+          'id',
+          'debt id',
+          'hutang id'
+        ]) || ''
+      ).trim();
+
+      let debtId = importedId;
+
+      if (!debtId || !overwrite) {
+        debtId =
+          'debt_' +
+          Date.now() +
+          '_' +
+          Math.random()
+            .toString(36)
+            .slice(2, 8);
+      }
+
+      const debtData = {
+        id: debtId,
+        name,
+        type,
+        amount,
+        remaining,
+        dueDate: dueDate || null,
+        note,
+        status,
+        imported: true,
+        updatedAt: Date.now(),
+        userId: currentUser?.uid || ''
+      };
+
+      if (overwrite && importedId) {
+        await firestoreDb
+          .ref('debts/' + importedId)
+          .set(debtData);
+
+        berhasil++;
+        continue;
+      }
+
+      const duplicate = Object.values(hutangData || {}).find((item) => {
+        return (
+          String(item.name || '').trim().toLowerCase() ===
+            name.toLowerCase() &&
+          String(item.type || '').toLowerCase() === type &&
+          Number(item.amount || 0) === amount &&
+          String(item.dueDate || '') === String(dueDate || '')
+        );
+      });
+
+      if (duplicate) {
+        if (overwrite && duplicate.id) {
+          await firestoreDb
+            .ref('debts/' + duplicate.id)
+            .set({
+              ...debtData,
+              id: duplicate.id
+            });
+
+          berhasil++;
+        } else {
+          dilewati++;
+        }
+
+        continue;
+      }
+
+      await firestoreDb
+        .ref('debts/' + debtId)
+        .set({
+          ...debtData,
+          createdAt: Date.now()
+        });
+
+      berhasil++;
+    }
+
+    closeImportModal();
+
+    Utils.showToast(
+      `Import selesai. Berhasil: ${berhasil}, Dilewati: ${dilewati}`,
+      berhasil > 0 ? 'success' : 'warning'
+    );
+
+    await loadAllData();
+  } catch (error) {
+    console.error('Import hutang gagal:', error);
+
+    Utils.showToast(
+      'Import gagal: ' + error.message,
+      'error'
+    );
+  } finally {
+    Utils.hideLoading();
+
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
 }
 
         window.downloadDebtTemplate = function() {
