@@ -1092,18 +1092,41 @@ async function importStockFile(event) {
 
       const doc = snapshot.docs[0];
 
-      await db
-        .collection("products")
-        .doc(doc.id)
-        .update({
-          stock: Math.max(0, stock),
-          updatedAt:
-            firebase.firestore.FieldValue
-              .serverTimestamp()
-        });
+      const oldStock = Number(
+  doc.data().stock || 0
+);
 
-      berhasil++;
+const newStock = Math.max(0, stock);
 
+await db
+  .collection("products")
+  .doc(doc.id)
+  .update({
+    stock: newStock,
+    updatedAt:
+      firebase.firestore.FieldValue
+        .serverTimestamp()
+  });
+
+await db.collection("stock_history").add({
+  productId: doc.id,
+  productName: doc.data().name || "",
+  type: "set",
+  qty: newStock,
+  previousStock: oldStock,
+  newStock,
+  note: "Import stok dari file",
+  userId: auth.currentUser
+    ? auth.currentUser.uid
+    : "",
+  userName:
+    document.getElementById("userName")
+      ?.textContent || "Admin",
+  timestamp: Date.now(),
+  date: Utils.getTodayString()
+});
+
+berhasil++;
       const percent = Math.round(
         ((i + 1) / rows.length) * 100
       );
