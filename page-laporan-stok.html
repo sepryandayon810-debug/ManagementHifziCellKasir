@@ -240,6 +240,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
@@ -408,7 +409,26 @@
           <div class="card-header">
             <h3 class="card-title"><i class="fas fa-warehouse" style="color: var(--primary);"></i> Inventori & Stok Produk</h3>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn btn-primary btn-sm" id="btnExport" title="Export CSV" style="width: auto;"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button
+  class="btn btn-secondary btn-sm"
+  id="btnDownloadStockTemplate"
+>
+  <i class="fas fa-file-download"></i> Template
+</button>
+
+<button
+  class="btn btn-primary btn-sm"
+  id="btnImportStock"
+>
+  <i class="fas fa-file-import"></i> Import
+</button>
+
+<button
+  class="btn btn-success btn-sm"
+  id="btnExport"
+>
+  <i class="fas fa-file-export"></i> Export
+</button>
             </div>
           </div>
           <div class="card-body">
@@ -534,6 +554,63 @@
     </div>
   </div>
 
+  <input
+  type="file"
+  id="stockImportFile"
+  accept=".csv,.xlsx,.xls"
+  style="display:none;"
+>
+
+<div
+  id="stockImportProgress"
+  style="
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    background:rgba(0,0,0,.55);
+    align-items:center;
+    justify-content:center;
+  "
+>
+  <div style="
+    width:90%;
+    max-width:400px;
+    background:var(--bg-surface);
+    padding:24px;
+    border-radius:16px;
+  ">
+    <h3>Import Stok</h3>
+
+    <div style="
+      height:10px;
+      background:var(--bg-subtle);
+      border-radius:99px;
+      overflow:hidden;
+      margin-top:15px;
+    ">
+      <div
+        id="stockImportBar"
+        style="
+          width:0%;
+          height:100%;
+          background:var(--primary);
+        "
+      ></div>
+    </div>
+
+    <p
+      id="stockImportText"
+      style="
+        text-align:center;
+        margin-top:8px;
+        font-size:.8rem;
+      "
+    >
+      0%
+    </p>
+  </div>
+</div>
   <div class="loading-overlay" id="loadingOverlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; opacity:0; visibility:hidden; transition:all 0.2s;">
     <div class="spinner" style="width:40px; height:40px; border:4px solid rgba(255,255,255,0.2); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
     <p style="margin-top:1rem; color:#fff; font-weight:700;">Memuat...</p>
@@ -905,6 +982,161 @@
       window.closeHistoryModal = function() {
         document.getElementById('historyModal').classList.remove('active');
       };
+
+      document
+  .getElementById("btnImportStock")
+  .addEventListener("click", () => {
+    document
+      .getElementById("stockImportFile")
+      .click();
+  });
+
+document
+  .getElementById("stockImportFile")
+  .addEventListener("change", importStockFile);
+
+document
+  .getElementById("btnDownloadStockTemplate")
+  .addEventListener("click", downloadStockTemplate);
+
+function downloadStockTemplate() {
+  const rows = [
+    {
+      "Kode SKU": "PRD-001",
+      "Nama Produk": "Kartu Perdana",
+      "Stok": 50,
+      "Satuan": "pcs",
+      "Keterangan": "Stok awal"
+    }
+  ];
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    book,
+    sheet,
+    "Template Stok"
+  );
+
+  XLSX.writeFile(
+    book,
+    "Template_Stok.xlsx"
+  );
+}
+
+async function importStockFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const modal = document.getElementById(
+    "stockImportProgress"
+  );
+
+  const bar = document.getElementById(
+    "stockImportBar"
+  );
+
+  const text = document.getElementById(
+    "stockImportText"
+  );
+
+  modal.style.display = "flex";
+
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array"
+    });
+
+    const sheet =
+      workbook.Sheets[workbook.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    let berhasil = 0;
+    let dilewati = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      const code =
+        row["Kode SKU"] ||
+        row["kode sku"] ||
+        row["Kode"] ||
+        row["code"];
+
+      const stockValue =
+        row["Stok"] ||
+        row["stok"] ||
+        row["Stock"];
+
+      const stock = Number(stockValue);
+
+      if (!code || !Number.isFinite(stock)) {
+        dilewati++;
+        continue;
+      }
+
+      const snapshot = await db
+        .collection("products")
+        .where("code", "==", String(code))
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        dilewati++;
+        continue;
+      }
+
+      const doc = snapshot.docs[0];
+
+      await db
+        .collection("products")
+        .doc(doc.id)
+        .update({
+          stock: Math.max(0, stock),
+          updatedAt:
+            firebase.firestore.FieldValue
+              .serverTimestamp()
+        });
+
+      berhasil++;
+
+      const percent = Math.round(
+        ((i + 1) / rows.length) * 100
+      );
+
+      bar.style.width = percent + "%";
+      text.textContent =
+        `${percent}% — ${i + 1}/${rows.length}`;
+    }
+
+    Utils.showToast(
+      `Import stok selesai. Berhasil: ${berhasil}, ` +
+      `dilewati: ${dilewati}`,
+      "success"
+    );
+
+    await loadProducts();
+
+  } catch (error) {
+    console.error(error);
+
+    Utils.showToast(
+      "Gagal import stok: " + error.message,
+      "error"
+    );
+  } finally {
+    setTimeout(() => {
+      modal.style.display = "none";
+      bar.style.width = "0%";
+      text.textContent = "0%";
+      event.target.value = "";
+    }, 1200);
+  }
+}
 
       function exportCSV() {
         if (!productsList || productsList.length === 0) {
