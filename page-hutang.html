@@ -1807,107 +1807,85 @@ document.getElementById('btnDownloadDebtTemplate')
               kasCoreCategory: type === 'piutang' ? 'kas_keluar' : 'kas_masuk',
               kasCoreVersion: '1'
             };
-
-           let cashTransaction = null;
-// Untuk data baru yang memengaruhi kas,
-// catat transaksi melalui KasCore terlebih dahulu.
-if (!id && kasAffect) {
-  await ensureKasCore();
-  if (type === 'piutang') {
-    // Memberikan pinjaman: uang keluar dari kas.
-    cashTransaction = await recordToKas(
-      'keluar',
-      amount,
-      `Pemberian pinjaman - ${name}`,
-      user,
-      'kas_keluar',
-      hutangId,
-      {
-        affectsCashGlobal: true,
-        debtType: 'piutang',
-        flowType: 'pemberian_pinjaman'
-      }
-    );
-  } else {
-    // Menerima pinjaman: uang masuk ke kas.
-    cashTransaction = await recordToKas(
-      'masuk',
-      amount,
-      `Penerimaan pinjaman - ${name}`,
-      user,
-      'kas_masuk',
-      hutangId,
-      {
-        affectsCashGlobal: true,
-        debtType: 'hutang',
-        flowType: 'penerimaan_pinjaman'
-      }
-    );
-  }
-}
-const debtToSave = {
-  ...hutangPayload,
-  ...(cashTransaction?.id
-    ? {
-        cashTransactionId: cashTransaction.id,
-        cashSource: 'hutang_piutang',
-        kasRecorded: true,
-        updatedAt: Date.now()
-      }
-    : {})
-};
-try {
-  // Data hutang baru disimpan setelah transaksi kas berhasil.
- const core = await ensureKasCore();
-
-const saved = await core.saveTransaction({
-  kategori: hutangType === 'piutang'
-    ? 'jual'
-    : 'pinjaman_tunai',
-
-  metode_pembayaran: hutangType === 'piutang'
-    ? 'utang'
-    : 'tunai',
-
-  nominal: amount,
-  customerName: name,
-  userId: user.uid,
-  catatan: note || '',
-  status: 'completed',
-  waktu: Date.now()
-});
-
-if (!saved || !saved.debtId) {
-  throw new Error(
-    'Hutang berhasil diproses tetapi debtId tidak ditemukan'
-  );
-}
-
-await firebase.firestore()
-  .collection('debts')
-  .doc(saved.debtId)
-  .set({
-    name: name,
-    customerName: name,
-    dueDate: dueDate || '',
-    note: note || '',
-    catatan: note || '',
-    updatedAt: Date.now()
-  }, {
-    merge: true
-  });
             
-            Utils.showToast('Data berhasil disimpan', 'success');
-            closeModal();
-            await loadAllData();
-          } catch (error) {
-            console.error('Error saving hutang:', error);
-            Utils.showToast('Gagal menyimpan data: ' + error.message, 'error');
-          } finally {
-            Utils.hideLoading();
-          }
-        }
+try {
+  const core = await ensureKasCore();
 
+  if (id) {
+    // EDIT DATA HUTANG YANG SUDAH ADA
+    await firebase.firestore()
+      .collection('debts')
+      .doc(id)
+      .set(hutangPayload, {
+        merge: true
+      });
+  } else {
+    // DATA BARU WAJIB MELALUI KASCORE
+    const saved = await core.saveTransaction({
+      kategori: type === 'piutang'
+        ? 'jual'
+        : 'pinjaman_tunai',
+
+      metode_pembayaran: type === 'piutang'
+        ? 'utang'
+        : 'tunai',
+
+      nominal: amount,
+      customerName: name,
+      userId: user.uid,
+      catatan: note || '',
+      status: 'completed',
+      waktu: Date.now()
+    });
+
+    if (!saved || !saved.debtId) {
+      throw new Error(
+        'Hutang berhasil diproses tetapi debtId tidak ditemukan'
+      );
+    }
+
+    // Tambahkan field khusus halaman Hutang
+    // ke dokumen debts yang dibuat KasCore.
+    await firebase.firestore()
+      .collection('debts')
+      .doc(saved.debtId)
+      .set({
+        name: name,
+        customerName: name,
+        dueDate: dueDate || null,
+        note: note || '',
+        catatan: note || '',
+        transactionId: saved.id,
+        updatedAt: Date.now()
+      }, {
+        merge: true
+      });
+  }
+
+  Utils.showToast(
+    'Data berhasil disimpan',
+    'success'
+  );
+
+  closeModal();
+  await loadAllData();
+
+} catch (error) {
+  console.error(
+    'Error saving hutang:',
+    error
+  );
+
+  Utils.showToast(
+    'Gagal menyimpan data: ' +
+      error.message,
+    'error'
+  );
+
+} finally {
+  Utils.hideLoading();
+}
+            
         async function saveCustomer() {
           const id = document.getElementById('customerId').value;
           const name = document.getElementById('customerNameInput').value.trim();
