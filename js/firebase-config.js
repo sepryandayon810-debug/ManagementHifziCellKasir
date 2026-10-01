@@ -3,12 +3,12 @@ if (!window.firebaseConfigInitialized) {
   window.firebaseConfigInitialized = true;
 
  const firebaseConfig = {
-  apiKey: "AIzaSyCF2nBwzMTvSilTZBTlPfBb_-8P33SbXPU",
-  authDomain: "managementhifzicellv2.firebaseapp.com",
-  projectId: "managementhifzicellv2",
-  storageBucket: "managementhifzicellv2.firebasestorage.app",
-  messagingSenderId: "543101815187",
-  appId: "1:543101815187:web:99f0dbc95766e4c2434066"
+  apiKey: "AIzaSyCKU4LAF4sEaIMvsvNDTf_kU-7JmprsdMM",
+  authDomain: "managementhifzicell.firebaseapp.com",
+  projectId: "managementhifzicell",
+  storageBucket: "managementhifzicell.firebasestorage.app",
+  messagingSenderId: "275855765943",
+  appId: "1:275855765943:web:93ed6975a3417fb3c73832"
 };
 
 
