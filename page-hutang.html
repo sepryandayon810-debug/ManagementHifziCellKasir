@@ -1822,21 +1822,22 @@ try {
   } else {
     // DATA BARU WAJIB MELALUI KASCORE
     const saved = await core.saveTransaction({
-      kategori: type === 'piutang'
-        ? 'jual'
-        : 'pinjaman_tunai',
+  kategori: type === 'piutang'
+    ? 'jual'
+    : 'pinjaman_tunai',
 
-      metode_pembayaran: type === 'piutang'
-        ? 'utang'
-        : 'tunai',
+  metode_pembayaran: type === 'piutang'
+    ? 'utang'
+    : 'tunai',
 
-      nominal: amount,
-      customerName: name,
-      userId: user.uid,
-      catatan: note || '',
-      status: 'completed',
-      waktu: Date.now()
-    });
+  nominal: amount,
+  customerName: name,
+  userId: user.uid,
+  catatan: note || '',
+  status: 'completed',
+  pengaruhi_kas_global: type === 'hutang',
+  waktu: Date.now()
+});
 
     if (!saved || !saved.debtId) {
       throw new Error(
