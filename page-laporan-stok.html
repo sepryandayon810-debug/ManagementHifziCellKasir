@@ -748,15 +748,23 @@
       }
 
       async function initLaporanStok() {
-        await loadCategories();
-        await loadProducts();
+  await loadCategories();
+  await loadProducts();
 
-        document.getElementById('searchProduct').addEventListener('input', filterAndRenderTable);
-        document.getElementById('filterCategory').addEventListener('change', filterAndRenderTable);
-        document.getElementById('filterStatus').addEventListener('change', filterAndRenderTable);
-        document.getElementById('btnExport').onclick = exportCSV;
-      }
+  document
+    .getElementById('searchProduct')
+    .addEventListener('input', filterAndRenderTable);
 
+  document
+    .getElementById('filterCategory')
+    .addEventListener('change', filterAndRenderTable);
+
+  document
+    .getElementById('filterStatus')
+    .addEventListener('change', filterAndRenderTable);
+
+  document.getElementById('btnExport').onclick = exportStockCSV;
+}
       async function loadCategories() {
         try {
           const snap = await db.collection("categories").get();
@@ -875,6 +883,78 @@
 
         renderTable(filtered);
       }
+
+      function exportStockCSV() {
+  if (!productsList || productsList.length === 0) {
+    Utils.showToast(
+      'Tidak ada data stok untuk diexport',
+      'warning'
+    );
+    return;
+  }
+
+  const rows = productsList.map((product) => ({
+    'Kode SKU': product.code || '',
+    'Nama Produk': product.name || '',
+    'Kategori': categoriesMap[product.categoryId] || 'Umum',
+    'Stok': Number(product.stock || 0),
+    'Satuan': product.unit || 'pcs',
+    'Status':
+      Number(product.stock || 0) === 0
+        ? 'Habis'
+        : Number(product.stock || 0) <= 5
+          ? 'Menipis'
+          : 'Aman'
+  }));
+
+  const headers = [
+    'Kode SKU',
+    'Nama Produk',
+    'Kategori',
+    'Stok',
+    'Satuan',
+    'Status'
+  ];
+
+  const escapeCSV = (value) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const csv = [
+    headers.map(escapeCSV).join(','),
+    ...rows.map((row) =>
+      headers
+        .map((header) => escapeCSV(row[header]))
+        .join(',')
+    )
+  ].join('\n');
+
+  const blob = new Blob(
+    ['\ufeff' + csv],
+    {
+      type: 'text/csv;charset=utf-8;'
+    }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download =
+    `laporan_stok_${new Date().toISOString().split('T')[0]}.csv`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+
+  Utils.showToast(
+    'Laporan stok berhasil diexport',
+    'success'
+  );
+}
 
       window.openAdjustModal = function(id, name, currentStock) {
         document.getElementById('adjProductId').value = id;
