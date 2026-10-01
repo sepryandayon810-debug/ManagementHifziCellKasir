@@ -741,8 +741,33 @@
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <p style="margin-top:1rem;font-weight:700;color:#fff;" id="loadingText">Memproses...</p>
-  </div>
+    <p
+  style="margin-top:1rem;font-weight:700;color:#fff;"
+  id="loadingText"
+>
+  Memproses...
+</p>
+
+<div
+  style="
+    width:280px;
+    height:10px;
+    background:rgba(255,255,255,.25);
+    border-radius:99px;
+    overflow:hidden;
+    margin-top:10px;
+  "
+>
+  <div
+    id="importProgressBar"
+    style="
+      width:0%;
+      height:100%;
+      background:#fff;
+      transition:width .2s;
+    "
+  ></div>
+</div>
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="js/firebase-config.js"></script>
@@ -1723,6 +1748,18 @@ if (KasCore.getCategory(transaction) !== 'jual') {
 
             const totalRows = importedData.length;
             let successCount = 0;
+            const progressBar =
+  document.getElementById(
+    "importProgressBar"
+  );
+
+const loadingText =
+  document.getElementById(
+    "loadingText"
+  );
+
+let skippedCount = 0;
+let failedCount = 0;
             const user = auth.currentUser;
 
             // Dipecah per kelompok 400 data agar tidak kena error "Transaction too big"
