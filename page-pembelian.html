@@ -398,10 +398,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   
-  <script src="js/firebase-config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/sidebar-filter.js"></script>
-  <script src="js/role-guard.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/kas-core.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/sidebar-filter.js"></script>
+<script src="js/role-guard.js"></script>
 </head>
 <body>
 
@@ -1224,26 +1225,54 @@
           await db.collection("purchases").doc(today).collection("items").doc(purchaseId).set(purchaseData);
           await db.collection("purchases").doc(purchaseId).set(purchaseData);
 
-          if (kurangiSaldo) {
-            const kasId = 'KASOUT_' + timestamp;
-            await db.collection("transactions").doc(kasId).set({
-              id: kasId,
-              type: 'kas_keluar',
-              status: 'completed',
-              amount: grandTotal,
-              total: grandTotal,
-              note: 'Pembelian: ' + pembelianList.map(i => i.productName + ' (' + i.qty + ' pcs)').join(', '),
-              category: 'pembelian',
-              source: 'pembelian',
-              flowType: 'pembelian',
-              cashDirection: 'out',
-              relatedPurchaseId: purchaseId,
-              timestamp: timestamp,
-              date: today,
-              userId: user.uid,
-              userName: document.getElementById('userName').textContent
-            });
-          }
+         /*
+ * Semua transaksi pembelian dicatat melalui KasCore.
+ * Jika checkbox "Kurangi Saldo Kasir" tidak dicentang,
+ * transaksi tetap tersimpan tetapi tidak mengurangi kas.
+ */
+const kasTransaction = await KasCore.saveTransaction({
+  kategori: 'pembelian',
+  metode_pembayaran: 'tunai',
+  nominal: grandTotal,
+  modal_produk: 0,
+  userId: user.uid,
+  catatan:
+    catatan ||
+    'Pembelian: ' +
+      pembelianList
+        .map(item => item.productName + ' (' + item.qty + ' pcs)')
+        .join(', '),
+  status: 'completed',
+  pengaruhi_kas_global: Boolean(kurangiSaldo),
+  waktu: timestamp
+});
+
+/*
+ * Field tambahan hanya untuk tampilan dan hubungan
+ * dengan dokumen pembelian.
+ * Perhitungan mutasi tetap berasal dari KasCore.
+ */
+await db
+  .collection('transactions')
+  .doc(kasTransaction.id)
+  .update({
+    type: 'pembelian',
+    category: 'pembelian',
+    source: 'pembelian',
+    flowType: 'pembelian',
+    relatedPurchaseId: purchaseId,
+    amount: grandTotal,
+    total: grandTotal,
+    note:
+      catatan ||
+      'Pembelian: ' +
+        pembelianList
+          .map(item => item.productName + ' (' + item.qty + ' pcs)')
+          .join(', '),
+    userName: document.getElementById('userName').textContent,
+    date: today
+  });
+          
 
           Utils.hideLoading();
           Utils.showToast(kurangiSaldo ? 'Pembelian tersimpan & saldo kasir berkurang!' : 'Pembelian tersimpan & stok bertambah!', 'success');
