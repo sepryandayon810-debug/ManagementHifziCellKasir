@@ -565,6 +565,12 @@
                 <div style="display:flex; gap:0.35rem;">
                   <button class="btn btn-outline btn-sm" id="btnImport"><i class="fas fa-file-import"></i> Import</button>
                   <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
+                  <button
+  class="btn btn-outline btn-sm"
+  id="btnDownloadDebtTemplate"
+>
+  <i class="fas fa-file-download"></i> Template
+</button>
                 </div>
               </div>
             </div>
@@ -2245,6 +2251,38 @@ try {
     relatedDebtId
   };
 }
+
+        document
+  .getElementById("btnDownloadDebtTemplate")
+  .addEventListener("click", downloadDebtTemplate);
+
+function downloadDebtTemplate() {
+  const rows = [
+    {
+      "Nama": "Budi",
+      "Tipe": "piutang",
+      "Nominal": 200000,
+      "Sisa": 200000,
+      "Tempo": "2026-10-10",
+      "Keterangan": "Penjualan kredit",
+      "Status": "active"
+    }
+  ];
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    book,
+    sheet,
+    "Template Hutang"
+  );
+
+  XLSX.writeFile(
+    book,
+    "Template_Hutang_Piutang.xlsx"
+  );
+}
         
         function exportData() {
           const dataToExport = Object.values(hutangData).map(item => ({
@@ -2282,6 +2320,8 @@ try {
           }
 
           const file = fileInput.files[0];
+          let totalImport = 0;
+let selesaiImport = 0;
           Utils.showLoading();
           
           const reader = new FileReader();
@@ -2327,6 +2367,7 @@ try {
               
               const user = Auth.getCurrentUser();
               let count = 0;
+              
               
               for (const item of importedData) {
                 const name = item.name || item.nama || item.pelanggan || '';
