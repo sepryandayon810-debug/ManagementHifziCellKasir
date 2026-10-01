@@ -229,6 +229,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
@@ -369,8 +370,16 @@
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn btn-success" onclick="openImportModal()">
-              <i class="fas fa-paste"></i> Import Cepat
-            </button>
+  <i class="fas fa-file-import"></i> Import
+</button>
+
+<button class="btn btn-outline" onclick="downloadCustomerTemplate()">
+  <i class="fas fa-file-download"></i> Template
+</button>
+
+<button class="btn btn-primary" onclick="exportCustomers()">
+  <i class="fas fa-file-export"></i> Export
+</button>
             <button class="btn btn-primary" id="btnAdd">
               <i class="fas fa-plus"></i> Tambah
             </button>
@@ -494,16 +503,61 @@
       </div>
       <div class="modal-body">
         <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Paste Data Kolom Nama & Nomor di Sini</label>
-          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-            Blok kolom Nama dan Nomor di Google Sheets Anda lalu tekan <b>Ctrl+V</b> di bawah:
-          </p>
-          <textarea class="form-textarea" id="importTextarea" placeholder="ID DIGIPOS    081371501338&#10;TOKEN LIDIA    50210246026"></textarea>
+          <label class="form-label">Pilih File Pelanggan</label>
+
+<input
+  type="file"
+  id="customerImportFile"
+  class="form-input"
+  accept=".csv,.xlsx,.xls"
+  style="padding:0.5rem;"
+>
+
+<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
+  Kolom wajib:
+  <b>Nama</b> dan <b>Nomor Telepon</b>.
+</div>
+
+<div
+  id="customerImportProgressBox"
+  style="display:none;margin-top:1rem;"
+>
+  <div style="
+    height:10px;
+    background:var(--bg-subtle);
+    border-radius:99px;
+    overflow:hidden;
+  ">
+    <div
+      id="customerImportProgressBar"
+      style="
+        width:0%;
+        height:100%;
+        background:var(--primary);
+        transition:width .2s;
+      "
+    ></div>
+  </div>
+
+  <div
+    id="customerImportProgressText"
+    style="
+      text-align:center;
+      margin-top:.4rem;
+      font-size:.75rem;
+      color:var(--text-muted);
+    "
+  >
+    0%
+  </div>
+</div>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeImportModal()">Batal</button>
-        <button class="btn btn-success" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses</button>
+        <button class="btn btn-success" onclick="processCustomerFileImport()">
+  <i class="fas fa-file-import"></i> Mulai Import
+</button>
       </div>
     </div>
   </div>
@@ -782,6 +836,213 @@
           Utils.showToast('Gagal menghapus data', 'error');
         }
       }
+
+      window.downloadCustomerTemplate = function() {
+  const rows = [
+    {
+      "Nama": "Budi",
+      "Nomor Telepon": "08123456789"
+    },
+    {
+      "Nama": "Siti",
+      "Nomor Telepon": "08222222222"
+    }
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Template Pelanggan"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    "Template_Data_Pelanggan.xlsx"
+  );
+};
+
+window.exportCustomers = function() {
+  if (!directoryList.length) {
+    Utils.showToast(
+      "Tidak ada data pelanggan untuk diexport",
+      "warning"
+    );
+    return;
+  }
+
+  const rows = directoryList.map(item => ({
+    "Nama": item.name || "",
+    "Nomor Telepon": item.phone || ""
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Data Pelanggan"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    "Data_Pelanggan.xlsx"
+  );
+};
+
+window.processCustomerFileImport = async function() {
+  const input = document.getElementById(
+    "customerImportFile"
+  );
+
+  const file = input.files[0];
+
+  if (!file) {
+    Utils.showToast(
+      "Pilih file pelanggan terlebih dahulu",
+      "warning"
+    );
+    return;
+  }
+
+  const progressBox = document.getElementById(
+    "customerImportProgressBox"
+  );
+
+  const progressBar = document.getElementById(
+    "customerImportProgressBar"
+  );
+
+  const progressText = document.getElementById(
+    "customerImportProgressText"
+  );
+
+  progressBox.style.display = "block";
+
+  try {
+    let rows = [];
+
+    const isExcel =
+      file.name.endsWith(".xlsx") ||
+      file.name.endsWith(".xls");
+
+    if (isExcel) {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, {
+        type: "array"
+      });
+
+      const sheet =
+        workbook.Sheets[workbook.SheetNames[0]];
+
+      rows = XLSX.utils.sheet_to_json(sheet);
+    } else {
+      const text = await file.text();
+
+      const workbook = XLSX.read(text, {
+        type: "string"
+      });
+
+      const sheet =
+        workbook.Sheets[workbook.SheetNames[0]];
+
+      rows = XLSX.utils.sheet_to_json(sheet);
+    }
+
+    if (!rows.length) {
+      throw new Error("File tidak berisi data");
+    }
+
+    let berhasil = 0;
+    let dilewati = 0;
+    let gagal = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      const name =
+        row["Nama"] ||
+        row["nama"] ||
+        row["Nama Pelanggan"] ||
+        row["name"] ||
+        "";
+
+      const phone =
+        row["Nomor Telepon"] ||
+        row["nomor telepon"] ||
+        row["Nomor"] ||
+        row["phone"] ||
+        "";
+
+      if (!String(name).trim() ||
+          !String(phone).trim()) {
+        dilewati++;
+        continue;
+      }
+
+      const duplicate = directoryList.some(item =>
+        String(item.phone || "").trim() ===
+        String(phone).trim()
+      );
+
+      if (duplicate) {
+        dilewati++;
+        continue;
+      }
+
+      try {
+        await db.collection(COLLECTION_NAME).add({
+          name: String(name).trim(),
+          phone: String(phone).trim(),
+          createdAt:
+            firebase.firestore.FieldValue
+              .serverTimestamp()
+        });
+
+        berhasil++;
+      } catch (error) {
+        console.error(error);
+        gagal++;
+      }
+
+      const percent = Math.round(
+        ((i + 1) / rows.length) * 100
+      );
+
+      progressBar.style.width = percent + "%";
+      progressText.textContent =
+        `${percent}% — ${i + 1}/${rows.length}`;
+    }
+
+    Utils.showToast(
+      `Import selesai. Berhasil: ${berhasil}, ` +
+      `dilewati: ${dilewati}, gagal: ${gagal}`,
+      gagal ? "warning" : "success"
+    );
+
+    closeImportModal();
+    await initDirectory();
+
+  } catch (error) {
+    console.error(error);
+
+    Utils.showToast(
+      "Gagal import pelanggan: " +
+      error.message,
+      "error"
+    );
+  } finally {
+    setTimeout(() => {
+      progressBox.style.display = "none";
+      progressBar.style.width = "0%";
+      progressText.textContent = "0%";
+      input.value = "";
+    }, 1000);
+  }
+};
 
       window.processBulkImport = async function() {
         const text = document.getElementById('importTextarea').value.trim();
