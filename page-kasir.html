@@ -6826,17 +6826,15 @@ if (kurangiSaldo) {
       }
     }
 
-  // Urut kategori berdasarkan nama, tidak membedakan huruf besar/kecil.
-   function getSortedCategories() {
-      return [...categories].sort((a, b) =>
-        (a.name || '').localeCompare(b.name || '', 'id', {
-          sensitivity: 'base',
-          numeric: true
-        })
-      );
-    }
-
-     function renderCategoryGrid() {
+  // Urut kategori berdasarkan nama, tanpa membedakan huruf besar/kecil.
+function getSortedCategories() {
+  return [...categories].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'id', {
+      sensitivity: 'base',
+      numeric: true
+    })
+  );
+}
   
     function renderCategoryGrid() {
       const grid = document.getElementById('categoryGrid');
@@ -6848,7 +6846,8 @@ if (kurangiSaldo) {
     const pillColors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
     let html = '<div class="category-pills" style="grid-column:1/-1;padding-bottom:.25rem;">';
     html += '<button class="category-pill active" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-    getSortedCategories().forEach(function(cat) {
+    getSortedCategories().forEach(function(cat, i) {
+    var color = colors[i % colors.length];
       var safeName = (cat.name || '').replace(/'/g, "\\'");
       var icon = cat.icon || '🏷️';
       html += '<button class="category-pill" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'' + (pillColors[0]) + '\')">' + icon + ' ' + cat.name + '</button>';
@@ -6871,8 +6870,8 @@ if (kurangiSaldo) {
         '<span class="cat-grid-badge" style="background:var(--primary)">' + allCount + '</span>' +
         '</button>';
 
-      getSortedCategories().forEach(function(cat) {
-        var color = colors[i % colors.length];
+      getSortedCategories().forEach(function(cat, i) {
+    var color = colors[i % colors.length];
         var count = countByCategory[cat.id] || 0;
         var icon = cat.icon || '🏷️';
         var safeName = cat.name.replace(/'/g, "\\'");
@@ -6891,7 +6890,8 @@ if (kurangiSaldo) {
       const bar = document.getElementById('catPillsBar');
       if (!bar) return;
       let html = '<button class="category-pill' + (currentCategory === 'all' ? ' active' : '') + '" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-      getSortedCategories().forEach(function(cat) {
+      getSortedCategories().forEach(function(cat, i) {
+    var color = colors[i % colors.length];
         var safeName = (cat.name || '').replace(/'/g, "\\'");
         var icon = cat.icon || '🏷️';
         html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'\')">' + icon + ' ' + cat.name + '</button>';
