@@ -752,6 +752,19 @@
         <button class="modal-close" onclick="closeImportModal()"><i class="fas fa-times"></i></button>
       </div>
             <div class="modal-body">
+  <!-- PROGRESS UPLOAD (TAMBAHAN) -->
+  <div id="importProgressBox" style="display:none; margin-bottom: 1rem;">
+    <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; margin-bottom:0.35rem;">
+      <span id="importProgressLabel"><i class="fas fa-spinner fa-spin"></i> Mengimpor data...</span>
+      <span id="importProgressPercent">0%</span>
+    </div>
+    <div style="width:100%; height:10px; background:var(--bg-subtle); border:1px solid var(--border); border-radius:99px; overflow:hidden;">
+      <div id="importProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--primary), #8b5cf6); transition:width 0.15s;"></div>
+    </div>
+    <div id="importProgressCount" style="font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem;">0 / 0 baris terimport</div>
+  </div>
+  <!-- ... sisa isi modal-body tetap ... -->
+              
         <div class="form-group" style="margin-bottom: 1rem;">
           <label class="form-label"><i class="fas fa-file-upload"></i> Upload File Excel (.xlsx / .csv)</label>
           <input type="file" class="form-input" id="importFile" accept=".xlsx,.xls,.csv" onchange="handleImportFile(event)">
@@ -1364,8 +1377,8 @@
         reader.readAsArrayBuffer(file);
       };
 
-      function normalizeImportDate(val) {
-        if (val instanceof Date) {
+            function normalizeImportDate(val) {
+        if (val instanceof Date && !isNaN(val)) {
           const d = String(val.getDate()).padStart(2, '0');
           const m = String(val.getMonth() + 1).padStart(2, '0');
           return d + '/' + m + '/' + val.getFullYear();
@@ -1378,7 +1391,35 @@
             return d + '/' + m + '/' + dt.y;
           }
         }
-        return String(val).replace(/^"|"$/g, '').trim();
+        let s = String(val).replace(/^"|"$/g, '').trim();
+        // DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY (toleran 1-2 digit)
+        let m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+        if (m) {
+          const y = m[3].length === 2 ? '20' + m[3] : m[3];
+          return m[1].padStart(2, '0') + '/' + m[2].padStart(2, '0') + '/' + y;
+        }
+        // YYYY-MM-DD
+        m = s.match(/^(\d{4})\-(\d{1,2})\-(\d{1,2})/);
+        if (m) return m[3].padStart(2, '0') + '/' + m[2].padStart(2, '0') + '/' + m[1];
+        return s;
+      }
+
+      function parseImportNominal(val) {
+        if (typeof val === 'number') return val;
+        let s = String(val).replace(/rp|[^\d.,]/gi, '').trim();
+        if (!s) return 0;
+        if (s.includes(',') && s.includes('.')) {
+          // pola Indonesia: titik = ribuan, koma = desimal
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else if (s.includes(',')) {
+          const parts = s.split(',');
+          if (parts.length === 2 && parts[1].length <= 2) s = s.replace(',', '.');
+          else s = s.replace(/,/g, '');
+        } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+          // 500.000 / 1.500.000 -> hapus titik ribuan
+          s = s.replace(/\./g, '');
+        }
+        return parseFloat(s) || 0;
       }
 
             window.downloadImportTemplate = function() {
@@ -1457,10 +1498,123 @@
           Utils.showToast('Berhasil mengimpor ' + count + ' data laporan!', 'success');
           await loadToolsConfig();
           await loadTopupHistory();
+              window.processBulkImport = async function() {
+        let rows = [];
+
+        if (pendingImportRows.length > 0) {
+          rows = pendingImportRows;
+        } else {
+          const text = document.getElementById('importTextarea').value.trim();
+          if (!text) {
+            Utils.showToast('Upload file atau isi kolom paste terlebih dahulu', 'warning');
+            return;
+          }
+          rows = text.split('\n')
+            .map(l => l.trim())
+            .filter(l => l)
+            .map(l => l.split(/\t|,/));
+        }
+
+        // ===== Validasi & pre-parse semua baris DULU =====
+        const parsedRows = [];
+        rows.forEach(r => {
+          if (!r || r.length < 3) return;
+          const dateStr = normalizeImportDate(r[0]);
+          const toolName = String(r[1]).replace(/^"|"$/g, '').trim().toUpperCase();
+          const nominal = parseImportNominal(r[2]);
+
+          if (['TANGGAL', 'DATE'].includes(dateStr.toLowerCase()) ||
+              ['NAMA TOOLS', 'TOOLS', 'TOOLS / APLIKASI'].includes(toolName)) return; // skip header
+
+          if (dateStr && toolName && nominal > 0) {
+            let timestamp = Date.now();
+            const dParts = dateStr.split('/');
+            if (dParts.length === 3) {
+              const t = new Date(dParts[2] + '-' + dParts[1] + '-' + dParts[0]).getTime();
+              if (!isNaN(t)) timestamp = t;
+            }
+            parsedRows.push({ toolName, nominal, dateStr, timestamp });
+          }
+        });
+
+        if (parsedRows.length === 0) {
+          Utils.showToast('Tidak ada data valid. Cek format: Tanggal | Tools | Nominal', 'error');
+          return;
+        }
+
+        // ===== TAMPILKAN PROGRESS BAR =====
+        const progressBox = document.getElementById('importProgressBox');
+        const progressBar = document.getElementById('importProgressBar');
+        const progressPercent = document.getElementById('importProgressPercent');
+        const progressCount = document.getElementById('importProgressCount');
+        const progressLabel = document.getElementById('importProgressLabel');
+        const btnImport = document.querySelector('#importModal .modal-footer .btn-theme-primary');
+
+        progressBox.style.display = 'block';
+        if (btnImport) { btnImport.disabled = true; btnImport.style.opacity = '0.6'; }
+        progressLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengimpor data...';
+
+        // ===== BATCH WRITE (maks 400 operasi per commit) =====
+        const BATCH_LIMIT = 400;
+        let batch = db.batch();
+        let batchOps = 0;
+        let count = 0;
+        const total = parsedRows.length;
+
+        const updateProgress = () => {
+          const pct = Math.round((count / total) * 100);
+          progressBar.style.width = pct + '%';
+          progressPercent.textContent = pct + '%';
+          progressCount.textContent = count + ' / ' + total + ' baris terimport';
+        };
+
+        try {
+          for (let i = 0; i < total; i++) {
+            const row = parsedRows[i];
+            const ref = db.collection(COLLECTION_TOPUP).doc();
+            batch.set(ref, {
+              toolName: row.toolName,
+              nominal: row.nominal,
+              date: row.dateStr,
+              timestamp: row.timestamp,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            batchOps++;
+            count++;
+
+            if (!activeTools.includes(row.toolName)) activeTools.push(row.toolName);
+
+            if (batchOps >= BATCH_LIMIT) {
+              await batch.commit();
+              batch = db.batch();
+              batchOps = 0;
+              updateProgress();
+            }
+          }
+
+          if (batchOps > 0) {
+            await batch.commit();
+          }
+
+          updateProgress();
+          await saveToolsToDb();
+
+          progressLabel.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Import selesai!';
+          if (btnImport) { btnImport.disabled = false; btnImport.style.opacity = '1'; }
+
+          setTimeout(() => {
+            progressBox.style.display = 'none';
+            closeImportModal();
+          }, 800);
+
+          Utils.showToast('Berhasil mengimpor ' + count + ' data laporan!', 'success');
+          await loadToolsConfig();
+          await loadTopupHistory();
         } catch(e) {
-          Utils.hideLoading();
           console.error("Import error:", e);
-          Utils.showToast('Gagal mengimpor data laporan', 'error');
+          progressLabel.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> Import gagal di baris ' + count;
+          if (btnImport) { btnImport.disabled = false; btnImport.style.opacity = '1'; }
+          Utils.showToast('Import terhenti di baris ' + (count + 1) + '. ' + (count > 0 ? count + ' baris sudah tersimpan.' : 'Tidak ada data tersimpan.'), 'error');
         }
       };
       })();                           
