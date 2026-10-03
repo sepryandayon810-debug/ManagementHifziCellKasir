@@ -766,7 +766,8 @@
           <textarea class="form-textarea" id="importTextarea" placeholder="01/03/2026&#9;DANA&#9;500000&#10;02/03/2026&#9;DIGIPOS&#9;1000000" style="min-height: 90px;"></textarea>
         </div>
       </div>
-      <div class="modal-footer">
+            <div class="modal-footer">
+        <button class="btn btn-outline" onclick="downloadImportTemplate()"><i class="fas fa-file-download"></i> Download Template</button>
         <button class="btn btn-outline" onclick="closeImportModal()">Batal</button>
         <button class="btn btn-theme-primary" onclick="processBulkImport()"><i class="fas fa-file-import"></i> Proses Import</button>
       </div>
@@ -1379,6 +1380,23 @@
         return String(val).replace(/^"|"$/g, '').trim();
       }
 
+            window.downloadImportTemplate = function() {
+        const templateRows = [
+          ['Tanggal', 'Nama Tools', 'Nominal'],
+          ['01/03/2026', 'DANA', 500000],
+          ['02/03/2026', 'DIGIPOS', 1000000]
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(templateRows);
+        ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 15 }];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template Top Up');
+        XLSX.writeFile(wb, 'template-import-saldo-topup.xlsx');
+
+        Utils.showToast('Template berhasil didownload', 'success');
+      };
+      
       window.processBulkImport = async function() {
         let rows = [];
 
