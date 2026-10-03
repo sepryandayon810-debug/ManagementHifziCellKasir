@@ -1439,65 +1439,6 @@
         Utils.showToast('Template berhasil didownload', 'success');
       };
       
-      window.processBulkImport = async function() {
-        let rows = [];
-
-        if (pendingImportRows.length > 0) {
-          rows = pendingImportRows;
-        } else {
-          const text = document.getElementById('importTextarea').value.trim();
-          if (!text) {
-            Utils.showToast('Upload file atau isi kolom paste terlebih dahulu', 'warning');
-            return;
-          }
-          rows = text.split('\n')
-            .map(l => l.trim())
-            .filter(l => l)
-            .map(l => l.split(/\t|,/));
-        }
-
-        let count = 0;
-
-        Utils.showLoading('Mengimpor laporan lama...');
-        try {
-          for (let i = 0; i < rows.length; i++) {
-            const parts = rows[i];
-            if (!parts || parts.length < 3) continue;
-
-            let dateStr = normalizeImportDate(parts[0]);
-            let toolName = String(parts[1]).replace(/^"|"$/g, '').trim().toUpperCase();
-            let nominal = parseFloat(String(parts[2]).replace(/[^0-9.]/g, '')) || 0;
-
-            if (dateStr.toLowerCase() === 'tanggal' || dateStr.toLowerCase() === 'date') continue;
-
-            if (dateStr && toolName && nominal > 0) {
-              let timestamp = Date.now();
-              const dParts = dateStr.split('/');
-              if (dParts.length === 3) {
-                timestamp = new Date(dParts[2] + '-' + dParts[1] + '-' + dParts[0]).getTime();
-              }
-
-              await db.collection(COLLECTION_TOPUP).add({
-                toolName: toolName,
-                nominal: nominal,
-                date: dateStr,
-                timestamp: isNaN(timestamp) ? Date.now() : timestamp,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              count++;
-
-              if (!activeTools.includes(toolName)) {
-                activeTools.push(toolName);
-              }
-            }
-          }
-
-          await saveToolsToDb();
-          Utils.hideLoading();
-          closeImportModal();
-          Utils.showToast('Berhasil mengimpor ' + count + ' data laporan!', 'success');
-          await loadToolsConfig();
-          await loadTopupHistory();
               window.processBulkImport = async function() {
         let rows = [];
 
