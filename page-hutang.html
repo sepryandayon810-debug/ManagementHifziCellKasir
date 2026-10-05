@@ -1480,15 +1480,29 @@ document.getElementById('btnDownloadDebtTemplate')
   // PARALEL: semua query jalan bersamaan, bukan satu-satu
   await Promise.all(itemsToLookup.map(async (item) => {
     try {
-      const match = (item.note || '').match(/TRX\d+/i)
-        || (item.transactionId || '').match(/TRX\d+/i);
-      if (!match) return;
+            let trxData = null;
 
-      const snap = await firebase.firestore().collection('transactions')
-        .where('invoiceNumber', '==', match[0]).limit(1).get();
-      if (snap.empty) return;
+      // CARA 1: ambil langsung lewat ID transaksi (untuk id "kas_xxx", dsb.)
+      if (item.transactionId) {
+        const trxDoc = await firebase.firestore()
+          .collection('transactions')
+          .doc(String(item.transactionId))
+          .get();
+        if (trxDoc.exists) trxData = trxDoc.data();
+      }
 
-      const trxData = snap.docs[0].data();
+      // CARA 2: kalau gagal, cari lewat nomor nota TRX
+      if (!trxData) {
+        const match = (item.note || '').match(/TRX\d+/i)
+          || (item.transactionId || '').match(/TRX\d+/i);
+        if (!match) return;
+
+        const snap = await firebase.firestore().collection('transactions')
+          .where('invoiceNumber', '==', match[0]).limit(1).get();
+        if (snap.empty) return;
+
+        trxData = snap.docs[0].data();
+      }
       const patch = {}; // hasil disimpan permanen supaya reload berikutnya tidak query lagi
 
       if (trxData.items && Array.isArray(trxData.items)) {
