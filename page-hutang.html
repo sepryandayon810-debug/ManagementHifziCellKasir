@@ -1593,18 +1593,29 @@ document.getElementById('btnDownloadDebtTemplate')
           return item.type === 'hutang' ? 'Pinjaman Kas / Hutang' : 'Bon Pembelian Kasir';
         }
 
+                function normalizeDebtName(name) {
+          let n = String(name || '')
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')  // hapus zero-width characters
+            .replace(/\u00A0/g, ' ')                  // non-breaking space → spasi biasa
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ');
+          if (!n || n === '-' || n === 'null') n = 'pelanggan umum / bon kasir';
+          return n;
+        }
+
+        function renderHutangList() {
+
         function renderHutangList() {
           const list = document.getElementById('hutangList');
           let html = '';
           
           let filteredItems = Object.entries(hutangData)
-            .map(([id, data]) => {
-              let cleanName = (data.name || data.customerName || data.hutangName || data.pelanggan || data.customer || '').trim();
-              if (!cleanName || cleanName === '-' || cleanName.toLowerCase() === 'null') {
-                cleanName = 'Pelanggan Umum / Bon Kasir';
-              }
-              return { id, ...data, name: cleanName };
-            })
+                        .map(([id, data]) => ({
+              id,
+              ...data,
+              name: normalizeDebtName(data.name || data.customerName || data.hutangName || data.pelanggan || data.customer)
+            }))
             .filter(item => {
               if (currentStatus === 'active') return item.status === 'active';
               return item.status === 'paid' || item.status === 'inactive' || item.status === 'deleted';
@@ -1619,7 +1630,7 @@ document.getElementById('btnDownloadDebtTemplate')
           
           const groupedByName = {};
           filteredItems.forEach(item => {
-            const key = item.type + ':' + item.name.toLowerCase().trim();
+            const key = item.type + ':' + item.name; // sudah ternormalisasi oleh normalizeDebtName
             if (!groupedByName[key]) {
               groupedByName[key] = {
                 displayName: item.name,
@@ -2023,12 +2034,12 @@ try {
         };
 
         window.openPaymentBatch = (groupName, groupType) => {
-          const normalizedName = String(groupName || '').toLowerCase().trim();
-          const items = Object.values(hutangData).filter(d => {
-            let validName = (d.name || d.customerName || d.pelanggan || d.customer || '').trim();
-            if (!validName) validName = 'Pelanggan Umum / Bon Kasir';
-            return validName.toLowerCase() === normalizedName && d.type === groupType && d.status === 'active';
-          });
+                    const normalizedName = normalizeDebtName(groupName);
+          const items = Object.values(hutangData).filter(d =>
+            normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName
+            && d.type === groupType
+            && d.status === 'active'
+          );
           
           if (items.length === 0) {
             Utils.showToast('Tidak ada hutang/piutang aktif untuk dibayar', 'warning');
