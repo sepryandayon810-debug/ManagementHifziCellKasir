@@ -1438,6 +1438,16 @@ document.getElementById('btnDownloadDebtTemplate')
         }
 
         async function loadAllData() {
+
+          const cached = localStorage.getItem('webpos_debts_cache');
+  if (cached) {
+    try {
+      hutangData = JSON.parse(cached);
+      updateSummary();
+      renderHutangList();
+    } catch (e) {}
+  }
+          
           Utils.showLoading();
           try {
             const hutangSnapshot = await firestoreDb.ref('debts').once('value');
@@ -1457,37 +1467,49 @@ document.getElementById('btnDownloadDebtTemplate')
         }
 
         async function lookupMissingProductDetails(debts) {
-          const itemsToLookup = Object.values(debts).filter(item => {
-            const raw = (item.note || item.transactionId || '').trim();
-            const hasMissingItems = (!item.items || item.items.length === 0);
-            const hasMissingName = (!item.name || item.name.trim() === '');
-            return (raw.includes('TRX') || raw.includes('kas_')) && (hasMissingItems || hasMissingName);
-          });
+  const itemsToLookup = Object.values(debts).filter(item => {
+    const raw = (item.note || item.transactionId || '').trim();
+    const hasMissingItems = (!item.items || item.items.length === 0);
+    const hasMissingName = (!item.name || item.name.trim() === '');
+    return (raw.includes('TRX') || raw.includes('kas_')) && (hasMissingItems || hasMissingName);
+  });
 
-          if (itemsToLookup.length === 0) return;
+  if (itemsToLookup.length === 0) return;
 
-          try {
-            for (const item of itemsToLookup) {
-              const match = (item.note || '').match(/TRX\d+/i) || (item.transactionId || '').match(/TRX\d+/i);
-              const invoiceNum = match ? match[0] : null;
-              
-              if (invoiceNum) {
-                const snap = await firebase.firestore().collection('transactions').where('invoiceNumber', '==', invoiceNum).limit(1).get();
-                if (!snap.empty) {
-                  const trxData = snap.docs[0].data();
-                  if (trxData.items && Array.isArray(trxData.items)) {
-                    item.items = trxData.items;
-                  }
-                  if (!item.name || item.name.trim() === '') {
-                    item.name = trxData.customerName || trxData.customer || trxData.pelanggan || trxData.hutangName || item.name;
-                  }
-                }
-              }
-            }
-          } catch(e) {
-            console.warn('Gagal lookup nama produk:', e);
-          }
-        }
+  // PARALEL: semua query jalan bersamaan, bukan satu-satu
+  await Promise.all(itemsToLookup.map(async (item) => {
+    try {
+      const match = (item.note || '').match(/TRX\d+/i)
+        || (item.transactionId || '').match(/TRX\d+/i);
+      if (!match) return;
+
+      const snap = await firebase.firestore().collection('transactions')
+        .where('invoiceNumber', '==', match[0]).limit(1).get();
+      if (snap.empty) return;
+
+      const trxData = snap.docs[0].data();
+      const patch = {}; // hasil disimpan permanen supaya reload berikutnya tidak query lagi
+
+      if (trxData.items && Array.isArray(trxData.items)) {
+        item.items = trxData.items;
+        patch.items = trxData.items;
+      }
+      const foundName = trxData.customerName || trxData.customer
+        || trxData.pelanggan || trxData.hutangName;
+      if (!item.name && foundName) {
+        item.name = foundName;
+        patch.name = foundName;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await firebase.firestore().collection('debts').doc(item.id)
+          .set(patch, { merge: true });
+      }
+    } catch (e) {
+      console.warn('Gagal lookup nama produk:', e);
+    }
+  }));
+}
 
         window.toggleDetail = function(id) {
           const detailRow = document.getElementById('detail-' + id);
