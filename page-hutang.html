@@ -1608,26 +1608,42 @@ document.getElementById('btnDownloadDebtTemplate')
         }
 
                 function normalizeDebtName(name) {
-          let n = String(name || '')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')  // hapus zero-width characters
-            .replace(/\u00A0/g, ' ')                  // non-breaking space → spasi biasa
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ');
-          if (!n || n === '-' || n === 'null') n = 'pelanggan umum / bon kasir';
-          return n;
-        }
+  let n = String(name || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  if (!n || n === '-' || n === 'null') n = 'pelanggan umum / bon kasir';
+  return n;
+}
+
+// Ambil nama asli (pertahankan huruf besar/kecil apa adanya) untuk tampilan
+function getDisplayDebtName(data) {
+  const raw = String(
+    data.customerName || data.name || data.hutangName ||
+    data.pelanggan || data.customer || ''
+  )
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .trim();
+  return raw || 'Pelanggan Umum';
+}
 
         function renderHutangList() {
           const list = document.getElementById('hutangList');
           let html = '';
           
           let filteredItems = Object.entries(hutangData)
-                        .map(([id, data]) => ({
-              id,
-              ...data,
-              name: normalizeDebtName(data.name || data.customerName || data.hutangName || data.pelanggan || data.customer)
-            }))
+              .map(([id, data]) => ({
+    id,
+    ...data,
+    name: getDisplayDebtName(data),          // nama asli untuk tampilan
+    nameKey: normalizeDebtName(             // key normalisasi untuk pengelompokan
+      data.customerName || data.name || data.hutangName ||
+      data.pelanggan || data.customer
+    )
+  }))
             .filter(item => {
               if (currentStatus === 'active') return item.status === 'active';
               return item.status === 'paid' || item.status === 'inactive' || item.status === 'deleted';
@@ -1642,7 +1658,7 @@ document.getElementById('btnDownloadDebtTemplate')
           
           const groupedByName = {};
           filteredItems.forEach(item => {
-            const key = item.type + ':' + item.name; // sudah ternormalisasi oleh normalizeDebtName
+            const key = item.type + ':' + item.nameKey; // pakai nameKey, bukan name
             if (!groupedByName[key]) {
               groupedByName[key] = {
                 displayName: item.name,
@@ -1664,6 +1680,12 @@ document.getElementById('btnDownloadDebtTemplate')
           );
           
           groupedArray.forEach(group => {
+            group.firstDate = group.items.reduce((min, it) => {
+  const t = it.createdAt || it.date || it.updatedAt;
+  if (!t) return min;
+  const ms = typeof t === 'number' ? t : new Date(t).getTime();
+  return (!min || ms < min) ? ms : min;
+}, null);
             group.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           });
           
@@ -1712,6 +1734,8 @@ document.getElementById('btnDownloadDebtTemplate')
                         <span>Total: ${Utils.formatRupiah(totalAmount)}</span>
                         <span>•</span>
                         <span>Sisa: <span style="color: ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">${Utils.formatRupiah(group.totalRemaining)}</span></span>
+                        <span>•</span>
+<span><i class="fas fa-calendar-day" style="margin-right:0.25rem;"></i>${group.firstDate ? new Date(group.firstDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-'}</span>
                       </div>
                     </div>
                   </div>
@@ -1733,7 +1757,10 @@ document.getElementById('btnDownloadDebtTemplate')
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                       ${group.items.map((item, idx) => {
-                        const createdDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-';
+                        const rawDate = item.createdAt || item.date || item.updatedAt;
+const createdDate = rawDate
+  ? new Date(rawDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
+  : '-';
                         const isItemPaid = item.status === 'paid' || item.status === 'inactive';
                         const itemName = getTransactionItemName(item);
                         
