@@ -1722,14 +1722,6 @@ function getDisplayDebtName(data) {
                         <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">
                           ${group.items.length} transaksi
                         </span>
-                        ${!isPaid ? `
-                          <button class="btn-icon-sm btn-pay" onclick="event.stopPropagation(); window.openPaymentBatch('${safeGroupName}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px; margin-left: auto;">
-                            <i class="fas fa-check-double" style="font-size: 0.75rem;"></i>
-                          </button>
-                        ` : ''}
-                        <button class="expand-btn" id="expand-${groupId}" onclick="event.stopPropagation(); window.toggleDetail('${groupId}')" style="${!isPaid ? '' : 'margin-left: auto;'}">
-                          <i class="fas fa-chevron-down"></i>
-                        </button>
                       </div>
                       <div style="display: flex; gap: 1rem; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
                         <span>Total: ${Utils.formatRupiah(totalAmount)}</span>
@@ -1739,6 +1731,16 @@ function getDisplayDebtName(data) {
 <span><i class="fas fa-calendar-day" style="margin-right:0.25rem;"></i>${group.firstDate ? new Date(group.firstDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-'}</span>
                       </div>
                     </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0;" onclick="event.stopPropagation();">
+                    ${!isPaid ? `
+                      <button class="btn-icon-sm btn-pay" onclick="window.openPaymentBatch('${safeGroupName}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px;">
+                        <i class="fas fa-check-double" style="font-size: 0.75rem;"></i>
+                      </button>
+                    ` : ''}
+                    <button class="expand-btn" id="expand-${groupId}" onclick="window.toggleDetail('${groupId}')">
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
                   </div>
                   <div class="hutang-amount-section" onclick="event.stopPropagation();">
                     <span class="hutang-amount ${group.type}" style="font-size: 1rem; ${isPaid ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
