@@ -636,6 +636,17 @@
           </table>
         </div>
 
+                <!-- Catatan Closing -->
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-pen" style="color: var(--warning);"></i> Catatan Closing (Wajib jika ada selisih)</h3>
+          </div>
+          <div class="card-body">
+            <textarea id="closingNote" rows="2" placeholder="Contoh: Uang kembalian kurang Rp5.000, disetujui owner..."
+              style="width:100%; padding:0.75rem; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-subtle); color:var(--text-main); font-family:inherit; font-size:0.9rem; outline:none; resize:vertical;"></textarea>
+          </div>
+        </div>
+
         <!-- Tombol Aksi -->
         <div style="display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap;">
           <button class="btn btn-primary" id="btnSimpanClosing" style="padding: 0.9rem 2rem; font-size: 0.95rem;">
@@ -1008,6 +1019,9 @@ todayStats = {
 
   penjualan:
     KasCore.normalizeNumber(kasLaci.penjualanTunai),
+  qris: totalQRIS,
+
+  transfer: totalTransfer,
 
   topup:
     KasCore.normalizeNumber(kasLaci.topupFisik),
@@ -1077,6 +1091,13 @@ document.getElementById('sistemNonTunai').textContent =
           const fisikData = ClosingCalculator.calculate();
           const selisih = fisikData.total - todayStats.uangGlobal;
 
+                    const noteEl = document.getElementById('closingNote');
+          if (selisih !== 0 && noteEl && !noteEl.value.trim()) {
+            Utils.showToast('Wajib isi catatan karena ada selisih kas!', 'warning');
+            noteEl.focus();
+            return;
+          }
+
           const pesanKonfirmasi = fisikData.total === 0 
             ? 'Uang fisik di laci terhitung Rp 0. Tetap simpan dan tutup shift?' 
             : 'Simpan hasil closing dan tutup shift sekarang?';
@@ -1096,6 +1117,8 @@ document.getElementById('sistemNonTunai').textContent =
                 fisik: { total: fisikData.total, detail: fisikData.detail },
                 sistem: todayStats,
                 selisih,
+                selisih,
+                catatan: document.getElementById('closingNote')?.value.trim() || '',
                 status: selisih === 0 ? 'balance' : (selisih > 0 ? 'surplus' : 'minus')
               };
 
@@ -1130,6 +1153,14 @@ document.getElementById('sistemNonTunai').textContent =
         const phone = storeSettings.phone || '';
         const date = new Date(cData.timestamp).toLocaleDateString('id-ID');
         const time = new Date(cData.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+                let pecahanLines = '';
+        denominations.forEach(d => {
+          const qty = (cData.fisik.detail && cData.fisik.detail[d.value]) || 0;
+          if (qty > 0) {
+            pecahanLines += ' ' + d.label.padStart(7) + ' x ' + String(qty).padStart(3) + ' = ' + Utils.formatRupiah(qty * d.value) + '\n';
+          }
+        });
+        if (!pecahanLines) pecahanLines = ' (tidak ada input)\n';
 
         const paper = document.getElementById('strukPaper');
         paper.textContent = 
@@ -1143,16 +1174,21 @@ document.getElementById('sistemNonTunai').textContent =
 'Kasir   : ' + (cData.userName || '-') + '\n' +
 '--------------------------------\n' +
 'Modal Awal   : ' + Utils.formatRupiah(cData.sistem.modalAwal) + '\n' +
-'Penjualan    : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\n' +
+'Penjualan Tunai: ' + Utils.formatRupiah(cData.sistem.penjualan) + '\n' +
+'Penjualan QRIS : ' + Utils.formatRupiah(cData.sistem.qris || 0) + '\n' +
+'Penj. Transfer : ' + Utils.formatRupiah(cData.sistem.transfer || 0) + '\n' +
 'Kas Masuk    : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\n' +
 'Kas Keluar   : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\n' +
 'Top Up Fisik : ' + Utils.formatRupiah(cData.sistem.topup) + '\n' +
 'Tarik Tunai  : ' + Utils.formatRupiah(cData.sistem.tarik) + '\n' +
 '--------------------------------\n' +
+'RINCIAN UANG FISIK\n' +
+pecahanLines +
 'Kas Sistem   : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\n' +
 'Uang Fisik   : ' + Utils.formatRupiah(cData.fisik.total) + '\n' +
 'Selisih Kas  : ' + (cData.selisih >= 0 ? '+' : '') + Utils.formatRupiah(cData.selisih) + '\n' +
 'Status       : ' + cData.status.toUpperCase() + '\n' +
+(cData.catatan ? 'Catatan    : ' + cData.catatan + '\n' : '') +
 '================================\n' +
 '        Shift Telah Ditutup\n' +
 '            Terima Kasih\n' +
@@ -1192,16 +1228,23 @@ document.getElementById('sistemNonTunai').textContent =
           c += 'Kasir : ' + (cData.userName || '-') + '\x0A';
           c += '--------------------------------\x0A';
           c += 'Modal Awal : ' + Utils.formatRupiah(cData.sistem.modalAwal) + '\x0A';
-          c += 'Penjualan  : ' + Utils.formatRupiah(cData.sistem.penjualan) + '\x0A';
+                    c += 'Penjualan Tunai: ' + Utils.formatRupiah(cData.sistem.penjualan) + '\x0A';
+          c += 'Penjualan QRIS : ' + Utils.formatRupiah(cData.sistem.qris || 0) + '\x0A';
+          c += 'Penj. Transfer : ' + Utils.formatRupiah(cData.sistem.transfer || 0) + '\x0A';
           c += 'Kas Masuk  : ' + Utils.formatRupiah(cData.sistem.kasMasuk) + '\x0A';
           c += 'Kas Keluar : ' + Utils.formatRupiah(cData.sistem.kasKeluar) + '\x0A';
           c += 'Topup Fisik: ' + Utils.formatRupiah(cData.sistem.topup) + '\x0A';
           c += 'Tarik Fisik: ' + Utils.formatRupiah(cData.sistem.tarik) + '\x0A';
-          c += '--------------------------------\x0A';
+                    c += '--------------------------------\x0ARINCIAN UANG FISIK\x0A';
+          denominations.forEach(d => {
+            const qty = (cData.fisik.detail && cData.fisik.detail[d.value]) || 0;
+            if (qty > 0) c += ' ' + d.label + ' x ' + qty + ' = ' + Utils.formatRupiah(qty * d.value) + '\x0A';
+          });
           c += 'Kas Sistem : ' + Utils.formatRupiah(cData.sistem.uangGlobal) + '\x0A';
           c += 'Fisik Laci : ' + Utils.formatRupiah(cData.fisik.total) + '\x0A';
           c += 'Selisih    : ' + (cData.selisih >= 0 ? '+' : '') + Utils.formatRupiah(cData.selisih) + '\x0A';
           c += 'Status     : ' + cData.status.toUpperCase() + '\x0A';
+                    if (cData.catatan) c += 'Catatan    : ' + cData.catatan + '\x0A';
           c += '================================\x0A\x1B\x61\x01Shift Selesai\x0A\x0A\x0A\x1D\x56\x41\x03';
 
           await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
