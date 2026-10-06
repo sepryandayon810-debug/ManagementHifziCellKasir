@@ -513,9 +513,11 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = 0;
           break;
 
-        /* PINJAMAN UANG */
+        /* PINJAMAN UANG — kas hanya bergerak jika dicentang */
         case 'pinjaman_tunai':
-          result.cash_out = nominal;
+          if (affectsCashGlobal) {
+            result.cash_out = nominal;
+          }
           result.masuk_transaksi = false;
           result.masuk_penjualan = false;
           result.laba = 0;
