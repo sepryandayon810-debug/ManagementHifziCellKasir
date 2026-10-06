@@ -1638,11 +1638,12 @@ function getDisplayDebtName(data) {
               .map(([id, data]) => ({
     id,
     ...data,
-    name: getDisplayDebtName(data),          // nama asli untuk tampilan
-    nameKey: normalizeDebtName(             // key normalisasi untuk pengelompokan
+    name: getDisplayDebtName(data),
+    nameKey: normalizeDebtName(
       data.customerName || data.name || data.hutangName ||
       data.pelanggan || data.customer
-    )
+    ),
+    type: data.type === 'hutang' ? 'hutang' : 'piutang'
   }))
             .filter(item => {
               if (currentStatus === 'active') return item.status === 'active';
@@ -1915,19 +1916,18 @@ try {
     // Tambahkan field khusus halaman Hutang
     // ke dokumen debts yang dibuat KasCore.
     await firebase.firestore()
-      .collection('debts')
-      .doc(saved.debtId)
-      .set({
-        name: name,
-        customerName: name,
-        dueDate: dueDate || null,
-        note: note || '',
-        catatan: note || '',
-        transactionId: saved.id,
-        updatedAt: Date.now()
-      }, {
-        merge: true
-      });
+  .collection('debts')
+  .doc(saved.debtId)
+  .set({
+    type: type,
+    name: name,
+    customerName: name,
+    dueDate: dueDate || null,
+    note: note || '',
+    catatan: note || '',
+    transactionId: saved.id,
+    updatedAt: Date.now()
+  }, { merge: true });
   }
 
   Utils.showToast(
@@ -2075,10 +2075,10 @@ try {
         window.openPaymentBatch = (groupName, groupType) => {
                     const normalizedName = normalizeDebtName(groupName);
           const items = Object.values(hutangData).filter(d =>
-            normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName
-            && d.type === groupType
-            && d.status === 'active'
-          );
+  normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName
+  && (d.type === 'hutang' ? 'hutang' : 'piutang') === groupType
+  && d.status === 'active'
+);
           
           if (items.length === 0) {
             Utils.showToast('Tidak ada hutang/piutang aktif untuk dibayar', 'warning');
