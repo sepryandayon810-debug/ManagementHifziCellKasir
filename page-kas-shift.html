@@ -33,6 +33,7 @@
   <script src="js/utils.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
@@ -318,7 +319,32 @@
     }
 
     .date-range-info { padding: 0.65rem 1.25rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-    
+    .report-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+.report-tab {
+  flex: 1; padding: 0.75rem 1rem; border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border); background: var(--bg-surface);
+  color: var(--text-sub); font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; display: flex; align-items: center;
+  justify-content: center; gap: 0.5rem; transition: all 0.15s;
+}
+.report-tab:hover { border-color: var(--primary); color: var(--primary); }
+.report-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.arsip-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+.arsip-item:hover { background: var(--bg-subtle); }
+.arsip-item:last-child { border-bottom: none; }
+.arsip-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
+.arsip-badge.balance { background: var(--success-light); color: var(--success); }
+.arsip-badge.surplus { background: rgba(2,132,199,0.15); color: var(--info); }
+.arsip-badge.minus { background: var(--danger-light); color: var(--danger); }
+
+/* CSS MODAL STRUK (samakan punya page-closing) */
+.struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
+.struk-modal-overlay.active{opacity:1;visibility:visible}
+.struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
+.struk-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New',monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.struk-footer{padding:0.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;}
     .history-list { max-height: 480px; overflow-y: auto; flex: 1; }
     .shift-item { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
     .shift-item:hover { background: var(--bg-subtle); }
@@ -523,7 +549,15 @@
         </div>
       </header>
 
-      <div class="page-content">
+            <div class="page-content">
+        <!-- TAB BAR LAPORAN -->
+        <div class="report-tabs">
+          <button class="report-tab active" data-tab="shift"><i class="fas fa-store"></i> Kas &amp; Shift</button>
+          <button class="report-tab" data-tab="arsip"><i class="fas fa-file-pdf"></i> Arsip Closing (Berita Acara)</button>
+        </div>
+
+        <!-- TAB 1: KAS & SHIFT (KONTEN LAMA) -->
+        <div id="tabShift">
         <div class="shift-container">
           <!-- Kiri: Status Shift & Rincian Kas Bersumber Identik Dashboard -->
           <div class="status-card">
@@ -645,12 +679,37 @@
 
             <div class="date-range-info" id="dateRangeInfo"><i class="fas fa-calendar-alt"></i><span>Memuat data...</span></div>
             
-            <div class="history-list" id="shiftHistory">
+                        <div class="history-list" id="shiftHistory">
               <!-- Riwayat di-render via JS -->
             </div>
           </div>
         </div>
-      </div>
+        </div><!-- /tabShift -->
+
+        <!-- TAB 2: ARSIP CLOSING -->
+        <div id="tabArsip" style="display:none;">
+          <div class="history-card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-file-invoice" style="color: var(--danger);"></i> Laporan Berita Acara Closing</h3>
+              <span id="totalArsipCount" style="font-size: 0.75rem; font-weight:700; color: var(--primary); background: var(--primary-light); padding: 0.25rem 0.65rem; border-radius: 99px;">0 laporan</span>
+            </div>
+            <div class="filter-bar" id="arsipFilterBar">
+              <button class="filter-btn active" data-filter="today">Hari Ini</button>
+              <button class="filter-btn" data-filter="yesterday">Kemarin</button>
+              <button class="filter-btn" data-filter="week">Minggu Ini</button>
+              <button class="filter-btn" data-filter="month">Bulan Ini</button>
+              <button class="filter-btn" data-filter="custom">Pilih Tanggal</button>
+              <button class="filter-btn" data-filter="all">Semua</button>
+            </div>
+            <div class="date-filter-row" id="arsipDateRow" style="display: none;">
+              <div><label style="font-size:0.72rem;">Dari</label><input type="date" class="form-input" id="arsipFrom"></div>
+              <div><label style="font-size:0.72rem;">Sampai</label><input type="date" class="form-input" id="arsipTo"></div>
+              <div><button class="btn btn-primary btn-sm" id="btnArsipApply" style="width:100%;height:38px;"><i class="fas fa-search"></i></button></div>
+            </div>
+            <div class="history-list" id="arsipList"></div>
+          </div>
+        </div><!-- /tabArsip -->
+      </div><!-- /page-content -->
     </main>
 
     <nav class="mobile-nav">
@@ -671,6 +730,22 @@
       <div class="dialog-btn-group">
         <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
         <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      </div>
+    </div>
+  </div>
+
+    <div class="struk-modal-overlay" id="arsipStrukModal">
+    <div class="struk-modal">
+      <div class="struk-header">
+        <h3 style="font-size:1.05rem;font-weight:700;"><i class="fas fa-receipt" style="color:var(--success);"></i> Berita Acara Closing</h3>
+        <button class="btn-icon-box" onclick="document.getElementById('arsipStrukModal').classList.remove('active')" style="width:32px;height:32px;"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="background:#f8fafc;padding:1rem;display:flex;justify-content:center;max-height:55vh;overflow-y:auto;">
+        <div class="struk-paper" id="arsipStrukPaper"></div>
+      </div>
+      <div class="struk-footer">
+        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('arsipStrukModal').classList.remove('active')">Tutup</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="downloadArsipPDF()"><i class="fas fa-file-pdf"></i> Unduh PDF</button>
       </div>
     </div>
   </div>
@@ -867,12 +942,12 @@
   // ==========================================================
   // FILTER RIWAYAT
   // ==========================================================
-  document.querySelectorAll('.filter-btn').forEach(btn => {
+    document.querySelectorAll('#filterBar .filter-btn').forEach(btn => {
 
     btn.addEventListener('click', (e) => {
 
       document
-        .querySelectorAll('.filter-btn')
+        .querySelectorAll('#filterBar .filter-btn')
         .forEach(b => b.classList.remove('active'));
 
       e.currentTarget.classList.add('active');
@@ -1492,6 +1567,183 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         else if (filterType === 'all') text = `Semua periode - ${count} shift`;
         infoEl.innerHTML = `<i class="fas fa-calendar-alt"></i><span>${text}</span>`;
       }
+
+            // ==========================================================
+      // TAB SWITCHING
+      // ==========================================================
+      let arsipLoaded = false;
+      let currentArsipData = null;
+      let arsipFilterType = 'today';
+
+      document.querySelectorAll('.report-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const target = tab.dataset.tab;
+          document.getElementById('tabShift').style.display = target === 'shift' ? '' : 'none';
+          document.getElementById('tabArsip').style.display = target === 'arsip' ? '' : 'none';
+          if (target === 'arsip' && !arsipLoaded) {
+            arsipLoaded = true;
+            loadClosingArchive('today');
+          }
+        });
+      });
+
+      document.querySelectorAll('#arsipFilterBar .filter-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          document.querySelectorAll('#arsipFilterBar .filter-btn').forEach(b => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          arsipFilterType = e.currentTarget.dataset.filter;
+          const row = document.getElementById('arsipDateRow');
+          if (arsipFilterType === 'custom') { row.style.display = 'grid'; }
+          else { row.style.display = 'none'; loadClosingArchive(arsipFilterType); }
+        });
+      });
+
+      document.getElementById('btnArsipApply').addEventListener('click', () => {
+        const from = document.getElementById('arsipFrom').value;
+        const to = document.getElementById('arsipTo').value;
+        if (!from || !to) { Utils.showToast('Pilih rentang tanggal', 'warning'); return; }
+        loadClosingArchive('custom', from, to);
+      });
+
+      // ==========================================================
+      // LOAD ARSIP CLOSING DARI COLLECTION "closing"
+      // ==========================================================
+      async function loadClosingArchive(filterType, from = null, to = null) {
+        const listEl = document.getElementById('arsipList');
+        const countEl = document.getElementById('totalArsipCount');
+        listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i><div>Memuat arsip...</div></div>';
+
+        try {
+          const user = auth.currentUser;
+          const snapshot = await db.collection('closing').where('userId', '==', user.uid).get();
+
+          let items = [];
+          snapshot.forEach(doc => items.push(doc.data()));
+
+          // Urutkan terbaru dulu
+          items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          // Filter periode berdasarkan field "date" (YYYY-MM-DD)
+          items = items.filter(c => {
+            if (!c.date) return false;
+            if (filterType === 'custom') return c.date >= from && c.date <= to;
+            if (filterType === 'all') return true;
+            const d = new Date(c.date + 'T00:00:00');
+            const today = new Date(); today.setHours(0,0,0,0);
+            const yest = new Date(today); yest.setDate(yest.getDate() - 1);
+            const sow = new Date(today); sow.setDate(today.getDate() - today.getDay());
+            const som = new Date(today.getFullYear(), today.getMonth(), 1);
+            if (filterType === 'today') return d.getTime() === today.getTime();
+            if (filterType === 'yesterday') return d.getTime() === yest.getTime();
+            if (filterType === 'week') return d >= sow && d <= today;
+            if (filterType === 'month') return d >= som && d <= today;
+            return true;
+          });
+
+          countEl.textContent = items.length + ' laporan';
+
+          if (!items.length) {
+            listEl.innerHTML = '<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:0.5;margin-bottom:0.75rem;"></i><div style="font-weight:700;">Belum ada laporan closing</div><div style="font-size:0.75rem;margin-top:0.25rem;">Laporan muncul setelah kasir melakukan Closing Shift.</div></div>';
+            return;
+          }
+
+          listEl.innerHTML = items.map((c, i) => {
+            const tgl = new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+            const jam = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : '-';
+            return `
+              <div class="arsip-item" onclick="showArsipDetail(${i})">
+                <div class="shift-info">
+                  <div class="shift-date">${tgl}</div>
+                  <div class="shift-time"><i class="fas fa-clock"></i> ${jam} &nbsp;·&nbsp; <i class="fas fa-user"></i> ${c.userName || '-'}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                  <span class="arsip-badge ${c.status}">${c.status === 'balance' ? 'COCOK' : (c.status === 'surplus' ? 'LEBIH' : 'KURANG')}</span>
+                  <span style="font-size:0.72rem;font-weight:700;color:${c.selisih < 0 ? 'var(--danger)' : 'var(--success)'};">${(c.selisih >= 0 ? '+' : '') + Utils.formatRupiah(c.selisih || 0)}</span>
+                </div>
+              </div>`;
+          }).join('');
+
+          window._arsipCache = items;
+        } catch (err) {
+          console.error('Gagal memuat arsip:', err);
+          listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--danger);">Gagal memuat arsip: ' + (err.message || '') + '</div>';
+        }
+      }
+
+      // ==========================================================
+      // PREVIEW & UNDUH PDF
+      // ==========================================================
+      window.showArsipDetail = function(index) {
+        const c = window._arsipCache[index];
+        currentArsipData = c;
+
+        const storeName = localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
+        const date = new Date(c.timestamp).toLocaleDateString('id-ID');
+        const time = new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+
+        let pecahan = '';
+        const DENOM = [100000,50000,20000,10000,5000,2000,1000,500];
+        DENOM.forEach(v => {
+          const qty = (c.fisik && c.fisik.detail) ? (c.fisik.detail[v] || 0) : 0;
+          if (qty > 0) pecahan += ' ' + String(v).padStart(6) + ' x ' + String(qty).padStart(3) + ' = ' + Utils.formatRupiah(qty * v) + '\n';
+        });
+        if (!pecahan) pecahan = ' (tidak ada input)\n';
+
+        document.getElementById('arsipStrukPaper').textContent =
+'================================\n' +
+'  ' + storeName.toUpperCase() + '\n' +
+'================================\n' +
+'BERITA ACARA CLOSING SHIFT\n' +
+'Waktu   : ' + date + ' ' + time + '\n' +
+'Kasir   : ' + (c.userName || '-') + '\n' +
+'--------------------------------\n' +
+'Modal Awal     : ' + Utils.formatRupiah(c.sistem?.modalAwal || 0) + '\n' +
+'Penjualan Tunai: ' + Utils.formatRupiah(c.sistem?.penjualan || 0) + '\n' +
+'Penjualan QRIS : ' + Utils.formatRupiah(c.sistem?.qris || 0) + '\n' +
+'Penj. Transfer : ' + Utils.formatRupiah(c.sistem?.transfer || 0) + '\n' +
+'Kas Masuk      : ' + Utils.formatRupiah(c.sistem?.kasMasuk || 0) + '\n' +
+'Kas Keluar     : ' + Utils.formatRupiah(c.sistem?.kasKeluar || 0) + '\n' +
+'Top Up Fisik   : ' + Utils.formatRupiah(c.sistem?.topup || 0) + '\n' +
+'Tarik Tunai    : ' + Utils.formatRupiah(c.sistem?.tarik || 0) + '\n' +
+'--------------------------------\n' +
+'RINCIAN UANG FISIK\n' + pecahan +
+'Kas Sistem     : ' + Utils.formatRupiah(c.sistem?.uangGlobal || 0) + '\n' +
+'Uang Fisik     : ' + Utils.formatRupiah(c.fisik?.total || 0) + '\n' +
+'Selisih Kas    : ' + (c.selisih >= 0 ? '+' : '') + Utils.formatRupiah(c.selisih || 0) + '\n' +
+'Status         : ' + String(c.status || '-').toUpperCase() + '\n' +
+(c.catatan ? 'Catatan        : ' + c.catatan + '\n' : '') +
+'================================\n' +
+'     Dokumen Arsip Closing\n' +
+'================================';
+
+        document.getElementById('arsipStrukModal').classList.add('active');
+      };
+
+      window.downloadArsipPDF = function() {
+        const c = currentArsipData;
+        if (!c || typeof html2pdf === 'undefined') {
+          Utils.showToast('Data tidak ditemukan atau library PDF belum termuat', 'error');
+          return;
+        }
+
+                const el = document.createElement('div');
+        el.textContent = document.getElementById('arsipStrukPaper').textContent;
+        el.style.cssText = 'position:absolute;left:-9999px;top:0;width:72mm;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.5;padding:4mm;white-space:pre-wrap;';
+        document.body.appendChild(el);
+
+        // Tinggi dinamis agar pas kertas thermal 80mm (tidak terpotong / tidak banyak kosong)
+        const hMm = Math.max(60, Math.ceil((el.scrollHeight * 25.4 / 96) * 1.15));
+
+        html2pdf().set({
+          margin: 2,
+          filename: 'Berita-Acara-Closing-' + c.date + '.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: [80, hMm + 4], orientation: 'portrait' }
+        }).from(el).save().then(() => el.remove());
+      };
     })();
   </script>
 </body>
