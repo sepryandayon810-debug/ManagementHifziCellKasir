@@ -343,7 +343,7 @@
 .struk-modal-overlay.active{opacity:1;visibility:visible}
 .struk-modal{background:var(--bg-surface);border-radius:var(--radius-xl);max-width:380px;width:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);border:1px solid var(--border);overflow:hidden}
 .struk-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-.struk-paper{background:#fff;color:#000;width:100%;padding:16px;font-family:'Courier New',monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.struk-paper{background:#fff;color:#000;width:100%;padding:20px 16px;font-family:'Courier New',monospace;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .struk-footer{padding:0.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;}
     .history-list { max-height: 480px; overflow-y: auto; flex: 1; }
     .shift-item { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
@@ -412,6 +412,15 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    .struk-footer{padding:0.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;}
+.struk-btn{flex:1;padding:0.7rem 0.5rem;border-radius:var(--radius-md);font-family:inherit;font-size:0.82rem;font-weight:700;border:1.5px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.45rem;transition:all .15s;}
+.struk-btn.ghost{background:var(--bg-subtle);color:var(--text-sub);border-color:var(--border);}
+.struk-btn.ghost:hover{border-color:var(--primary);color:var(--primary);}
+.struk-btn.print{background:#fff;color:var(--text-main);border-color:var(--border);}
+.struk-btn.print:hover{background:var(--bg-subtle);}
+.struk-btn.pdf{background:var(--danger);color:#fff;box-shadow:var(--shadow-sm);}
+.struk-btn.pdf:hover{filter:brightness(0.92);}
   </style>
 </head>
 <body>
@@ -743,9 +752,10 @@
       <div style="background:#f8fafc;padding:1rem;display:flex;justify-content:center;max-height:55vh;overflow-y:auto;">
         <div class="struk-paper" id="arsipStrukPaper"></div>
       </div>
-      <div class="struk-footer">
-        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('arsipStrukModal').classList.remove('active')">Tutup</button>
-        <button class="btn btn-primary" style="flex:1;" onclick="downloadArsipPDF()"><i class="fas fa-file-pdf"></i> Unduh PDF</button>
+            <div class="struk-footer">
+        <button class="struk-btn ghost" onclick="document.getElementById('arsipStrukModal').classList.remove('active')"><i class="fas fa-times"></i> Tutup</button>
+        <button class="struk-btn print" onclick="printArsip()"><i class="fas fa-print"></i> Print</button>
+        <button class="struk-btn pdf" onclick="downloadArsipPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
       </div>
     </div>
   </div>
@@ -1743,6 +1753,25 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           html2canvas: { scale: 2 },
           jsPDF: { unit: 'mm', format: [80, hMm + 4], orientation: 'portrait' }
         }).from(el).save().then(() => el.remove());
+      };
+
+            window.printArsip = function() {
+        const paper = document.getElementById('arsipStrukPaper');
+        if (!paper) return;
+        const win = window.open('', '_blank', 'width=420,height=640');
+        if (!win) {
+          Utils.showToast('Popup diblokir browser. Izinkan popup untuk print.', 'warning');
+          return;
+        }
+        const isi = paper.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        win.document.write(
+          '<html><head><title>Berita Acara Closing</title>' +
+          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
+          '</head><body>' + isi + '</body></html>'
+        );
+        win.document.close();
+        win.focus();
+        win.print();
       };
     })();
   </script>
