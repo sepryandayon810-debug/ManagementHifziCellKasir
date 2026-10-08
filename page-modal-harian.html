@@ -611,6 +611,25 @@
           <h3 class="card-title"><i class="fas fa-chart-pie" style="color:var(--success);"></i> Ringkasan Alokasi Modal Staf Hari Ini</h3>
           <span style="font-size:0.8rem; font-weight:800; color:var(--success);" id="totalGlobalModalSummary">Total: Rp 0</span>
         </div>
+        <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); background:var(--bg-subtle);">
+  <div style="display:flex; gap:0.75rem; align-items:end; flex-wrap:wrap;">
+    
+    <div style="flex:1; min-width:150px;">
+      <label class="form-label">Dari Tanggal</label>
+      <input type="date" class="form-select" id="summaryDateFrom">
+    </div>
+
+    <div style="flex:1; min-width:150px;">
+      <label class="form-label">Sampai Tanggal</label>
+      <input type="date" class="form-select" id="summaryDateTo">
+    </div>
+
+    <button type="button" class="btn btn-primary" id="btnFilterModalRange" style="min-height:44px;">
+      <i class="fas fa-filter"></i> Tampilkan
+    </button>
+
+  </div>
+</div>
         <div class="card-body" style="padding:0;">
           <div class="table-container">
             <table class="data-table">
@@ -743,11 +762,33 @@
     }
 
     const todayStr = getTodayString();
-    document.getElementById("currentDateBadge").textContent = todayStr;
+document.getElementById("currentDateBadge").textContent = todayStr;
 
-    await setupTargetKasirDropdown(user);
-    loadExistingModal();
-    loadModalSummary(todayStr);
+await setupTargetKasirDropdown(user);
+loadExistingModal();
+
+// Default filter = hari ini
+document.getElementById("summaryDateFrom").value = todayStr;
+document.getElementById("summaryDateTo").value = todayStr;
+
+loadModalSummary(todayStr, todayStr);
+
+document.getElementById("btnFilterModalRange").onclick = () => {
+  const from = document.getElementById("summaryDateFrom").value;
+  const to = document.getElementById("summaryDateTo").value;
+
+  if (!from || !to) {
+    toast("Tanggal awal dan tanggal akhir harus dipilih.", "error");
+    return;
+  }
+
+  if (from > to) {
+    toast("Tanggal awal tidak boleh lebih besar dari tanggal akhir.", "error");
+    return;
+  }
+
+  loadModalSummary(from, to);
+};
 
     const inputDisplay = document.getElementById("totalModalInput");
     inputDisplay.addEventListener("input", (e) => {
@@ -884,62 +925,155 @@
     }
   }
 
-  async function loadModalSummary(todayStr) {
-    const tbody = document.getElementById("summaryTableBody");
-    const summaryTotalEl = document.getElementById("totalGlobalModalSummary");
+  async function loadModalSummary(dateFrom, dateTo) {
+  const tbody = document.getElementById("summaryTableBody");
+  const summaryTotalEl = document.getElementById("totalGlobalModalSummary");
 
-    try {
-      const usersSnap = await db.collection("users").get();
-      const modalSummary = await KasCore.getModalSummary({ date: todayStr });
-      
-      const usersMap = {};
-      usersSnap.forEach(doc => {
-        usersMap[doc.id] = doc.data();
+  try {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">
+          <i class="fas fa-spinner fa-spin"></i> Memuat ringkasan...
+        </td>
+      </tr>
+    `;
+
+    const usersSnap = await db.collection("users").get();
+
+    const usersMap = {};
+    usersSnap.forEach(doc => {
+      usersMap[doc.id] = doc.data();
+    });
+
+    /*
+     * Ambil semua modal berdasarkan RENTANG TANGGAL
+     */
+    const modalSnap = await db
+      .collection("modal")
+      .where("date", ">=", dateFrom)
+      .where("date", "<=", dateTo)
+      .get();
+
+    let entries = [];
+
+    modalSnap.forEach(doc => {
+      entries.push({
+        id: doc.id,
+        ...doc.data()
       });
+    });
 
-      let rowsHtml = "";
-      const isAdmin = currentUserRole === "admin";
+    /*
+     * Urutkan tanggal terbaru terlebih dahulu
+     */
+    entries.sort((a, b) => {
+      return (b.date || "").localeCompare(a.date || "");
+    });
 
-      modalSummary.entries.forEach(m => {
+    let rowsHtml = "";
+    const isAdmin = currentUserRole === "admin";
+
+    entries.forEach(m => {
+      const targetUser = usersMap[m.userId] || {};
+      const targetRole = (targetUser.role || "kasir").toLowerCase();
+
+      // Admin hanya melihat modal kasir
+      if (isAdmin && targetRole !== "kasir") return;
+
+      // Kasir hanya melihat modal miliknya sendiri
+      if (
+        currentUserRole === "kasir" &&
+        m.userId !== currentUser.uid
+      ) {
+        return;
+      }
+
+      rowsHtml += `
+        <tr>
+          <td>
+            <strong>${m.userName || targetUser.name || "-"}</strong>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+              ${m.date || "-"}
+            </div>
+          </td>
+
+          <td>
+            <span class="badge"
+              style="background:var(--primary-light); color:var(--primary)">
+              ${targetRole.toUpperCase()}
+            </span>
+          </td>
+
+          <td style="color:var(--text-muted);">
+            ${m.allocatedByName || "Mandiri / Sistem"}
+          </td>
+
+          <td style="text-align:right; font-weight:800; color:var(--success);">
+            ${formatRupiah(m.amount)}
+          </td>
+        </tr>
+      `;
+    });
+
+    if (!rowsHtml) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4"
+            style="text-align:center; padding:1.5rem; color:var(--text-muted)">
+            Tidak ada alokasi modal pada rentang tanggal tersebut.
+          </td>
+        </tr>
+      `;
+    } else {
+      tbody.innerHTML = rowsHtml;
+    }
+
+    /*
+     * Hitung total sesuai hak akses user
+     */
+    const scopedTotal = entries
+      .filter(m => {
         const targetUser = usersMap[m.userId] || {};
         const targetRole = (targetUser.role || "kasir").toLowerCase();
 
-        if (isAdmin && targetRole !== "kasir") return;
-        if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return;
+        if (isAdmin && targetRole !== "kasir") {
+          return false;
+        }
 
-        rowsHtml += `
-          <tr>
-            <td><strong>${m.userName || targetUser.name || '-'}</strong></td>
-            <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${targetRole.toUpperCase()}</span></td>
-            <td style="color:var(--text-muted);">${m.allocatedByName || 'Mandiri / Sistem'}</td>
-            <td style="text-align:right; font-weight:800; color:var(--success);">${formatRupiah(m.amount)}</td>
-          </tr>
-        `;
-      });
+        if (
+          currentUserRole === "kasir" &&
+          m.userId !== currentUser.uid
+        ) {
+          return false;
+        }
 
-      if (!rowsHtml) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Belum ada alokasi modal tercatat hari ini.</td></tr>`;
-      } else {
-        tbody.innerHTML = rowsHtml;
-      }
+        return true;
+      })
+      .reduce((sum, entry) => {
+        return sum + KasCore.normalizeNumber(entry.amount);
+      }, 0);
 
-      const scopedTotal = modalSummary.entries
-        .filter(m => {
-          const targetUser = usersMap[m.userId] || {};
-          const targetRole = (targetUser.role || "kasir").toLowerCase();
-          if (isAdmin && targetRole !== "kasir") return false;
-          if (currentUserRole === "kasir" && m.userId !== currentUser.uid) return false;
-          return true;
-        })
-        .reduce((sum, entry) => sum + KasCore.normalizeNumber(entry.amount), 0);
+    summaryTotalEl.textContent =
+      `Total: ${formatRupiah(scopedTotal)}`;
 
-      summaryTotalEl.textContent = `Total: ${formatRupiah(scopedTotal)}`;
+  } catch (err) {
+    console.error(
+      "modal-harian: gagal memuat ringkasan modal",
+      err
+    );
 
-    } catch (err) {
-      console.error("modal-harian: gagal memuat ringkasan modal", err);
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger)">Gagal memuat ringkasan data.</td></tr>`;
-    }
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4"
+          style="text-align:center; color:var(--danger); padding:1.5rem;">
+          Gagal memuat ringkasan data.
+        </td>
+      </tr>
+    `;
+
+    summaryTotalEl.textContent = "Total: Rp 0";
   }
+}
 
   window.switchInputMode = function(mode) {
     const btnManual = document.getElementById("tabModeManual");
