@@ -31,6 +31,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/kas-core.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/printer.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -1739,13 +1740,27 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
 
       // Buat elemen sementara berisi konten struk untuk html2pdf
       function buildStrukElement() {
-        const el = document.createElement('div');
-        el.textContent = document.getElementById('arsipStrukPaper').textContent;
-        el.style.cssText = 'position:absolute;left:-9999px;top:0;width:72mm;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.5;padding:4mm;white-space:pre-wrap;';
-        document.body.appendChild(el);
-        const hMm = Math.max(60, Math.ceil((el.scrollHeight * 25.4 / 96) * 1.15));
-        return { el, hMm };
-      }
+  const paper = document.getElementById('arsipStrukPaper');
+  if (!paper) throw new Error('Konten arsip tidak ditemukan');
+
+  const el = document.createElement('div');
+  el.textContent = paper.textContent;
+  el.style.cssText =
+    'position:fixed;left:0;top:0;z-index:9997;' +
+    'width:72mm;box-sizing:border-box;padding:4mm;' +
+    'background:#fff;color:#000;font-family:monospace;' +
+    'font-size:11px;line-height:1.5;white-space:pre-wrap;' +
+    'overflow-wrap:anywhere;';
+
+  document.body.appendChild(el);
+
+  const hMm = Math.max(
+    60,
+    Math.ceil((el.scrollHeight * 25.4 / 96) + 3)
+  );
+
+  return { el, hMm };
+}
 
       // Konfigurasi html2pdf yang dipakai bersama
       function pdfConfig(filename, hMm) {
@@ -1759,117 +1774,137 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
       }
 
       // Bagikan / simpan file PDF (Web Share API untuk mobile, anchor untuk desktop)
-      async function shareOrDownloadBlob(blob, filename) {
-        const file = new File([blob], filename, { type: 'application/pdf' });
+     async function shareOrDownloadBlob(blob, filename) {
+       if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error || new Error('PDF gagal dibaca'));
+    reader.readAsDataURL(blob);
+  });
 
-        // 1) Web Share API — paling andal di mobile app / WebView
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: filename, text: 'Berita Acara Closing' });
-            return true;
-          } catch (e) {
-            if (e && e.name === 'AbortError') return true;
-          }
-        }
+  const result = window.AndroidBT.savePdf(dataUrl.split(',')[1], filename);
 
-        // 2) Anchor download (desktop browser)
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+  if (result !== 'OK') {
+    throw new Error(String(result).replace(/^ERROR:/, ''));
+  }
 
-        // 3) Jika anchor download tidak efektif (WebView), coba buka blob URL
-        if (isMobileEnv()) {
-          setTimeout(() => {
-            try { window.open(url, '_blank'); } catch (e) {}
-          }, 400);
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 6000);
+  Utils.showToast('PDF tersimpan di folder Downloads', 'success');
+  return true;
+}
+  try {
+    if (navigator.share && navigator.canShare && window.File) {
+      const file = new File([blob], filename, {
+        type: 'application/pdf'
+      });
+
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: filename,
+          text: 'Berita Acara Closing'
+        });
         return true;
       }
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') return true;
+    console.warn('Share PDF tidak tersedia:', err);
+  }
 
-      window.downloadArsipPDF = function() {
-        const c = currentArsipData;
-        if (!c || typeof html2pdf === 'undefined') {
-          Utils.showToast('Data tidak ditemukan atau library PDF belum termuat', 'error');
-          return;
-        }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 
-        Utils.showLoading('Menyiapkan PDF...');
-        const filename = 'Berita-Acara-Closing-' + c.date + '.pdf';
-        const { el, hMm } = buildStrukElement();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  return true;
+}
 
-        html2pdf().set(pdfConfig(filename, hMm)).from(el).output('blob').then(async (blob) => {
-          el.remove();
+      window.downloadArsipPDF = async function() {
+  const c = currentArsipData;
+
+  if (!c) {
+    Utils.showToast('Data arsip tidak ditemukan', 'error');
+    return;
+  }
+
+  if (typeof html2pdf !== 'function') {
+    Utils.showToast('Library PDF belum termuat. Periksa koneksi internet.', 'error');
+    return;
+  }
+
+  let el;
+
+  try {
+    Utils.showLoading('Menyiapkan PDF...');
+
+    const filename =
+      'Berita-Acara-Closing-' + (c.date || 'arsip') + '.pdf';
+
+    const built = buildStrukElement();
+    el = built.el;
+
+    const blob = await html2pdf()
+      .set(pdfConfig(filename, built.hMm))
+      .from(el)
+      .toPdf()
+      .outputPdf('blob');
+
+    if (!blob || !blob.size) {
+      throw new Error('File PDF kosong');
+    }
+
+    await shareOrDownloadBlob(blob, filename);
+  } catch (err) {
+    console.error('PDF error:', err);
+    Utils.showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
+  } finally {
+    if (el) el.remove();
+    Utils.hideLoading();
+  }
+};
+
+      window.printArsip = async function() {
+        const paper = document.getElementById('arsipStrukPaper');
+        if (!paper) return;
+        const text = paper.textContent;
+
+        // APK Android: cetak lewat printer Bluetooth (sama seperti halaman lain)
+        if (window.WebPOSPrinter && WebPOSPrinter.available()) {
+          Utils.showLoading('Mencetak...');
           try {
-            await shareOrDownloadBlob(blob, filename);
+            await WebPOSPrinter.print(text);
+            Utils.showToast('Berhasil dicetak', 'success');
           } catch (e) {
-            console.error('PDF error:', e);
-            Utils.showToast('Gagal mengunduh PDF: ' + (e.message || ''), 'error');
+            Utils.showToast('Gagal print: ' + (e.message || e), 'error');
           } finally {
             Utils.hideLoading();
           }
-        }).catch((err) => {
-          el.remove();
-          Utils.hideLoading();
-          console.error('PDF error:', err);
-          Utils.showToast('Gagal membuat PDF: ' + (err.message || ''), 'error');
-        });
-      };
-
-      window.printArsip = function() {
-        const paper = document.getElementById('arsipStrukPaper');
-        if (!paper) return;
-
-        const isi = paper.textContent
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        const htmlContent =
-          '<html><head><title>Berita Acara Closing</title>' +
-          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
-          '</head><body>' + isi + '</body></html>';
-
-        // Mobile / WebView: iframe tersembunyi (tanpa window.open)
-        if (isMobileEnv()) {
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;border:0;';
-          document.body.appendChild(iframe);
-          const doc = iframe.contentWindow.document;
-          doc.open();
-          doc.write(htmlContent);
-          doc.close();
-          iframe.contentWindow.focus();
-          setTimeout(() => {
-            try {
-              if (typeof iframe.contentWindow.print === 'function') {
-                iframe.contentWindow.print();
-              } else {
-                Utils.showToast('Print tidak didukung di app ini. Gunakan tombol PDF untuk unduh lalu print.', 'warning');
-              }
-            } catch (e) {
-              Utils.showToast('Print tidak didukung di app ini. Gunakan tombol PDF untuk unduh lalu print.', 'warning');
-            }
-            setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) {} }, 3000);
-          }, 350);
           return;
         }
 
-        // Desktop: window.open seperti biasa
+        // Browser biasa: print lewat jendela baru
+        const isi = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const win = window.open('', '_blank', 'width=420,height=640');
         if (!win) {
-          Utils.showToast('Popup diblokir browser. Izinkan popup untuk print.', 'warning');
+          Utils.showToast('Popup diblokir browser. Izinkan popup untuk print.', 'error');
           return;
         }
-        win.document.write(htmlContent);
+        win.document.write(
+          '<html><head><title>Berita Acara Closing</title>' +
+          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
+          '</head><body>' + isi + '</body></html>'
+        );
         win.document.close();
-        win.focus();
-        win.print();
+setTimeout(() => {
+  if (win.closed) return;
+  win.focus();
+  win.print();
+}, 300);
       };
     })();
   </script>
