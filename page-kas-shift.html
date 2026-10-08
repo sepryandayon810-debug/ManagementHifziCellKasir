@@ -1731,6 +1731,68 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         document.getElementById('arsipStrukModal').classList.add('active');
       };
 
+      // Deteksi lingkungan mobile / WebView
+      function isMobileEnv() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+          || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+      }
+
+      // Buat elemen sementara berisi konten struk untuk html2pdf
+      function buildStrukElement() {
+        const el = document.createElement('div');
+        el.textContent = document.getElementById('arsipStrukPaper').textContent;
+        el.style.cssText = 'position:absolute;left:-9999px;top:0;width:72mm;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.5;padding:4mm;white-space:pre-wrap;';
+        document.body.appendChild(el);
+        const hMm = Math.max(60, Math.ceil((el.scrollHeight * 25.4 / 96) * 1.15));
+        return { el, hMm };
+      }
+
+      // Konfigurasi html2pdf yang dipakai bersama
+      function pdfConfig(filename, hMm) {
+        return {
+          margin: 2,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: [80, hMm + 4], orientation: 'portrait' }
+        };
+      }
+
+      // Bagikan / simpan file PDF (Web Share API untuk mobile, anchor untuk desktop)
+      async function shareOrDownloadBlob(blob, filename) {
+        const file = new File([blob], filename, { type: 'application/pdf' });
+
+        // 1) Web Share API — paling andal di mobile app / WebView
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: filename, text: 'Berita Acara Closing' });
+            return true;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return true;
+          }
+        }
+
+        // 2) Anchor download (desktop browser)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // 3) Jika anchor download tidak efektif (WebView), coba buka blob URL
+        if (isMobileEnv()) {
+          setTimeout(() => {
+            try { window.open(url, '_blank'); } catch (e) {}
+          }, 400);
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 6000);
+        return true;
+      }
+
       window.downloadArsipPDF = function() {
         const c = currentArsipData;
         if (!c || typeof html2pdf === 'undefined') {
@@ -1738,37 +1800,73 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           return;
         }
 
-                const el = document.createElement('div');
-        el.textContent = document.getElementById('arsipStrukPaper').textContent;
-        el.style.cssText = 'position:absolute;left:-9999px;top:0;width:72mm;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.5;padding:4mm;white-space:pre-wrap;';
-        document.body.appendChild(el);
+        Utils.showLoading('Menyiapkan PDF...');
+        const filename = 'Berita-Acara-Closing-' + c.date + '.pdf';
+        const { el, hMm } = buildStrukElement();
 
-        // Tinggi dinamis agar pas kertas thermal 80mm (tidak terpotong / tidak banyak kosong)
-        const hMm = Math.max(60, Math.ceil((el.scrollHeight * 25.4 / 96) * 1.15));
-
-        html2pdf().set({
-          margin: 2,
-          filename: 'Berita-Acara-Closing-' + c.date + '.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: [80, hMm + 4], orientation: 'portrait' }
-        }).from(el).save().then(() => el.remove());
+        html2pdf().set(pdfConfig(filename, hMm)).from(el).output('blob').then(async (blob) => {
+          el.remove();
+          try {
+            await shareOrDownloadBlob(blob, filename);
+          } catch (e) {
+            console.error('PDF error:', e);
+            Utils.showToast('Gagal mengunduh PDF: ' + (e.message || ''), 'error');
+          } finally {
+            Utils.hideLoading();
+          }
+        }).catch((err) => {
+          el.remove();
+          Utils.hideLoading();
+          console.error('PDF error:', err);
+          Utils.showToast('Gagal membuat PDF: ' + (err.message || ''), 'error');
+        });
       };
 
-            window.printArsip = function() {
+      window.printArsip = function() {
         const paper = document.getElementById('arsipStrukPaper');
         if (!paper) return;
+
+        const isi = paper.textContent
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        const htmlContent =
+          '<html><head><title>Berita Acara Closing</title>' +
+          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
+          '</head><body>' + isi + '</body></html>';
+
+        // Mobile / WebView: iframe tersembunyi (tanpa window.open)
+        if (isMobileEnv()) {
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;border:0;';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentWindow.document;
+          doc.open();
+          doc.write(htmlContent);
+          doc.close();
+          iframe.contentWindow.focus();
+          setTimeout(() => {
+            try {
+              if (typeof iframe.contentWindow.print === 'function') {
+                iframe.contentWindow.print();
+              } else {
+                Utils.showToast('Print tidak didukung di app ini. Gunakan tombol PDF untuk unduh lalu print.', 'warning');
+              }
+            } catch (e) {
+              Utils.showToast('Print tidak didukung di app ini. Gunakan tombol PDF untuk unduh lalu print.', 'warning');
+            }
+            setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) {} }, 3000);
+          }, 350);
+          return;
+        }
+
+        // Desktop: window.open seperti biasa
         const win = window.open('', '_blank', 'width=420,height=640');
         if (!win) {
           Utils.showToast('Popup diblokir browser. Izinkan popup untuk print.', 'warning');
           return;
         }
-        const isi = paper.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-        win.document.write(
-          '<html><head><title>Berita Acara Closing</title>' +
-          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
-          '</head><body>' + isi + '</body></html>'
-        );
+        win.document.write(htmlContent);
         win.document.close();
         win.focus();
         win.print();
