@@ -572,9 +572,14 @@
             <span class="counter-badge warn" id="countPending">0</span>
           </button>
         </div>
-        <button class="btn btn-secondary btn-sm" id="btnRefresh" title="Segarkan Data">
-          <i class="fas fa-rotate"></i> Segarkan Data
-        </button>
+        <div style="display:flex; gap:0.5rem;">
+  <button class="btn btn-primary btn-sm" id="btnCreateUser" title="Tambah Pengguna Baru" style="display:none;">
+    <i class="fas fa-user-plus"></i> Tambah Pengguna
+  </button>
+  <button class="btn btn-secondary btn-sm" id="btnRefresh" title="Segarkan Data">
+    <i class="fas fa-rotate"></i> Segarkan Data
+  </button>
+</div>
       </div>
 
       <div class="card">
@@ -679,6 +684,44 @@
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" onclick="document.getElementById('modalDeviceHistory').classList.remove('active')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TAMBAH PENGGUNA -->
+<div class="modal-overlay" id="modalCreateUser">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-user-plus" style="color:var(--primary);"></i> Tambah Pengguna Baru</h3>
+      <button class="modal-close" onclick="closeCreateUserModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Nama Lengkap</label>
+        <input type="text" class="form-input" id="newUserName" placeholder="Nama staf">
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Username</label>
+        <input type="text" class="form-input" id="newUserUsername" placeholder="username (tanpa spasi)">
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email</label>
+        <input type="email" class="form-input" id="newUserEmail" placeholder="email@contoh.com">
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Password (min. 6 karakter)</label>
+        <input type="password" class="form-input" id="newUserPassword" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
+        <select class="form-select" id="newUserRole">
+          <!-- diisi dinamis via JS -->
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewUser()">Simpan Pengguna</button>
     </div>
   </div>
 </div>
@@ -800,6 +843,11 @@
 
     loadUsers();
     document.getElementById("btnRefresh").onclick = loadUsers;
+// Tampilkan tombol tambah hanya untuk owner/developer/admin
+if (currentUserRole === "owner" || currentUserRole === "developer" || currentUserRole === "admin") {
+  document.getElementById("btnCreateUser").style.display = "inline-flex";
+}
+document.getElementById("btnCreateUser").onclick = openCreateUserModal;
 
     document.querySelectorAll(".tab-item").forEach(btn => {
       btn.onclick = () => {
@@ -1085,6 +1133,84 @@
     });
   };
 
+  window.openCreateUserModal = function() {
+  const roleSelect = document.getElementById("newUserRole");
+  roleSelect.innerHTML = "";
+  let allowedRoles = [];
+  if (currentUserRole === "owner" || currentUserRole === "developer") {
+    allowedRoles = ["kasir", "admin", "owner", "developer"];
+  } else if (currentUserRole === "admin") {
+    allowedRoles = ["kasir"];
+  }
+  allowedRoles.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+    roleSelect.appendChild(opt);
+  });
+  ["newUserName","newUserUsername","newUserEmail","newUserPassword"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("modalCreateUser").classList.add("active");
+};
+
+window.closeCreateUserModal = function() {
+  document.getElementById("modalCreateUser").classList.remove("active");
+};
+
+window.saveNewUser = async function() {
+  const name = document.getElementById("newUserName").value.trim();
+  const username = document.getElementById("newUserUsername").value.trim();
+  const email = document.getElementById("newUserEmail").value.trim();
+  const password = document.getElementById("newUserPassword").value.trim();
+  const role = document.getElementById("newUserRole").value;
+
+  if (!name || !email || !password) {
+    toast("Nama, email, dan password wajib diisi!", "error");
+    return;
+  }
+  if (password.length < 6) {
+    toast("Password minimal 6 karakter!", "error");
+    return;
+  }
+  // Validasi tambahan: admin hanya boleh buat kasir
+  if (currentUserRole === "admin" && role !== "kasir") {
+    toast("Admin hanya bisa membuat pengguna dengan role Kasir!", "error");
+    return;
+  }
+
+  try {
+    // Buat secondary Firebase app instance agar admin tidak logout
+    const secondaryAppName = "secondary-" + Date.now();
+    const secondaryApp = firebase.initializeApp(firebase.app().options, secondaryAppName);
+    const secondaryAuth = secondaryApp.auth();
+
+    // Buat akun Auth baru di secondary instance
+    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    const newUid = userCredential.user.uid;
+
+    // Sign-out & hapus secondary instance (admin tetap login)
+    await secondaryAuth.signOut();
+    await secondaryApp.delete();
+
+    // Simpan dokumen user di Firestore dengan uid yang sama dengan Auth
+    await db.collection("users").doc(newUid).set({
+      name: name,
+      username: username,
+      email: email,
+      role: role,
+      status: "active",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUserId
+    });
+
+    toast(`Pengguna ${name} berhasil ditambahkan & bisa login!`, "success");
+    closeCreateUserModal();
+    loadUsers();
+  } catch(e) {
+    toast("Gagal menambah pengguna: " + e.message, "error");
+  }
+};
 })();
 </script>
 </body>
