@@ -290,6 +290,14 @@
     .role-owner { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
     .role-admin { border-color: var(--success); color: var(--success); background: var(--success-light); }
     .role-kasir { border-color: var(--text-muted); color: var(--text-muted); background: var(--bg-subtle); }
+    /* Nama user bisa diklik untuk edit */
+    .user-edit-trigger {
+      background: none; border: none; padding: 0; width: 100%;
+      text-align: left; font-family: inherit; cursor: pointer;
+    }
+    .user-edit-trigger:hover > div:first-child {
+      color: var(--primary); text-decoration: underline;
+    }
 
     .btn-action-group { 
       display: grid; 
@@ -769,7 +777,50 @@
     </div>
   </div>
 </div>
-
+<!-- MODAL EDIT DATA PENGGUNA -->
+<div class="modal-overlay" id="modalEditUser">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-user-pen" style="color:var(--primary);"></i> Edit Data Pengguna</h3>
+      <button class="modal-close" onclick="closeEditUserModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editUserId">
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Nama Lengkap</label>
+        <div class="input-wrap">
+          <i class="fas fa-id-card field-icon"></i>
+          <input type="text" class="form-control" id="editUserName" placeholder="Nama staf">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Username</label>
+        <div class="input-wrap">
+          <i class="fas fa-at field-icon"></i>
+          <input type="text" class="form-control" id="editUserUsername" placeholder="username (tanpa spasi)">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope field-icon"></i>
+          <input type="email" class="form-control" id="editUserEmail" placeholder="email@contoh.com">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
+        <div class="input-wrap">
+          <i class="fas fa-shield-halved field-icon"></i>
+          <select class="form-control" id="editUserRole"></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="saveEditUser()">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
 <!-- MODAL KONFIRMASI INTERNAL (BEBAS DARI DIALOG WINDOWS BROWSER) -->
 <div class="custom-modal-backdrop" id="customConfirmModal">
   <div class="custom-dialog-card">
@@ -1012,8 +1063,10 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       return `
         <tr>
           <td>
-            <div style="font-weight:700; color:var(--text-main);">${u.name || '-'}</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">@${u.username || '-'}</div>
+            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${u.id}')" title="Klik untuk edit nama / username / email / role">
+              <div style="font-weight:700; color:var(--text-main);">${u.name || '-'}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">@${u.username || '-'}</div>
+            </button>
           </td>
           <td>${u.email || '-'}</td>
           <td>
@@ -1175,6 +1228,81 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     }
     toast("Password berhasil diperbarui.", "success");
     closePasswordModal();
+  };
+
+  window.openEditUserModal = function(uid) {
+    const u = allUsers.find(x => x.id === uid);
+    if (!u) return;
+
+    const roleSelect = document.getElementById("editUserRole");
+    let allowedRoles = [];
+    if (currentUserRole === "owner" || currentUserRole === "developer") {
+      allowedRoles = ["kasir", "admin", "owner", "developer"];
+    } else if (currentUserRole === "admin") {
+      allowedRoles = ["kasir"];
+    }
+    roleSelect.innerHTML = allowedRoles.map(r =>
+      `<option value="${r}">${r.charAt(0).toUpperCase() + r.slice(1)}</option>`
+    ).join("");
+
+    document.getElementById("editUserId").value = uid;
+    document.getElementById("editUserName").value = u.name || "";
+    document.getElementById("editUserUsername").value = u.username || "";
+    document.getElementById("editUserEmail").value = u.email || "";
+    roleSelect.value = (u.role || "kasir").toLowerCase();
+
+    document.getElementById("modalEditUser").classList.add("active");
+  };
+
+  window.closeEditUserModal = function() {
+    document.getElementById("modalEditUser").classList.remove("active");
+  };
+
+  window.saveEditUser = async function() {
+    const uid = document.getElementById("editUserId").value;
+    const name = document.getElementById("editUserName").value.trim();
+    const username = document.getElementById("editUserUsername").value.trim().toLowerCase().replace(/\s+/g, "");
+    const email = document.getElementById("editUserEmail").value.trim();
+    const role = document.getElementById("editUserRole").value;
+    const user = allUsers.find(x => x.id === uid);
+    if (!user) return;
+
+    if (!name || !email) { toast("Nama dan email wajib diisi!", "error"); return; }
+    if (currentUserRole === "admin" && role !== "kasir") {
+      toast("Admin hanya bisa mengatur pengguna dengan role Kasir!", "error");
+      return;
+    }
+    // Username tidak boleh bentrok (dipakai untuk cek login)
+    if (username) {
+      const dup = allUsers.find(x => x.id !== uid && (x.username || "").toLowerCase() === username);
+      if (dup) { toast(`Username @${username} sudah dipakai pengguna lain!`, "error"); return; }
+    }
+
+    try {
+      const data = {
+        name: name,
+        username: username,
+        role: role,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Email di Firestore ikut diubah. Email login (Firebase Auth) TIDAK bisa
+      // diubah dari klien untuk akun orang lain -> butuh Cloud Function (bagian 5).
+      if (email.toLowerCase() !== (user.email || "").toLowerCase()) {
+        data.email = email;
+        data.emailSyncPending = true;
+      }
+
+      await db.collection("users").doc(uid).update(data);
+      toast(`Data ${name} berhasil diperbarui & langsung aktif!`, "success");
+      if (data.emailSyncPending) {
+        toast("Email login perlu disinkronkan via Cloud Function (bagian 5).", "info");
+      }
+      closeEditUserModal();
+      loadUsers();
+    } catch(e) {
+      toast("Gagal menyimpan: " + e.message, "error");
+    }
   };
 
   window.deleteUserRecord = function(userId) {
