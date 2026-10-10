@@ -77,6 +77,12 @@
     .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; }
     .input-wrap { position: relative; }
     .input-wrap i.field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
+    .input-wrap .toggle-password {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 0.95rem; cursor: pointer;
+  background: none; border: none; padding: 0; line-height: 1;
+}
+.input-wrap .toggle-password:hover { color: var(--primary); }
     
     .form-control {
       width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem;
@@ -194,6 +200,7 @@
       <div class="input-wrap">
         <i class="fas fa-lock field-icon"></i>
         <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
+        <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button>
       </div>
     </div>
     <button type="submit" class="btn-submit" id="btnSubmitLogin">
@@ -247,6 +254,7 @@
       <div class="input-wrap">
         <i class="fas fa-lock field-icon"></i>
         <input type="password" class="form-control" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
+        <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button>
       </div>
     </div>
     <button type="submit" class="btn-submit" id="btnSubmitRegister" style="background: linear-gradient(135deg, #059669, #10b981);">
@@ -308,6 +316,18 @@
 
   window.closeCustomAlert = function() {
     document.getElementById("customAlertModal").classList.remove("open");
+  };
+
+  window.togglePassword = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
   };
 
   function switchMode(mode) {
