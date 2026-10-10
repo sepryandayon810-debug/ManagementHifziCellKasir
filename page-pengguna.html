@@ -389,6 +389,34 @@
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem;
     }
     .form-input:focus, .form-select:focus { border-color: var(--primary); background: #fff; outline: none; }
+    /* STYLE FORM MENGGUNAKAN POLA LOGIN (input-wrap + field-icon + toggle-password) */
+.input-wrap { position: relative; }
+.input-wrap i.field-icon {
+  position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
+}
+.input-wrap .form-control {
+  width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  font-size: 0.9rem; outline: none; font-family: inherit;
+  background: var(--bg-subtle); color: var(--text-main); font-weight: 500;
+  transition: all 0.15s ease;
+}
+.input-wrap .form-control:focus {
+  border-color: var(--primary); background: var(--bg-surface);
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+.input-wrap select.form-control {
+  appearance: none; cursor: pointer; padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat; background-position: right 1rem center; background-size: 1rem;
+}
+.input-wrap .toggle-password {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 0.95rem; cursor: pointer;
+  background: none; border: none; padding: 0; line-height: 1;
+}
+.input-wrap .toggle-password:hover { color: var(--primary); }
 
     .toast-box {
       position: fixed; top: 1rem; right: 1rem; z-index: 6000;
@@ -698,26 +726,43 @@
     <div class="modal-body">
       <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Nama Lengkap</label>
-        <input type="text" class="form-input" id="newUserName" placeholder="Nama staf">
+        <div class="input-wrap">
+          <i class="fas fa-id-card field-icon"></i>
+          <input type="text" class="form-control" id="newUserName" placeholder="Nama staf">
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Username</label>
-        <input type="text" class="form-input" id="newUserUsername" placeholder="username (tanpa spasi)">
+        <div class="input-wrap">
+          <i class="fas fa-at field-icon"></i>
+          <input type="text" class="form-control" id="newUserUsername" placeholder="username (tanpa spasi)">
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email</label>
-        <input type="email" class="form-input" id="newUserEmail" placeholder="email@contoh.com">
+        <div class="input-wrap">
+          <i class="fas fa-envelope field-icon"></i>
+          <input type="email" class="form-control" id="newUserEmail" placeholder="email@contoh.com">
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Password (min. 6 karakter)</label>
-        <input type="password" class="form-input" id="newUserPassword" placeholder="••••••••">
+        <div class="input-wrap">
+          <i class="fas fa-lock field-icon"></i>
+          <input type="password" class="form-control" id="newUserPassword" placeholder="••••••••">
+          <button type="button" class="toggle-password" onclick="togglePassword('newUserPassword', this)"><i class="fas fa-eye"></i></button>
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
-        <select class="form-select" id="newUserRole">
-          <!-- diisi dinamis via JS -->
-        </select>
+        <div class="input-wrap">
+          <i class="fas fa-shield-halved field-icon"></i>
+          <select class="form-control" id="newUserRole">
+            <!-- diisi dinamis via JS -->
+          </select>
+        </div>
       </div>
+    </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Batal</button>
@@ -786,6 +831,18 @@
 
   window.closeCustomConfirm = function() {
     document.getElementById("customConfirmModal").classList.remove("open");
+  };
+
+  window.togglePassword = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
   };
 
   async function syncStoreBrandName() {
