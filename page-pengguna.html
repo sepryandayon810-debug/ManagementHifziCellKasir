@@ -682,26 +682,32 @@
   </div>
 </div>
 
-<!-- MODAL EDIT PASSWORD STAF -->
+<!-- MODAL RESET PASSWORD STAF -->
 <div class="modal-overlay" id="modalEditPassword">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 class="modal-title"><i class="fas fa-key" style="color:var(--primary);"></i> Ganti Password Staf</h3>
+      <h3 class="modal-title"><i class="fas fa-key" style="color:var(--primary);"></i> Reset Password Staf</h3>
       <button class="modal-close" onclick="closePasswordModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body">
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-        Masukkan password baru untuk akun <strong id="targetStaffName"></strong>.
-      </p>
       <input type="hidden" id="targetStaffUid">
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Kirim link reset password ke email <strong id="targetStaffName"></strong>.
+      </p>
       <div class="form-group" style="margin-bottom:0;">
-        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Password Baru (min. 6 karakter)</label>
-        <input type="password" class="form-input" id="newStaffPassword" placeholder="••••••••">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email Tujuan</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope field-icon"></i>
+          <input type="email" class="form-control" id="targetStaffEmail" readonly style="background:var(--bg-subtle);">
+        </div>
       </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-top:0.75rem;">
+        <i class="fas fa-info-circle"></i> Anggota akan menerima email berisi link untuk membuat password baru sendiri. Admin tidak akan tahu passwordnya.
+      </p>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="saveNewStaffPassword()">Simpan Password</button>
+      <button type="button" class="btn btn-primary" onclick="sendResetPassword()"><i class="fas fa-paper-plane"></i> Kirim Link Reset</button>
     </div>
   </div>
 </div>
@@ -1215,19 +1221,26 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("newStaffPassword").value = "";
     document.getElementById("modalEditPassword").classList.add("active");
   };
-
+  
   window.closePasswordModal = function() {
     document.getElementById("modalEditPassword").classList.remove("active");
   };
 
-  window.saveNewStaffPassword = async function() {
-    const newPass = document.getElementById("newStaffPassword").value.trim();
-    if (!newPass || newPass.length < 6) {
-      toast("Password baru minimal 6 karakter!", "error");
+  window.sendResetPassword = async function() {
+    const uid = document.getElementById("targetStaffUid").value;
+    const u = allUsers.find(x => x.id === uid);
+    const email = u ? (u.email || '').trim() : '';
+    if (!email) {
+      toast("Email anggota tidak ditemukan, tidak bisa kirim reset!", "error");
       return;
     }
-    toast("Password berhasil diperbarui.", "success");
-    closePasswordModal();
+    try {
+      await auth.sendPasswordResetEmail(email);
+      toast("Link reset password telah dikirim ke " + email, "success");
+      closePasswordModal();
+    } catch(e) {
+      toast("Gagal kirim reset: " + e.message, "error");
+    }
   };
 
   window.openEditUserModal = function(uid) {
