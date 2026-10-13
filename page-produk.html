@@ -621,6 +621,39 @@
       border-radius:var(--radius-sm) !important;
     }
     .produk-list .produk-actions .btn span{ display:none !important; }
+
+    /* ===== MODAL SCAN BARCODE (sama seperti Kasir) ===== */
+    .barcode-modal-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(15,23,42,0.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;z-index:10050}
+    .barcode-modal-overlay.active{opacity:1;visibility:visible}
+    .barcode-modal{width:100%;max-width:430px;background:var(--bg-surface);border:1px solid var(--border);border-radius:1.25rem;box-shadow:0 25px 70px rgba(0,0,0,.35);overflow:hidden;transform:translateY(15px) scale(.97);transition:transform .2s ease}
+    .barcode-modal-overlay.active .barcode-modal{transform:translateY(0) scale(1)}
+    .barcode-modal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.15rem;border-bottom:1px solid var(--border);background:var(--bg-surface)}
+    .barcode-modal-title{display:flex;align-items:center;gap:.65rem;min-width:0}
+    .barcode-modal-title-icon{width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:.75rem;background:var(--primary-light);color:var(--primary);font-size:1.15rem}
+    .barcode-modal-title-text{display:flex;flex-direction:column;gap:.15rem}
+    .barcode-modal-title-text strong{color:var(--text-main);font-size:1rem;font-weight:700;line-height:1.2}
+    .barcode-modal-title-text span{color:var(--text-muted);font-size:.7rem;line-height:1.2}
+    .barcode-modal-close{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.65rem;background:var(--bg-subtle);color:var(--text-sub);cursor:pointer;transition:all .15s}
+    .barcode-modal-close:hover{background:var(--danger-light);border-color:var(--danger);color:var(--danger)}
+    .barcode-modal-body{padding:1.25rem}
+    .barcode-scanner-box{width:100%;height:150px;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:1rem;background:linear-gradient(135deg,rgba(79,70,229,.08),rgba(139,92,246,.03));border:1px dashed rgba(79,70,229,.35)}
+    .barcode-scanner-box::before{content:'';position:absolute;left:15%;right:15%;top:50%;height:2px;background:var(--primary);box-shadow:0 0 8px rgba(79,70,229,.8);animation:barcodeScanLine 2s ease-in-out infinite}
+    @keyframes barcodeScanLine{0%{transform:translateY(-45px);opacity:.4}50%{transform:translateY(45px);opacity:1}100%{transform:translateY(-45px);opacity:.4}}
+    .barcode-scanner-icon{color:var(--primary);font-size:3rem;opacity:.9}
+    .barcode-input-label{display:block;margin-bottom:.4rem;color:var(--text-sub);font-size:.78rem;font-weight:600}
+    .barcode-input-wrap{position:relative;width:100%}
+    .barcode-input-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.9rem;pointer-events:none}
+    .barcode-modal-input{width:100%;height:48px;padding:.65rem .75rem .65rem 2.5rem;box-sizing:border-box;border:1.5px solid var(--border);border-radius:.75rem;outline:none;background:var(--bg-subtle);color:var(--text-main);font-family:inherit;font-size:.95rem;transition:all .15s}
+    .barcode-modal-input::placeholder{color:var(--text-muted)}
+    .barcode-modal-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12);background:var(--bg-surface)}
+    .barcode-modal-footer{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;padding:.9rem 1.15rem 1.15rem;border-top:1px solid var(--border);background:var(--bg-surface)}
+    .barcode-modal-btn{height:44px;display:flex;align-items:center;justify-content:center;gap:.4rem;border-radius:.7rem;padding:0 .75rem;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .15s;border:none}
+    .barcode-modal-btn.cancel{background:var(--bg-subtle);border:1px solid var(--border);color:var(--text-sub)}
+    .barcode-modal-btn.cancel:hover{background:var(--bg-base);color:var(--text-main)}
+    .barcode-modal-btn.confirm{background:var(--success);color:#fff;box-shadow:0 4px 12px rgba(5,150,105,.25)}
+    .barcode-modal-btn.confirm:hover{filter:brightness(1.05);box-shadow:0 6px 16px rgba(5,150,105,.35)}
+    .barcode-modal-btn:active{transform:scale(.97)}
+    @media(max-width:768px){.barcode-modal-overlay{align-items:flex-end;padding:0}.barcode-modal{max-width:none;border-radius:1.25rem 1.25rem 0 0;transform:translateY(30px)}.barcode-modal-overlay.active .barcode-modal{transform:translateY(0)}}
     
   </style>
 
@@ -948,6 +981,34 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="btnCancelProduk">Batal</button>
       <button type="button" class="btn btn-primary" id="btnSaveProduk">Simpan Produk</button>
+    </div>
+  </div>
+</div>
+
+  <!-- MODAL SCAN BARCODE -->
+<div class="barcode-modal-overlay" id="barcodeModal">
+  <div class="barcode-modal">
+    <div class="barcode-modal-header">
+      <div class="barcode-modal-title">
+        <div class="barcode-modal-title-icon"><i class="fas fa-barcode"></i></div>
+        <div class="barcode-modal-title-text">
+          <strong>Scan Barcode</strong>
+          <span>Masukkan atau scan kode produk</span>
+        </div>
+      </div>
+      <button type="button" class="barcode-modal-close" id="barcodeModalClose"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="barcode-modal-body">
+      <div class="barcode-scanner-box"><i class="fas fa-barcode barcode-scanner-icon"></i></div>
+      <label class="barcode-input-label" for="barcodeInput">Kode Barcode</label>
+      <div class="barcode-input-wrap">
+        <i class="fas fa-barcode"></i>
+        <input type="text" id="barcodeInput" class="barcode-modal-input" placeholder="Scan atau masukkan barcode..." autocomplete="off" inputmode="numeric">
+      </div>
+    </div>
+    <div class="barcode-modal-footer">
+      <button type="button" class="barcode-modal-btn cancel" id="barcodeModalCancel"><i class="fas fa-times"></i> Batal</button>
+      <button type="button" class="barcode-modal-btn confirm" id="barcodeModalConfirm"><i class="fas fa-check"></i> Proses</button>
     </div>
   </div>
 </div>
@@ -1516,10 +1577,9 @@
     }
   };
 
-  // ===== SCAN BARCODE DI FORM PRODUK =====
-  // Kamera hanya jalan di APK Android/iOS. Di web, jatuh ke input manual.
+  // ===== SCAN BARCODE DI FORM PRODUK (modal sama seperti Kasir) =====
   window.scanBarcodeProduk = function() {
-    const input = document.getElementById("produkBarcode");
+    // APK Android/iOS → pakai kamera native
     if (window.AndroidBridge && typeof window.AndroidBridge.scanBarcode === "function") {
       window.AndroidBridge.scanBarcode();
       return;
@@ -1528,19 +1588,66 @@
       window.webkit.messageHandlers.scanBarcode.postMessage({ action: "scan" });
       return;
     }
-    input.focus();
-    input.select();
-    toast("Kamera scan hanya tersedia di aplikasi Android/iOS. Di web, gunakan scanner USB atau ketik manual.", "info");
+    // Web → buka modal scan (input manual / scanner USB)
+    const modal = document.getElementById("barcodeModal");
+    const input = document.getElementById("barcodeInput");
+    if (!modal || !input) return;
+    input.value = "";
+    modal.classList.add("active");
+    setTimeout(() => { input.focus(); input.select(); }, 100);
   };
 
-  // Dipanggil APK setelah scan selesai → isi ke kotak barcode
+  window.closeBarcodeModalProduk = function() {
+    const modal = document.getElementById("barcodeModal");
+    if (modal) modal.classList.remove("active");
+    const input = document.getElementById("barcodeInput");
+    if (input) input.value = "";
+  };
+
+  // Proses tombol → isi ke kotak barcode form produk
+  window.prosesBarcodeModal = function() {
+    const input = document.getElementById("barcodeInput");
+    const barcode = (input && input.value || "").trim();
+    if (!barcode) {
+      toast("Silakan masukkan barcode terlebih dahulu", "error");
+      if (input) input.focus();
+      return;
+    }
+    const target = document.getElementById("produkBarcode");
+    if (target) target.value = barcode;
+    window.closeBarcodeModalProduk();
+    toast("Barcode terbaca: " + barcode, "success");
+  };
+
+  // Dipanggil APK setelah scan kamera native selesai → isi ke kotak barcode
   window.handleScanResult = function(barcode) {
-    const input = document.getElementById("produkBarcode");
-    if (input) {
-      input.value = String(barcode || "").trim();
-      toast("Barcode terbaca: " + input.value, "success");
+    const target = document.getElementById("produkBarcode");
+    if (target) {
+      target.value = String(barcode || "").trim();
+      toast("Barcode terbaca: " + target.value, "success");
     }
   };
+
+  // Pasang event listener modal barcode
+  document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("barcodeModal");
+    const btnClose = document.getElementById("barcodeModalClose");
+    const btnCancel = document.getElementById("barcodeModalCancel");
+    const btnConfirm = document.getElementById("barcodeModalConfirm");
+    const input = document.getElementById("barcodeInput");
+    if (btnClose) btnClose.onclick = (e) => { e.preventDefault(); window.closeBarcodeModalProduk(); };
+    if (btnCancel) btnCancel.onclick = (e) => { e.preventDefault(); window.closeBarcodeModalProduk(); };
+    if (btnConfirm) btnConfirm.onclick = (e) => { e.preventDefault(); window.prosesBarcodeModal(); };
+    if (input) input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); window.prosesBarcodeModal(); }
+    });
+    if (modal) modal.addEventListener("click", (e) => {
+      if (e.target === modal) window.closeBarcodeModalProduk();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal && modal.classList.contains("active")) window.closeBarcodeModalProduk();
+    });
+  });
 
   function openProductModal(prod = null) {
     document.getElementById("produkId").value = prod ? prod.id : "";
