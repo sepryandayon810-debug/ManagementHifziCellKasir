@@ -885,6 +885,13 @@
         <label class="form-label">Nama Produk</label>
         <input type="text" class="form-input" id="produkName" placeholder="Contoh: Kartu Perdana / Pulsa Elektrik">
       </div>
+      <div class="form-group">
+        <label class="form-label">Barcode / Kode Produk <span style="font-weight:400;color:var(--text-muted);font-size:0.75rem;">(opsional — untuk scan di Kasir)</span></label>
+        <div style="display:flex;gap:0.5rem;">
+          <input type="text" class="form-input" id="produkBarcode" placeholder="Scan atau ketik barcode produk..." autocomplete="off">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('produkBarcode').focus()" style="flex-shrink:0;" title="Aktifkan kotak barcode"><i class="fas fa-barcode"></i></button>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Kategori</label>
@@ -1513,6 +1520,7 @@
     document.getElementById("produkId").value = prod ? prod.id : "";
     document.getElementById("modalTitle").textContent = prod ? "Edit Produk" : "Tambah Produk Baru";
     document.getElementById("produkName").value = prod ? prod.name : "";
+    document.getElementById("produkBarcode").value = prod ? (prod.barcode || "") : "";
     document.getElementById("produkKategori").value = prod ? (prod.categoryId || "") : (selectedCategoryFilter || "");
     document.getElementById("produkCost").value = prod && prod.costPrice !== undefined && prod.costPrice !== 0 ? prod.costPrice : "";
     document.getElementById("produkPrice").value = prod && prod.sellingPrice !== undefined && prod.sellingPrice !== 0 ? prod.sellingPrice : "";
@@ -1584,6 +1592,7 @@
   async function saveProduct() {
     const id = document.getElementById("produkId").value;
     const name = document.getElementById("produkName").value.trim();
+    const barcode = document.getElementById("produkBarcode").value.trim();
     const categoryId = document.getElementById("produkKategori").value;
     const costPrice = parseInt(document.getElementById("produkCost").value) || 0;
     const sellingPrice = parseInt(document.getElementById("produkPrice").value) || 0;
@@ -1601,6 +1610,7 @@
     try {
       const data = { 
         name, 
+        barcode, 
         categoryId, 
         costPrice, 
         sellingPrice, 
@@ -1617,10 +1627,11 @@
         toast("Produk berhasil diperbarui", "success");
       } else {
         data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        data.code = "PRD-" + Math.floor(1000 + Math.random() * 9000);
+        data.code = barcode || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
         await db.collection("products").add(data);
         toast("Produk berhasil ditambahkan", "success");
       }
+      
       closeProductModal();
       loadProducts();
     } catch(err) {
