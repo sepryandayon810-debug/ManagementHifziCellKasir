@@ -889,7 +889,7 @@
         <label class="form-label">Barcode / Kode Produk <span style="font-weight:400;color:var(--text-muted);font-size:0.75rem;">(opsional — untuk scan di Kasir)</span></label>
         <div style="display:flex;gap:0.5rem;">
           <input type="text" class="form-input" id="produkBarcode" placeholder="Scan atau ketik barcode produk..." autocomplete="off">
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('produkBarcode').focus()" style="flex-shrink:0;" title="Aktifkan kotak barcode"><i class="fas fa-barcode"></i></button>
+          <button type="button" class="btn btn-secondary" onclick="scanBarcodeProduk()" style="flex-shrink:0;" title="Scan barcode dengan kamera"><i class="fas fa-barcode"></i></button>
         </div>
       </div>
       <div class="form-row">
@@ -1513,6 +1513,32 @@
     } else {
       stockInput.disabled = false;
       stockInput.style.opacity = "1";
+    }
+  };
+
+  // ===== SCAN BARCODE DI FORM PRODUK =====
+  // Kamera hanya jalan di APK Android/iOS. Di web, jatuh ke input manual.
+  window.scanBarcodeProduk = function() {
+    const input = document.getElementById("produkBarcode");
+    if (window.AndroidBridge && typeof window.AndroidBridge.scanBarcode === "function") {
+      window.AndroidBridge.scanBarcode();
+      return;
+    }
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scanBarcode) {
+      window.webkit.messageHandlers.scanBarcode.postMessage({ action: "scan" });
+      return;
+    }
+    input.focus();
+    input.select();
+    toast("Kamera scan hanya tersedia di aplikasi Android/iOS. Di web, gunakan scanner USB atau ketik manual.", "info");
+  };
+
+  // Dipanggil APK setelah scan selesai → isi ke kotak barcode
+  window.handleScanResult = function(barcode) {
+    const input = document.getElementById("produkBarcode");
+    if (input) {
+      input.value = String(barcode || "").trim();
+      toast("Barcode terbaca: " + input.value, "success");
     }
   };
 
