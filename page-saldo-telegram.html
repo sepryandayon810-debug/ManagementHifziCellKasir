@@ -759,14 +759,31 @@
               </div>
             </div>
             <div class="card-body">
-              <div class="filter-section">
-                <div class="form-group" style="margin-bottom: 0;">
+                            <div class="filter-section">
+                <div class="form-group" style="margin-bottom: 0.75rem;">
                   <label class="form-label">Filter Waktu</label>
-                  <select class="form-select" id="filterSisaPeriod" onchange="renderSisaTable()">
+                  <select class="form-select" id="filterSisaPeriod" onchange="handleSisaPeriodChange()">
                     <option value="all">Semua Waktu</option>
                     <option value="today">Hari Ini</option>
                     <option value="month" selected>Bulan Ini</option>
+                    <option value="custom">Custom Tanggal</option>
                   </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                  <label class="form-label">Filter Tools</label>
+                  <select class="form-select" id="filterSisaTool" onchange="renderSisaTable()">
+                    <option value="all">Semua Tools</option>
+                  </select>
+                </div>
+                <div class="form-group" id="customSisaDateBox" style="display: none; gap: 0.75rem;">
+                  <div>
+                    <label class="form-label">Dari Tanggal</label>
+                    <input type="date" class="form-input" id="filterSisaStartDate" onchange="renderSisaTable()">
+                  </div>
+                  <div>
+                    <label class="form-label">Sampai Tanggal</label>
+                    <input type="date" class="form-input" id="filterSisaEndDate" onchange="renderSisaTable()">
+                  </div>
                 </div>
               </div>
               <div class="table-container" style="margin-top: 1rem;">
@@ -1045,6 +1062,8 @@
           const todayStr = new Date().toISOString().split('T')[0];
           document.getElementById('filterStartDate').value = todayStr;
           document.getElementById('filterEndDate').value = todayStr;
+          document.getElementById('filterSisaStartDate').value = todayStr;
+          document.getElementById('filterSisaEndDate').value = todayStr;
 
           setupSidebarEvents();
           initSaldoPage();
@@ -1134,27 +1153,32 @@
         document.getElementById('btnSubmitSisa').onclick = submitSisa;
         document.getElementById('btnRefresh').onclick = () => loadTopupHistory(true);
       }
-      async function loadToolsConfig() {
-        try {
-          const doc = await db.collection(COLLECTION_TOOLS).doc("list").get();
+      function loadToolsConfig() {
+        // Real-time: otomatis refresh kalau tools berubah di tab lain / halaman lain / device lain
+        db.collection(COLLECTION_TOOLS).doc("list").onSnapshot(async (doc) => {
           if (doc.exists && doc.data().tools) {
             activeTools = doc.data().tools;
-            if (!activeTools.includes("UANG KASIR")) activeTools.push("UANG KASIR");
           } else {
             await db.collection(COLLECTION_TOOLS).doc("list").set({ tools: activeTools });
           }
-          renderToolsGrid();
-          renderToolsGridSisa();
-          updateFilterToolDropdown();
-        } catch(e) {
-          console.error("Error loading tools:", e);
-          renderToolsGrid();
-        }
+          if (!activeTools.includes("UANG KASIR")) activeTools.push("UANG KASIR");
+          refreshToolUI();
+        }, (err) => {
+          console.error("Error loading tools:", err);
+          refreshToolUI();
+        });
+      }
+
+      function refreshToolUI() {
+        renderToolsGrid();        // Tab Top Up (TANPA UANG KASIR)
+        renderToolsGridSisa();    // Tab Sisa Saldo (semua, termasuk UANG KASIR)
+        updateFilterToolDropdown();
       }
 
       function renderToolsGrid() {
         const container = document.getElementById('toolsGridContainer');
-        container.innerHTML = activeTools.map(tool => `
+        const topupTools = activeTools.filter(t => t !== "UANG KASIR"); // UANG KASIR hanya di Sisa Saldo
+        container.innerHTML = topupTools.map(tool => `
           <button type="button" class="tool-btn ${selectedTool === tool ? 'active' : ''}" onclick="selectTool('${tool}')">
             <div class="tool-btn-icon-wrap">
               <i class="fas fa-wallet"></i>
@@ -1164,14 +1188,24 @@
         `).join('');
       }
 
-      function updateFilterToolDropdown() {
+            function updateFilterToolDropdown() {
+        const topupTools = activeTools.filter(t => t !== "UANG KASIR");
+
         const select = document.getElementById('filterTool');
         const currentVal = select.value;
-        select.innerHTML = '<option value="all">Semua Tools</option>' + 
-          activeTools.map(t => `<option value="${t}">${t}</option>`).join('');
+        select.innerHTML = '<option value="all">Semua Tools</option>' +
+          topupTools.map(t => `<option value="${t}">${t}</option>`).join('');
         select.value = currentVal;
-      }
 
+        const selectSisa = document.getElementById('filterSisaTool');
+        if (selectSisa) {
+          const cur = selectSisa.value;
+          selectSisa.innerHTML = '<option value="all">Semua Tools</option>' +
+            activeTools.map(t => `<option value="${t}">${t}</option>`).join('');
+          selectSisa.value = cur;
+        }
+      }
+      
       window.selectTool = function(tool) {
         selectedTool = tool;
         renderToolsGrid();
@@ -1766,17 +1800,41 @@
         }
       }
 
+            window.handleSisaPeriodChange = function() {
+        const period = document.getElementById('filterSisaPeriod').value;
+        document.getElementById('customSisaDateBox').style.display = period === 'custom' ? 'grid' : 'none';
+        renderSisaTable();
+      };
+
       window.renderSisaTable = function() {
         const period = document.getElementById('filterSisaPeriod').value;
+        const toolFilter = document.getElementById('filterSisaTool').value;
+
         const now = new Date();
         let startTimestamp = 0;
+        let endTimestamp = Date.now();
+
         if (period === 'today') {
           startTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         } else if (period === 'month') {
           startTimestamp = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        } else if (period === 'custom') {
+          const startVal = document.getElementById('filterSisaStartDate').value;
+          const endVal = document.getElementById('filterSisaEndDate').value;
+          if (startVal) startTimestamp = new Date(startVal).getTime();
+          if (endVal) {
+            const endDate = new Date(endVal);
+            endDate.setHours(23, 59, 59, 999);
+            endTimestamp = endDate.getTime();
+          }
         }
 
-        const filtered = allSisa.filter(h => period === 'all' || (h.timestamp || 0) >= startTimestamp);
+        const filtered = allSisa.filter(h => {
+          const t = h.timestamp || 0;
+          const matchPeriod = period === 'all' || (t >= startTimestamp && t <= endTimestamp);
+          const matchTool = toolFilter === 'all' || h.toolName === toolFilter;
+          return matchPeriod && matchTool;
+        });
         const total = filtered.reduce((sum, h) => sum + (h.nominal || 0), 0);
         document.getElementById('statTotalSisa').textContent = Utils.formatRupiah(total);
 
