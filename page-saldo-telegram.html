@@ -447,6 +447,83 @@
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
+    /* ===== PIL FILTER PERIODE (GESER KIRI-KANAN) ===== */
+.period-pills {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.1rem 0.4rem;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.period-pills::-webkit-scrollbar { display: none; }
+.period-pill {
+  flex: 0 0 auto;                 /* tidak mengecil, bisa digeser */
+  padding: 0.55rem 1.15rem;
+  border-radius: 99px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.period-pill:hover { border-color: var(--primary); color: var(--primary); }
+.period-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== KARTU STATIS KECIL (UANG KASIR & UANG TAS) ===== */
+.static-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.static-balance-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+.static-balance-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.static-balance-icon.kasir { background: linear-gradient(135deg, var(--success), #10b981); }
+.static-balance-icon.tas { background: linear-gradient(135deg, var(--warning), #f59e0b); }
+.static-balance-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.static-balance-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
     /* ===== PULL TO REFRESH ===== */
     #ptrContainer { position: fixed; top: 0; left: 0; right: 0; z-index: 1200; display: flex; justify-content: center; pointer-events: none; transform: translateY(-70px); transition: transform 0.2s ease; }
     #ptrContainer.visible { transform: translateY(12px); }
@@ -669,22 +746,21 @@
           </div>
           <div class="card-body">
             <div class="filter-section">
-              <div class="form-group" style="margin-bottom: 0.75rem;">
-                <label class="form-label">Filter Waktu</label>
-                <select class="form-select" id="filterPeriod" onchange="handlePeriodChange()">
-                  <option value="all">Semua Waktu</option>
-                  <option value="today">Hari Ini</option>
-                  <option value="month" selected>Bulan Ini</option>
-                  <option value="custom">Custom Tanggal</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin-bottom: 0.75rem;">
-                <label class="form-label">Filter Tools</label>
-                <select class="form-select" id="filterTool" onchange="applyFilters()">
-                  <option value="all">Semua Tools</option>
-                </select>
-              </div>
-              <div class="form-group" id="customDateBox" style="display: none; gap: 0.75rem;">
+  <div class="period-pills" id="periodPillsTopup">
+    <button type="button" class="period-pill" data-period="today">Hari Ini</button>
+    <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
+    <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
+    <button type="button" class="period-pill active" data-period="month">Bulan Ini</button>
+    <button type="button" class="period-pill" data-period="all">Semua</button>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Filter Tools</label>
+    <select class="form-select" id="filterTool" onchange="applyFilters()">
+      <option value="all">Semua Tools</option>
+    </select>
+  </div>
+</div>
+            <div class="form-group" id="customDateBox" style="display: none; gap: 0.75rem;">
                 <div>
                   <label class="form-label">Dari Tanggal</label>
                   <input type="date" class="form-input" id="filterStartDate" onchange="applyFilters()">
@@ -734,6 +810,23 @@
             </div>
           </div>
 
+          <!-- KARTU STATIS: UANG KASIR & UANG TAS (tetap, tidak ikut filter) -->
+<div class="static-balance-grid">
+  <div class="static-balance-card">
+    <div class="static-balance-icon kasir"><i class="fas fa-cash-register"></i></div>
+    <div style="min-width:0;">
+      <div class="static-balance-label">Uang Kasir</div>
+      <div class="static-balance-value" id="statUangKasir">Rp 0</div>
+    </div>
+  </div>
+  <div class="static-balance-card">
+    <div class="static-balance-icon tas"><i class="fas fa-briefcase"></i></div>
+    <div style="min-width:0;">
+      <div class="static-balance-label">Uang Tas</div>
+      <div class="static-balance-value" id="statUangTas">Rp 0</div>
+    </div>
+  </div>
+</div>
           <div class="card">
             <div class="card-header">
               <h3 class="card-title"><i class="fas fa-pen" style="color: var(--accent);"></i> Catat Sisa Saldo</h3>
