@@ -428,6 +428,20 @@
     .mobile-bar-item.active { color: var(--primary); }
     .mobile-bar-item i { font-size: 1.1rem; }
 
+    /* ===== TAB BAR ===== */
+    .tab-bar { display: flex; gap: 0.4rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.35rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm); }
+    .tab-btn { flex: 1; padding: 0.65rem 0.75rem; border: none; border-radius: var(--radius-md); background: transparent; color: var(--text-sub); font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.15s; }
+    .tab-btn.active { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
+
+    /* ===== TAB PANE ===== */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ===== PULL TO REFRESH ===== */
+    #ptrContainer { position: fixed; top: 0; left: 0; right: 0; z-index: 1200; display: flex; justify-content: center; pointer-events: none; transform: translateY(-70px); transition: transform 0.2s ease; }
+    #ptrContainer.visible { transform: translateY(12px); }
+    #ptrIndicator { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 0.9rem; }
+
     @media (max-width: 1024px) {
       .mobile-bar { display: flex; }
       .page-content { padding-bottom: calc(60px + 1.5rem); }
@@ -449,6 +463,10 @@
   <script src="js/role-guard.js"></script>
 </head>
 <body>
+
+  <div id="ptrContainer">
+    <div id="ptrIndicator"><i class="fas fa-arrow-down"></i></div>
+  </div>
 
   <div class="app-container">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -575,6 +593,14 @@
       </header>
 
       <div class="page-content">
+        <!-- TAB BAR -->
+        <div class="tab-bar">
+          <button type="button" class="tab-btn active" data-tab="topup" onclick="switchTab('topup')"><i class="fas fa-wallet"></i> Top Up</button>
+          <button type="button" class="tab-btn" data-tab="sisa" onclick="switchTab('sisa')"><i class="fas fa-piggy-bank"></i> Sisa Saldo</button>
+        </div>
+
+        <!-- TAB: TOP UP (konten lama) -->
+        <div id="tab-pane-topup" class="tab-pane active">
         <!-- Stats Card -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -683,6 +709,91 @@
             </div>
           </div>
         </div>
+        </div><!-- /tab-pane-topup -->
+
+        <!-- ================= TAB: SISA SALDO ================= -->
+        <div id="tab-pane-sisa" class="tab-pane">
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: linear-gradient(135deg, var(--accent), var(--primary));"><i class="fas fa-piggy-bank"></i></div>
+              <div>
+                <div class="stat-label">Total Sisa Saldo (Sesuai Filter)</div>
+                <div class="stat-value" id="statTotalSisa">Rp 0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-pen" style="color: var(--accent);"></i> Catat Sisa Saldo</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Pilih Tools / Aplikasi *</label>
+                <div class="tools-grid" id="toolsGridSisa"></div>
+              </div>
+              <div id="sisaFormGroup" style="display:none; margin-top: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                  <div class="form-group">
+                    <label class="form-label">Tanggal</label>
+                    <input type="date" class="form-input" id="inputSisaDate">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Sisa Saldo (Rp)</label>
+                    <input type="number" class="form-input" id="inputSisaNominal" placeholder="Contoh: 250000" min="0">
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="btnSubmitSisa" style="width: 100%; margin-top: 0.75rem;">
+                  <i class="fas fa-save"></i> Simpan Sisa Saldo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-history" style="color: var(--warning);"></i> Riwayat Sisa Saldo</h3>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-outline btn-sm" onclick="loadSisaHistory(true)"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="filter-section">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">Filter Waktu</label>
+                  <select class="form-select" id="filterSisaPeriod" onchange="renderSisaTable()">
+                    <option value="all">Semua Waktu</option>
+                    <option value="today">Hari Ini</option>
+                    <option value="month" selected>Bulan Ini</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-container" style="margin-top: 1rem;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 50px;">#</th>
+                      <th>Tanggal</th>
+                      <th>Tools / Aplikasi</th>
+                      <th style="text-align: right;">Sisa Saldo</th>
+                      <th style="text-align: center; width: 80px;">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sisaTableBody">
+                    <tr>
+                      <td colspan="5" style="text-align: center; padding: 2.5rem;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                        Tidak ada data sisa saldo
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /tab-pane-sisa -->
       </div>
     </main>
 
@@ -984,20 +1095,24 @@
       async function initSaldoPage() {
         await loadToolsConfig();
         await loadTopupHistory();
+        await loadSisaHistory();
 
+        document.getElementById('inputSisaDate').valueAsDate = new Date();
         document.getElementById('btnSubmitTopup').onclick = submitTopup;
+        document.getElementById('btnSubmitSisa').onclick = submitSisa;
         document.getElementById('btnRefresh').onclick = () => loadTopupHistory(true);
       }
-
       async function loadToolsConfig() {
         try {
           const doc = await db.collection(COLLECTION_TOOLS).doc("list").get();
           if (doc.exists && doc.data().tools) {
             activeTools = doc.data().tools;
+            if (!activeTools.includes("UANG KASIR")) activeTools.push("UANG KASIR");
           } else {
             await db.collection(COLLECTION_TOOLS).doc("list").set({ tools: activeTools });
           }
           renderToolsGrid();
+          renderToolsGridSisa();
           updateFilterToolDropdown();
         } catch(e) {
           console.error("Error loading tools:", e);
@@ -1558,6 +1673,215 @@
           Utils.showToast('Import terhenti di baris ' + (count + 1) + '. ' + (count > 0 ? count + ' baris sudah tersimpan.' : 'Tidak ada data tersimpan.'), 'error');
         }
       };
+      // ==========================================================
+      // ============ LOGIKA TAB SISA SALDO =======================
+      // ==========================================================
+      let selectedToolSisa = "";
+      let allSisa = [];
+      const COLLECTION_SISA = "saldo_sisa_history";
+
+      window.switchTab = function(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        document.getElementById('tab-pane-topup').classList.toggle('active', tab === 'topup');
+        document.getElementById('tab-pane-sisa').classList.toggle('active', tab === 'sisa');
+      };
+
+      function renderToolsGridSisa() {
+        const container = document.getElementById('toolsGridSisa');
+        if (!container) return;
+        container.innerHTML = activeTools.map(tool => `
+          <button type="button" class="tool-btn ${selectedToolSisa === tool ? 'active' : ''}" onclick="selectToolSisa('${tool.replace(/'/g, "\\'")}')">
+            <div class="tool-btn-icon-wrap">
+              <i class="fas fa-wallet"></i>
+            </div>
+            <span>${tool}</span>
+          </button>
+        `).join('');
+      }
+
+      window.selectToolSisa = function(tool) {
+        selectedToolSisa = tool;
+        renderToolsGridSisa();
+        document.getElementById('sisaFormGroup').style.display = 'block';
+        document.getElementById('inputSisaNominal').focus();
+      };
+
+      async function loadSisaHistory(showSpinner = false) {
+        if (showSpinner) Utils.showLoading('Memuat sisa saldo...');
+        try {
+          const snap = await db.collection(COLLECTION_SISA).get();
+          allSisa = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (!data.timestamp && data.date) {
+              const p = data.date.split('/');
+              data.timestamp = p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() : Date.now();
+            }
+            allSisa.push({ id: doc.id, ...data });
+          });
+          allSisa.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          renderSisaTable();
+          if (showSpinner) {
+            Utils.hideLoading();
+            Utils.showToast('Sisa saldo diperbarui', 'success');
+          }
+        } catch(e) {
+          if (showSpinner) {
+            Utils.hideLoading();
+            Utils.showToast('Gagal memuat sisa saldo', 'error');
+          }
+        }
+      }
+
+      window.renderSisaTable = function() {
+        const period = document.getElementById('filterSisaPeriod').value;
+        const now = new Date();
+        let startTimestamp = 0;
+        if (period === 'today') {
+          startTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        } else if (period === 'month') {
+          startTimestamp = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        }
+
+        const filtered = allSisa.filter(h => period === 'all' || (h.timestamp || 0) >= startTimestamp);
+        const total = filtered.reduce((sum, h) => sum + (h.nominal || 0), 0);
+        document.getElementById('statTotalSisa').textContent = Utils.formatRupiah(total);
+
+        const tbody = document.getElementById('sisaTableBody');
+        if (filtered.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 2.5rem;">
+                <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                Tidak ada data sisa saldo pada periode ini
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map((h, idx) => {
+          const dateStr = h.date || (h.timestamp ? new Date(h.timestamp).toLocaleDateString('id-ID') : '-');
+          const safeToolName = (h.toolName || '').replace(/'/g, "\\'");
+          return `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${dateStr}</td>
+              <td><span style="background: var(--accent-light); color: var(--accent); padding: 0.25rem 0.6rem; border-radius: 99px; font-weight: 700; font-size: 0.75rem;">${h.toolName}</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--warning);">${Utils.formatRupiah(h.nominal || 0)}</td>
+              <td style="text-align: center;">
+                <button onclick="deleteSisa('${h.id}', '${safeToolName}', ${h.nominal})" title="Hapus" style="background: var(--danger-light); color: var(--danger); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      };
+
+      async function submitSisa() {
+        const nominal = parseInt(document.getElementById('inputSisaNominal').value) || 0;
+        const dateVal = document.getElementById('inputSisaDate').value;
+
+        if (!selectedToolSisa) {
+          Utils.showToast('Pilih tools / aplikasi terlebih dahulu', 'warning');
+          return;
+        }
+        if (nominal < 0) {
+          Utils.showToast('Nominal tidak valid', 'warning');
+          return;
+        }
+        if (!dateVal) {
+          Utils.showToast('Tanggal wajib diisi', 'warning');
+          return;
+        }
+
+        const timestamp = new Date(dateVal).getTime();
+        const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        Utils.showLoading('Menyimpan sisa saldo...');
+        try {
+          await db.collection(COLLECTION_SISA).add({
+            toolName: selectedToolSisa,
+            nominal: nominal,
+            date: formattedDate,
+            timestamp: timestamp,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          Utils.hideLoading();
+          Utils.showToast('Sisa saldo berhasil dicatat!', 'success');
+          document.getElementById('inputSisaNominal').value = '';
+          document.getElementById('sisaFormGroup').style.display = 'none';
+          selectedToolSisa = "";
+          renderToolsGridSisa();
+          await loadSisaHistory();
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal menyimpan sisa saldo', 'error');
+        }
+      }
+
+      window.deleteSisa = function(id, toolName, nominal) {
+        showCustomConfirm("Hapus Sisa Saldo", `Hapus catatan sisa saldo ${toolName} sebesar ${Utils.formatRupiah(nominal)}?`, "danger", "Ya, Hapus", async () => {
+          Utils.showLoading('Menghapus...');
+          try {
+            await db.collection(COLLECTION_SISA).doc(id).delete();
+            Utils.hideLoading();
+            Utils.showToast('Catatan sisa saldo dihapus', 'success');
+            await loadSisaHistory();
+          } catch(e) {
+            Utils.hideLoading();
+            Utils.showToast('Gagal menghapus', 'error');
+          }
+        });
+      };
+
+      // ==========================================================
+      // ============ PULL TO REFRESH (MOBILE) ====================
+      // ==========================================================
+      (function initPullToRefresh() {
+        const ptr = document.getElementById('ptrContainer');
+        const indicator = document.getElementById('ptrIndicator');
+        if (!ptr) return;
+
+        let startY = 0;
+        let pulling = false;
+        const THRESHOLD = 70;
+
+        window.addEventListener('touchstart', (e) => {
+          if (window.scrollY === 0) {
+            startY = e.touches[0].clientY;
+            pulling = true;
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+          if (!pulling) return;
+          const dy = e.touches[0].clientY - startY;
+          if (dy > 20) {
+            ptr.classList.add('visible');
+            const icon = indicator.querySelector('i');
+            icon.className = dy >= THRESHOLD ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchend', async (e) => {
+          if (!pulling) return;
+          pulling = false;
+          const dy = e.changedTouches[0].clientY - startY;
+
+          if (dy >= THRESHOLD) {
+            indicator.classList.add('spin');
+            indicator.querySelector('i').className = 'fas fa-sync-alt';
+            await Promise.all([loadTopupHistory(), loadSisaHistory()]);
+            Utils.showToast('Halaman diperbarui', 'success');
+          }
+
+          setTimeout(() => {
+            ptr.classList.remove('visible');
+            indicator.classList.remove('spin');
+            indicator.querySelector('i').className = 'fas fa-arrow-down';
+          }, 300);
+        }, { passive: true });
       })();                           
   </script>
 </body>
