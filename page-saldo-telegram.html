@@ -1093,29 +1093,32 @@
       let currentUserRole = "kasir";
       const COLLECTION_TOPUP = "saldo_topup_history";
       const COLLECTION_TOOLS = "saldo_tools_config";
-            function getPeriodRange(period) {
-        const now = new Date();
-        let start, end;
-        if (period === 'today') {
-          start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          end = new Date(start); end.setHours(23, 59, 59, 999);
-        } else if (period === 'yesterday') {
-          start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-          end = new Date(start); end.setHours(23, 59, 59, 999);
-        } else if (period === 'week') {
-          const dow = (now.getDay() + 6) % 7;
-          start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
-          end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-        } else if (period === 'month') {
-          start = new Date(now.getFullYear(), now.getMonth(), 1);
-          end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        } else {
-          start = new Date(2000, 0, 1);
-          end = new Date(now.getFullYear() + 1, 11, 31);
-        }
-        return { start: start.getTime(), end: end.getTime() };
-      }
-
+            function getPeriodRange(period, customStart, customEnd) {
+  const now = new Date();
+  let start, end;
+  if (period === 'today') {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    end = new Date(start); end.setHours(23, 59, 59, 999);
+  } else if (period === 'yesterday') {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    end = new Date(start); end.setHours(23, 59, 59, 999);
+  } else if (period === 'week') {
+    const dow = (now.getDay() + 6) % 7;
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+    end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  } else if (period === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (period === 'custom') {
+    start = customStart ? new Date(customStart + 'T00:00:00') : new Date(2000, 0, 1);
+    end = customEnd ? new Date(customEnd + 'T23:59:59.999') : new Date(now.getFullYear() + 1, 11, 31);
+  } else {
+    start = new Date(2000, 0, 1);
+    end = new Date(now.getFullYear() + 1, 11, 31);
+  }
+  return { start: start.getTime(), end: end.getTime() };
+}
+      
       function setupPeriodPills(containerId, onChange, dateBoxId) {
   const container = document.getElementById(containerId);
   const dateBox = dateBoxId ? document.getElementById(dateBoxId) : null;
@@ -2039,7 +2042,9 @@ const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
           document.getElementById('inputSisaNominal').value = '';
           document.getElementById('sisaFormGroup').style.display = 'none';
           selectedToolSisa = "";
-          renderToolsGridSisa();
+renderToolsGridSisa();
+document.getElementById('cardUangKasir').classList.remove('active');
+document.getElementById('cardUangTas').classList.remove('active');
           await loadSisaHistory();
         } catch(e) {
           Utils.hideLoading();
