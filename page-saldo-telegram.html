@@ -1182,12 +1182,6 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           document.getElementById('inputDate').valueAsDate = new Date();
-          
-          const todayStr = new Date().toISOString().split('T')[0];
-          document.getElementById('filterStartDate').value = todayStr;
-          document.getElementById('filterEndDate').value = todayStr;
-          document.getElementById('filterSisaStartDate').value = todayStr;
-          document.getElementById('filterSisaEndDate').value = todayStr;
 
           setupSidebarEvents();
           initSaldoPage();
@@ -1291,7 +1285,8 @@
           } else {
             await db.collection(COLLECTION_TOOLS).doc("list").set({ tools: activeTools });
           }
-         if (!activeTools.includes("UANG TAS")) activeTools.push("UANG TAS");
+         if (!activeTools.includes("UANG KASIR")) activeTools.push("UANG KASIR");
+          if (!activeTools.includes("UANG TAS")) activeTools.push("UANG TAS");
           refreshToolUI();
         }, (err) => {
           console.error("Error loading tools:", err);
@@ -1307,7 +1302,7 @@
 
       function renderToolsGrid() {
         const container = document.getElementById('toolsGridContainer');
-        const topupTools = activeTools.filter(t => t !== "UANG KASIR"); // UANG KASIR hanya di Sisa Saldo
+        const topupTools = activeTools.filter(t => t !== "UANG KASIR" && t !== "UANG TAS");
         container.innerHTML = topupTools.map(tool => `
           <button type="button" class="tool-btn ${selectedTool === tool ? 'active' : ''}" onclick="selectTool('${tool}')">
             <div class="tool-btn-icon-wrap">
@@ -1319,7 +1314,7 @@
       }
 
             function updateFilterToolDropdown() {
-        const topupTools = activeTools.filter(t => t !== "UANG KASIR");
+        const topupTools = activeTools.filter(t => t !== "UANG KASIR" && t !== "UANG TAS");
 
         const select = document.getElementById('filterTool');
         const currentVal = select.value;
