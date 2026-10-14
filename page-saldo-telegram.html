@@ -899,6 +899,38 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT REKAP (dipakai Top Up & Sisa Saldo) -->
+  <div class="modal-overlay" id="editRecordModal">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-edit" style="color: var(--primary);"></i> Edit Catatan</h3>
+        <button class="modal-close" onclick="closeEditRecordModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editRecId">
+        <input type="hidden" id="editRecCollection">
+        <div class="form-group" style="margin-bottom: 0.75rem;">
+          <label class="form-label">Tools / Aplikasi *</label>
+          <select class="form-select" id="editRecTool"></select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Tanggal</label>
+            <input type="date" class="form-input" id="editRecDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nominal (Rp)</label>
+            <input type="number" class="form-input" id="editRecNominal" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeEditRecordModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveEditedRecord()"><i class="fas fa-save"></i> Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL KONFIRMASI INTERNAL -->
   <div class="custom-modal-backdrop" id="customConfirmModal">
     <div class="custom-dialog-card">
@@ -1252,7 +1284,8 @@
               <td>${dateStr}</td>
               <td><span class="badge badge-primary" style="background: var(--primary-light); color: var(--primary); padding: 0.25rem 0.6rem; border-radius: 99px; font-weight: 700; font-size: 0.75rem;">${h.toolName}</span></td>
               <td style="text-align: right; font-weight: 700; color: var(--success);">${Utils.formatRupiah(h.nominal || 0)}</td>
-              <td style="text-align: center;">
+              <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openEditRecordModal('${COLLECTION_TOPUP}', '${h.id}', '${safeToolName}', ${h.nominal || 0}, ${h.timestamp || 0})" title="Edit" style="background: var(--primary-light); color: var(--primary); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; margin-right: 4px;"><i class="fas fa-edit"></i></button>
                 <button class="action-btn del-btn" onclick="deleteTopup('${h.id}', '${safeToolName}', ${h.nominal})" title="Hapus" style="background: var(--danger-light); color: var(--danger); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash"></i></button>
               </td>
             </tr>
@@ -1769,7 +1802,8 @@
               <td>${dateStr}</td>
               <td><span style="background: var(--accent-light); color: var(--accent); padding: 0.25rem 0.6rem; border-radius: 99px; font-weight: 700; font-size: 0.75rem;">${h.toolName}</span></td>
               <td style="text-align: right; font-weight: 700; color: var(--warning);">${Utils.formatRupiah(h.nominal || 0)}</td>
-              <td style="text-align: center;">
+              <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openEditRecordModal('${COLLECTION_SISA}', '${h.id}', '${safeToolName}', ${h.nominal || 0}, ${h.timestamp || 0})" title="Edit" style="background: var(--primary-light); color: var(--primary); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; margin-right: 4px;"><i class="fas fa-edit"></i></button>
                 <button onclick="deleteSisa('${h.id}', '${safeToolName}', ${h.nominal})" title="Hapus" style="background: var(--danger-light); color: var(--danger); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash"></i></button>
               </td>
             </tr>
@@ -1833,6 +1867,61 @@
             Utils.showToast('Gagal menghapus', 'error');
           }
         });
+      };
+
+      window.openEditRecordModal = function(collection, id, toolName, nominal, timestamp) {
+        const sel = document.getElementById('editRecTool');
+        sel.innerHTML = activeTools.map(t =>
+          `<option value="${t}" ${t === toolName ? 'selected' : ''}>${t}</option>`
+        ).join('');
+        document.getElementById('editRecId').value = id;
+        document.getElementById('editRecCollection').value = collection;
+        document.getElementById('editRecNominal').value = nominal;
+        const d = timestamp ? new Date(timestamp) : new Date();
+        document.getElementById('editRecDate').value = d.toISOString().split('T')[0];
+        document.getElementById('editRecordModal').classList.add('active');
+      };
+
+      window.closeEditRecordModal = function() {
+        document.getElementById('editRecordModal').classList.remove('active');
+      };
+
+      window.saveEditedRecord = async function() {
+        const id = document.getElementById('editRecId').value;
+        const collection = document.getElementById('editRecCollection').value;
+        const toolName = document.getElementById('editRecTool').value;
+        const nominal = parseInt(document.getElementById('editRecNominal').value) || 0;
+        const dateVal = document.getElementById('editRecDate').value;
+
+        if (!toolName || nominal < 0 || !dateVal) {
+          Utils.showToast('Lengkapi semua kolom dengan benar', 'warning');
+          return;
+        }
+
+        const timestamp = new Date(dateVal).getTime();
+        const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        Utils.showLoading('Menyimpan perubahan...');
+        try {
+          await db.collection(collection).doc(id).update({
+            toolName: toolName,
+            nominal: nominal,
+            date: formattedDate,
+            timestamp: timestamp,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          Utils.hideLoading();
+          closeEditRecordModal();
+          Utils.showToast('Catatan berhasil diperbarui!', 'success');
+          if (collection === COLLECTION_SISA) {
+            await loadSisaHistory();
+          } else {
+            await loadTopupHistory();
+          }
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal memperbarui catatan', 'error');
+        }
       };
 
       // ==========================================================
