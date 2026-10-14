@@ -1163,7 +1163,12 @@
         document.getElementById('btnSubmitSisa').onclick = submitSisa;
         document.getElementById('btnRefresh').onclick = () => loadTopupHistory(true);
       }
-      function loadToolsConfig() 
+            let toolsListenerAttached = false;
+      function loadToolsConfig() {
+        if (toolsListenerAttached) return; // cukup pasang listener sekali saja
+        toolsListenerAttached = true;
+        // Real-time: otomatis refresh kalau tools berubah di tab lain / halaman lain / device lain
+        db.collection(COLLECTION_TOOLS).doc("list").onSnapshot(async (doc) => {
           if (doc.exists && doc.data().tools) {
             activeTools = doc.data().tools;
           } else {
