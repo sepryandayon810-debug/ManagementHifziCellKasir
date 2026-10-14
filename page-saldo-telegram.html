@@ -535,6 +535,11 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    .static-balance-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light), var(--shadow-md);
+}
   </style>
 
   <!-- Firebase Compat -->
@@ -747,13 +752,24 @@
           <div class="card-body">
             <div class="filter-section">
   <div class="period-pills" id="periodPillsTopup">
-    <button type="button" class="period-pill" data-period="today">Hari Ini</button>
-    <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
-    <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
-    <button type="button" class="period-pill active" data-period="month">Bulan Ini</button>
-    <button type="button" class="period-pill" data-period="all">Semua</button>
+  <button type="button" class="period-pill" data-period="today">Hari Ini</button>
+  <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
+  <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
+  <button type="button" class="period-pill active" data-period="month">Bulan Ini</button>
+  <button type="button" class="period-pill" data-period="all">Semua</button>
+  <button type="button" class="period-pill" data-period="custom"><i class="fas fa-calendar-alt"></i> Pilih Tanggal</button>
+</div>
+<div id="customDateBox">
+  <div class="form-group">
+    <label class="form-label">Dari Tanggal</label>
+    <input type="date" class="form-input" id="customStartTopup" onchange="applyFilters()">
   </div>
   <div class="form-group">
+    <label class="form-label">Sampai Tanggal</label>
+    <input type="date" class="form-input" id="customEndTopup" onchange="applyFilters()">
+  </div>
+</div>
+              <div class="form-group">
     <label class="form-label">Filter Tools</label>
     <select class="form-select" id="filterTool" onchange="applyFilters()">
       <option value="all">Semua Tools</option>
@@ -800,17 +816,17 @@
 
           <!-- KARTU STATIS: UANG KASIR & UANG TAS (tetap, tidak ikut filter) -->
 <div class="static-balance-grid">
-  <div class="static-balance-card">
+  <div class="static-balance-card" id="cardUangKasir" onclick="editStaticBalance('UANG KASIR')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
     <div class="static-balance-icon kasir"><i class="fas fa-cash-register"></i></div>
-    <div style="min-width:0;">
-      <div class="static-balance-label">Uang Kasir</div>
+    <div style="min-width:0; flex:1;">
+      <div class="static-balance-label">Uang Kasir <i class="fas fa-pen" style="font-size:0.6rem; margin-left:2px;"></i></div>
       <div class="static-balance-value" id="statUangKasir">Rp 0</div>
     </div>
   </div>
-  <div class="static-balance-card">
+  <div class="static-balance-card" id="cardUangTas" onclick="editStaticBalance('UANG TAS')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
     <div class="static-balance-icon tas"><i class="fas fa-briefcase"></i></div>
-    <div style="min-width:0;">
-      <div class="static-balance-label">Uang Tas</div>
+    <div style="min-width:0; flex:1;">
+      <div class="static-balance-label">Uang Tas <i class="fas fa-pen" style="font-size:0.6rem; margin-left:2px;"></i></div>
       <div class="static-balance-value" id="statUangTas">Rp 0</div>
     </div>
   </div>
@@ -852,12 +868,23 @@
             <div class="card-body">
                                           <div class="filter-section">
                 <div class="period-pills" id="periodPillsSisa">
-                  <button type="button" class="period-pill" data-period="today">Hari Ini</button>
-                  <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
-                  <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
-                  <button type="button" class="period-pill active" data-period="month">Bulan Ini</button>
-                  <button type="button" class="period-pill" data-period="all">Semua</button>
-                </div>
+  <button type="button" class="period-pill" data-period="today">Hari Ini</button>
+  <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
+  <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
+  <button type="button" class="period-pill active" data-period="month">Bulan Ini</button>
+  <button type="button" class="period-pill" data-period="all">Semua</button>
+  <button type="button" class="period-pill" data-period="custom"><i class="fas fa-calendar-alt"></i> Pilih Tanggal</button>
+</div>
+<div id="customSisaDateBox">
+  <div class="form-group">
+    <label class="form-label">Dari Tanggal</label>
+    <input type="date" class="form-input" id="customStartSisa" onchange="renderSisaTable()">
+  </div>
+  <div class="form-group">
+    <label class="form-label">Sampai Tanggal</label>
+    <input type="date" class="form-input" id="customEndSisa" onchange="renderSisaTable()">
+  </div>
+</div>
                 <div class="form-group">
                   <label class="form-label">Filter Tools</label>
                   <select class="form-select" id="filterSisaTool" onchange="renderSisaTable()">
@@ -1089,17 +1116,19 @@
         return { start: start.getTime(), end: end.getTime() };
       }
 
-      function setupPeriodPills(containerId, onChange) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.addEventListener('click', (e) => {
-          const pill = e.target.closest('.period-pill');
-          if (!pill) return;
-          container.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
-          pill.classList.add('active');
-          onChange(pill.dataset.period);
-        });
-      }
+      function setupPeriodPills(containerId, onChange, dateBoxId) {
+  const container = document.getElementById(containerId);
+  const dateBox = dateBoxId ? document.getElementById(dateBoxId) : null;
+  if (!container) return;
+  container.addEventListener('click', (e) => {
+    const pill = e.target.closest('.period-pill');
+    if (!pill) return;
+    container.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    if (dateBox) dateBox.style.display = pill.dataset.period === 'custom' ? 'grid' : 'none';
+    onChange(pill.dataset.period);
+  });
+}
 
       function updateStaticBalance() {
         const latest = {};
@@ -1270,8 +1299,8 @@
         document.getElementById('btnSubmitTopup').onclick = submitTopup;
         document.getElementById('btnSubmitSisa').onclick = submitSisa;
         document.getElementById('btnRefresh').onclick = () => loadTopupHistory(true);
-                setupPeriodPills('periodPillsTopup', () => applyFilters());
-        setupPeriodPills('periodPillsSisa', () => renderSisaTable());
+               setupPeriodPills('periodPillsTopup', () => applyFilters(), 'customDateBox');
+setupPeriodPills('periodPillsSisa', () => renderSisaTable(), 'customSisaDateBox');
         updateStaticBalance();
       }
             let toolsListenerAttached = false;
@@ -1378,7 +1407,12 @@
         const activePill = document.querySelector('#periodPillsTopup .period-pill.active');
         const period = activePill ? activePill.dataset.period : 'month';
         const toolFilter = document.getElementById('filterTool').value;
-        const { start: startTimestamp, end: endTimestamp } = getPeriodRange(period);
+        const isCustom = period === 'custom';
+const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
+  period,
+  isCustom ? document.getElementById('customStartTopup').value : null,
+  isCustom ? document.getElementById('customEndTopup').value : null
+);
 
         currentFilteredHistory = allHistory.filter(h => {
           const t = h.timestamp || 0;
@@ -1851,17 +1885,18 @@
       };
 
       function renderToolsGridSisa() {
-        const container = document.getElementById('toolsGridSisa');
-        if (!container) return;
-        container.innerHTML = activeTools.map(tool => `
-          <button type="button" class="tool-btn ${selectedToolSisa === tool ? 'active' : ''}" onclick="selectToolSisa('${tool.replace(/'/g, "\\'")}')">
-            <div class="tool-btn-icon-wrap">
-              <i class="fas fa-wallet"></i>
-            </div>
-            <span>${tool}</span>
-          </button>
-        `).join('');
-      }
+  const container = document.getElementById('toolsGridSisa');
+  if (!container) return;
+  const sisaTools = activeTools.filter(t => t !== "UANG KASIR" && t !== "UANG TAS");
+  container.innerHTML = sisaTools.map(tool => `
+    <button type="button" class="tool-btn ${selectedToolSisa === tool ? 'active' : ''}" onclick="selectToolSisa('${tool.replace(/'/g, "\\'")}')">
+      <div class="tool-btn-icon-wrap">
+        <i class="fas fa-wallet"></i>
+      </div>
+      <span>${tool}</span>
+    </button>
+  `).join('');
+}
 
       window.selectToolSisa = function(tool) {
         selectedToolSisa = tool;
@@ -1869,6 +1904,27 @@
         document.getElementById('sisaFormGroup').style.display = 'block';
         document.getElementById('inputSisaNominal').focus();
       };
+
+      window.editStaticBalance = function(toolName) {
+  selectedToolSisa = toolName;
+  renderToolsGridSisa(); // tidak ada tombol aktif di grid
+
+  // highlight kartu yang diklik
+  document.getElementById('cardUangKasir').classList.toggle('active', toolName === 'UANG KASIR');
+  document.getElementById('cardUangTas').classList.toggle('active', toolName === 'UANG TAS');
+
+  // prefill dengan saldo terakhir yang tercatat
+  const latest = {};
+  allSisa.forEach(h => { if (!latest[h.toolName]) latest[h.toolName] = h.nominal || 0; });
+
+  document.getElementById('sisaFormGroup').style.display = 'block';
+  document.getElementById('inputSisaDate').valueAsDate = new Date();
+  const inp = document.getElementById('inputSisaNominal');
+  inp.value = latest[toolName] !== undefined ? latest[toolName] : '';
+  inp.focus();
+  inp.select();
+  document.getElementById('sisaFormGroup').scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
 
       async function loadSisaHistory(showSpinner = false) {
         if (showSpinner) Utils.showLoading('Memuat sisa saldo...');
@@ -1902,8 +1958,12 @@
         const activePill = document.querySelector('#periodPillsSisa .period-pill.active');
         const period = activePill ? activePill.dataset.period : 'month';
         const toolFilter = document.getElementById('filterSisaTool').value;
-        const { start: startTimestamp, end: endTimestamp } = getPeriodRange(period);
-
+        const isCustom = period === 'custom';
+const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
+  period,
+  isCustom ? document.getElementById('customStartSisa').value : null,
+  isCustom ? document.getElementById('customEndSisa').value : null
+);
         const filtered = allSisa.filter(h => {
           const t = h.timestamp || 0;
           const matchPeriod = t >= startTimestamp && t <= endTimestamp;
