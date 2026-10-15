@@ -1202,6 +1202,16 @@ pecahanLines +
         window.location.href = 'index.html';
       };
 
+      // Baru (tambahkan)
+async function writeChunked(data) {
+  const CHUNK = 128;
+  for (let i = 0; i < data.length; i += CHUNK) {
+    const part = data.slice(i, i + CHUNK);
+    await new Promise((res, rej) => bluetoothSerial.write(part, res, rej));
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
       window.printStrukBluetooth = async function() {
         if (!lastClosingData) return;
         if (!window.bluetoothSerial) {
@@ -1247,7 +1257,7 @@ pecahanLines +
                     if (cData.catatan) c += 'Catatan    : ' + cData.catatan + '\x0A';
           c += '================================\x0A\x1B\x61\x01Shift Selesai\x0A\x0A\x0A\x1D\x56\x41\x03';
 
-          await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
+          await writeChunked(c);
           await new Promise(res => bluetoothSerial.disconnect(res, res));
           Utils.hideLoading();
           Utils.showToast('Struk closing berhasil dicetak!', 'success');
