@@ -240,6 +240,24 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    /* PIL FILTER PERIODE (BISA DI-SWIPE KIRI-KANAN) */
+.period-pills {
+  display: flex; gap: 0.5rem; overflow-x: auto;
+  padding: 2px 2px 6px; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.period-pills::-webkit-scrollbar { display: none; }
+.period-pill {
+  flex: 0 0 auto; padding: 0.5rem 1.1rem; border-radius: 999px;
+  border: 1.5px solid var(--border); background: var(--bg-surface);
+  color: var(--text-sub); font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s;
+}
+.period-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.custom-range { display: none; gap: 0.5rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap; }
+.custom-range .form-input { flex: 1; min-width: 130px; }
+    
   </style>
 
   <!-- Firebase Compat -->
@@ -418,15 +436,22 @@
           </div>
           <div class="card-body">
             <div class="filter-section">
-              <div class="form-group">
-                <label class="form-label">Rentang Waktu</label>
-                <select class="form-select" id="filterPeriod">
-                  <option value="today">Hari Ini</option>
-                  <option value="week">7 Hari Terakhir</option>
-                  <option value="month" selected>30 Hari Terakhir</option>
-                  <option value="all">Semua Waktu</option>
-                </select>
-              </div>
+              <div class="form-group" style="grid-column: 1 / -1;">
+  <label class="form-label">Rentang Waktu</label>
+  <div class="period-pills" id="periodPills">
+    <button type="button" class="period-pill active" data-period="today">Hari Ini</button>
+    <button type="button" class="period-pill" data-period="yesterday">Kemarin</button>
+    <button type="button" class="period-pill" data-period="week">Minggu Ini</button>
+    <button type="button" class="period-pill" data-period="month">Bulan Ini</button>
+    <button type="button" class="period-pill" data-period="custom">&#128197; Rentang Tanggal</button>
+  </div>
+  <div class="custom-range" id="customRangePanel">
+    <input type="date" class="form-input" id="customStart">
+    <span style="color:var(--text-muted); font-weight:700;">s/d</span>
+    <input type="date" class="form-input" id="customEnd">
+    <button type="button" class="btn btn-primary" id="btnApplyRange" style="padding: 0.5rem 1rem;">Terapkan</button>
+  </div>
+</div>
               <div class="form-group">
                 <label class="form-label">Kategori</label>
                 <select class="form-select" id="filterCategory">
@@ -515,6 +540,7 @@
       "use strict";
 
       let rankingData = [];
+      let currentPeriod = 'today';
       let categoriesMap = {};
       let currentUserRole = "kasir";
       let globalTransactions = [];
@@ -644,7 +670,23 @@
         await loadCategories();
         
         document.getElementById('btnGenerate').onclick = () => fetchAndProcessData(true);
-        document.getElementById('filterPeriod').onchange = () => processReportData();
+        document.querySelectorAll('.period-pill').forEach(pill => {
+  pill.onclick = () => {
+    document.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    currentPeriod = pill.dataset.period;
+    document.getElementById('customRangePanel').style.display =
+      currentPeriod === 'custom' ? 'flex' : 'none';
+    if (currentPeriod !== 'custom') processReportData();
+  };
+});
+document.getElementById('btnApplyRange').onclick = () => {
+  if (!document.getElementById('customStart').value || !document.getElementById('customEnd').value) {
+    Utils.showToast('Pilih tanggal mulai dan tanggal akhir', 'warning');
+    return;
+  }
+  processReportData();
+};
         document.getElementById('filterCategory').onchange = () => processReportData();
         document.getElementById('filterLimit').onchange = () => processReportData();
         document.getElementById('btnExport').onclick = exportCSV;
@@ -708,22 +750,31 @@ snap.forEach(doc => {
       }
 
       function processReportData() {
-        const period = document.getElementById('filterPeriod').value;
-        const catId = document.getElementById('filterCategory').value;
-        const limit = parseInt(document.getElementById('filterLimit').value) || 20;
-
         const now = new Date();
-        let startDate = null;
+let startDate = null;
+let endDate = null;
 
-        if (period === 'today') {
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        } else if (period === 'week') {
-          startDate = new Date();
-          startDate.setDate(now.getDate() - 7);
-        } else if (period === 'month') {
-          startDate = new Date();
-          startDate.setDate(now.getDate() - 30);
-        }
+if (currentPeriod === 'today') {
+  startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+} else if (currentPeriod === 'yesterday') {
+  startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+} else if (currentPeriod === 'week') {
+  startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+} else if (currentPeriod === 'month') {
+  startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+} else if (currentPeriod === 'custom') {
+  const s = document.getElementById('customStart').value;
+  const e = document.getElementById('customEnd').value;
+  if (s && e) {
+    startDate = new Date(s + 'T00:00:00');
+    endDate = new Date(e + 'T00:00:00');
+    endDate.setDate(endDate.getDate() + 1);
+  }
+}
 
         let productSales = {};
         let totalSold = 0;
@@ -742,9 +793,7 @@ snap.forEach(doc => {
         t.createdAt
       );
 
-  if (tDate && tDate < startDate) {
-    return;
-  }
+  if (tDate && (tDate < startDate || tDate >= endDate)) { return; }
 }
           const items = t.items || [];
           items.forEach(item => {
