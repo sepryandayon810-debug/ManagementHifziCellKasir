@@ -487,6 +487,11 @@
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
+
+.static-balance-grid.editing {
+  grid-template-columns: 1fr;
+}
+    
 .static-balance-card {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
@@ -1936,12 +1941,14 @@ const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
 
       let editingStatic = null;
 
-function cancelStaticEdit() {
+window.cancelStaticEdit = function() {
   if (!editingStatic) return;
   const wrapId = editingStatic === 'UANG KASIR' ? 'wrapUangKasir' : 'wrapUangTas';
   const wrap = document.getElementById(wrapId);
   if (wrap && wrap.dataset.orig) wrap.innerHTML = wrap.dataset.orig;
   editingStatic = null;
+  const grid = document.querySelector('.static-balance-grid');
+  if (grid) grid.classList.remove('editing');
   updateStaticBalance();
 }
 
@@ -1957,16 +1964,20 @@ window.editStaticBalance = function(toolName) {
 
  wrap.innerHTML = `
     <div class="static-balance-label">${label}</div>
-    <div style="display:flex; gap:0.3rem; align-items:center; width:100%;">
-      <input type="number" id="inlineStaticInput" class="form-input"
-        style="padding:0.3rem 0.45rem; font-size:0.8rem; min-width:0; flex:1 1 auto; width:100%;"
-        value="${getLatestNominal(toolName)}" min="0" inputmode="numeric"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();saveStaticBalance('${toolName}');} if(event.key==='Escape')cancelStaticEdit();">
-      <button class="btn btn-primary btn-sm" style="padding:0.3rem 0.5rem; flex-shrink:0; line-height:1;"
-        onclick="event.stopPropagation(); saveStaticBalance('${toolName}')" title="Simpan"><i class="fas fa-check"></i></button>
-      <button class="btn btn-outline btn-sm" style="padding:0.3rem 0.5rem; flex-shrink:0; line-height:1;"
-        onclick="event.stopPropagation(); cancelStaticEdit()" title="Batal"><i class="fas fa-times"></i></button>
+    <input type="number" id="inlineStaticInput" class="form-input"
+      style="padding:0.5rem 0.6rem; font-size:0.95rem; font-weight:700; width:100%; min-width:0; box-sizing:border-box;"
+      value="${getLatestNominal(toolName)}" min="0" inputmode="numeric"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();saveStaticBalance('${toolName}');}">
+    <div style="display:flex; gap:0.4rem; margin-top:0.45rem; width:100%;">
+      <button class="btn btn-primary btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
+        onclick="event.stopPropagation(); saveStaticBalance('${toolName}')"><i class="fas fa-check"></i> Simpan</button>
+      <button class="btn btn-outline btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
+        onclick="event.stopPropagation(); cancelStaticEdit()">Batal</button>
     </div>`;
+
+  // saat edit, kartu melebar penuh (grid jadi 1 kolom)
+  const grid = wrap.closest('.static-balance-grid');
+  if (grid) grid.classList.add('editing');
   const inp = document.getElementById('inlineStaticInput');
   inp.focus();
   inp.select();
