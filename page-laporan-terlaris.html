@@ -770,31 +770,41 @@ if (currentPeriod === 'today') {
   const s = document.getElementById('customStart').value;
   const e = document.getElementById('customEnd').value;
   if (s && e) {
-    startDate = new Date(s + 'T00:00:00');
-    endDate = new Date(e + 'T00:00:00');
-    endDate.setDate(endDate.getDate() + 1);
+  startDate = new Date(s + 'T00:00:00');
+  endDate = new Date(e + 'T00:00:00');
+
+  if (startDate > endDate) {
+    Utils.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'warning');
+    return;
   }
+
+  endDate.setDate(endDate.getDate() + 1);
+}
 }
 
-        let productSales = {};
-        let totalSold = 0;
-        let totalRevenue = 0;
+        const catId = document.getElementById('filterCategory').value;
+const limit = parseInt(document.getElementById('filterLimit').value) || 10;
+
+let productSales = {};
+let totalSold = 0;
+let totalRevenue = 0;
 
         globalTransactions.forEach(t => {
-          if (startDate) {
-  const transactionDate =
-    KasCore.getTransactionDate(t);
+          if (startDate && endDate) {
+  const rawDate =
+    KasCore.getTransactionDate(t) ??
+    t.waktu ??
+    t.timestamp ??
+    t.createdAt;
 
-  const tDate = transactionDate
-    ? new Date(transactionDate)
-    : KasCore.parseDateValue(
-        t.waktu ||
-        t.timestamp ||
-        t.createdAt
-      );
+  const tDate = KasCore.parseDateValue
+    ? KasCore.parseDateValue(rawDate)
+    : new Date(rawDate);
 
-  if (tDate && (tDate < startDate || tDate >= endDate)) { return; }
+  if (!tDate || isNaN(tDate.getTime())) return;
+  if (tDate < startDate || tDate >= endDate) return;
 }
+          
           const items = t.items || [];
           items.forEach(item => {
             const pId = item.productId || item.id;
@@ -802,9 +812,9 @@ if (currentPeriod === 'today') {
             const price = parseFloat(item.harga || item.price || 0);
             const subtotal = item.total || (qty * price);
 
-            if (catId !== 'all' && item.categoryId && item.categoryId !== catId) {
-              return;
-            }
+           if (catId !== 'all' && (item.categoryId || '') !== catId) {
+  return;
+}
 
             if (!productSales[pId]) {
               productSales[pId] = {
@@ -884,7 +894,8 @@ if (currentPeriod === 'today') {
 
         let csv = 'Rank,Nama Produk,Terjual (Unit),Pendapatan\n';
         rankingData.forEach((item, index) => {
-          csv += `${index + 1},"${item.name}",${item.quantity},${item.revenue}\n`;
+          const safeName = String(item.name).replace(/"/g, '""');
+csv += `${index + 1},"${safeName}",${item.quantity},${item.revenue}\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
