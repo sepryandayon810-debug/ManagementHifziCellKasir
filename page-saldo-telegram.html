@@ -813,6 +813,7 @@
         <div id="tab-pane-sisa" class="tab-pane">
 
           <div class="stats-grid">
+            <!-- Kotak 1: Total Sisa Saldo (ikut filter) -->
             <div class="stat-card">
               <div class="stat-icon" style="background: linear-gradient(135deg, var(--accent), var(--primary));"><i class="fas fa-piggy-bank"></i></div>
               <div>
@@ -820,25 +821,27 @@
                 <div class="stat-value" id="statTotalSisa">Rp 0</div>
               </div>
             </div>
-          </div>
 
-          <!-- KARTU STATIS: UANG KASIR & UANG TAS (tetap, tidak ikut filter) -->
-<div class="static-balance-grid">
-  <div class="static-balance-card" id="cardUangKasir" onclick="editStaticBalance('UANG KASIR')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
-    <div class="static-balance-icon kasir"><i class="fas fa-cash-register"></i></div>
-    <div style="min-width:0; flex:1;" id="wrapUangKasir">
-      <div class="static-balance-label">Uang Kasir</div>
-      <div class="static-balance-value" id="statUangKasir">Rp 0</div>
-    </div>
-  </div>
-  <div class="static-balance-card" id="cardUangTas" onclick="editStaticBalance('UANG TAS')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
-    <div class="static-balance-icon tas"><i class="fas fa-briefcase"></i></div>
-    <div style="min-width:0; flex:1;" id="wrapUangTas">
-      <div class="static-balance-label">Uang Tas</div>
-      <div class="static-balance-value" id="statUangTas">Rp 0</div>
-    </div>
-  </div>
-</div>          <div class="card">
+            <!-- Kotak 2: Uang Kasir (selalu nilai terakhir, ketuk untuk edit) -->
+            <div class="stat-card" id="cardUangKasir" onclick="editStaticBalance('UANG KASIR')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
+              <div class="stat-icon" style="background: linear-gradient(135deg, var(--success), #10b981);"><i class="fas fa-cash-register"></i></div>
+              <div style="min-width:0; flex:1;" id="wrapUangKasir">
+                <div class="stat-label">Uang Kasir (Terakhir)</div>
+                <div class="stat-value" id="statUangKasir">Rp 0</div>
+              </div>
+            </div>
+
+            <!-- Kotak 3: Uang Tas (selalu nilai terakhir, ketuk untuk edit) -->
+            <div class="stat-card" id="cardUangTas" onclick="editStaticBalance('UANG TAS')" title="Ketuk untuk ubah saldo" style="cursor:pointer;">
+              <div class="stat-icon" style="background: linear-gradient(135deg, var(--warning), #f59e0b);"><i class="fas fa-briefcase"></i></div>
+              <div style="min-width:0; flex:1;" id="wrapUangTas">
+                <div class="stat-label">Uang Tas (Terakhir)</div>
+                <div class="stat-value" id="statUangTas">Rp 0</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
             <div class="card-header">
               <h3 class="card-title">Catat Sisa Saldo</h3>
             </div>
@@ -1151,16 +1154,11 @@
   );
 }
 
-function getStaticLatest(toolName) {
-  const { start, end } = getSisaPeriodRange();
-  const rec = allSisa.find(h =>
-    h.toolName === toolName &&
-    (h.timestamp || 0) >= start &&
-    (h.timestamp || 0) <= end
-  );
-  return rec ? (rec.nominal || 0) : '';
+ffunction getStaticLatest(toolName) {
+  const rec = allSisa.find(h => h.toolName === toolName);
+  return rec ? (rec.nominal || 0) : 0;
 }
-
+      
 function getLatestNominal(toolName) {
   const rec = allSisa.find(h => h.toolName === toolName);
   return rec ? (rec.nominal || 0) : 0;
