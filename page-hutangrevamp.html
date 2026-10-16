@@ -1759,42 +1759,7 @@ document.getElementById('btnDownloadDebtTemplate')
               });
             }
               
-            } else if (currentTransferData.mode === 'group') {
-              for (const it of currentTransferData.items) {
-                const sisa = Math.max(0, it.remaining ?? it.amount ?? 0);
-                if (sisa <= 0) continue;
-
-                await firestoreDb.ref('debts/' + it.id).update({
-                  remaining: 0,
-                  status: 'paid',
-                  transferredTo: targetName,
-                  transferredAt: now,
-                  updatedAt: now,
-                  note: (it.note ? it.note + ' | ' : '') + `Dialihkan seluruhnya ke ${targetName}`
-                });
-              }
-
-              const newDebtId = 'debt_' + now;
-              await firestoreDb.ref('debts/' + newDebtId).set({
-                id: newDebtId,
-                name: targetName,
-                customerName: targetName,
-                type: currentTransferData.groupType || 'piutang',
-                amount: transferNominal,
-                remaining: transferNominal,
-                note: `Pengalihan seluruh hutang dari ${currentTransferData.groupName}${transferNote ? ' (' + transferNote + ')' : ''}`,
-                status: 'active',
-                transferredFrom: currentTransferData.groupName,
-                userId: user?.uid || '',
-                userName: user?.name || user?.email || '',
-                createdAt: now,
-                updatedAt: now,
-                date: today,
-                kasRecorded: false,
-                source: 'transfer_hutang'
-              });
-            }
-
+           
             Utils.showToast(`Berhasil mengalihkan hutang ke ${targetName}`, 'success');
             closeTransferModal();
             await loadAllData();
