@@ -820,14 +820,48 @@
           <select class="form-control" id="editUserRole"></select>
         </div>
       </div>
+
+      <!-- ⬇️ SISIPKAN INI DISINI: -->
+      <div id="userPermissionsWrap" style="margin-top:1rem; padding-top:0.85rem; border-top:1.5px dashed var(--border);">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.5rem; color:var(--primary);">
+          <i class="fas fa-user-shield"></i> Hak Akses Menu Tambahan
+        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; font-size:0.82rem;">
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_pembelian" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Pembelian</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_telegram" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Saldo Telegram</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_laporan" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Laporan Penjualan</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_laporan_stok" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Laporan Stok</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_pelanggan" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Data Pelanggan</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">
+            <input type="checkbox" id="perm_total_laba" style="accent-color:var(--primary); width:16px; height:16px;">
+            <span>Laba di Dashboard</span>
+          </label>
+        </div>
+      </div>
+      <!-- ⬆️ SELESAI SISIPAN -->
+
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Batal</button>
       <button type="button" class="btn btn-primary" onclick="saveEditUser()">Simpan Perubahan</button>
     </div>
-  </div>
-</div>
-<!-- MODAL KONFIRMASI INTERNAL (BEBAS DARI DIALOG WINDOWS BROWSER) -->
+    
+    <!-- MODAL KONFIRMASI INTERNAL (BEBAS DARI DIALOG WINDOWS BROWSER) -->
 <div class="custom-modal-backdrop" id="customConfirmModal">
   <div class="custom-dialog-card">
     <div class="dialog-icon-wrap danger" id="customConfirmIcon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1263,12 +1297,27 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("editUserId").value = uid;
     document.getElementById("editUserName").value = u.name || "";
     document.getElementById("editUserUsername").value = u.username || "";
-    document.getElementById("editUserEmail").value = u.email || "";
-    roleSelect.value = (u.role || "kasir").toLowerCase();
+   document.getElementById("editUserEmail").value = u.email || "";
+    const targetRole = (u.role || "kasir").toLowerCase();
+    roleSelect.value = targetRole;
+
+    // Tampilkan checklist izin menu staf ini
+    const perms = u.permissions || {};
+    document.getElementById("perm_pembelian").checked = !!perms.pembelian;
+    document.getElementById("perm_telegram").checked = !!perms.telegram;
+    document.getElementById("perm_laporan").checked = !!perms.laporan;
+    document.getElementById("perm_laporan_stok").checked = !!perms['laporan-stok'];
+    document.getElementById("perm_pelanggan").checked = !!(perms['data-pelanggan'] || perms.pelanggan);
+    document.getElementById("perm_total_laba").checked = !!perms.total_laba;
+
+    // Sembunyikan checklist jika yang diedit adalah Owner / Developer
+    const permWrap = document.getElementById("userPermissionsWrap");
+    if (permWrap) {
+      permWrap.style.display = (targetRole === "owner" || targetRole === "developer") ? "none" : "block";
+    }
 
     document.getElementById("modalEditUser").classList.add("active");
-  };
-
+    };
   window.closeEditUserModal = function() {
     document.getElementById("modalEditUser").classList.remove("active");
   };
@@ -1294,10 +1343,23 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     }
 
     try {
+      // Ambil status centang hak akses
+      const permissions = {
+        pembelian: document.getElementById("perm_pembelian").checked,
+        telegram: document.getElementById("perm_telegram").checked,
+        laporan: document.getElementById("perm_laporan").checked,
+        'laporan-stok': document.getElementById("perm_laporan_stok").checked,
+        'laporan-terlaris': document.getElementById("perm_laporan_stok").checked,
+        'data-pelanggan': document.getElementById("perm_pelanggan").checked,
+        pelanggan: document.getElementById("perm_pelanggan").checked,
+        total_laba: document.getElementById("perm_total_laba").checked
+      };
+
       const data = {
         name: name,
         username: username,
         role: role,
+        permissions: permissions, // <-- Ikut disimpan ke Firebase
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
