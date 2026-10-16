@@ -1511,36 +1511,66 @@ window.saveNewUser = async function() {
     return;
   }
 
-  try {
-    // Buat secondary Firebase app instance agar admin tidak logout
+ try {
     const secondaryAppName = "secondary-" + Date.now();
     const secondaryApp = firebase.initializeApp(firebase.app().options, secondaryAppName);
     const secondaryAuth = secondaryApp.auth();
+    let targetUid = null;
 
-    // Buat akun Auth baru di secondary instance
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    const newUid = userCredential.user.uid;
+    try {
+      // 1. Coba daftarkan akun baru
+      const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      targetUid = userCredential.user.uid;
+    } catch(authErr) {
+      // 2. JIKA EMAIL SUDAH PERNAH TERDAFTAR (PERNAH DIHAPUS SEBELUMNYA):
+      if (authErr.code === 'auth/email-already-in-use') {
+        const existingDocs = await db.collection("users").where("email", "==", email).get();
+        
+        // Jika di daftar pengguna Firestore datanya memang sudah tidak ada (sudah dihapus):
+        if (existingDocs.empty) {
+          try {
+            // Coba login dengan password yang baru Anda ketik
+            const loginOld = await secondaryAuth.signInWithEmailAndPassword(email, password);
+            targetUid = loginOld.user.uid;
+          } catch(loginErr) {
+            // Jika password lama berbeda, kirim link reset password otomatis
+            await auth.sendPasswordResetEmail(email);
+            toast("Email ini pernah terdaftar sebelumnya di Firebase. Link aktivasi/reset password telah dikirim ke email tersebut.", "info");
+            await secondaryAuth.signOut();
+            await secondaryApp.delete();
+            return;
+          }
+        } else {
+          toast("Email tersebut saat ini masih aktif digunakan oleh staf lain!", "error");
+          await secondaryAuth.signOut();
+          await secondaryApp.delete();
+          return;
+        }
+      } else {
+        throw authErr;
+      }
+    }
 
-    // Sign-out & hapus secondary instance (admin tetap login)
     await secondaryAuth.signOut();
     await secondaryApp.delete();
 
-    // Simpan dokumen user di Firestore dengan uid yang sama dengan Auth
-    await db.collection("users").doc(newUid).set({
+    // 3. Simpan data pengguna ke Firestore
+    await db.collection("users").doc(targetUid).set({
       name: name,
       username: username,
       email: email,
       role: role,
       status: "active",
+      permissions: {}, // Hak akses menu default
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentUserId
-    });
+    }, { merge: true });
 
-    toast(`Pengguna ${name} berhasil ditambahkan & bisa login!`, "success");
+    toast(`Pengguna ${name} berhasil didaftarkan & langsung aktif!`, "success");
     closeCreateUserModal();
     loadUsers();
   } catch(e) {
-    toast("Gagal menambah pengguna: " + e.message, "error");
+    toast("Gagal: " + e.message, "error");
   }
 };
 })();
