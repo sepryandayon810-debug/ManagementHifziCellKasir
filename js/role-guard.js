@@ -48,6 +48,40 @@ if (typeof window.RoleGuard === 'undefined') {
         item.style.display = 'none';
       }
     }
+
+// ==============================================================
+// ⬇️ HANYA TAMBAHKAN INI DI PALING BAWAH (KODE ASLI DI ATAS 100% UTUH)
+// ==============================================================
+(function() {
+  const originalApply = window.RoleGuard.apply;
+  window.RoleGuard.apply = function(userRole) {
+    // 1. Jalankan RoleGuard asli Anda di atas (mengunci menu bawaan)
+    originalApply.call(window.RoleGuard, userRole);
+
+    // 2. Buka menu yang diberi izin ON khusus oleh Owner
+    const role = (userRole || 'kasir').toLowerCase();
+    if (role === 'owner' || role === 'developer') return;
+
+    try {
+      const perms = JSON.parse(localStorage.getItem('webpos_role_permissions') || '{}');
+      const rolePerms = perms[role] || {};
+
+      Object.keys(rolePerms).forEach(menuKey => {
+        if (rolePerms[menuKey] === true) {
+          const el = document.querySelector(`[data-menu="${menuKey}"]`);
+          if (el) {
+            const item = el.closest('.nav-item') || el;
+            item.style.display = ''; // Buka menu
+          }
+          if (menuKey === 'total_laba') {
+            const laba = document.getElementById('totalLaba');
+            if (laba) laba.closest('.stat-card').style.display = '';
+          }
+        }
+      });
+    } catch (e) {}
+  };
+})();
   };
 }
 var RoleGuard = window.RoleGuard;
