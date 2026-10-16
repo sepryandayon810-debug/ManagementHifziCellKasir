@@ -1159,9 +1159,31 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       return `
         <tr>
           <td>
-            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${u.id}')" title="Klik untuk edit nama / username / email / role">
+            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${u.id}')" title="Klik untuk edit data & hak akses">
               <div style="font-weight:700; color:var(--text-main);">${u.name || '-'}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">@${u.username || '-'}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${u.username || '-'}</div>
+              <!-- TAMPILKAN MENU TAMBAHAN YANG AKTIF UNTUK USER INI -->
+              ${(() => {
+                const p = u.permissions || {};
+                const activeList = [];
+                if (p.pembelian) activeList.push('Pembelian');
+                if (p.telegram) activeList.push('Telegram');
+                if (p.laporan) activeList.push('Lap. Penjualan');
+                if (p['laporan-stok']) activeList.push('Lap. Stok');
+                if (p['laporan-terlaris']) activeList.push('Terlaris');
+                if (p.pelanggan || p['data-pelanggan']) activeList.push('Pelanggan');
+                if (p.penggajian) activeList.push('Penggajian');
+                if (p.pengguna) activeList.push('Pengguna');
+                if (p.backup) activeList.push('Backup');
+                if (p['log-aktivitas']) activeList.push('Log');
+                if (p.reset) activeList.push('Reset');
+                if (p.total_laba) activeList.push('Laba');
+                
+                if (activeList.length === 0) return '';
+                return `<div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:3px;">
+                  ${activeList.map(item => `<span style="background:var(--primary-light); color:var(--primary); font-size:0.65rem; font-weight:700; padding:1px 5px; border-radius:4px;">+${item}</span>`).join('')}
+                </div>`;
+              })()}
             </button>
           </td>
           <td>${u.email || '-'}</td>
