@@ -53,34 +53,62 @@ if (typeof window.RoleGuard === 'undefined') {
 var RoleGuard = window.RoleGuard;
 
 // ==============================================================
-// ⬇️ PENAMBAHAN AMAN DI LUAR OBJEK (SETELAH VAR ROLEGUARD)
+// ⬇️ OTOMATIS AMBIL IZIN DARI DATABASE UNTUK USER YANG LOGIN
 // ==============================================================
 (function() {
   const originalApply = window.RoleGuard.apply;
+
+  // Fungsi pembuka menu yang diizinkan Owner
+  function unhideAllowedMenus(perms) {
+    if (!perms || typeof perms !== 'object') return;
+
+    Object.keys(perms).forEach(menuKey => {
+      if (perms[menuKey] === true) {
+        const el = document.querySelector(`[data-menu="${menuKey}"]`);
+        if (el) {
+          const item = el.closest('.nav-item') || el;
+          item.style.display = ''; // Munculkan menu
+        }
+        if (menuKey === 'total_laba') {
+          const laba = document.getElementById('totalLaba');
+          if (laba) laba.closest('.stat-card').style.display = '';
+        }
+        if (menuKey === 'modal_awal') {
+          const modal = document.getElementById('modalAwal');
+          if (modal) modal.closest('.stat-card').style.display = '';
+        }
+      }
+    });
+  }
+
   window.RoleGuard.apply = function(userRole) {
-    // 1. Jalankan penguncian asli Anda
+    // 1. Jalankan penguncian standar
     originalApply.call(window.RoleGuard, userRole);
 
     const role = (userRole || 'kasir').toLowerCase();
     if (role === 'owner' || role === 'developer') return;
 
+    // 2. Buka menu langsung dari cache browser jika ada
     try {
-      // 2. Baca izin khusus akun kasir yang sedang login
-      const perms = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
+      const cached = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
+      unhideAllowedMenus(cached);
+    } catch (e) {}
 
-      Object.keys(perms).forEach(menuKey => {
-        if (perms[menuKey] === true) {
-          const el = document.querySelector(`[data-menu="${menuKey}"]`);
-          if (el) {
-            const item = el.closest('.nav-item') || el;
-            item.style.display = ''; // Munculkan menu yang diizinkan
-          }
-          if (menuKey === 'total_laba') {
-            const laba = document.getElementById('totalLaba');
-            if (laba) laba.closest('.stat-card').style.display = '';
-          }
+    // 3. Tarik data izin terbaru dari Firestore secara otomatis untuk user ini
+    if (typeof firebase !== 'undefined' && firebase.auth && firebase.firestore) {
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          firebase.firestore().collection('users').doc(user.uid).get().then(function(doc) {
+            if (doc.exists && doc.data() && doc.data().permissions) {
+              const livePerms = doc.data().permissions;
+              localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms));
+              unhideAllowedMenus(livePerms); // Buka menu langsung
+            }
+          }).catch(function(err) {
+            console.warn("Gagal sync izin:", err);
+          });
         }
       });
-    } catch (e) {}
+    }
   };
 })();
