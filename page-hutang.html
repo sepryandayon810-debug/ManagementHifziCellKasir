@@ -283,6 +283,10 @@
     .btn-delete:hover { filter: brightness(0.9); }
     .btn-restore { background: var(--warning); }
     .btn-restore:hover { filter: brightness(0.9); }
+    .btn-transfer { background: #8b5cf6; }
+    .btn-transfer:hover { filter: brightness(0.9); }
+    .btn-transfer-outline { background: transparent; border: 1.5px solid #8b5cf6; color: #8b5cf6; }
+    .btn-transfer-outline:hover { background: #8b5cf6; color: white; }
 
     .expand-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; font-size: 0.8rem; transition: transform 0.2s; }
     .expand-btn.rotated { transform: rotate(180deg); }
@@ -748,9 +752,61 @@
           </label>
         </div>
       </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; width:100%;">
+        <button type="button" class="btn btn-transfer-outline btn-sm" id="btnTriggerTransferFromPay" title="Alihkan tagihan ini ke orang lain">
+          <i class="fas fa-exchange-alt"></i> Alihkan Hutang
+        </button>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" id="btnCancelPayment">Batal</button>
+          <button class="btn btn-primary" id="btnConfirmPayment"><i class="fas fa-check"></i> Bayar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Transfer Hutang -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:#8b5cf6;">
+          <i class="fas fa-exchange-alt"></i> Transfer Hutang/Piutang
+        </h3>
+        <button class="modal-close" id="btnCloseTransferModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">HUTANG ASAL</div>
+          <div style="font-weight: 800; font-size: 1rem; color: var(--text-main);" id="transferFromName">-</div>
+          <div style="font-size: 0.82rem; color: var(--danger); font-weight: 700;" id="transferFromRemaining">Sisa: Rp 0</div>
+        </div>
+
+        <div class="form-group" style="position: relative;">
+          <label class="form-label">Dialihkan Kepada (Pelanggan Tujuan)</label>
+          <input type="text" class="form-input" id="transferTargetName" placeholder="Ketik nama pelanggan baru..." autocomplete="off" required>
+          <div id="transferCustomerAutocomplete" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); border-top: none; max-height: 160px; overflow-y: auto; z-index: 100; display: none; box-shadow: var(--shadow-lg);"></div>
+          <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.3rem; display: block;">
+            <i class="fas fa-info-circle"></i> Pilih pelanggan yang ada atau ketik nama baru
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nominal yang Ditransfer (Rp)</label>
+          <div class="input-prefix">
+            <span class="prefix">Rp</span>
+            <input type="text" class="form-input" id="transferAmount" placeholder="0" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Catatan / Alasan Pengalihan</label>
+          <input type="text" class="form-input" id="transferNote" placeholder="Misal: Tagihan diambil alih oleh keluarga/rekan...">
+        </div>
+      </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" id="btnCancelPayment">Batal</button>
-        <button class="btn btn-primary" id="btnConfirmPayment"><i class="fas fa-check"></i> Bayar</button>
+        <button class="btn btn-secondary" id="btnCancelTransfer">Batal</button>
+        <button class="btn btn-primary" id="btnConfirmTransfer" style="background:#8b5cf6;">
+          <i class="fas fa-check"></i> Proses Transfer
+        </button>
       </div>
     </div>
   </div>
@@ -1448,6 +1504,273 @@ document.getElementById('btnDownloadDebtTemplate')
           }
         }
 
+        let currentTransferData = null;
+
+        function closeTransferModal() {
+          document.getElementById('transferModal').classList.remove('active');
+          currentTransferData = null;
+        }
+
+        document.getElementById('btnCloseTransferModal').addEventListener('click', closeTransferModal);
+        document.getElementById('btnCancelTransfer').addEventListener('click', closeTransferModal);
+        document.getElementById('btnConfirmTransfer').addEventListener('click', processTransferHutang);
+
+        document.getElementById('transferAmount').addEventListener('input', (e) => {
+          e.target.value = Utils.formatNumberInput(e.target.value);
+        });
+
+        document.getElementById('btnTriggerTransferFromPay')?.addEventListener('click', () => {
+          if (currentPaymentId) {
+            const id = currentPaymentId;
+            closePaymentModal();
+            window.openTransferSingle(id);
+          } else if (currentBatchItems && currentBatchItems.length > 0) {
+            const firstItem = currentBatchItems[0];
+            const groupName = firstItem.name || firstItem.customerName;
+            const groupType = firstItem.type;
+            closePaymentModal();
+            window.openTransferGroup(groupName, groupType);
+          }
+        });
+
+        const transferTargetInput = document.getElementById('transferTargetName');
+        const transferAutocomplete = document.getElementById('transferCustomerAutocomplete');
+
+        if (transferTargetInput && transferAutocomplete) {
+          transferTargetInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (val.length < 2) {
+              transferAutocomplete.style.display = 'none';
+              return;
+            }
+            const matches = Object.values(customerData).filter(c => 
+              c.name && c.name.toLowerCase().includes(val)
+            );
+            if (matches.length > 0) {
+              transferAutocomplete.innerHTML = matches.map(c => `
+                <div style="padding:0.65rem 0.9rem; cursor:pointer; border-bottom:1px solid var(--border);"
+                     onmouseover="this.style.background='var(--bg-subtle)'"
+                     onmouseout="this.style.background='var(--bg-surface)'"
+                     onclick="window.selectTransferTarget('${c.name.replace(/'/g, "\\'")}')">
+                  <div style="font-weight:700; font-size:0.85rem;">${c.name}</div>
+                  ${c.phone ? `<div style="font-size:0.72rem; color:var(--text-muted);">${c.phone}</div>` : ''}
+                </div>
+              `).join('');
+              transferAutocomplete.style.display = 'block';
+            } else {
+              transferAutocomplete.style.display = 'none';
+            }
+          });
+
+          document.addEventListener('click', (e) => {
+            if (!transferTargetInput.contains(e.target) && !transferAutocomplete.contains(e.target)) {
+              transferAutocomplete.style.display = 'none';
+            }
+          });
+        }
+
+        window.selectTransferTarget = (name) => {
+          document.getElementById('transferTargetName').value = name;
+          document.getElementById('transferCustomerAutocomplete').style.display = 'none';
+        };
+
+        window.openTransferSingle = (id) => {
+          const item = hutangData[id];
+          if (!item) return;
+
+          const remaining = Math.max(0, Number(item.remaining ?? item.amount ?? 0));
+          if (remaining <= 0) {
+            Utils.showToast('Hutang ini sudah lunas, tidak dapat dialihkan', 'warning');
+            return;
+          }
+
+          currentTransferData = {
+            mode: 'single',
+            id: id,
+            item: item,
+            remaining: remaining
+          };
+
+          document.getElementById('transferFromName').textContent = item.name || 'Pelanggan';
+          document.getElementById('transferFromRemaining').textContent = 'Sisa: ' + Utils.formatRupiah(remaining);
+          document.getElementById('transferTargetName').value = '';
+          document.getElementById('transferAmount').value = Utils.formatNumberInput(remaining.toString());
+          document.getElementById('transferAmount').readOnly = false;
+          document.getElementById('transferNote').value = '';
+          document.getElementById('transferModal').classList.add('active');
+        };
+
+        window.openTransferGroup = (groupName, groupType) => {
+          const normalizedName = normalizeDebtName(groupName);
+          const items = Object.values(hutangData).filter(d =>
+            normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName &&
+            (d.type === 'hutang' ? 'hutang' : 'piutang') === groupType &&
+            d.status === 'active'
+          );
+
+          if (items.length === 0) {
+            Utils.showToast('Tidak ada hutang aktif untuk dialihkan', 'warning');
+            return;
+          }
+
+          const totalRemaining = items.reduce((sum, it) => sum + (it.remaining || it.amount || 0), 0);
+
+          currentTransferData = {
+            mode: 'group',
+            groupName: groupName,
+            groupType: groupType,
+            items: items,
+            remaining: totalRemaining
+          };
+
+          document.getElementById('transferFromName').textContent = `${groupName} (${items.length} transaksi)`;
+          document.getElementById('transferFromRemaining').textContent = 'Total Sisa: ' + Utils.formatRupiah(totalRemaining);
+          document.getElementById('transferTargetName').value = '';
+          document.getElementById('transferAmount').value = Utils.formatNumberInput(totalRemaining.toString());
+          document.getElementById('transferAmount').readOnly = true;
+          document.getElementById('transferNote').value = '';
+          document.getElementById('transferModal').classList.add('active');
+        };
+
+        async function processTransferHutang() {
+          if (!currentTransferData) return;
+
+          const targetName = document.getElementById('transferTargetName').value.trim();
+          const transferNominal = parseInt(document.getElementById('transferAmount').value.replace(/\./g, ''), 10) || 0;
+          const transferNote = document.getElementById('transferNote').value.trim();
+          const user = Auth.getCurrentUser();
+
+          if (!targetName) {
+            Utils.showToast('Nama pelanggan tujuan wajib diisi', 'error');
+            return;
+          }
+
+          if (transferNominal <= 0) {
+            Utils.showToast('Nominal transfer harus lebih dari 0', 'error');
+            return;
+          }
+
+          if (transferNominal > currentTransferData.remaining) {
+            Utils.showToast('Nominal melebihi sisa hutang asal', 'error');
+            return;
+          }
+
+          Utils.showLoading();
+
+          try {
+            const now = Date.now();
+            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+
+            const existingCust = Object.values(customerData).find(c => c.name && c.name.toLowerCase() === targetName.toLowerCase());
+            if (!existingCust) {
+              await CustomerStorage.save('cust_' + now, {
+                name: targetName,
+                createdAt: now
+              }).catch(() => {});
+            }
+
+            if (currentTransferData.mode === 'single') {
+              const oldItem = currentTransferData.item;
+              const oldId = oldItem.id || currentTransferData.id;
+              const remainingOld = Math.max(0, (oldItem.remaining ?? oldItem.amount ?? 0) - transferNominal);
+
+              const newDebtId = 'debt_' + now;
+
+              // 1. Catat ke si A link ID hutang si B (transferredDebtId)
+              await firestoreDb.ref('debts/' + oldId).update({
+                remaining: remainingOld,
+                status: remainingOld === 0 ? 'paid' : 'active',
+                transferredTo: targetName,
+                transferredDebtId: newDebtId, // <-- PENTING AGAR BISA DI-RESTORE OTOMATIS
+                transferredAmount: transferNominal,
+                updatedAt: now,
+                note: (oldItem.note ? oldItem.note + ' | ' : '') + `Dialihkan ke ${targetName} sebesar ${Utils.formatRupiah(transferNominal)}`
+              });
+
+              // 2. Buat hutang si B DENGAN MEMBAWA RINCIAN PRODUK (items)
+              await firestoreDb.ref('debts/' + newDebtId).set({
+                id: newDebtId,
+                name: targetName,
+                customerName: targetName,
+                type: oldItem.type || 'piutang',
+                amount: transferNominal,
+                remaining: transferNominal,
+                dueDate: oldItem.dueDate || null,
+                items: oldItem.items || [],                // <-- PENTING: RINCIAN BARANG IKUT
+                invoiceNumber: oldItem.invoiceNumber || '',// <-- PENTING: NOTA IKUT
+                transactionId: oldItem.transactionId || '',// <-- PENTING: ID TRANSAKSI IKUT
+                note: `Pengalihan dari ${oldItem.name || 'Pelanggan'}${transferNote ? ' (' + transferNote + ')' : ''}`,
+                status: 'active',
+                transferredFrom: oldItem.name || 'Pelanggan',
+                originalDebtId: oldId,
+                userId: user?.uid || '',
+                userName: user?.name || user?.email || '',
+                createdAt: now,
+                updatedAt: now,
+                date: today,
+                kasRecorded: false,
+                source: 'transfer_hutang'
+              });
+              
+            } else if (currentTransferData.mode === 'group') {
+              // Kumpulkan semua rincian barang belanjaan dari seluruh nota si A
+              const allItems = [];
+              currentTransferData.items.forEach(it => {
+                if (it.items && Array.isArray(it.items)) {
+                  allItems.push(...it.items);
+                }
+              });
+
+              const newDebtId = 'debt_' + now;
+
+              for (const it of currentTransferData.items) {
+                const sisa = Math.max(0, it.remaining ?? it.amount ?? 0);
+                if (sisa <= 0) continue;
+
+                await firestoreDb.ref('debts/' + it.id).update({
+                  remaining: 0,
+                  status: 'paid',
+                  transferredTo: targetName,
+                  transferredDebtId: newDebtId, // <-- Link ID
+                  transferredAt: now,
+                  updatedAt: now,
+                  note: (it.note ? it.note + ' | ' : '') + `Dialihkan seluruhnya ke ${targetName}`
+                });
+              }
+
+              await firestoreDb.ref('debts/' + newDebtId).set({
+                id: newDebtId,
+                name: targetName,
+                customerName: targetName,
+                type: currentTransferData.groupType || 'piutang',
+                amount: transferNominal,
+                remaining: transferNominal,
+                items: allItems, // <-- RINCIAN SEMUA BARANG IKUT TAMPIL DI B
+                note: `Pengalihan seluruh hutang dari ${currentTransferData.groupName}${transferNote ? ' (' + transferNote + ')' : ''}`,
+                status: 'active',
+                transferredFrom: currentTransferData.groupName,
+                userId: user?.uid || '',
+                userName: user?.name || user?.email || '',
+                createdAt: now,
+                updatedAt: now,
+                date: today,
+                kasRecorded: false,
+                source: 'transfer_hutang'
+              });
+            }
+              
+           
+            Utils.showToast(`Berhasil mengalihkan hutang ke ${targetName}`, 'success');
+            closeTransferModal();
+            await loadAllData();
+          } catch (error) {
+            console.error('Error transfer hutang:', error);
+            Utils.showToast('Gagal mentransfer hutang: ' + error.message, 'error');
+          } finally {
+            Utils.hideLoading();
+          }
+        }
+
         function closeCustomerModal() {
           document.getElementById('customerModal').classList.remove('active');
         }
@@ -1775,9 +2098,16 @@ function getDisplayDebtName(data) {
                 <!-- DETAIL PER TANGGAL -->
                 <div class="hutang-detail-row" id="detail-${groupId}">
                   <div class="hutang-detail-content">
-                    <div style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
-                      Detail Transaksi / Rincian Produk
-                    </div>
+                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+  <div style="font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+    Detail Transaksi / Rincian Produk
+  </div>
+  ${!isPaid ? `
+    <button class="btn btn-transfer-outline btn-sm" onclick="window.openTransferGroup('${safeGroupName}', '${group.type}')" style="padding: 2px 8px; font-size: 0.72rem;">
+      <i class="fas fa-exchange-alt"></i> Alihkan Semua
+    </button>
+  ` : ''}
+</div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                       ${group.items.map((item, idx) => {
                         const rawDate = item.createdAt || item.date || item.updatedAt;
@@ -1810,9 +2140,12 @@ const createdDate = rawDate
                                 </div>
                               </div>
                               <div style="display: flex; gap: 0.25rem;">
-                                ${!isItemPaid ? `
+                               ${!isItemPaid ? `
                                   <button class="btn-icon-sm btn-pay" onclick="window.openPayment('${item.id}')" title="Bayar" style="width: 28px; height: 28px; min-width: 28px;">
                                     <i class="fas fa-money-bill-wave" style="font-size: 0.75rem;"></i>
+                                  </button>
+                                  <button class="btn-icon-sm btn-transfer" onclick="window.openTransferSingle('${item.id}')" title="Transfer / Alihkan Hutang" style="width: 28px; height: 28px; min-width: 28px;">
+                                    <i class="fas fa-exchange-alt" style="font-size: 0.72rem;"></i>
                                   </button>
                                 ` : `
                                   <button class="btn-icon-sm btn-restore" onclick="window.restoreHutang('${item.id}')" title="Restore" style="width: 28px; height: 28px; min-width: 28px;">
@@ -2183,15 +2516,30 @@ try {
         };
 
         window.restoreHutang = (id) => {
-          Utils.confirm('Restore data ini ke status aktif?', async () => {
+          const item = hutangData[id];
+          const isTransfer = item && item.transferredDebtId;
+
+          const pesan = isTransfer 
+            ? 'Hutang ini sebelumnya dialihkan ke orang lain. Apakah Anda ingin membatalkan pengalihan dan mengembalikan tagihan ini ke status aktif?'
+            : 'Restore data ini ke status aktif?';
+
+          Utils.confirm(pesan, async () => {
             Utils.showLoading();
             try {
+              // Jika ini hasil transfer, hapus tagihan di penerima transfer agar tidak ganda
+              if (item.transferredDebtId) {
+                await firestoreDb.ref('debts/' + item.transferredDebtId).remove().catch(() => {});
+              }
+
               await firestoreDb.ref('debts/' + id).update({
                 status: 'active',
-                remaining: hutangData[id].amount,
+                remaining: item.amount,
+                transferredTo: null,
+                transferredDebtId: null,
                 restoredAt: Date.now()
               });
-              Utils.showToast('Data berhasil direstore', 'success');
+
+              Utils.showToast('Data berhasil dikembalikan seperti semula', 'success');
               loadAllData();
             } catch (error) {
               console.error('Error restoring hutang:', error);
@@ -2200,7 +2548,7 @@ try {
             Utils.hideLoading();
           });
         };
-
+        
         async function processPayment() {
           const affectKas = document.getElementById('affectKas').checked;
           const note = document.getElementById('paymentNote').value.trim();
