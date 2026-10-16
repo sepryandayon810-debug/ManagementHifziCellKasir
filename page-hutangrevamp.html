@@ -1,0 +1,3357 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <title>WebPOS - Hutang/Piutang</title>
+
+  <!-- Terapkan tema dan warna global sebelum halaman dirender -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('webpos_theme') || 'light';
+      const savedColor = localStorage.getItem('webpos_theme_color') || localStorage.getItem('theme_color') || 'indigo';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.documentElement.setAttribute('data-theme-color', savedColor);
+    })();
+  </script>
+  <script>
+    (function() {
+      try {
+        const referrerPath = (document.referrer || '').split(/[?#]/)[0].replace(/\/+$/, '');
+        if (referrerPath.endsWith('/page-kasir.html') || referrerPath === 'page-kasir.html') {
+          localStorage.setItem('fromKasir', 'true');
+        }
+      } catch (e) {
+        console.warn('Tidak dapat membaca asal navigasi:', e);
+      }
+    })();
+  </script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- SheetJS for Excel Support -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <!-- Firebase SDK: Authentication + Cloud Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      
+      --sidebar-width: 270px;
+      --sidebar-collapsed: 76px;
+      --header-h: 68px;
+      --bottom-nav-height: 60px;
+
+      --bg-primary: var(--bg-base);
+      --bg-secondary: var(--bg-subtle);
+      --bg-card: var(--bg-surface);
+      --border-color: var(--border);
+      --text-primary: var(--text-main);
+      --text-secondary: var(--text-sub);
+      --primary-dark: var(--primary-hover);
+    }
+
+    [data-theme-color="green"] { --primary: #059669; --primary-hover: #047857; --primary-light: #ecfdf5; }
+    [data-theme-color="blue"] { --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff; }
+    [data-theme-color="orange"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; }
+    [data-theme-color="purple"] { --primary: #7c3aed; --primary-hover: #6d28d9; --primary-light: #f5f3ff; }
+    [data-theme-color="red"] { --primary: #dc2626; --primary-hover: #b91c1c; --primary-light: #fef2f2; }
+    [data-theme-color="pink"] { --primary: #db2777; --primary-hover: #be185d; --primary-light: #fdf2f8; }
+    [data-theme-color="teal"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #f0fdfa; }
+    [data-theme-color="indigo"] { --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; }
+
+    [data-theme="dark"] {
+      --bg-base: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border: #2e384d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+      --primary-light: rgba(79, 70, 229, 0.2);
+      --success-light: rgba(5, 150, 105, 0.15);
+      --danger-light: rgba(220, 38, 38, 0.15);
+      --warning-light: rgba(217, 119, 6, 0.15);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size: 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg-base); color: var(--text-main); line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-subtle); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+    .app-container { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.25s; }
+    .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.25s ease, width 0.25s ease; }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
+
+    .sidebar-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: var(--header-h); }
+    .logo-container { display: flex; align-items: center; gap: 0.65rem; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.15rem; flex-shrink: 0; }
+    .logo-text { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .sidebar.collapsed .logo-text { display: none; }
+
+    .menu-toggle { width: 28px; height: 28px; background: var(--primary); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+    .menu-toggle:hover { background: var(--primary-hover); }
+    .sidebar.collapsed .menu-toggle { transform: rotate(180deg); }
+
+    .sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .search-input-wrapper { position: relative; display: flex; align-items: center; }
+    .search-input-wrapper i { position: absolute; left: 0.85rem; color: var(--text-muted); font-size: 0.8rem; }
+    .search-input { width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.82rem; outline: none; }
+    .search-input:focus { border-color: var(--primary); }
+    .sidebar.collapsed .sidebar-search { display: none; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 0.35rem 0.75rem; margin-bottom: 0.2rem; }
+    .sidebar.collapsed .nav-section-title { display: none; }
+
+    .nav-menu { list-style: none; }
+    .nav-item { margin-bottom: 3px; }
+    .nav-link { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); color: var(--text-sub); text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: all 0.15s; }
+    .nav-link:hover { background: var(--bg-subtle); color: var(--primary); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 0.95rem; }
+    .sidebar.collapsed .nav-link span { display: none; }
+
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { justify-content: space-between; }
+    .dropdown-arrow { transition: transform 0.2s; font-size: 0.75rem; margin-left: auto; }
+    .nav-dropdown.open .dropdown-arrow { transform: rotate(180deg); }
+    .nav-submenu { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 2rem; }
+    .sidebar.collapsed .nav-submenu { display: none; }
+    .nav-dropdown.open .nav-submenu { max-height: 450px; margin-top: 2px; }
+    .nav-submenu .nav-link { padding: 0.45rem 0.75rem; font-size: 0.82rem; }
+
+    .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    .user-avatar { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .user-info { flex: 1; overflow: hidden; }
+    .sidebar.collapsed .user-info { display: none; }
+    .user-name { font-weight: 700; font-size: 0.88rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+    /* Main Content */
+    .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.25s; }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+    @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
+
+    .main-header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; position: sticky; top: 0; z-index: 100; width: 100%; box-sizing: border-box; }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+
+    .page-content { flex: 1; padding: 1.25rem; overflow-y: auto; }
+    @media(max-width: 768px) { .page-content { padding: 1rem; padding-bottom: calc(var(--bottom-nav-height) + 1.5rem); } }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 700; cursor: pointer; transition: all 0.15s; border: none; outline: none; white-space: nowrap; font-family: inherit; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover:not(:disabled) { filter: brightness(0.9); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover:not(:disabled) { filter: brightness(0.9); }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
+    .btn-outline:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+
+    .btn-icon-box { width: 38px; height: 38px; padding: 0; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-sub); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+    .btn-icon-box:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+    /* Cards */
+    .card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+    .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Action Bar Atas */
+    .top-action-bar { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.15rem; }
+    .btn-create-debt { width: 100%; padding: 0.85rem 1.25rem; background: var(--primary); color: white; border: none; border-radius: var(--radius-lg); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm); }
+    .btn-create-debt:hover { background: var(--primary-hover); }
+    .btn-manage-cust { width: 100%; padding: 0.75rem 1.25rem; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: var(--radius-lg); font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm); }
+    .btn-manage-cust:hover { background: var(--bg-subtle); border-color: var(--primary); color: var(--primary); }
+
+    /* Kotak Total */
+    .summary-grid-fixed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.15rem; }
+    .summary-box-card { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); padding: 1.1rem 1.15rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+    .summary-box-card.piutang { border-top: 4px solid var(--warning); }
+    .summary-box-card.hutang { border-top: 4px solid var(--danger); }
+    .summary-box-head { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .summary-box-card.piutang .summary-box-head i { color: var(--warning); }
+    .summary-box-card.hutang .summary-box-head i { color: var(--danger); }
+    .summary-box-val { font-size: 1.15rem; font-weight: 800; line-height: 1.25; word-break: break-word; }
+    .summary-box-card.piutang .summary-box-val { color: var(--warning); }
+    .summary-box-card.hutang .summary-box-val { color: var(--danger); }
+
+    /* Toggle Switch */
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 50px; transition: 0.25s; }
+    .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.25s; box-shadow: var(--shadow-sm); }
+    input:checked + .toggle-slider { background: var(--primary); border-color: var(--primary); }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    .status-toggle-container { display: flex; align-items: center; gap: 0.5rem; background: var(--bg-subtle); padding: 0.35rem 0.75rem; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    .status-toggle-label { font-size: 0.78rem; font-weight: 700; color: var(--text-sub); }
+    .status-toggle-label.active { color: var(--primary); }
+
+    .filter-tabs { display: flex; gap: 0.35rem; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: none; }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .filter-tab { padding: 0.35rem 0.75rem; border: 1px solid var(--border); background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 700; color: var(--text-sub); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .filter-tab:hover, .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .hutang-list { max-height: min(540px, calc(100vh - 350px)); overflow-y: auto; }
+    .hutang-item { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    .hutang-item:hover { background: var(--bg-subtle); }
+    .hutang-item:last-child { border-bottom: none; }
+
+    .hutang-info { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
+    .hutang-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: white; flex-shrink: 0; }
+    .hutang-details { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .hutang-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .hutang-amount-section { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; margin-left: 0.5rem; }
+    @media(max-width: 768px) {
+      .hutang-item { flex-wrap: wrap; row-gap: 0.5rem; }
+      .hutang-info { flex: 1 1 100%; }
+    }
+    .hutang-amount { font-size: 0.95rem; font-weight: 800; }
+    .hutang-amount.hutang { color: var(--danger); }
+    .hutang-amount.piutang { color: var(--warning); }
+    .hutang-amount.paid { color: var(--success); text-decoration: line-through; opacity: 0.7; }
+
+    .status-badge { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700; text-transform: uppercase; }
+    .status-badge.active { background: var(--success-light); color: var(--success); }
+    .status-badge.inactive { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+
+    .btn-icon-sm { width: 30px; height: 30px; border: none; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: white; flex-shrink: 0; font-size: 0.75rem; }
+    .btn-pay { background: var(--success); }
+    .btn-pay:hover { filter: brightness(0.9); }
+    .btn-edit { background: var(--accent); }
+    .btn-edit:hover { filter: brightness(0.9); }
+    .btn-delete { background: var(--danger); }
+    .btn-delete:hover { filter: brightness(0.9); }
+    .btn-restore { background: var(--warning); }
+    .btn-restore:hover { filter: brightness(0.9); }
+    .btn-transfer { background: #8b5cf6; }
+    .btn-transfer:hover { filter: brightness(0.9); }
+    .btn-transfer-outline { background: transparent; border: 1.5px solid #8b5cf6; color: #8b5cf6; }
+    .btn-transfer-outline:hover { background: #8b5cf6; color: white; }
+
+    .expand-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; font-size: 0.8rem; transition: transform 0.2s; }
+    .expand-btn.rotated { transform: rotate(180deg); }
+
+    .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; display: block; }
+
+    .hutang-detail-row { display: none; background: var(--bg-subtle); border-top: 1px dashed var(--border); }
+    .hutang-detail-row.show { display: block; }
+    .hutang-detail-content { padding: 0.75rem 1rem; }
+
+    /* Modal Styling */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 1rem; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 460px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1.15rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+    .modal-close { width: 34px; height: 34px; border: none; background: var(--bg-subtle); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+    .modal-close:hover { background: var(--danger-light); color: var(--danger); }
+    .modal-body { padding: 1.35rem; }
+    
+    .form-group { margin-bottom: 1.1rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-sub); margin-bottom: 0.4rem; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.9rem; outline: none; font-family: inherit; transition: all 0.2s; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 3px var(--primary-light); }
+    .form-textarea { min-height: 75px; resize: vertical; }
+    .input-prefix { position: relative; }
+    .input-prefix .prefix { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700; font-size: 0.88rem; }
+    .input-prefix input { padding-left: 2.85rem; font-weight: 700; }
+    
+    .kas-card-box { margin-top: 1.15rem; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-lg); border: 1.5px solid var(--border); transition: all 0.2s; }
+    .kas-card-header { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.75rem; }
+    .kas-checkbox-container { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0.85rem; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+    .kas-checkbox-container input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); cursor: pointer; }
+    .kas-checkbox-title { font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; }
+    .kas-checkbox-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; display: block; line-height: 1.35; }
+
+    .modal-footer { padding: 1.1rem 1.35rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg-subtle); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
+
+    /* MODAL KONFIRMASI INTERNAL (BERSIH DARI JENDELA WINDOWS) */
+    .custom-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; z-index: 5000; opacity: 0; visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .custom-modal-backdrop.open { opacity: 1; visibility: visible; }
+    .custom-dialog-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); width: 100%; max-width: 380px;
+      padding: 1.75rem 1.5rem; box-shadow: var(--shadow-lg); text-align: center;
+    }
+    .dialog-icon-wrap {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin-bottom: 1rem;
+    }
+    .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
+    .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
+    .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
+    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-btn-group { display: flex; gap: 0.65rem; }
+    .dialog-btn {
+      flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
+      font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .dialog-btn-primary { background: var(--danger); color: #fff; }
+    .dialog-btn-secondary { background: var(--bg-subtle); color: var(--text-main); border: 1px solid var(--border); }
+
+    /* Loading & Toast */
+    .loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; opacity: 0; visibility: hidden; transition: all 0.25s; }
+    .loading-overlay.active { opacity: 1; visibility: visible; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 360px; }
+    .toast { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem; background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border-left: 4px solid; font-size: 0.85rem; font-weight: 600; }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.info { border-left-color: var(--accent); }
+
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: var(--bg-surface); border-top: 1px solid var(--border); z-index: 99; padding: 0 0.5rem; align-items: center; justify-content: space-around; }
+    .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text-muted); text-decoration: none; font-size: 0.65rem; font-weight: 600; padding: 0.5rem; transition: all 0.15s; }
+    .mobile-nav-item i { font-size: 1.1rem; }
+    .mobile-nav-item.active { color: var(--primary); }
+    @media(max-width: 1024px) { .mobile-nav { display: flex; } }
+
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+
+    /* ===== PULL TO REFRESH ===== */
+    #ptrContainer { position: fixed; top: 0; left: 0; right: 0; z-index: 1200; display: flex; justify-content: center; pointer-events: none; transform: translateY(-70px); transition: transform 0.2s ease; }
+    #ptrContainer.visible { transform: translateY(12px); }
+    #ptrIndicator { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 0.9rem; }
+    #ptrIndicator.spin i { animation: spin 0.8s linear infinite; }
+    
+  </style>
+</head>
+<body>
+   <div id="ptrContainer">
+    <div id="ptrIndicator"><i class="fas fa-arrow-down"></i></div>
+  </div>
+  
+  <div class="app-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    
+    <!-- Sidebar Lengkap Sesuai Master Index -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon"><i class="fas fa-cash-register"></i></div>
+          <span class="logo-text">WebPOS</span>
+        </div>
+        <button class="menu-toggle" id="menuToggle" title="Ciutkan sidebar"><i class="fas fa-chevron-left"></i></button>
+      </div>
+      
+      <div class="sidebar-search">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" id="menuSearch" placeholder="Cari menu...">
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <!-- Utama -->
+        <div class="nav-section">
+          <div class="nav-section-title">Utama</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html" class="nav-link" data-menu="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+            <li class="nav-item"><a href="page-kasir.html" class="nav-link" data-menu="kasir"><i class="fas fa-calculator"></i><span>Kasir</span></a></li>
+            <li class="nav-item"><a href="page-produk.html" class="nav-link" data-menu="produk"><i class="fas fa-box"></i><span>Produk</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Transaksi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Transaksi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-riwayat.html" class="nav-link" data-menu="riwayat"><i class="fas fa-history"></i><span>Riwayat Transaksi</span></a></li>
+            <li class="nav-item nav-dropdown" data-dropdown>
+              <div class="nav-link nav-dropdown-toggle" data-menu="kas">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <i class="fas fa-wallet"></i><span>Kas Management</span>
+                </div>
+                <i class="fas fa-chevron-down dropdown-arrow"></i>
+              </div>
+              <ul class="nav-submenu">
+                <li><a href="page-kas.html" class="nav-link"><span>Ringkasan Kas</span></a></li>
+                <li><a href="page-modal-harian.html" class="nav-link"><span>Modal Harian</span></a></li>
+                <li><a href="page-kas-masuk.html" class="nav-link"><span>Kas Masuk</span></a></li>
+                <li><a href="page-kas-keluar.html" class="nav-link"><span>Kas Keluar</span></a></li>
+                <li><a href="page-kas-shift.html" class="nav-link"><span>Kas & Shift</span></a></li>
+                <li><a href="page-closing.html" class="nav-link"><span>Closing Shift</span></a></li>
+                <li><a href="page-kas-topup.html" class="nav-link"><span>Top Up</span></a></li>
+                <li><a href="page-kas-tarik.html" class="nav-link"><span>Tarik Tunai</span></a></li>
+              </ul>
+            </li>
+            <li class="nav-item"><a href="page-pembelian.html" class="nav-link" data-menu="pembelian"><i class="fas fa-shopping-cart"></i><span>Pembelian / Restock</span></a></li>
+            <li class="nav-item"><a href="page-hutang.html" class="nav-link active" data-menu="hutang"><i class="fas fa-hand-holding-usd"></i><span>Hutang & Piutang</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Laporan -->
+        <div class="nav-section">
+          <div class="nav-section-title">Laporan</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-laporan.html" class="nav-link" data-menu="laporan"><i class="fas fa-chart-bar"></i><span>Laporan Penjualan</span></a></li>
+            <li class="nav-item"><a href="page-laporan-stok.html" class="nav-link" data-menu="laporan-stok"><i class="fas fa-boxes"></i><span>Laporan Stok</span></a></li>
+            <li class="nav-item"><a href="page-laporan-terlaris.html" class="nav-link" data-menu="laporan-terlaris"><i class="fas fa-crown"></i><span>Barang Terlaris</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Integrasi -->
+        <div class="nav-section">
+          <div class="nav-section-title">Integrasi</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-saldo-telegram.html" class="nav-link" data-menu="telegram"><i class="fab fa-telegram"></i><span>Saldo Telegram</span></a></li>
+            <li class="nav-item"><a href="page-data-pelanggan.html" class="nav-link" data-menu="pelanggan"><i class="fas fa-users"></i><span>Data Pelanggan</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Penggajian -->
+        <div class="nav-section">
+          <div class="nav-section-title">Penggajian</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-penggajian.html" class="nav-link" data-menu="penggajian"><i class="fas fa-money-check-alt"></i><span>Data Penggajian</span></a></li>
+          </ul>
+        </div>
+
+        <!-- Sistem -->
+        <div class="nav-section">
+          <div class="nav-section-title">Sistem</div>
+          <ul class="nav-menu">
+            <li class="nav-item"><a href="page-pengguna.html" class="nav-link" data-menu="pengguna"><i class="fas fa-user-cog"></i><span>Pengguna</span></a></li>
+            <li class="nav-item"><a href="page-setting.html" class="nav-link" data-menu="setting"><i class="fas fa-cog"></i><span>Pengaturan</span></a></li>
+            <li class="nav-item"><a href="page-backup.html" class="nav-link" data-menu="backup"><i class="fas fa-cloud-upload-alt"></i><span>Backup & Sync</span></a></li>
+            <li class="nav-item"><a href="page-log-aktivitas.html" class="nav-link" data-menu="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></a></li>
+            <li class="nav-item"><a href="page-printer.html" class="nav-link" data-menu="printer"><i class="fas fa-print"></i><span>Printer & Struk</span></a></li>
+            <li class="nav-item"><a href="page-reset.html" class="nav-link" data-menu="reset"><i class="fas fa-trash-alt"></i><span>Reset Data</span></a></li>
+          </ul>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile" id="userProfile">
+          <div class="user-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-role" id="userRole">-</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+          <h1 class="header-title">Hutang/Piutang</h1>
+        </div>
+        
+        <div class="header-actions">
+          <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+          <button class="btn-icon-box" id="btnLogout" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-content">
+        <div class="hutang-container">
+          <!-- Top Action Bar -->
+          <div class="top-action-bar">
+            <button class="btn-create-debt" id="btnAddHutang">
+              <i class="fas fa-plus"></i> Tambah Hutang/Piutang
+            </button>
+            <button class="btn-manage-cust" id="btnKelolaCustomer">
+              <i class="fas fa-users-cog"></i> Kelola Pelanggan (<span id="customerCountBadge">0</span>)
+            </button>
+          </div>
+
+          <!-- KOTAK TOTAL -->
+          <div class="summary-grid-fixed">
+            <div class="summary-box-card piutang">
+              <div class="summary-box-head">
+                <i class="fas fa-arrow-up"></i>
+                <span class="summary-title">Total Piutang Aktif</span>
+              </div>
+              <div class="summary-box-val" id="totalPiutang">Rp 0</div>
+            </div>
+            <div class="summary-box-card hutang">
+              <div class="summary-box-head">
+                <i class="fas fa-arrow-down"></i>
+                <span class="summary-title">Total Hutang Aktif</span>
+              </div>
+              <div class="summary-box-val" id="totalHutang">Rp 0</div>
+            </div>
+          </div>
+
+          <!-- Card Daftar Hutang/Piutang -->
+          <div class="card">
+            <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--bg-subtle);">
+              <div class="search-input-wrapper" style="position: relative; max-width: 400px;">
+                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" class="form-input" id="searchHutangName" placeholder="Cari nama pelanggan..." style="padding-left: 2.5rem; background: var(--bg-surface);">
+              </div>
+            </div>
+            
+            <div class="card-header">
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <h3 class="card-title">
+                  <i class="fas fa-list" style="color:var(--primary);"></i>
+                  Daftar Hutang/Piutang
+                </h3>
+                
+                <div class="status-toggle-container">
+                  <span class="status-toggle-label active" id="labelAktif">Aktif</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="statusToggle">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="status-toggle-label" id="labelInactive">Lunas</span>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <div class="filter-tabs">
+                  <button class="filter-tab active" data-filter="all">Semua</button>
+                  <button class="filter-tab" data-filter="hutang">Hutang</button>
+                  <button class="filter-tab" data-filter="piutang">Piutang</button>
+                </div>
+
+               <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+  <button class="btn btn-outline btn-sm" id="btnImport">
+    <i class="fas fa-file-import"></i> Import
+  </button>
+
+  <button class="btn btn-outline btn-sm" id="btnExportDebt">
+    <i class="fas fa-file-export"></i> Export
+  </button>
+
+  <button class="btn btn-outline btn-sm" id="btnDownloadDebtTemplate">
+    <i class="fas fa-file-download"></i> Template
+  </button>
+</div>
+              </div>
+            </div>
+            <div class="hutang-list" id="hutangList">
+              <div class="empty-state">
+                <i class="fas fa-handshake"></i>
+                <p>Belum ada data hutang/piutang</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav">
+      <a href="index.html" class="mobile-nav-item"><i class="fas fa-home"></i><span>Dashboard</span></a>
+      <a href="page-kasir.html" class="mobile-nav-item"><i class="fas fa-calculator"></i><span>Kasir</span></a>
+      <a href="page-produk.html" class="mobile-nav-item"><i class="fas fa-box"></i><span>Produk</span></a>
+      <a href="page-riwayat.html" class="mobile-nav-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
+      <a href="page-setting.html" class="mobile-nav-item"><i class="fas fa-cog"></i><span>Setting</span></a>
+    </nav>
+  </div>
+
+  <!-- Modal Kelola Pelanggan -->
+  <div class="modal-overlay" id="customerManageModal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-users" style="color:var(--primary);"></i> Kelola Pelanggan</h3>
+        <button class="modal-close" id="btnCloseCustomerManageModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <span style="font-size:0.85rem; font-weight:700; color:var(--text-sub);">Daftar Pelanggan Tersimpan</span>
+          <button class="btn btn-primary btn-sm" id="btnOpenNewCustomer"><i class="fas fa-plus"></i> Tambah Baru</button>
+        </div>
+        <div id="customerListContainer" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCloseCustomerManageBtn">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Hutang Modal -->
+  <div class="modal-overlay" id="hutangModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle"><i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Tambah Hutang/Piutang</h3>
+        <button class="modal-close" id="btnCloseModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="hutangForm">
+          <input type="hidden" id="hutangId">
+          
+          <div class="form-group">
+            <label class="form-label">Tipe Transaksi</label>
+            <select class="form-select" id="hutangType" required>
+              <option value="piutang">Piutang (Orang Berhutang ke Saya)</option>
+              <option value="hutang">Hutang (Saya Berhutang)</option>
+            </select>
+          </div>
+          
+          <div class="form-group" style="position: relative;">
+            <label class="form-label">Nama Pelanggan</label>
+            <input type="text" class="form-input" id="hutangName" placeholder="Ketik nama pelanggan..." autocomplete="off" required>
+            <div id="customerAutocomplete" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); border-top: none; max-height: 180px; overflow-y: auto; z-index: 100; display: none; box-shadow: var(--shadow-lg);"></div>
+            <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.3rem; display: block;">
+              <i class="fas fa-info-circle"></i> Ketik minimal 2 huruf untuk mencari, atau nama baru otomatis tersimpan
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Jumlah (Rp)</label>
+            <div class="input-prefix">
+              <span class="prefix">Rp</span>
+              <input type="text" class="form-input" id="hutangAmount" placeholder="0" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Tanggal Jatuh Tempo</label>
+            <input type="date" class="form-input" id="hutangDueDate">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Catatan / Detail Produk</label>
+            <textarea class="form-textarea" id="hutangNote" placeholder="Catatan atau nama barang..."></textarea>
+          </div>
+
+          <div class="kas-card-box" id="kasOptionBoxHutang" style="display: none;">
+            <div class="kas-card-header">
+              <i class="fas fa-wallet" style="color:var(--primary);"></i>
+              <span>Pengaruh ke Kas</span>
+            </div>
+            <label class="kas-checkbox-container">
+              <input type="checkbox" id="hutangAffectKas">
+              <div>
+                <span class="kas-checkbox-title">Catat Arus Hutang/Piutang</span>
+                <span class="kas-checkbox-desc" id="kasSublabelDynamic">Otomatis menyesuaikan saldo kas saat menyimpan</span>
+              </div>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancel">Batal</button>
+        <button class="btn btn-primary" id="btnSave"><i class="fas fa-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal with Kas Option -->
+  <div class="modal-overlay" id="paymentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-hand-holding-usd" style="color:var(--success);"></i> Proses Pembayaran</h3>
+        <button class="modal-close" id="btnClosePaymentModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Sisa Hutang/Piutang</label>
+          <div class="form-input" id="remainingAmount" style="font-weight: 800; font-size: 1.25rem; color:var(--primary);">Rp 0</div>
+        </div>
+
+        <div class="form-group">
+          <label class="kas-checkbox-container" style="cursor: pointer; padding: 0.75rem;">
+            <input type="checkbox" id="lunasSekaligus" style="accent-color: var(--success);">
+            <div>
+              <span class="kas-checkbox-title" style="color: var(--success);"><i class="fas fa-check-circle"></i> Lunasi Sekaligus</span>
+              <span class="kas-checkbox-desc">Centang untuk membayar lunas seluruh sisa tagihan</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Jumlah Pembayaran (Rp)</label>
+          <div class="input-prefix">
+            <span class="prefix">Rp</span>
+            <input type="text" class="form-input" id="paymentAmount" placeholder="0" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Catatan</label>
+          <input type="text" class="form-input" id="paymentNote" placeholder="Catatan pembayaran...">
+        </div>
+
+        <div class="kas-card-box" id="kasOptionBox">
+          <div class="kas-card-header"><i class="fas fa-wallet" style="color:var(--primary);"></i> Pengaruh ke Kas</div>
+          <label class="kas-checkbox-container" id="kasCheckboxLabel">
+            <input type="checkbox" id="affectKas" checked>
+            <div>
+              <span class="kas-checkbox-title" id="kasLabelText">Catat Arus Hutang/Piutang</span>
+              <span class="kas-checkbox-desc" id="kasSubLabelText">Arus kas dicatat dengan sumber Hutang/Piutang</span>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; width:100%;">
+        <button type="button" class="btn btn-transfer-outline btn-sm" id="btnTriggerTransferFromPay" title="Alihkan tagihan ini ke orang lain">
+          <i class="fas fa-exchange-alt"></i> Alihkan Hutang
+        </button>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" id="btnCancelPayment">Batal</button>
+          <button class="btn btn-primary" id="btnConfirmPayment"><i class="fas fa-check"></i> Bayar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Transfer Hutang -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:#8b5cf6;">
+          <i class="fas fa-exchange-alt"></i> Transfer Hutang/Piutang
+        </h3>
+        <button class="modal-close" id="btnCloseTransferModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">HUTANG ASAL</div>
+          <div style="font-weight: 800; font-size: 1rem; color: var(--text-main);" id="transferFromName">-</div>
+          <div style="font-size: 0.82rem; color: var(--danger); font-weight: 700;" id="transferFromRemaining">Sisa: Rp 0</div>
+        </div>
+
+        <div class="form-group" style="position: relative;">
+          <label class="form-label">Dialihkan Kepada (Pelanggan Tujuan)</label>
+          <input type="text" class="form-input" id="transferTargetName" placeholder="Ketik nama pelanggan baru..." autocomplete="off" required>
+          <div id="transferCustomerAutocomplete" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); border-top: none; max-height: 160px; overflow-y: auto; z-index: 100; display: none; box-shadow: var(--shadow-lg);"></div>
+          <small style="color: var(--text-muted); font-size: 0.74rem; margin-top: 0.3rem; display: block;">
+            <i class="fas fa-info-circle"></i> Pilih pelanggan yang ada atau ketik nama baru
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nominal yang Ditransfer (Rp)</label>
+          <div class="input-prefix">
+            <span class="prefix">Rp</span>
+            <input type="text" class="form-input" id="transferAmount" placeholder="0" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Catatan / Alasan Pengalihan</label>
+          <input type="text" class="form-input" id="transferNote" placeholder="Misal: Tagihan diambil alih oleh keluarga/rekan...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelTransfer">Batal</button>
+        <button class="btn btn-primary" id="btnConfirmTransfer" style="background:#8b5cf6;">
+          <i class="fas fa-check"></i> Proses Transfer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Modal -->
+  <div class="modal-overlay" id="customerModal">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="customerModalTitle">Tambah Pelanggan</h3>
+        <button class="modal-close" id="btnCloseCustomerModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="customerForm">
+          <input type="hidden" id="customerId">
+          <div class="form-group">
+            <label class="form-label">Nama Pelanggan</label>
+            <input type="text" class="form-input" id="customerNameInput" placeholder="Masukkan nama pelanggan" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">No. Telepon (Opsional)</label>
+            <input type="tel" class="form-input" id="customerPhoneInput" placeholder="08123456789">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelCustomer">Batal</button>
+        <button class="btn btn-primary" id="btnSaveCustomer"><i class="fas fa-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-file-import" style="color:var(--primary);"></i> Import Data</h3>
+        <button class="modal-close" id="btnCloseImportModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Pilih File (JSON, CSV, atau Excel)</label>
+          <input type="file" class="form-input" id="importFile" accept=".json,.csv,.xls,.xlsx" style="padding: 0.5rem;">
+          <small style="color: var(--text-muted); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
+            Format yang didukung: JSON, CSV, atau XLS/XLSX.<br>
+            Kolom:
+<strong>
+name | type | amount | remaining | dueDate | note | status
+</strong>
+          </small>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+            <input type="checkbox" id="importOverwrite" style="width: auto;">
+            <span>Timpa data yang sudah ada (overwrite)</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelImport">Batal</button>
+        <button class="btn btn-primary" id="btnConfirmImport"><i class="fas fa-file-import"></i> Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI INTERNAL (PENGGANTI WINDOWS CONFIRM) -->
+  <div class="custom-modal-backdrop" id="customConfirmModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger" id="customConfirmIcon"><i class="fas fa-exclamation-triangle"></i></div>
+      <h3 class="dialog-title" id="customConfirmTitle">Konfirmasi</h3>
+      <p class="dialog-message" id="customConfirmMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="closeCustomConfirm()">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnCustomConfirmAction">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
+  <div class="custom-modal-backdrop" id="customLogoutModal">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger"><i class="fas fa-sign-out-alt"></i></div>
+      <h3 class="dialog-title">Konfirmasi Keluar</h3>
+      <p class="dialog-message">Apakah Anda yakin ingin keluar dari sistem WebPOS?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customLogoutModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmLogoutAction">Ya, Keluar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p style="margin-top: 1rem; color: #fff; font-weight: 700;">Memproses...</p>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="js/firebase-config.js?v=2"></script>
+  <script src="js/utils.js?v=3"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar-filter.js"></script>
+  <script src="js/role-guard.js"></script>
+  <script src="js/kas-core.js?v=5"></script>
+
+   
+  <script>
+    let pendingConfirmAction = null;
+    let refreshPageData = null;
+
+    function showCustomConfirm(title, message, iconType, confirmText, callback) {
+      document.getElementById('customConfirmTitle').textContent = title;
+      document.getElementById('customConfirmMessage').innerHTML = message;
+      
+      const iconWrap = document.getElementById('customConfirmIcon');
+      iconWrap.className = `dialog-icon-wrap ${iconType}`;
+      if (iconType === 'danger') {
+        iconWrap.innerHTML = '<i class="fas fa-trash-alt"></i>';
+      } else {
+        iconWrap.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+      }
+
+      const btnAction = document.getElementById('btnCustomConfirmAction');
+      btnAction.textContent = confirmText || 'Ya, Lanjutkan';
+      btnAction.style.background = iconType === 'danger' ? 'var(--danger)' : 'var(--primary)';
+
+      pendingConfirmAction = callback;
+      document.getElementById('customConfirmModal').classList.add('open');
+    }
+
+    window.closeCustomConfirm = function() {
+      document.getElementById('customConfirmModal').classList.remove('open');
+      pendingConfirmAction = null;
+    };
+
+    document.getElementById('btnCustomConfirmAction').onclick = () => {
+      document.getElementById('customConfirmModal').classList.remove('open');
+      if (typeof pendingConfirmAction === 'function') {
+        pendingConfirmAction();
+        pendingConfirmAction = null;
+      }
+    };
+
+    // Sembunyikan modal konfirmasi lama jika ikut terpanggil
+    const oldConfirmModal = document.getElementById('confirmModal');
+    if (oldConfirmModal) oldConfirmModal.style.display = 'none';
+
+    if (typeof Utils === 'undefined') {
+      window.Utils = {
+        formatRupiah: (num) => 'Rp ' + (num || 0).toLocaleString('id-ID'),
+        formatNumberInput: (val) => {
+          val = String(val || '').replace(/\D/g, '');
+          return val ? parseInt(val, 10).toLocaleString('id-ID') : '';
+        },
+        showLoading: () => document.getElementById('loadingOverlay').classList.add('active'),
+        hideLoading: () => document.getElementById('loadingOverlay').classList.remove('active'),
+        showToast: (msg, type = 'info') => {
+          const container = document.getElementById('toastContainer');
+          const toast = document.createElement('div');
+          toast.className = `toast ${type}`;
+          toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'info'}-circle"></i><span>${msg}</span>`;
+          container.appendChild(toast);
+          setTimeout(() => toast.remove(), 3000);
+        },
+        confirm: (msg, callback) => showCustomConfirm("Konfirmasi", msg, "danger", "Ya, Hapus", callback),
+        getStorage: (key) => localStorage.getItem(key),
+        setStorage: (key, val) => localStorage.setItem(key, val)
+      };
+    } else {
+      Utils.confirm = (msg, callback) => showCustomConfirm("Konfirmasi", msg, "danger", "Ya, Hapus", callback);
+    }
+
+    if (typeof Utils.formatNumberInput !== 'function') {
+      Utils.formatNumberInput = (val) => {
+        const digits = String(val ?? '').replace(/\D/g, '');
+        return digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
+      };
+    }
+
+    if (typeof Auth === 'undefined') {
+      window.Auth = {
+        getCurrentUser: () => ({ uid: 'local_user', name: 'User', email: 'user@local.com' }),
+        logout: () => { localStorage.removeItem('webpos_session'); window.location.href = 'login.html'; },
+        loadUserData: (uid) => {
+          document.getElementById('userName').textContent = 'Admin';
+          document.getElementById('userRole').textContent = 'Administrator';
+        }
+      };
+    }
+
+    // ===== FIRESTORE COMPATIBILITY LAYER =====
+    function createFirestoreCompat() {
+      const firestore = firebase.firestore();
+
+      function makeRef(path) {
+        const clean = String(path)
+          .replace(/^\/+|\/+$|\/+/g, '/')
+          .replace(/^\//, '')
+          .replace(/\/$/, '');
+        const parts = clean ? clean.split('/') : [];
+        const collectionName = parts[0];
+        let target;
+
+        if (collectionName === 'transactions' && parts.length === 2) {
+          target = firestore.collection('transactions').where('date', '==', parts[1]);
+        } else if (collectionName === 'modal' && parts.length === 3) {
+          target = firestore.collection('modal').doc(parts[1] + '_' + parts[2]);
+        } else if ((collectionName === 'transactions' || collectionName === 'purchases') && parts.length >= 3) {
+          target = firestore.collection(collectionName).doc(parts[2]);
+        } else if (parts.length === 1) {
+          target = firestore.collection(collectionName);
+        } else {
+          target = firestore.collection(collectionName).doc(parts.slice(1).join('_'));
+        }
+
+        function withPathFields(data) {
+          const copy = Object.assign({}, data || {});
+          if ((collectionName === 'transactions' || collectionName === 'purchases') &&
+              parts[1] && parts.length >= 3 && !copy.date) {
+            copy.date = parts[1];
+          }
+          if (collectionName === 'modal' && parts.length === 3 && !copy.date) {
+            copy.date = parts[1];
+          }
+          return copy;
+        }
+
+        return {
+          once: async function() {
+            const snap = await target.get();
+            if (snap.docs) {
+              const values = {};
+              snap.docs.forEach(function(doc) {
+                values[doc.id] = Object.assign({ id: doc.id }, doc.data());
+              });
+              return { val: () => values };
+            }
+            return {
+              val: function() {
+                return snap.exists ? Object.assign({ id: snap.id }, snap.data()) : null;
+              }
+            };
+          },
+          set: function(data, options) {
+            return target.set(withPathFields(data), options || undefined);
+          },
+          update: function(data) {
+            return target.update(data);
+          },
+          remove: function() {
+            return target.delete();
+          },
+          push: function() {
+            const newDoc = firestore.collection(collectionName).doc();
+            return {
+              key: newDoc.id,
+              set: function(data) {
+                return newDoc.set(withPathFields(data));
+              }
+            };
+          }
+        };
+      }
+
+      return { ref: makeRef };
+    }
+
+    const firestoreDb = createFirestoreCompat();
+
+    // Customer Storage - Firestore Only
+    const CUSTOMER_COLLECTION = 'customers';
+
+const CustomerStorage = {
+  getAll: async () => {
+    try {
+      const snapshot = await firestoreDb
+        .ref(CUSTOMER_COLLECTION)
+        .once('value');
+
+      return snapshot.val() || {};
+    } catch (error) {
+      console.error(
+        'Gagal membaca pelanggan:',
+        error
+      );
+
+      Utils.showToast(
+        'Gagal memuat pelanggan: ' +
+          (error.message || error),
+        'error'
+      );
+
+      return {};
+    }
+  },
+
+  save: async (id, data) => {
+    const cleanId =
+      String(id || '').trim() ||
+      ('CUS_' + Date.now());
+
+    const name =
+      String(
+        data?.name ||
+        data?.customerName ||
+        ''
+      ).trim();
+
+    const phone =
+      String(
+        data?.phone ||
+        data?.nomorTelepon ||
+        ''
+      ).trim();
+
+    if (!name) {
+      throw new Error(
+        'Nama pelanggan wajib diisi'
+      );
+    }
+
+    const customerData = {
+      id: cleanId,
+      name,
+      phone,
+      updatedAt: Date.now()
+    };
+
+    await firestoreDb
+      .ref(
+        CUSTOMER_COLLECTION +
+          '/' +
+          cleanId
+      )
+      .set(customerData);
+
+    return customerData;
+  },
+
+  update: async (id, data) => {
+    const cleanId =
+      String(id || '').trim();
+
+    if (!cleanId) {
+      throw new Error(
+        'ID pelanggan tidak ditemukan'
+      );
+    }
+
+    const allCustomers =
+      await CustomerStorage.getAll();
+
+    const oldCustomer =
+      allCustomers[cleanId] || {};
+
+    return CustomerStorage.save(
+      cleanId,
+      {
+        ...oldCustomer,
+        ...data
+      }
+    );
+  },
+
+  delete: async (id) => {
+    const cleanId =
+      String(id || '').trim();
+
+    if (!cleanId) {
+      throw new Error(
+        'ID pelanggan tidak ditemukan'
+      );
+    }
+
+    await firestoreDb
+      .ref(
+        CUSTOMER_COLLECTION +
+          '/' +
+          cleanId
+      )
+      .remove();
+  }
+};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      async function syncStoreBrandName() {
+        const logoEl = document.querySelector(".logo-text");
+        if (!logoEl) return;
+        const cached = localStorage.getItem("webpos_store_name");
+        if (cached) logoEl.textContent = cached;
+        try {
+          const doc = await firebase.firestore().collection("settings").doc("store").get();
+          if (doc.exists && doc.data().name) {
+            logoEl.textContent = doc.data().name;
+            localStorage.setItem("webpos_store_name", doc.data().name);
+          }
+        } catch(e) {}
+      }
+      syncStoreBrandName();
+
+      const checkAuth = () => {
+        if (typeof auth !== 'undefined') {
+          auth.onAuthStateChanged((user) => {
+            if (!user && !Utils.getStorage('webpos_session')) {
+              window.location.href = 'login.html';
+              return;
+            }
+            if (user && typeof Auth !== 'undefined') {
+              Auth.loadUserData(user.uid);
+              setTimeout(() => {
+                const currentUser = Auth.getCurrentUser();
+                if (currentUser) {
+                  const nameEl = document.getElementById('userName');
+                  const roleEl = document.getElementById('userRole');
+                  if (nameEl && currentUser.name) {
+                    nameEl.textContent = currentUser.name;
+                  }
+                  if (roleEl && currentUser.role) {
+                    const role = currentUser.role;
+                    roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+                    if (typeof RoleGuard !== 'undefined') {
+                      RoleGuard.apply(role.toLowerCase());
+                    }
+                  }
+                }
+              }, 1000);
+            }
+            initHutang();
+          });
+        } else {
+          initHutang();
+        }
+      };
+
+      checkAuth();
+
+      function initHutang() {
+        let currentFilter = 'all';
+        let currentStatus = 'active';
+        let currentSearch = '';
+        let currentPaymentId = null;
+        let hutangData = {};
+        let customerData = {};
+        let currentPaymentType = null;
+        let currentBatchItems = null;
+
+        document.getElementById('hutangAmount').addEventListener('input', (e) => {
+          e.target.value = Utils.formatNumberInput(e.target.value);
+        });
+        
+        document.getElementById('paymentAmount').addEventListener('input', (e) => {
+          e.target.value = Utils.formatNumberInput(e.target.value);
+        });
+
+         refreshPageData = async () => {
+          await loadAllData();
+        };
+
+        loadAllData();
+
+        const nameInput = document.getElementById('hutangName');
+        const autocompleteBox = document.getElementById('customerAutocomplete');
+
+        if (nameInput && autocompleteBox) {
+          nameInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (val.length < 2) {
+              autocompleteBox.style.display = 'none';
+              return;
+            }
+            
+            const matches = Object.values(customerData).filter(c => 
+              c.name && c.name.toLowerCase().includes(val)
+            );
+            
+            if (matches.length > 0) {
+              autocompleteBox.innerHTML = matches.map(c => `
+                <div class="autocomplete-item" style="
+                  padding: 0.75rem 1rem;
+                  cursor: pointer;
+                  border-bottom: 1px solid var(--border);
+                  transition: background 0.2s;
+                " onmouseover="this.style.background='var(--bg-subtle)'" 
+                onmouseout="this.style.background='var(--bg-surface)'"
+                onclick="window.selectCustomer('${c.name.replace(/'/g, "\\'")}')">
+                  <div style="font-weight: 700;">${c.name}</div>
+                  ${c.phone ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</div>` : ''}
+                </div>
+              `).join('');
+              autocompleteBox.style.display = 'block';
+            } else {
+              autocompleteBox.style.display = 'none';
+            }
+          });
+
+          document.addEventListener('click', (e) => {
+            if (!nameInput.contains(e.target) && !autocompleteBox.contains(e.target)) {
+              autocompleteBox.style.display = 'none';
+            }
+          });
+        }
+
+        window.selectCustomer = (name) => {
+          document.getElementById('hutangName').value = name;
+          document.getElementById('customerAutocomplete').style.display = 'none';
+        };
+
+        document.getElementById('btnKelolaCustomer').addEventListener('click', () => {
+          renderCustomerManageList();
+          document.getElementById('customerManageModal').classList.add('active');
+        });
+        document.getElementById('btnCloseCustomerManageModal').addEventListener('click', () => {
+          document.getElementById('customerManageModal').classList.remove('active');
+        });
+        document.getElementById('btnCloseCustomerManageBtn').addEventListener('click', () => {
+          document.getElementById('customerManageModal').classList.remove('active');
+        });
+
+        document.getElementById('btnOpenNewCustomer').addEventListener('click', () => {
+          document.getElementById('customerModalTitle').textContent = 'Tambah Pelanggan Baru';
+          document.getElementById('customerForm').reset();
+          document.getElementById('customerId').value = '';
+          document.getElementById('customerModal').classList.add('active');
+        });
+
+        document.getElementById('statusToggle').addEventListener('change', (e) => {
+          currentStatus = e.target.checked ? 'inactive' : 'active';
+          document.getElementById('labelAktif').classList.toggle('active', !e.target.checked);
+          document.getElementById('labelInactive').classList.toggle('active', e.target.checked);
+          renderHutangList();
+        });
+
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentFilter = tab.dataset.filter;
+            renderHutangList();
+          });
+        });
+
+        document.getElementById('searchHutangName').addEventListener('input', (e) => {
+          currentSearch = e.target.value.toLowerCase().trim();
+          renderHutangList();
+        });
+
+        document.getElementById('btnAddHutang').addEventListener('click', () => {
+          document.getElementById('modalTitle').innerHTML = '<i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Tambah Hutang/Piutang';
+          document.getElementById('hutangForm').reset();
+          document.getElementById('hutangId').value = '';
+          updateKasOptionHutang();
+          document.getElementById('hutangModal').classList.add('active');
+        });
+
+        document.getElementById('hutangType').addEventListener('change', updateKasOptionHutang);
+
+        function updateKasOptionHutang() {
+  const type = document.getElementById('hutangType').value;
+  const kasBox = document.getElementById('kasOptionBoxHutang');
+  const desc = document.getElementById('kasSublabelDynamic');
+
+  kasBox.style.display = 'block';
+  const checkbox = document.getElementById('hutangAffectKas');
+  checkbox.disabled = false; // bisa diklik untuk semua tipe
+
+  if (type === 'piutang') {
+    desc.textContent = 'Pinjam uang: saldo kas berkurang jika dicentang';
+  } else {
+    desc.textContent = 'Penerimaan pinjaman: saldo kas bertambah jika dicentang';
+  }
+}
+        document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+        document.getElementById('btnCancel').addEventListener('click', closeModal);
+        document.getElementById('btnClosePaymentModal').addEventListener('click', closePaymentModal);
+        document.getElementById('btnCancelPayment').addEventListener('click', closePaymentModal);
+        document.getElementById('btnCloseCustomerModal').addEventListener('click', closeCustomerModal);
+        document.getElementById('btnCancelCustomer').addEventListener('click', closeCustomerModal);
+        document.getElementById('btnCloseImportModal').addEventListener('click', closeImportModal);
+        document.getElementById('btnCancelImport').addEventListener('click', closeImportModal);
+
+        document.getElementById('btnSave').addEventListener('click', saveHutang);
+        document.getElementById('btnSaveCustomer').addEventListener('click', saveCustomer);
+        document.getElementById('btnConfirmPayment').addEventListener('click', processPayment);
+
+        document.getElementById('btnImport').addEventListener('click', () => {
+  document.getElementById('importModal').classList.add('active');
+});
+
+document.getElementById('btnConfirmImport')
+  .addEventListener('click', importData);
+
+document.getElementById('btnExportDebt')
+  .addEventListener('click', exportDebtData);
+
+document.getElementById('btnDownloadDebtTemplate')
+  .addEventListener('click', downloadDebtTemplate);
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const setMobileSidebar = (open) => {
+          sidebar.classList.toggle('mobile-open', open);
+          if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', open);
+        };
+
+        document.getElementById('menuToggle').addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+        });
+
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (mobileToggle) {
+          mobileToggle.removeAttribute('style');
+          mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMobileSidebar(!sidebar.classList.contains('mobile-open'));
+          });
+        }
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            if (link.classList.contains('nav-dropdown-toggle')) {
+              e.stopPropagation();
+              return;
+            }
+            if (window.innerWidth <= 1024) {
+              setMobileSidebar(false);
+            }
+          });
+        });
+
+        if (sidebarBackdrop) {
+          sidebarBackdrop.addEventListener('click', () => setMobileSidebar(false));
+        }
+
+        document.querySelectorAll('[data-dropdown]').forEach(dropdown => {
+          const toggle = dropdown.querySelector('.nav-dropdown-toggle');
+          if (toggle) {
+            toggle.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dropdown.classList.toggle('open');
+            });
+          }
+        });
+
+        document.getElementById("menuSearch")?.addEventListener("input", function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll(".nav-link span").forEach(span => {
+            const li = span.closest(".nav-item");
+            if (li) li.style.display = span.textContent.toLowerCase().includes(q) ? "" : "none";
+          });
+        });
+
+        document.getElementById('btnTheme').addEventListener('click', () => {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          const nextTheme = isDark ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          localStorage.setItem('webpos_theme', nextTheme);
+        });
+
+        // Logout dengan Modal Internal WebPOS (Bukan confirm windows)
+        document.getElementById('btnLogout').addEventListener('click', () => {
+          const modal = document.getElementById('customLogoutModal');
+          if (modal) {
+            modal.classList.add('open');
+            document.getElementById('btnConfirmLogoutAction').onclick = () => {
+              Auth.logout();
+            };
+          } else {
+            Utils.confirm('Apakah Anda yakin ingin logout?', () => {
+              Auth.logout();
+            });
+          }
+        });
+
+        function closeModal() {
+          document.getElementById('hutangModal').classList.remove('active');
+        }
+
+        function closePaymentModal() {
+          document.getElementById('paymentModal').classList.remove('active');
+          currentPaymentId = null;
+          currentPaymentType = null;
+          currentBatchItems = null;
+          const lunasCheckbox = document.getElementById('lunasSekaligus');
+          if (lunasCheckbox) {
+            lunasCheckbox.checked = false;
+            lunasCheckbox.disabled = false;
+            lunasCheckbox.removeEventListener('change', handleLunasToggle);
+            lunasCheckbox.parentElement.style.display = '';
+          }
+          const paymentInput = document.getElementById('paymentAmount');
+          if (paymentInput) {
+            paymentInput.readOnly = false;
+            paymentInput.style.background = 'var(--bg-subtle)';
+            paymentInput.style.cursor = 'text';
+          }
+        }
+
+        let currentTransferData = null;
+
+        function closeTransferModal() {
+          document.getElementById('transferModal').classList.remove('active');
+          currentTransferData = null;
+        }
+
+        document.getElementById('btnCloseTransferModal').addEventListener('click', closeTransferModal);
+        document.getElementById('btnCancelTransfer').addEventListener('click', closeTransferModal);
+        document.getElementById('btnConfirmTransfer').addEventListener('click', processTransferHutang);
+
+        document.getElementById('transferAmount').addEventListener('input', (e) => {
+          e.target.value = Utils.formatNumberInput(e.target.value);
+        });
+
+        document.getElementById('btnTriggerTransferFromPay')?.addEventListener('click', () => {
+          if (currentPaymentId) {
+            const id = currentPaymentId;
+            closePaymentModal();
+            window.openTransferSingle(id);
+          } else if (currentBatchItems && currentBatchItems.length > 0) {
+            const firstItem = currentBatchItems[0];
+            const groupName = firstItem.name || firstItem.customerName;
+            const groupType = firstItem.type;
+            closePaymentModal();
+            window.openTransferGroup(groupName, groupType);
+          }
+        });
+
+        const transferTargetInput = document.getElementById('transferTargetName');
+        const transferAutocomplete = document.getElementById('transferCustomerAutocomplete');
+
+        if (transferTargetInput && transferAutocomplete) {
+          transferTargetInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (val.length < 2) {
+              transferAutocomplete.style.display = 'none';
+              return;
+            }
+            const matches = Object.values(customerData).filter(c => 
+              c.name && c.name.toLowerCase().includes(val)
+            );
+            if (matches.length > 0) {
+              transferAutocomplete.innerHTML = matches.map(c => `
+                <div style="padding:0.65rem 0.9rem; cursor:pointer; border-bottom:1px solid var(--border);"
+                     onmouseover="this.style.background='var(--bg-subtle)'"
+                     onmouseout="this.style.background='var(--bg-surface)'"
+                     onclick="window.selectTransferTarget('${c.name.replace(/'/g, "\\'")}')">
+                  <div style="font-weight:700; font-size:0.85rem;">${c.name}</div>
+                  ${c.phone ? `<div style="font-size:0.72rem; color:var(--text-muted);">${c.phone}</div>` : ''}
+                </div>
+              `).join('');
+              transferAutocomplete.style.display = 'block';
+            } else {
+              transferAutocomplete.style.display = 'none';
+            }
+          });
+
+          document.addEventListener('click', (e) => {
+            if (!transferTargetInput.contains(e.target) && !transferAutocomplete.contains(e.target)) {
+              transferAutocomplete.style.display = 'none';
+            }
+          });
+        }
+
+        window.selectTransferTarget = (name) => {
+          document.getElementById('transferTargetName').value = name;
+          document.getElementById('transferCustomerAutocomplete').style.display = 'none';
+        };
+
+        window.openTransferSingle = (id) => {
+          const item = hutangData[id];
+          if (!item) return;
+
+          const remaining = Math.max(0, Number(item.remaining ?? item.amount ?? 0));
+          if (remaining <= 0) {
+            Utils.showToast('Hutang ini sudah lunas, tidak dapat dialihkan', 'warning');
+            return;
+          }
+
+          currentTransferData = {
+            mode: 'single',
+            id: id,
+            item: item,
+            remaining: remaining
+          };
+
+          document.getElementById('transferFromName').textContent = item.name || 'Pelanggan';
+          document.getElementById('transferFromRemaining').textContent = 'Sisa: ' + Utils.formatRupiah(remaining);
+          document.getElementById('transferTargetName').value = '';
+          document.getElementById('transferAmount').value = Utils.formatNumberInput(remaining.toString());
+          document.getElementById('transferAmount').readOnly = false;
+          document.getElementById('transferNote').value = '';
+          document.getElementById('transferModal').classList.add('active');
+        };
+
+        window.openTransferGroup = (groupName, groupType) => {
+          const normalizedName = normalizeDebtName(groupName);
+          const items = Object.values(hutangData).filter(d =>
+            normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName &&
+            (d.type === 'hutang' ? 'hutang' : 'piutang') === groupType &&
+            d.status === 'active'
+          );
+
+          if (items.length === 0) {
+            Utils.showToast('Tidak ada hutang aktif untuk dialihkan', 'warning');
+            return;
+          }
+
+          const totalRemaining = items.reduce((sum, it) => sum + (it.remaining || it.amount || 0), 0);
+
+          currentTransferData = {
+            mode: 'group',
+            groupName: groupName,
+            groupType: groupType,
+            items: items,
+            remaining: totalRemaining
+          };
+
+          document.getElementById('transferFromName').textContent = `${groupName} (${items.length} transaksi)`;
+          document.getElementById('transferFromRemaining').textContent = 'Total Sisa: ' + Utils.formatRupiah(totalRemaining);
+          document.getElementById('transferTargetName').value = '';
+          document.getElementById('transferAmount').value = Utils.formatNumberInput(totalRemaining.toString());
+          document.getElementById('transferAmount').readOnly = true;
+          document.getElementById('transferNote').value = '';
+          document.getElementById('transferModal').classList.add('active');
+        };
+
+        async function processTransferHutang() {
+          if (!currentTransferData) return;
+
+          const targetName = document.getElementById('transferTargetName').value.trim();
+          const transferNominal = parseInt(document.getElementById('transferAmount').value.replace(/\./g, ''), 10) || 0;
+          const transferNote = document.getElementById('transferNote').value.trim();
+          const user = Auth.getCurrentUser();
+
+          if (!targetName) {
+            Utils.showToast('Nama pelanggan tujuan wajib diisi', 'error');
+            return;
+          }
+
+          if (transferNominal <= 0) {
+            Utils.showToast('Nominal transfer harus lebih dari 0', 'error');
+            return;
+          }
+
+          if (transferNominal > currentTransferData.remaining) {
+            Utils.showToast('Nominal melebihi sisa hutang asal', 'error');
+            return;
+          }
+
+          Utils.showLoading();
+
+          try {
+            const now = Date.now();
+            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+
+            const existingCust = Object.values(customerData).find(c => c.name && c.name.toLowerCase() === targetName.toLowerCase());
+            if (!existingCust) {
+              await CustomerStorage.save('cust_' + now, {
+                name: targetName,
+                createdAt: now
+              }).catch(() => {});
+            }
+
+            if (currentTransferData.mode === 'single') {
+              const oldItem = currentTransferData.item;
+              const oldId = oldItem.id || currentTransferData.id;
+              const remainingOld = Math.max(0, (oldItem.remaining ?? oldItem.amount ?? 0) - transferNominal);
+
+              await firestoreDb.ref('debts/' + oldId).update({
+                remaining: remainingOld,
+                status: remainingOld === 0 ? 'paid' : 'active',
+                transferredTo: targetName,
+                transferredAmount: transferNominal,
+                updatedAt: now,
+                note: (oldItem.note ? oldItem.note + ' | ' : '') + `Dialihkan ke ${targetName} sebesar ${Utils.formatRupiah(transferNominal)}`
+              });
+
+              const newDebtId = 'debt_' + now;
+              await firestoreDb.ref('debts/' + newDebtId).set({
+                id: newDebtId,
+                name: targetName,
+                customerName: targetName,
+                type: oldItem.type || 'piutang',
+                amount: transferNominal,
+                remaining: transferNominal,
+                dueDate: oldItem.dueDate || null,
+                note: `Pengalihan dari ${oldItem.name || 'Pelanggan'}${transferNote ? ' (' + transferNote + ')' : ''}`,
+                status: 'active',
+                transferredFrom: oldItem.name || 'Pelanggan',
+                originalDebtId: oldId,
+                userId: user?.uid || '',
+                userName: user?.name || user?.email || '',
+                createdAt: now,
+                updatedAt: now,
+                date: today,
+                kasRecorded: false,
+                source: 'transfer_hutang'
+              });
+              
+            } else if (currentTransferData.mode === 'group') {
+              for (const it of currentTransferData.items) {
+                const sisa = Math.max(0, it.remaining ?? it.amount ?? 0);
+                if (sisa <= 0) continue;
+
+                await firestoreDb.ref('debts/' + it.id).update({
+                  remaining: 0,
+                  status: 'paid',
+                  transferredTo: targetName,
+                  transferredAt: now,
+                  updatedAt: now,
+                  note: (it.note ? it.note + ' | ' : '') + `Dialihkan seluruhnya ke ${targetName}`
+                });
+              }
+
+              const newDebtId = 'debt_' + now;
+              await firestoreDb.ref('debts/' + newDebtId).set({
+                id: newDebtId,
+                name: targetName,
+                customerName: targetName,
+                type: currentTransferData.groupType || 'piutang',
+                amount: transferNominal,
+                remaining: transferNominal,
+                note: `Pengalihan seluruh hutang dari ${currentTransferData.groupName}${transferNote ? ' (' + transferNote + ')' : ''}`,
+                status: 'active',
+                transferredFrom: currentTransferData.groupName,
+                userId: user?.uid || '',
+                userName: user?.name || user?.email || '',
+                createdAt: now,
+                updatedAt: now,
+                date: today,
+                kasRecorded: false,
+                source: 'transfer_hutang'
+              });
+            }
+
+            Utils.showToast(`Berhasil mengalihkan hutang ke ${targetName}`, 'success');
+            closeTransferModal();
+            await loadAllData();
+          } catch (error) {
+            console.error('Error transfer hutang:', error);
+            Utils.showToast('Gagal mentransfer hutang: ' + error.message, 'error');
+          } finally {
+            Utils.hideLoading();
+          }
+        }
+
+        function closeCustomerModal() {
+          document.getElementById('customerModal').classList.remove('active');
+        }
+
+        function closeImportModal() {
+          document.getElementById('importModal').classList.remove('active');
+          document.getElementById('importFile').value = '';
+        }
+
+        async function loadAllData() {
+
+          const cached = localStorage.getItem('webpos_debts_cache');
+  if (cached) {
+    try {
+      hutangData = JSON.parse(cached);
+      updateSummary();
+      renderHutangList();
+    } catch (e) {}
+  }
+          
+          Utils.showLoading();
+          try {
+            const hutangSnapshot = await firestoreDb.ref('debts').once('value');
+            hutangData = hutangSnapshot.val() || {};
+            customerData = await CustomerStorage.getAll();
+
+            await lookupMissingProductDetails(hutangData);
+            localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData));
+
+            updateSummary();
+            renderCustomerManageList();
+            renderHutangList();
+          } catch (error) {
+            console.error('Error loading data:', error);
+            Utils.showToast('Gagal memuat data', 'error');
+          }
+          Utils.hideLoading();
+        }
+
+        async function lookupMissingProductDetails(debts) {
+  const itemsToLookup = Object.values(debts).filter(item => {
+    const raw = (item.note || item.transactionId || '').trim();
+    const hasMissingItems = (!item.items || item.items.length === 0);
+    const hasMissingName = (!item.name || item.name.trim() === '');
+    return (raw.includes('TRX') || raw.includes('kas_')) && (hasMissingItems || hasMissingName);
+  });
+
+  if (itemsToLookup.length === 0) return;
+
+  // PARALEL: semua query jalan bersamaan, bukan satu-satu
+  await Promise.all(itemsToLookup.map(async (item) => {
+    try {
+            let trxData = null;
+
+      // CARA 1: ambil langsung lewat ID transaksi (untuk id "kas_xxx", dsb.)
+      if (item.transactionId) {
+        const trxDoc = await firebase.firestore()
+          .collection('transactions')
+          .doc(String(item.transactionId))
+          .get();
+        if (trxDoc.exists) trxData = trxDoc.data();
+      }
+
+      // CARA 2: kalau gagal, cari lewat nomor nota TRX
+      if (!trxData) {
+        const match = (item.note || '').match(/TRX\d+/i)
+          || (item.transactionId || '').match(/TRX\d+/i);
+        if (!match) return;
+
+        const snap = await firebase.firestore().collection('transactions')
+          .where('invoiceNumber', '==', match[0]).limit(1).get();
+        if (snap.empty) return;
+
+        trxData = snap.docs[0].data();
+      }
+      const patch = {}; // hasil disimpan permanen supaya reload berikutnya tidak query lagi
+
+      if (trxData.items && Array.isArray(trxData.items)) {
+        item.items = trxData.items;
+        patch.items = trxData.items;
+      }
+      const foundName = trxData.customerName || trxData.customer
+        || trxData.pelanggan || trxData.hutangName;
+      if (!item.name && foundName) {
+        item.name = foundName;
+        patch.name = foundName;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await firebase.firestore().collection('debts').doc(item.id)
+          .set(patch, { merge: true });
+      }
+    } catch (e) {
+      console.warn('Gagal lookup nama produk:', e);
+    }
+  }));
+}
+
+        window.toggleDetail = function(id) {
+          const detailRow = document.getElementById('detail-' + id);
+          const expandBtn = document.getElementById('expand-' + id);
+          if (detailRow) {
+            detailRow.classList.toggle('show');
+            if (expandBtn) expandBtn.classList.toggle('rotated');
+          }
+        };
+
+        function updateSummary() {
+          let totalHutang = 0;
+          let totalPiutang = 0;
+          
+          Object.values(hutangData).forEach(item => {
+            if (item.status === 'active') {
+              if (item.type === 'hutang') {
+                totalHutang += item.remaining || item.amount || 0;
+              } else {
+                totalPiutang += item.remaining || item.amount || 0;
+              }
+            }
+          });
+          
+          document.getElementById('totalHutang').textContent = Utils.formatRupiah(totalHutang);
+          document.getElementById('totalPiutang').textContent = Utils.formatRupiah(totalPiutang);
+        }
+
+        function renderCustomerManageList() {
+          const container = document.getElementById('customerListContainer');
+          const countBadge = document.getElementById('customerCountBadge');
+          const count = Object.keys(customerData).length;
+          if (countBadge) countBadge.textContent = count;
+          
+          if (!container) return;
+          let html = '';
+          
+          if (count === 0) {
+            html = '<div style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem;">Belum ada pelanggan terdaftar</div>';
+          } else {
+            Object.entries(customerData).forEach(([id, customer]) => {
+              html += `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-surface);">
+                  <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                    <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--primary),#8b5cf6); color:white; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700;"><i class="fas fa-user"></i></div>
+                    <div style="min-width:0;">
+                      <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${customer.name}</div>
+                      ${customer.phone ? `<div style="font-size:0.75rem; color:var(--text-muted);">${customer.phone}</div>` : ''}
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:0.35rem;">
+                    <button class="btn-icon-sm btn-edit" onclick="window.editCustomer('${id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon-sm btn-delete" onclick="window.deleteCustomer('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+              `;
+            });
+          }
+          container.innerHTML = html;
+        }
+
+        function getTransactionItemName(item) {
+          if (item.items && Array.isArray(item.items) && item.items.length > 0) {
+            return item.items.map(i => `${i.name || i.productName || 'Barang'} (x${i.qty || i.quantity || 1})`).join(', ');
+          }
+          if (item.productName || item.namaBarang || item.namaProduk) {
+            return item.productName || item.namaBarang || item.namaProduk;
+          }
+          
+          const rawNote = (item.note || '').trim();
+          if (rawNote && !rawNote.startsWith('TRX') && !rawNote.startsWith('kas_')) {
+            return rawNote;
+          }
+          
+          if (item.invoiceNumber || rawNote.includes('TRX')) {
+            const inv = item.invoiceNumber || rawNote;
+            return `Pembelian Produk di Kasir (${inv})`;
+          }
+          
+          return item.type === 'hutang' ? 'Pinjaman Kas / Hutang' : 'Bon Pembelian Kasir';
+        }
+
+                function normalizeDebtName(name) {
+  let n = String(name || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  if (!n || n === '-' || n === 'null') n = 'pelanggan umum / bon kasir';
+  return n;
+}
+
+// Ambil nama asli (pertahankan huruf besar/kecil apa adanya) untuk tampilan
+function getDisplayDebtName(data) {
+  const raw = String(
+    data.customerName || data.name || data.hutangName ||
+    data.pelanggan || data.customer || ''
+  )
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .trim();
+  return raw || 'Pelanggan Umum';
+}
+
+        function renderHutangList() {
+          const list = document.getElementById('hutangList');
+          let html = '';
+          
+          let filteredItems = Object.entries(hutangData)
+              .map(([id, data]) => ({
+    id,
+    ...data,
+    name: getDisplayDebtName(data),
+    nameKey: normalizeDebtName(
+      data.customerName || data.name || data.hutangName ||
+      data.pelanggan || data.customer
+    ),
+    type: data.type === 'hutang' ? 'hutang' : 'piutang'
+  }))
+            .filter(item => {
+              if (currentStatus === 'active') return item.status === 'active';
+              return item.status === 'paid' || item.status === 'inactive' || item.status === 'deleted';
+            })
+            .filter(item => currentFilter === 'all' || item.type === currentFilter);
+          
+          if (currentSearch) {
+            filteredItems = filteredItems.filter(item => 
+              item.name.toLowerCase().includes(currentSearch)
+            );
+          }
+          
+          const groupedByName = {};
+          filteredItems.forEach(item => {
+            const key = item.type + ':' + item.nameKey; // pakai nameKey, bukan name
+            if (!groupedByName[key]) {
+              groupedByName[key] = {
+                displayName: item.name,
+                items: [],
+                totalRemaining: 0,
+                hasActive: false,
+                type: item.type
+              };
+            }
+            groupedByName[key].items.push(item);
+            if (item.status === 'active') {
+              groupedByName[key].totalRemaining += (item.remaining || item.amount || 0);
+              groupedByName[key].hasActive = true;
+            }
+          });
+          
+          const groupedArray = Object.values(groupedByName).sort((a, b) => 
+            a.displayName.localeCompare(b.displayName)
+          );
+          
+          groupedArray.forEach(group => {
+            group.firstDate = group.items.reduce((min, it) => {
+  const t = it.createdAt || it.date || it.updatedAt;
+  if (!t) return min;
+  const ms = typeof t === 'number' ? t : new Date(t).getTime();
+  return (!min || ms < min) ? ms : min;
+}, null);
+            group.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          });
+          
+          if (groupedArray.length === 0) {
+            const message = currentSearch 
+              ? `Tidak ada hasil untuk "${currentSearch}"`
+              : (currentStatus === 'active' ? 'Belum ada data hutang/piutang aktif' : 'Belum ada data yang lunas');
+            html = `
+              <div class="empty-state">
+                <i class="fas fa-${currentSearch ? 'search' : (currentStatus === 'active' ? 'handshake' : 'check-circle')}"></i>
+                <p>${message}</p>
+              </div>
+            `;
+          } else {
+            groupedArray.forEach(group => {
+              const isPaid = !group.hasActive;
+              const groupId = 'group_' + group.displayName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+              const totalAmount = group.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+              
+              const safeGroupName = group.displayName.replace(/'/g, "\\'");
+
+              html += `
+                <div class="hutang-item" onclick="window.toggleDetail('${groupId}')" style="cursor: pointer; border-left: 4px solid ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'};">
+                  <div class="hutang-info">
+                    <div class="hutang-avatar" style="background: ${group.type === 'hutang' ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)'};">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div class="hutang-details" style="flex: 1; min-width: 0;">
+                      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="hutang-name" style="font-size: 1rem; font-weight: 700; color: var(--text-main); display: inline-block;">
+                          ${group.displayName}
+                        </span>
+                        <span style="background: var(--bg-subtle); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">
+                          ${group.items.length} transaksi
+                        </span>
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <span>Total: ${Utils.formatRupiah(totalAmount)}</span>
+                        <span>•</span>
+                        <span>Sisa: <span style="color: ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">${Utils.formatRupiah(group.totalRemaining)}</span></span>
+                        <span>•</span>
+<span><i class="fas fa-calendar-day" style="margin-right:0.25rem;"></i>${group.firstDate ? new Date(group.firstDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0;" onclick="event.stopPropagation();">
+                    ${!isPaid ? `
+                      <button class="btn-icon-sm btn-pay" onclick="window.openPaymentBatch('${safeGroupName}', '${group.type}')" title="Proses Semua" style="width: 30px; height: 30px; min-width: 30px;">
+                        <i class="fas fa-check-double" style="font-size: 0.75rem;"></i>
+                      </button>
+                    ` : ''}
+                    <button class="expand-btn" id="expand-${groupId}" onclick="window.toggleDetail('${groupId}')">
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
+                  </div>
+                  <div class="hutang-amount-section" onclick="event.stopPropagation();">
+                    <span class="hutang-amount ${group.type}" style="font-size: 1rem; ${isPaid ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                      ${Utils.formatRupiah(group.totalRemaining)}
+                    </span>
+                    <span class="status-badge ${isPaid ? 'inactive' : 'active'}" style="margin-top: 0.25rem;">
+                      ${isPaid ? 'Lunas' : 'Aktif'}
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- DETAIL PER TANGGAL -->
+                <div class="hutang-detail-row" id="detail-${groupId}">
+                  <div class="hutang-detail-content">
+                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+  <div style="font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+    Detail Transaksi / Rincian Produk
+  </div>
+  ${!isPaid ? `
+    <button class="btn btn-transfer-outline btn-sm" onclick="window.openTransferGroup('${safeGroupName}', '${group.type}')" style="padding: 2px 8px; font-size: 0.72rem;">
+      <i class="fas fa-exchange-alt"></i> Alihkan Semua
+    </button>
+  ` : ''}
+</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                      ${group.items.map((item, idx) => {
+                        const rawDate = item.createdAt || item.date || item.updatedAt;
+const createdDate = rawDate
+  ? new Date(rawDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
+  : '-';
+                        const isItemPaid = item.status === 'paid' || item.status === 'inactive';
+                        const itemName = getTransactionItemName(item);
+                        
+                        return `
+                          <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 0.75rem; background: var(--bg-surface); border-radius: 8px; border-left: 3px solid ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; gap: 0.5rem;">
+                            <div style="flex: 1; min-width: 140px;">
+                              <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">
+                                ${itemName}
+                              </div>
+                              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                <i class="fas fa-calendar-alt" style="margin-right: 0.25rem;"></i>${createdDate}
+                                ${item.invoiceNumber ? ` | <span style="font-weight:600;">Nota: ${item.invoiceNumber}</span>` : ''}
+                              </div>
+                              <div style="margin-top: 0.25rem;">
+                                <span class="status-badge ${isItemPaid ? 'inactive' : 'active'}" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">
+                                  ${isItemPaid ? 'Lunas' : 'Aktif'}
+                                </span>
+                              </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                              <div style="text-align: right;">
+                                <div style="font-weight: 800; color: ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-size: 0.92rem;">
+                                  ${Utils.formatRupiah(item.remaining || item.amount || 0)}
+                                </div>
+                              </div>
+                              <div style="display: flex; gap: 0.25rem;">
+                               ${!isItemPaid ? `
+                                  <button class="btn-icon-sm btn-pay" onclick="window.openPayment('${item.id}')" title="Bayar" style="width: 28px; height: 28px; min-width: 28px;">
+                                    <i class="fas fa-money-bill-wave" style="font-size: 0.75rem;"></i>
+                                  </button>
+                                  <button class="btn-icon-sm btn-transfer" onclick="window.openTransferSingle('${item.id}')" title="Transfer / Alihkan Hutang" style="width: 28px; height: 28px; min-width: 28px;">
+                                    <i class="fas fa-exchange-alt" style="font-size: 0.72rem;"></i>
+                                  </button>
+                                ` : `
+                                  <button class="btn-icon-sm btn-restore" onclick="window.restoreHutang('${item.id}')" title="Restore" style="width: 28px; height: 28px; min-width: 28px;">
+                                    <i class="fas fa-undo" style="font-size: 0.75rem;"></i>
+                                  </button>
+                                `}
+                                <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width: 28px; height: 28px; min-width: 28px;">
+                                  <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-delete" onclick="window.deleteHutang('${item.id}')" title="Hapus" style="width: 28px; height: 28px; min-width: 28px;">
+                                  <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                </div>
+              `;
+            });
+          }
+          
+          list.innerHTML = html;
+        }
+        
+        async function saveHutang() {
+          const id = document.getElementById('hutangId').value;
+          const type = document.getElementById('hutangType').value;
+          const name = document.getElementById('hutangName').value.trim();
+          const amount = parseInt(document.getElementById('hutangAmount').value.replace(/\./g, '')) || 0;
+          const dueDate = document.getElementById('hutangDueDate').value;
+          const note = document.getElementById('hutangNote').value.trim();
+          const affectKasInput = document.getElementById('hutangAffectKas').checked;
+
+          if (!name || amount <= 0) {
+            Utils.showToast('Nama dan jumlah harus diisi', 'error');
+            return;
+          }
+
+          Utils.showLoading();
+
+          try {
+            const user = Auth.getCurrentUser();
+            if (!user) throw new Error('User belum login');
+
+            const hutangId = id || 'debt_' + Date.now();
+            const existing = id ? (hutangData[id] || {}) : null;
+            const today = Utils.getTodayString
+              ? Utils.getTodayString()
+              : new Date().toISOString().split('T')[0];
+
+            // Jumlah yang sudah dibayar tidak boleh hilang saat data diedit.
+            const previouslyPaid = existing
+              ? Math.max(0, Number(existing.amount || 0) - Number(existing.remaining ?? existing.amount ?? 0))
+              : 0;
+
+            if (id && amount < previouslyPaid) {
+              Utils.showToast(
+                `Jumlah baru tidak boleh lebih kecil dari total yang sudah dibayar (${Utils.formatRupiah ? Utils.formatRupiah(previouslyPaid) : previouslyPaid})`,
+                'error'
+              );
+              return;
+            }
+
+            const nextRemaining = Math.max(0, amount - previouslyPaid);
+            const kasAffect = affectKasInput;
+
+
+            const hutangPayload = {
+              id: hutangId,
+              type,
+              name,
+              amount,
+              remaining: nextRemaining,
+              dueDate: dueDate || null,
+              note,
+              status: nextRemaining > 0 ? 'active' : 'paid',
+              userId: user.uid,
+              userName: user.name || user.email,
+              createdAt: existing?.createdAt || Date.now(),
+              updatedAt: Date.now(),
+              date: existing?.date || today,
+              affectKas: kasAffect,
+              kasRecorded: existing?.kasRecorded === true,
+              source: existing?.source || 'hutang_page',
+              kasCoreCategory: type === 'piutang' ? 'kas_keluar' : 'kas_masuk',
+              kasCoreVersion: '1'
+            };
+            
+try {
+  const core = await ensureKasCore();
+
+  if (id) {
+    // EDIT DATA HUTANG YANG SUDAH ADA
+    await firebase.firestore()
+      .collection('debts')
+      .doc(id)
+      .set(hutangPayload, {
+        merge: true
+      });
+  } else {
+    // DATA BARU WAJIB MELALUI KASCORE
+    const saved = await core.saveTransaction({
+  kategori: 'pinjaman_tunai',
+  metode_pembayaran: 'tunai',
+  nominal: amount,
+  customerName: name,
+  userId: user.uid,
+  catatan: note || '',
+  status: 'completed',
+  pengaruhi_kas_global: affectKasInput,
+  waktu: Date.now()
+});
+
+    if (!saved || !saved.debtId) {
+      throw new Error(
+        'Hutang berhasil diproses tetapi debtId tidak ditemukan'
+      );
+    }
+
+    // Tambahkan field khusus halaman Hutang
+    // ke dokumen debts yang dibuat KasCore.
+    await firebase.firestore()
+  .collection('debts')
+  .doc(saved.debtId)
+  .set({
+    type: type,
+    name: name,
+    customerName: name,
+    dueDate: dueDate || null,
+    note: note || '',
+    catatan: note || '',
+    transactionId: saved.id,
+    updatedAt: Date.now()
+  }, { merge: true });
+  }
+
+  Utils.showToast(
+    'Data berhasil disimpan',
+    'success'
+  );
+
+  closeModal();
+  await loadAllData();
+
+} catch (error) {
+  console.error(
+    'Error saving hutang:',
+    error
+  );
+
+  Utils.showToast(
+    'Gagal menyimpan data: ' +
+      error.message,
+    'error'
+  );
+
+} finally {
+    Utils.hideLoading();
+  }
+  } catch (error) {
+    console.error("Error saving hutang:", error);
+    Utils.showToast("Gagal menyimpan data: " + error.message, "error");
+  }
+}
+
+        async function saveCustomer() {
+          const id = document.getElementById('customerId').value;
+          const name = document.getElementById('customerNameInput').value.trim();
+          const phone = document.getElementById('customerPhoneInput').value.trim();
+          
+          if (!name) {
+            Utils.showToast('Nama pelanggan harus diisi', 'error');
+            return;
+          }
+          
+          try {
+            const customerId = id || 'cust_' + Date.now();
+            
+            await CustomerStorage.save(customerId, {
+              name,
+              phone: phone || null,
+              createdAt: id ? (customerData[customerId]?.createdAt || Date.now()) : Date.now()
+            });
+            
+            Utils.showToast('Pelanggan berhasil disimpan', 'success');
+            closeCustomerModal();
+            
+            customerData = await CustomerStorage.getAll();
+            renderCustomerManageList();
+          } catch (error) {
+            console.error('Error saving customer:', error);
+            Utils.showToast('Gagal menyimpan pelanggan: ' + error.message, 'error');
+          }
+        }
+
+        window.editCustomer = (id) => {
+          const customer = customerData[id];
+          if (!customer) return;
+          
+          document.getElementById('customerModalTitle').textContent = 'Edit Pelanggan';
+          document.getElementById('customerId').value = id;
+          document.getElementById('customerNameInput').value = customer.name;
+          document.getElementById('customerPhoneInput').value = customer.phone || '';
+          document.getElementById('customerModal').classList.add('active');
+        };
+
+        window.deleteCustomer = (id) => {
+          Utils.confirm('Apakah Anda yakin ingin menghapus pelanggan ini?', async () => {
+            try {
+              await CustomerStorage.delete(id);
+              Utils.showToast('Pelanggan berhasil dihapus', 'success');
+              customerData = await CustomerStorage.getAll();
+              renderCustomerManageList();
+            } catch (error) {
+              Utils.showToast('Gagal menghapus pelanggan', 'error');
+            }
+          });
+        };
+
+        function handleLunasToggle(e) {
+          const paymentInput = document.getElementById('paymentAmount');
+          const remaining = parseInt(document.getElementById('paymentModal').dataset.remainingAmount) || 0;
+          
+          if (e.target.checked) {
+            paymentInput.value = Utils.formatNumberInput(remaining.toString());
+            paymentInput.readOnly = true;
+            paymentInput.style.background = 'var(--bg-subtle)';
+            paymentInput.style.cursor = 'not-allowed';
+          } else {
+            paymentInput.value = '';
+            paymentInput.readOnly = false;
+            paymentInput.style.background = 'var(--bg-subtle)';
+            paymentInput.style.cursor = 'text';
+            paymentInput.focus();
+          }
+        }
+
+        window.openPayment = (id) => {
+          const item = hutangData[id];
+          if (!item) return;
+          
+          currentPaymentId = id;
+          currentPaymentType = item.type;
+          const remaining = item.remaining || item.amount || 0;
+          
+          document.getElementById('remainingAmount').textContent = Utils.formatRupiah(remaining);
+          document.getElementById('paymentModal').dataset.remainingAmount = remaining;
+          
+          const lunasCheckbox = document.getElementById('lunasSekaligus');
+          lunasCheckbox.checked = false;
+          lunasCheckbox.removeEventListener('change', handleLunasToggle);
+          lunasCheckbox.addEventListener('change', handleLunasToggle);
+          document.getElementById('paymentAmount').value = '';
+          document.getElementById('paymentNote').value = '';
+          
+          const kasBox = document.getElementById('kasOptionBox');
+          const labelText = document.getElementById('kasLabelText');
+          const subLabelText = document.getElementById('kasSubLabelText');
+          const checkbox = document.getElementById('affectKas');
+          
+          const fromKasir = localStorage.getItem('fromKasir') === 'true';
+          checkbox.checked = fromKasir;
+          
+          labelText.textContent = 'Catat Arus Hutang/Piutang';
+          if (item.type === 'hutang') {
+            subLabelText.textContent = 'Pelunasan hutang: uang keluar dari kas';
+          } else {
+            subLabelText.textContent = 'Penerimaan piutang: uang masuk ke kas';
+          }
+
+          if (fromKasir) {
+            lunasCheckbox.checked = true;
+            handleLunasToggle({ target: lunasCheckbox });
+          }
+          
+          document.getElementById('paymentModal').classList.add('active');
+        };
+
+        window.openPaymentBatch = (groupName, groupType) => {
+                    const normalizedName = normalizeDebtName(groupName);
+          const items = Object.values(hutangData).filter(d =>
+  normalizeDebtName(d.name || d.customerName || d.pelanggan || d.customer) === normalizedName
+  && (d.type === 'hutang' ? 'hutang' : 'piutang') === groupType
+  && d.status === 'active'
+);
+          
+          if (items.length === 0) {
+            Utils.showToast('Tidak ada hutang/piutang aktif untuk dibayar', 'warning');
+            return;
+          }
+          
+          const totalRemaining = items.reduce((sum, item) => sum + (item.remaining || item.amount || 0), 0);
+          const type = items[0].type;
+          
+          currentBatchItems = items;
+          currentPaymentId = null;
+          
+          document.getElementById('remainingAmount').textContent = Utils.formatRupiah(totalRemaining);
+          document.getElementById('paymentModal').dataset.remainingAmount = totalRemaining;
+          
+          document.getElementById('lunasSekaligus').checked = true;
+          document.getElementById('lunasSekaligus').disabled = true;
+          
+          const paymentInput = document.getElementById('paymentAmount');
+          paymentInput.value = Utils.formatNumberInput(totalRemaining.toString());
+          paymentInput.readOnly = true;
+          paymentInput.style.background = 'var(--bg-subtle)';
+          paymentInput.style.cursor = 'not-allowed';
+          
+          document.getElementById('paymentNote').value = '';
+          
+          const labelText = document.getElementById('kasLabelText');
+          const subLabelText = document.getElementById('kasSubLabelText');
+          const checkbox = document.getElementById('affectKas');
+          
+          checkbox.checked = localStorage.getItem('fromKasir') === 'true';
+          
+          labelText.textContent = 'Catat Arus Hutang/Piutang';
+          if (type === 'hutang') {
+            subLabelText.textContent = 'Pelunasan hutang: uang keluar dari kas';
+          } else {
+            subLabelText.textContent = 'Penerimaan piutang: uang masuk ke kas';
+          }
+
+          if (localStorage.getItem('fromKasir') === 'true') {
+            document.getElementById('affectKas').checked = true;
+          }
+          
+          document.getElementById('paymentModal').classList.add('active');
+        };
+
+        window.editHutang = (id) => {
+          const item = hutangData[id];
+          if (!item) return;
+          
+          document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Edit Hutang/Piutang';
+          document.getElementById('hutangId').value = id;
+          document.getElementById('hutangType').value = item.type;
+          document.getElementById('hutangName').value = item.name || '';
+          document.getElementById('hutangAmount').value = Utils.formatNumberInput(item.amount.toString());
+          const dueDateVal = item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '';
+          document.getElementById('hutangDueDate').value = dueDateVal;
+          document.getElementById('hutangNote').value = item.note || '';
+          document.getElementById('hutangAffectKas').checked = item.affectKas !== false;
+          updateKasOptionHutang();
+          document.getElementById('hutangModal').classList.add('active');
+        };
+
+        window.deleteHutang = (id) => {
+          Utils.confirm('Apakah Anda yakin ingin menghapus data ini?', async () => {
+            Utils.showLoading();
+            try {
+              await firestoreDb.ref('debts/' + id).update({
+                status: 'deleted',
+                deletedAt: Date.now()
+              });
+              Utils.showToast('Data berhasil dihapus', 'success');
+              loadAllData();
+            } catch (error) {
+              console.error('Error deleting hutang:', error);
+              Utils.showToast('Gagal menghapus data', 'error');
+            }
+            Utils.hideLoading();
+          });
+        };
+
+        window.restoreHutang = (id) => {
+          Utils.confirm('Restore data ini ke status aktif?', async () => {
+            Utils.showLoading();
+            try {
+              await firestoreDb.ref('debts/' + id).update({
+                status: 'active',
+                remaining: hutangData[id].amount,
+                restoredAt: Date.now()
+              });
+              Utils.showToast('Data berhasil direstore', 'success');
+              loadAllData();
+            } catch (error) {
+              console.error('Error restoring hutang:', error);
+              Utils.showToast('Gagal restore data', 'error');
+            }
+            Utils.hideLoading();
+          });
+        };
+
+        async function processPayment() {
+          const affectKas = document.getElementById('affectKas').checked;
+          const note = document.getElementById('paymentNote').value.trim();
+          const user = Auth.getCurrentUser();
+
+          if (!user) {
+            Utils.showToast('User belum login', 'error');
+            return;
+          }
+
+          // WAJIB dicek sebelum data hutang diubah.
+          // Jika KasCore gagal dimuat, pembayaran dibatalkan agar saldo tidak hilang.
+          if (affectKas) {
+            try {
+              await ensureKasCore();
+            } catch (coreError) {
+              console.error('KasCore preflight gagal:', coreError);
+              Utils.showToast('Pembayaran dibatalkan: KasCore belum siap. ' + coreError.message, 'error');
+              return;
+            }
+          }
+
+          // =========================
+          // PELUNASAN BATCH
+          // =========================
+          if (!currentPaymentId && currentBatchItems && currentBatchItems.length > 0) {
+            Utils.showLoading();
+            try {
+              for (const item of currentBatchItems) {
+                const remaining = Math.max(0, Number(item.remaining ?? item.amount ?? 0));
+                if (remaining <= 0) continue;
+
+                const category = item.type === 'hutang'
+  ? 'kas_keluar'
+  : 'kas_masuk';
+
+                const now = Date.now();
+                let kasRecord = null;
+
+                // Kas harus berhasil lebih dulu. Kalau gagal, saldo hutang tidak disentuh.
+                if (affectKas) {
+                  kasRecord = await recordToKas(
+                    item.type === 'hutang' ? 'keluar' : 'masuk',
+                    remaining,
+                    item.type === 'hutang'
+                      ? `Pelunasan hutang - ${item.name}`
+                      : `Pengembalian pinjaman - ${item.name}`,
+                    user,
+                    category,
+                    item.id,
+                    {
+                      affectsCashGlobal: true,
+                      debtType: item.type === 'hutang' ? 'hutang' : 'piutang',
+                      flowType: item.type === 'hutang'
+                        ? 'pelunasan_hutang'
+                        : 'penerimaan_piutang'
+                    }
+                  );
+                }
+
+                try {
+                  await firestoreDb.ref('debts/' + item.id).update({
+                    remaining: 0,
+                    status: 'paid',
+                    paidAt: now,
+                    updatedAt: now
+                  });
+
+                  await firestoreDb.ref('debt_payments/' + item.id + '/' + now).set({
+                    category,
+                    amount: remaining,
+                    note: note || `Pelunasan - ${item.name}`,
+                    affectKas,
+                    userId: user.uid,
+                    userName: user.name || user.email,
+                    timestamp: now
+                  });
+                } catch (itemError) {
+                  if (kasRecord?.id) {
+  await firebase.firestore()
+    .collection('transactions')
+    .doc(kasRecord.id)
+    .delete()
+    .catch(() => {});
+}
+                  throw itemError;
+                }
+              }
+
+              Utils.showToast(
+                `${currentBatchItems.length} pembayaran berhasil` +
+                (affectKas ? ' dan tercatat di kas' : ''),
+                'success'
+              );
+              closePaymentModal();
+              await loadAllData();
+
+              if (localStorage.getItem('fromKasir') === 'true') {
+                localStorage.removeItem('fromKasir');
+                setTimeout(() => {
+                  window.location.href = 'page-kasir.html';
+                }, 800);
+              }
+            } catch (error) {
+              console.error('Error batch payment:', error);
+              Utils.showToast('Gagal memproses pembayaran batch: ' + error.message, 'error');
+            } finally {
+              Utils.hideLoading();
+            }
+            return;
+          }
+
+          if (!currentPaymentId) return;
+
+          const item = hutangData[currentPaymentId];
+          if (!item) {
+            Utils.showToast('Data hutang/piutang tidak ditemukan', 'error');
+            return;
+          }
+
+          const remaining = Math.max(0, Number(item.remaining ?? item.amount ?? 0));
+          const lunasSekaligus = document.getElementById('lunasSekaligus').checked;
+          const enteredPaymentAmount = parseInt(
+            document.getElementById('paymentAmount').value.replace(/\./g, ''),
+            10
+          ) || 0;
+          const paymentAmount = lunasSekaligus ? remaining : enteredPaymentAmount;
+
+          if (remaining <= 0) {
+            Utils.showToast('Hutang/piutang ini sudah lunas', 'error');
+            return;
+          }
+
+          if (paymentAmount <= 0) {
+            Utils.showToast('Jumlah pembayaran harus lebih dari 0', 'error');
+            return;
+          }
+
+          if (paymentAmount > remaining) {
+            Utils.showToast('Jumlah pembayaran melebihi sisa hutang/piutang', 'error');
+            return;
+          }
+
+         Utils.showLoading();
+          try {
+            const core = await ensureKasCore();
+            await core.saveTransaction({
+              kategori: 'bayar_hutang',
+              metode_pembayaran: 'tunai',
+              nominal: paymentAmount,
+              userId: user.uid,
+              debtId: currentPaymentId,
+              customerName: item.name || '',
+              catatan: note || '',
+              pengaruhi_kas_global: affectKas
+            });
+
+            Utils.showToast(
+              'Pembayaran berhasil' + (affectKas ? ' dan tercatat di kas' : ''),
+              'success'
+            );
+            closePaymentModal();
+            await loadAllData();
+
+            if (localStorage.getItem('fromKasir') === 'true') {
+              localStorage.removeItem('fromKasir');
+              setTimeout(() => {
+                window.location.href = 'page-kasir.html';
+              }, 800);
+            }
+          } catch (error) {
+            console.error('Error processing payment:', error);
+            Utils.showToast('Gagal memproses pembayaran: ' + error.message, 'error');
+          } finally {
+            Utils.hideLoading();
+          }
+        }
+        
+        async function ensureKasCore() {
+          if (window.KasCore && typeof window.KasCore.saveTransaction === 'function') {
+  return window.KasCore;
+}
+
+          await new Promise((resolve, reject) => {
+            const existing = document.querySelector('script[data-kas-core-loader="1"]');
+            if (existing) {
+              existing.addEventListener('load', resolve, { once: true });
+              existing.addEventListener('error', () => reject(new Error('File ./js/kas-core.js tidak dapat dimuat.')), { once: true });
+              return;
+            }
+
+            const script = document.createElement('script');
+            script.src = './js/kas-core.js?v=5';
+            script.dataset.kasCoreLoader = '1';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('File ./js/kas-core.js tidak ditemukan / gagal dimuat.'));
+            document.head.appendChild(script);
+          });
+
+         if (!window.KasCore || typeof window.KasCore.saveTransaction !== 'function') {
+  throw new Error('KasCore gagal diinisialisasi. Periksa file ./js/kas-core.js.');
+}
+
+          return window.KasCore;
+        }
+
+        async function recordToKas(
+  type,
+  amount,
+  description,
+  user,
+  category = 'kas_masuk',
+  relatedDebtId = null,
+  extra = {}
+) {
+  const core = await ensureKasCore();
+
+  const nominal = Math.max(0, Number(amount) || 0);
+  if (nominal <= 0) return null;
+
+  const now = Date.now();
+  const today = Utils.getTodayString
+    ? Utils.getTodayString()
+    : new Date().toISOString().split('T')[0];
+
+  const affectsCashGlobal = extra.affectsCashGlobal !== undefined
+    ? Boolean(extra.affectsCashGlobal)
+    : true;
+
+  const result = await core.saveTransaction({
+    kategori: category,
+    metode_pembayaran: extra.paymentMethod || 'tunai',
+    nominal,
+    admin: Number(extra.admin || 0),
+    catatan: description,
+    userId: user.uid,
+    date_key: today,
+    waktu: now,
+    status: 'completed',
+    pengaruhi_kas_global: affectsCashGlobal
+  });
+
+  return {
+    id: result.id,
+    date_key: result.date_key,
+    debtId: result.debtId || null,
+    mutation: result.mutation || {},
+    relatedDebtId
+  };
+}
+
+       /* =========================================================
+   EXPORT / IMPORT HUTANG PIUTANG
+   ========================================================= */
+
+function normalizeDebtHeader(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_\-\/]+/g, '');
+}
+
+function getDebtField(row, names) {
+  const normalizedRow = {};
+
+  Object.keys(row || {}).forEach((key) => {
+    normalizedRow[normalizeDebtHeader(key)] = row[key];
+  });
+
+  for (const name of names) {
+    const value = normalizedRow[normalizeDebtHeader(name)];
+
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function normalizeDebtType(value) {
+  const type = String(value || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    type === 'piutang' ||
+    type === 'piutang aktif' ||
+    type === 'receivable'
+  ) {
+    return 'piutang';
+  }
+
+  return 'hutang';
+}
+
+function normalizeDebtStatus(value) {
+  const status = String(value || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    status === 'lunas' ||
+    status === 'paid' ||
+    status === 'selesai' ||
+    status === 'closed' ||
+    status === 'inactive'
+  ) {
+    return 'paid';
+  }
+
+  return 'active';
+}
+
+function parseDebtAmount(value) {
+  if (typeof value === 'number') {
+    return Math.round(value);
+  }
+
+  const cleaned = String(value || '')
+    .replace(/rp/gi, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .replace(/[^\d-]/g, '');
+
+  return parseInt(cleaned, 10) || 0;
+}
+
+function formatDebtDate(value) {
+  if (!value) return null;
+
+  if (typeof value === 'number') {
+    const parsed = XLSX.SSF.parse_date_code(value);
+
+    if (parsed) {
+      return [
+        parsed.y,
+        String(parsed.m).padStart(2, '0'),
+        String(parsed.d).padStart(2, '0')
+      ].join('-');
+    }
+  }
+
+  const text = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+
+  if (match) {
+    return [
+      match[3],
+      String(match[2]).padStart(2, '0'),
+      String(match[1]).padStart(2, '0')
+    ].join('-');
+  }
+
+  return text;
+}
+
+window.downloadDebtTemplate = function() {
+  const rows = [
+    {
+      name: 'Budi Santoso',
+      type: 'piutang',
+      amount: 200000,
+      remaining: 200000,
+      dueDate: '2026-10-10',
+      note: 'Penjualan kredit',
+      status: 'active'
+    }
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'Template Hutang'
+  );
+
+  XLSX.writeFile(
+    workbook,
+    'Template_Hutang_Piutang.xlsx'
+  );
+};
+
+function exportData() {
+  try {
+    const rows = Object.values(hutangData || {}).map((item) => ({
+      id: item.id || '',
+      name: item.name || '',
+      type: item.type || 'hutang',
+      amount: Number(item.amount || 0),
+      remaining: Number(
+        item.remaining !== undefined
+          ? item.remaining
+          : item.amount || 0
+      ),
+      dueDate: item.dueDate || '',
+      note: item.note || '',
+      status: item.status || 'active',
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : ''
+    }));
+
+    if (!rows.length) {
+      Utils.showToast(
+        'Tidak ada data hutang/piutang untuk diexport',
+        'warning'
+      );
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Data Hutang'
+    );
+
+    const today = new Date()
+      .toISOString()
+      .split('T')[0];
+
+    XLSX.writeFile(
+      workbook,
+      `Data_Hutang_Piutang_${today}.xlsx`
+    );
+
+    Utils.showToast(
+      'Data hutang/piutang berhasil diexport',
+      'success'
+    );
+  } catch (error) {
+    console.error('Export hutang gagal:', error);
+
+    Utils.showToast(
+      'Export gagal: ' + error.message,
+      'error'
+    );
+  }
+}
+
+function exportDebtData() {
+  try {
+    const source = hutangData || {};
+    const rows = Object.values(source).map((item) => ({
+      id: item.id || '',
+      name: item.name || item.customerName || '',
+      type: item.type || 'hutang',
+      amount: Number(item.amount || 0),
+      remaining: Number(
+        item.remaining !== undefined
+          ? item.remaining
+          : item.amount || 0
+      ),
+      dueDate: item.dueDate || '',
+      note: item.note || item.catatan || '',
+      status: item.status || 'active',
+      kasRecorded: item.kasRecorded !== false,
+      userId: item.userId || '',
+      transactionId: item.transactionId || '',
+      createdAt: item.createdAt || item.created_at || '',
+      updatedAt: item.updatedAt || item.updated_at || ''
+    }));
+
+    if (rows.length === 0) {
+      Utils.showToast(
+        'Tidak ada data hutang/piutang untuk diexport',
+        'warning'
+      );
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Data Hutang'
+    );
+
+    const date = new Date()
+      .toISOString()
+      .split('T')[0];
+
+    XLSX.writeFile(
+      workbook,
+      `Data_Hutang_Piutang_${date}.xlsx`
+    );
+
+    Utils.showToast(
+      `Berhasil mengekspor ${rows.length} data hutang/piutang`,
+      'success'
+    );
+  } catch (error) {
+    console.error('Export hutang gagal:', error);
+
+    Utils.showToast(
+      'Export hutang gagal: ' + error.message,
+      'error'
+    );
+  }
+}
+
+function downloadDebtTemplate() {
+  const rows = [
+    {
+      id: '',
+      name: 'Budi Santoso',
+      type: 'piutang',
+      amount: 200000,
+      remaining: 200000,
+      dueDate: '2026-10-31',
+      note: 'Penjualan kredit',
+      status: 'active',
+      kasRecorded: true,
+      userId: '',
+      transactionId: '',
+      createdAt: '',
+      updatedAt: ''
+    }
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'Template Hutang'
+  );
+
+  XLSX.writeFile(
+    workbook,
+    'Template_Hutang_Piutang.xlsx'
+  );
+
+  Utils.showToast(
+    'Template hutang/piutang berhasil didownload',
+    'success'
+  );
+}
+
+async function importData() {
+  const fileInput = document.getElementById('importFile');
+  const overwrite = document.getElementById('importOverwrite').checked;
+
+  if (!fileInput || !fileInput.files.length) {
+    Utils.showToast(
+      'Pilih file terlebih dahulu',
+      'warning'
+    );
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  Utils.showLoading();
+
+  try {
+    let importedData = [];
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith('.json')) {
+      const text = await file.text();
+      importedData = JSON.parse(text);
+    } else {
+      const buffer = await file.arrayBuffer();
+
+      const workbook = XLSX.read(buffer, {
+        type: 'array',
+        cellDates: false
+      });
+
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      importedData = XLSX.utils.sheet_to_json(firstSheet, {
+        defval: ''
+      });
+    }
+
+    if (!Array.isArray(importedData)) {
+      throw new Error(
+        'Format file harus berupa daftar data'
+      );
+    }
+
+    const currentUser = Auth.getCurrentUser
+      ? Auth.getCurrentUser()
+      : null;
+
+    let berhasil = 0;
+    let dilewati = 0;
+
+    for (const row of importedData) {
+      const name = String(
+        getDebtField(row, [
+          'name',
+          'nama',
+          'nama pelanggan',
+          'pelanggan',
+          'customer name'
+        ])
+      ).trim();
+
+      const type = normalizeDebtType(
+        getDebtField(row, [
+          'type',
+          'tipe',
+          'jenis',
+          'jenis transaksi'
+        ])
+      );
+
+      const amount = parseDebtAmount(
+        getDebtField(row, [
+          'amount',
+          'jumlah',
+          'nominal',
+          'total'
+        ])
+      );
+
+      const importedRemaining = parseDebtAmount(
+        getDebtField(row, [
+          'remaining',
+          'sisa',
+          'sisa hutang',
+          'sisa piutang'
+        ])
+      );
+
+      const dueDate = formatDebtDate(
+        getDebtField(row, [
+          'dueDate',
+          'due date',
+          'tanggal jatuh tempo',
+          'tempo',
+          'tanggal'
+        ])
+      );
+
+      const note = String(
+        getDebtField(row, [
+          'note',
+          'catatan',
+          'keterangan'
+        ]) || ''
+      ).trim();
+
+      const status = normalizeDebtStatus(
+        getDebtField(row, [
+          'status',
+          'status transaksi'
+        ])
+      );
+
+      if (!name || amount <= 0) {
+        dilewati++;
+        continue;
+      }
+
+      const remaining = status === 'paid'
+        ? 0
+        : importedRemaining > 0
+          ? Math.min(importedRemaining, amount)
+          : amount;
+
+      const importedId = String(
+        getDebtField(row, [
+          'id',
+          'debt id',
+          'hutang id'
+        ]) || ''
+      ).trim();
+
+      let debtId = importedId;
+
+      if (!debtId || !overwrite) {
+        debtId =
+          'debt_' +
+          Date.now() +
+          '_' +
+          Math.random()
+            .toString(36)
+            .slice(2, 8);
+      }
+
+      const debtData = {
+        id: debtId,
+        name,
+        type,
+        amount,
+        remaining,
+        dueDate: dueDate || null,
+        note,
+        status,
+        imported: true,
+        updatedAt: Date.now(),
+        userId: currentUser?.uid || ''
+      };
+
+      if (overwrite && importedId) {
+        await firestoreDb
+          .ref('debts/' + importedId)
+          .set(debtData);
+
+        berhasil++;
+        continue;
+      }
+
+      const duplicate = Object.values(hutangData || {}).find((item) => {
+        return (
+          String(item.name || '').trim().toLowerCase() ===
+            name.toLowerCase() &&
+          String(item.type || '').toLowerCase() === type &&
+          Number(item.amount || 0) === amount &&
+          String(item.dueDate || '') === String(dueDate || '')
+        );
+      });
+
+      if (duplicate) {
+        if (overwrite && duplicate.id) {
+          await firestoreDb
+            .ref('debts/' + duplicate.id)
+            .set({
+              ...debtData,
+              id: duplicate.id
+            });
+
+          berhasil++;
+        } else {
+          dilewati++;
+        }
+
+        continue;
+      }
+
+      await firestoreDb
+        .ref('debts/' + debtId)
+        .set({
+          ...debtData,
+          createdAt: Date.now()
+        });
+
+      berhasil++;
+    }
+
+    closeImportModal();
+
+    Utils.showToast(
+      `Import selesai. Berhasil: ${berhasil}, Dilewati: ${dilewati}`,
+      berhasil > 0 ? 'success' : 'warning'
+    );
+
+    await loadAllData();
+  } catch (error) {
+    console.error('Import hutang gagal:', error);
+
+    Utils.showToast(
+      'Import gagal: ' + error.message,
+      'error'
+    );
+  } finally {
+      Utils.hideLoading();
+
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
+  }
+}
+
+// ==========================================================
+      // ============ PULL TO REFRESH (MOBILE) ====================
+      // ==========================================================
+      (function initPullToRefresh() {
+        const ptr = document.getElementById('ptrContainer');
+        const indicator = document.getElementById('ptrIndicator');
+        if (!ptr) return;
+
+        let startY = 0;
+        let pulling = false;
+        const THRESHOLD = 70;
+
+        window.addEventListener('touchstart', (e) => {
+          if (window.scrollY === 0) {
+            startY = e.touches[0].clientY;
+            pulling = true;
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+          if (!pulling) return;
+          const dy = e.touches[0].clientY - startY;
+          if (dy > 20) {
+            ptr.classList.add('visible');
+            const icon = indicator.querySelector('i');
+            icon.className = dy >= THRESHOLD ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchend', async (e) => {
+          if (!pulling) return;
+          pulling = false;
+          const dy = e.changedTouches[0].clientY - startY;
+
+          if (dy >= THRESHOLD) {
+            indicator.classList.add('spin');
+            indicator.querySelector('i').className = 'fas fa-sync-alt';
+            if (typeof refreshPageData === 'function') {
+              try {
+                await refreshPageData();
+                Utils.showToast('Halaman diperbarui', 'success');
+              } catch (err) {
+                Utils.showToast('Gagal memperbarui data', 'error');
+              }
+            }
+          }
+
+          setTimeout(() => {
+            ptr.classList.remove('visible');
+            indicator.classList.remove('spin');
+            indicator.querySelector('i').className = 'fas fa-arrow-down';
+          }, 300);
+        }, { passive: true });
+      })();
+});
+</script>
+</body>
+</html>
