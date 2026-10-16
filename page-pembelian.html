@@ -667,7 +667,8 @@
                 <label class="form-label">Total Keluar dari Kas <span style="color:var(--text-muted); font-weight:400;">(Bisa diedit)</span></label>
                 <div class="input-group">
                   <span class="input-group-text">Rp</span>
-                  <input type="number" class="form-input" id="totalKasInput" placeholder="0" min="0" oninput="totalKasEdited=true; updatePembulatanDisplay()">
+<!-- KODE BARU (Menggunakan onTotalKasInput): -->
+<input type="number" class="form-input" id="totalKasInput" placeholder="0" min="0" oninput="window.onTotalKasInput(this.value)">
                 </div>
               </div>
 
@@ -1057,36 +1058,62 @@
         } catch(e) {}
       }
 
-      // ===== FUNGSI PEMBULATAN KAS (SAMA PERSIS DENGAN KASIR) =====
+      // ===== FUNGSI PEMBULATAN KAS & EDIT MANUAL TOTAL =====
       function getPembulatan() {
         const base = pembelianList.reduce((sum, item) => sum + item.total, 0);
         const step = parseInt(document.getElementById('pembulatanSelect')?.value, 10) || 0;
-        const manual = parseInt(document.getElementById('totalKasInput')?.value, 10) || 0;
+        const manualVal = document.getElementById('totalKasInput')?.value;
+        const manual = manualVal !== '' ? parseInt(manualVal, 10) : NaN;
         const rounded = step > 0 ? Math.ceil(base / step) * step : base;
-        const total = totalKasEdited && manual > 0 ? manual : rounded;
+        
+        // Jika user mengetik manual, pakai angka ketikan user
+        const total = (totalKasEdited && !isNaN(manual)) ? manual : rounded;
         return { base, step, amount: total - base, total };
       }
 
+      // Dipanggil saat user mengetik manual di kolom input
+      window.onTotalKasInput = function(val) {
+        totalKasEdited = true;
+        updatePembulatanDisplay(true); // true = jangan overwrite apa yang sedang diketik user
+      };
+
+      // Dipanggil saat user mengganti pilihan dropdown pembulatan
       window.applyPembulatan = function() {
+        totalKasEdited = false; // Reset agar kembali mengikuti hitungan otomatis
         const base = pembelianList.reduce((sum, item) => sum + item.total, 0);
         const step = parseInt(document.getElementById('pembulatanSelect')?.value, 10) || 0;
         const rounded = step > 0 ? Math.ceil(base / step) * step : base;
         const input = document.getElementById('totalKasInput');
         if (input) input.value = rounded || '';
-        totalKasEdited = false;
-        updatePembulatanDisplay();
+        updatePembulatanDisplay(false);
       };
 
-      window.updatePembulatanDisplay = function() {
+      window.updatePembulatanDisplay = function(isTyping = false) {
         const rounding = getPembulatan();
         const input = document.getElementById('totalKasInput');
-        if (input && !totalKasEdited) input.value = rounding.total || '';
+        
+        // Hanya isi input jika user TIDAK sedang mengetik manual di kolom tersebut
+        if (input && !isTyping && !totalKasEdited) {
+          input.value = rounding.total > 0 ? rounding.total : '';
+        }
         
         const subtotalEl = document.getElementById('subtotalPembelian');
         if (subtotalEl) subtotalEl.textContent = Utils.formatRupiah(rounding.base);
 
         const roundingNote = document.getElementById('roundingPreview');
-        if (roundingNote) roundingNote.textContent = `Pembulatan: ${rounding.amount > 0 ? '+' : ''}${Utils.formatRupiah(rounding.amount)}`;
+        if (roundingNote) {
+          const selisih = rounding.total - rounding.base;
+          if (selisih > 0) {
+            roundingNote.textContent = `Pembulatan / Lebih: +${Utils.formatRupiah(selisih)}`;
+            roundingNote.style.color = 'var(--primary)';
+          } else if (selisih < 0) {
+            roundingNote.textContent = `Selisih: -${Utils.formatRupiah(Math.abs(selisih))}`;
+            roundingNote.style.color = 'var(--danger)';
+          } else {
+            roundingNote.textContent = `Pembulatan: Rp 0`;
+            roundingNote.style.color = 'var(--text-muted)';
+          }
+        }
 
         const grandTotalEl = document.getElementById('grandTotal');
         if (grandTotalEl) grandTotalEl.textContent = Utils.formatRupiah(rounding.total);
@@ -1147,6 +1174,7 @@
         }
 
         pembelianList.push(itemData);
+        totalKasEdited = false;
         renderPembelianList();
         
         document.getElementById('qty').value = '';
