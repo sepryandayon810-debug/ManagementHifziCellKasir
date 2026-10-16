@@ -1940,88 +1940,120 @@ const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
         document.getElementById('inputSisaNominal').focus();
       };
 
+      // ==========================================================
+      // ===== EDIT SALDO KASIR & UANG TAS (FIX NORMAL RESTORE) ===
+      // ==========================================================
       let editingStatic = null;
 
-window.cancelStaticEdit = function() {
-  if (!editingStatic) return;
-  const wrapId = editingStatic === 'UANG KASIR' ? 'wrapUangKasir' : 'wrapUangTas';
-  const wrap = document.getElementById(wrapId);
-  if (wrap && wrap.dataset.orig) wrap.innerHTML = wrap.dataset.orig;
-  editingStatic = null;
-  const grid = document.querySelector('.static-balance-grid');
-  if (grid) grid.classList.remove('editing');
-  updateStaticBalance();
-}
+      function labelStatic(t) { 
+        return t === 'UANG KASIR' ? 'Uang Kasir' : 'Uang Tas'; 
+      }
 
-window.editStaticBalance = function(toolName) {
-  if (editingStatic === toolName) return;
-  cancelStaticEdit();
-  editingStatic = toolName;
+      // Fungsi untuk mengembalikan tampilan kartu ke bentuk normal (Rupiah)
+      function renderStaticBalanceCard(toolName) {
+        const isKasir = toolName === 'UANG KASIR';
+        const wrapId = isKasir ? 'wrapUangKasir' : 'wrapUangTas';
+        const valId = isKasir ? 'statUangKasir' : 'statUangTas';
+        const label = isKasir ? 'Uang Kasir (Terakhir)' : 'Uang Tas (Terakhir)';
+        const wrap = document.getElementById(wrapId);
+        if (!wrap) return;
 
-  const wrapId = toolName === 'UANG KASIR' ? 'wrapUangKasir' : 'wrapUangTas';
-  const label = toolName === 'UANG KASIR' ? 'Uang Kasir' : 'Uang Tas';
-  const wrap = document.getElementById(wrapId);
-  wrap.dataset.orig = wrap.innerHTML;
+        const nominal = getLatestNominal(toolName);
+        wrap.innerHTML = `
+          <div class="stat-label">${label}</div>
+          <div class="stat-value" id="${valId}">${Utils.formatRupiah(nominal)}</div>
+        `;
+      }
 
- wrap.innerHTML = `
-    <div class="static-balance-label">${label}</div>
-    <input type="number" id="inlineStaticInput" class="form-input"
-      style="padding:0.5rem 0.6rem; font-size:0.95rem; font-weight:700; width:100%; min-width:0; box-sizing:border-box;"
-      value="${getLatestNominal(toolName)}" min="0" inputmode="numeric"
-      onkeydown="if(event.key==='Enter'){event.preventDefault();saveStaticBalance('${toolName}');}">
-    <div style="display:flex; gap:0.4rem; margin-top:0.45rem; width:100%;">
-      <button class="btn btn-primary btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
-        onclick="event.stopPropagation(); saveStaticBalance('${toolName}')"><i class="fas fa-check"></i> Simpan</button>
-      <button class="btn btn-outline btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
-        onclick="event.stopPropagation(); cancelStaticEdit()">Batal</button>
-    </div>`;
+      function updateStaticBalance() {
+        // Jangan timpa kartu jika sedang diedit user
+        if (editingStatic !== 'UANG KASIR') renderStaticBalanceCard('UANG KASIR');
+        if (editingStatic !== 'UANG TAS') renderStaticBalanceCard('UANG TAS');
+      }
 
-  // saat edit, kartu melebar penuh (grid jadi 1 kolom)
-  const grid = wrap.closest('.static-balance-grid');
-  if (grid) grid.classList.add('editing');
-  const inp = document.getElementById('inlineStaticInput');
-  inp.focus();
-  inp.select();
-};
+      window.cancelStaticEdit = function() {
+        if (editingStatic) {
+          renderStaticBalanceCard(editingStatic);
+          editingStatic = null;
+        }
+      };
 
-window.saveStaticBalance = async function(toolName) {
-  const inp = document.getElementById('inlineStaticInput');
-  const nominal = parseInt(inp && inp.value) || 0;
-  if (nominal < 0) {
-    Utils.showToast('Nominal tidak valid', 'warning');
-    return;
-  }
-  Utils.showLoading('Menyimpan...');
-  try {
-    const now = new Date();
-    await db.collection(COLLECTION_SISA).add({
-      toolName: toolName,
-      nominal: nominal,
-      date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      timestamp: now.getTime(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    editingStatic = null;
-    Utils.hideLoading();
-    Utils.showToast(labelStatic(toolName) + ' berhasil diperbarui!', 'success');
-    await loadSisaHistory();
-  } catch(e) {
-    Utils.hideLoading();
-    Utils.showToast('Gagal menyimpan', 'error');
-  }
-};
+      window.editStaticBalance = function(toolName) {
+        if (editingStatic === toolName) return;
+        
+        // Kembalikan kartu lain jika sedang terbuka
+        if (editingStatic) renderStaticBalanceCard(editingStatic);
 
-function labelStatic(t) { return t === 'UANG KASIR' ? 'Uang Kasir' : 'Uang Tas'; }
+        editingStatic = toolName;
+        const isKasir = toolName === 'UANG KASIR';
+        const wrapId = isKasir ? 'wrapUangKasir' : 'wrapUangTas';
+        const label = isKasir ? 'Uang Kasir' : 'Uang Tas';
+        const wrap = document.getElementById(wrapId);
+        if (!wrap) return;
 
-// klik di luar kartu = batal edit
-document.addEventListener('click', (e) => {
-  if (editingStatic &&
-      !e.target.closest('#cardUangKasir') &&
-      !e.target.closest('#cardUangTas')) {
-    cancelStaticEdit();
-  }
-});
-      
+        const currentNominal = getLatestNominal(toolName);
+
+        wrap.innerHTML = `
+          <div class="stat-label">${label}</div>
+          <input type="number" id="inlineStaticInput" class="form-input"
+            style="padding:0.45rem 0.6rem; font-size:0.95rem; font-weight:700; width:100%; box-sizing:border-box; margin-top:0.25rem;"
+            value="${currentNominal}" min="0" inputmode="numeric"
+            onclick="event.stopPropagation();"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();saveStaticBalance('${toolName}');}">
+          <div style="display:flex; gap:0.4rem; margin-top:0.45rem; width:100%;">
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
+              onclick="event.stopPropagation(); saveStaticBalance('${toolName}')"><i class="fas fa-check"></i> Simpan</button>
+            <button type="button" class="btn btn-outline btn-sm" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem;"
+              onclick="event.stopPropagation(); cancelStaticEdit()"><i class="fas fa-times"></i> Batal</button>
+          </div>`;
+
+        const inp = document.getElementById('inlineStaticInput');
+        if (inp) {
+          inp.focus();
+          inp.select();
+        }
+      };
+
+      window.saveStaticBalance = async function(toolName) {
+        const inp = document.getElementById('inlineStaticInput');
+        const nominal = parseInt(inp && inp.value) || 0;
+        if (nominal < 0) {
+          Utils.showToast('Nominal tidak valid', 'warning');
+          return;
+        }
+
+        Utils.showLoading('Menyimpan...');
+        try {
+          const now = new Date();
+          await db.collection(COLLECTION_SISA).add({
+            toolName: toolName,
+            nominal: nominal,
+            date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            timestamp: now.getTime(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // ✅ LANGSUNG KEMBALIKAN TAMPILAN KARTU KE NORMAL (RUPIAH)
+          editingStatic = null;
+          renderStaticBalanceCard(toolName);
+
+          Utils.hideLoading();
+          Utils.showToast(labelStatic(toolName) + ' berhasil diperbarui!', 'success');
+          await loadSisaHistory();
+        } catch(e) {
+          Utils.hideLoading();
+          Utils.showToast('Gagal menyimpan: ' + e.message, 'error');
+        }
+      };
+
+      // Klik di luar kartu manapun = otomatis tutup & batalkan edit
+      document.addEventListener('click', (e) => {
+        if (editingStatic &&
+            !e.target.closest('#cardUangKasir') &&
+            !e.target.closest('#cardUangTas')) {
+          cancelStaticEdit();
+        }
+      });      
       async function loadSisaHistory(showSpinner = false) {
         if (showSpinner) Utils.showLoading('Memuat sisa saldo...');
         try {
