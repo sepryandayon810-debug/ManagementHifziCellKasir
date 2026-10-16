@@ -53,22 +53,31 @@ if (typeof window.RoleGuard === 'undefined') {
 var RoleGuard = window.RoleGuard;
 
 // ==============================================================
-// ⬇️ OTOMATIS AMBIL IZIN DARI DATABASE UNTUK USER YANG LOGIN
+// ⬇️ BUKA MENU YANG DIBERI IZIN (MENDUKUNG SEMUA MENU & CACHE)
 // ==============================================================
 (function() {
   const originalApply = window.RoleGuard.apply;
 
-  // Fungsi pembuka menu yang diizinkan Owner
   function unhideAllowedMenus(perms) {
     if (!perms || typeof perms !== 'object') return;
 
     Object.keys(perms).forEach(menuKey => {
       if (perms[menuKey] === true) {
-        const el = document.querySelector(`[data-menu="${menuKey}"]`);
+        // Cari elemen menu (toleran jika ada awalan data- atau tanpa data-)
+        const selectors = [
+          `[data-menu="${menuKey}"]`,
+          `[data-menu="data-${menuKey}"]`
+        ];
+        if (menuKey === 'pelanggan') selectors.push('[data-menu="data-pelanggan"]');
+        if (menuKey === 'data-pelanggan') selectors.push('[data-menu="pelanggan"]');
+
+        const el = document.querySelector(selectors.join(', '));
         if (el) {
           const item = el.closest('.nav-item') || el;
           item.style.display = ''; // Munculkan menu
         }
+
+        // Widget khusus Dashboard
         if (menuKey === 'total_laba') {
           const laba = document.getElementById('totalLaba');
           if (laba) laba.closest('.stat-card').style.display = '';
@@ -77,24 +86,28 @@ var RoleGuard = window.RoleGuard;
           const modal = document.getElementById('modalAwal');
           if (modal) modal.closest('.stat-card').style.display = '';
         }
+        if (menuKey === 'transfer_shift') {
+          const btn = document.getElementById('btnTransferShift');
+          if (btn) btn.style.display = '';
+        }
       }
     });
   }
 
   window.RoleGuard.apply = function(userRole) {
-    // 1. Jalankan penguncian standar
+    // 1. Jalankan penguncian standar terlebih dahulu
     originalApply.call(window.RoleGuard, userRole);
 
     const role = (userRole || 'kasir').toLowerCase();
     if (role === 'owner' || role === 'developer') return;
 
-    // 2. Buka menu langsung dari cache browser jika ada
+    // 2. Buka menu dari cache lokal langsung
     try {
       const cached = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
       unhideAllowedMenus(cached);
     } catch (e) {}
 
-    // 3. Tarik data izin terbaru dari Firestore secara otomatis untuk user ini
+    // 3. Tarik izin user dari database Firestore secara real-time
     if (typeof firebase !== 'undefined' && firebase.auth && firebase.firestore) {
       firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
@@ -102,7 +115,7 @@ var RoleGuard = window.RoleGuard;
             if (doc.exists && doc.data() && doc.data().permissions) {
               const livePerms = doc.data().permissions;
               localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms));
-              unhideAllowedMenus(livePerms); // Buka menu langsung
+              unhideAllowedMenus(livePerms);
             }
           }).catch(function(err) {
             console.warn("Gagal sync izin:", err);
