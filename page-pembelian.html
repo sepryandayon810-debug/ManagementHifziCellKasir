@@ -637,9 +637,37 @@
                   <span>Total Item:</span>
                   <span id="totalItem">0</span>
                 </div>
+                <div class="total-row">
+                  <span>Subtotal:</span>
+                  <span id="subtotalPembelian">Rp 0</span>
+                </div>
                 <div class="total-row grand">
-                  <span>Grand Total:</span>
+                  <div>
+                    <span>Grand Total:</span>
+                    <small id="roundingPreview" style="display:block; color:var(--text-muted); font-size:0.72rem; font-weight:600;">Pembulatan: Rp 0</small>
+                  </div>
                   <span id="grandTotal" style="color: var(--primary);">Rp 0</span>
+                </div>
+              </div>
+
+              <!-- PILIHAN PEMBULATAN KAS (SAMA SEPERTI KASIR) -->
+              <div class="form-group" style="margin-top: 0.85rem;">
+                <label class="form-label">Pembulatan Kas</label>
+                <select class="form-select" id="pembulatanSelect" onchange="applyPembulatan()">
+                  <option value="0">Tidak dibulatkan</option>
+                  <option value="100">Ke Rp 100</option>
+                  <option value="500">Ke Rp 500</option>
+                  <option value="1000">Ke Rp 1.000</option>
+                  <option value="5000">Ke Rp 5.000</option>
+                </select>
+              </div>
+
+              <!-- TOTAL KELUAR DARI KAS (BISA DIEDIT JIKA ADA ONGKIR/SELISIH) -->
+              <div class="form-group">
+                <label class="form-label">Total Keluar dari Kas <span style="color:var(--text-muted); font-weight:400;">(Bisa diedit)</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">Rp</span>
+                  <input type="number" class="form-input" id="totalKasInput" placeholder="0" min="0" oninput="totalKasEdited=true; updatePembulatanDisplay()">
                 </div>
               </div>
 
@@ -794,6 +822,7 @@
       let pembelianList = [];
       let selectedProduct = null;
       let isManualMode = false;
+      let totalKasEdited = false;
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -1028,6 +1057,41 @@
         } catch(e) {}
       }
 
+      // ===== FUNGSI PEMBULATAN KAS (SAMA PERSIS DENGAN KASIR) =====
+      function getPembulatan() {
+        const base = pembelianList.reduce((sum, item) => sum + item.total, 0);
+        const step = parseInt(document.getElementById('pembulatanSelect')?.value, 10) || 0;
+        const manual = parseInt(document.getElementById('totalKasInput')?.value, 10) || 0;
+        const rounded = step > 0 ? Math.ceil(base / step) * step : base;
+        const total = totalKasEdited && manual > 0 ? manual : rounded;
+        return { base, step, amount: total - base, total };
+      }
+
+      window.applyPembulatan = function() {
+        const base = pembelianList.reduce((sum, item) => sum + item.total, 0);
+        const step = parseInt(document.getElementById('pembulatanSelect')?.value, 10) || 0;
+        const rounded = step > 0 ? Math.ceil(base / step) * step : base;
+        const input = document.getElementById('totalKasInput');
+        if (input) input.value = rounded || '';
+        totalKasEdited = false;
+        updatePembulatanDisplay();
+      };
+
+      window.updatePembulatanDisplay = function() {
+        const rounding = getPembulatan();
+        const input = document.getElementById('totalKasInput');
+        if (input && !totalKasEdited) input.value = rounding.total || '';
+        
+        const subtotalEl = document.getElementById('subtotalPembelian');
+        if (subtotalEl) subtotalEl.textContent = Utils.formatRupiah(rounding.base);
+
+        const roundingNote = document.getElementById('roundingPreview');
+        if (roundingNote) roundingNote.textContent = `Pembulatan: ${rounding.amount > 0 ? '+' : ''}${Utils.formatRupiah(rounding.amount)}`;
+
+        const grandTotalEl = document.getElementById('grandTotal');
+        if (grandTotalEl) grandTotalEl.textContent = Utils.formatRupiah(rounding.total);
+      };
+
       function tambahItem() {
         const qty = parseInt(document.getElementById('qty').value) || 0;
         const harga = parseInt(document.getElementById('hargaBeli').value) || 0;
@@ -1111,7 +1175,6 @@
       function renderPembelianList() {
         const tbody = document.getElementById('tbodyPembelian');
         const totalItemEl = document.getElementById('totalItem');
-        const grandTotalEl = document.getElementById('grandTotal');
         const btnSimpan = document.getElementById('btnSimpanPembelian');
 
         if (pembelianList.length === 0) {
@@ -1124,10 +1187,37 @@
             </tr>
           `;
           totalItemEl.textContent = '0';
-          grandTotalEl.textContent = Utils.formatRupiah(0);
+          totalKasEdited = false;
+          if (document.getElementById('pembulatanSelect')) document.getElementById('pembulatanSelect').value = '0';
+          if (document.getElementById('totalKasInput')) document.getElementById('totalKasInput').value = '';
+          updatePembulatanDisplay();
           btnSimpan.disabled = true;
           return;
         }
+
+        let totalQty = 0;
+        tbody.innerHTML = pembelianList.map((item, idx) => {
+          totalQty += item.qty;
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 700; color: var(--text-main);">${item.productName}</div>
+                ${item.isNewProduct ? '<span style="font-size:0.65rem; font-weight:700; color:var(--warning); background:var(--warning-light); padding:2px 6px; border-radius:4px;">Baru</span>' : ''}
+              </td>
+              <td style="font-weight: 600;">${item.qty}</td>
+              <td>${Utils.formatRupiah(item.harga)}</td>
+              <td style="font-weight: 800; color: var(--primary);">${Utils.formatRupiah(item.total)}</td>
+              <td style="text-align: center;">
+                <button class="btn btn-danger btn-sm" onclick="hapusItem(${idx})" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        totalItemEl.textContent = totalQty;
+        updatePembulatanDisplay(); // Update angka subtotal & grand total beserta pembulatan
+        btnSimpan.disabled = false;
+      }
 
         let totalQty = 0;
         let grandTotal = 0;
@@ -1169,8 +1259,15 @@
           const catatan = document.getElementById('catatan').value.trim();
           const kurangiSaldo = document.getElementById('toggleKurangiSaldo').checked;
 
-          const grandTotal = pembelianList.reduce((sum, i) => sum + i.total, 0);
+          const rounding = getPembulatan();
+          const grandTotal = rounding.total; // Menggunakan total setelah pembulatan
           const totalItem = pembelianList.reduce((sum, i) => sum + i.qty, 0);
+
+          if (grandTotal < rounding.base) {
+            Utils.hideLoading();
+            Utils.showToast('Total keluar dari kas tidak boleh kurang dari subtotal pembelian', 'error');
+            return;
+          }
 
           for (const item of pembelianList) {
             if (item.isNewProduct) {
@@ -1216,6 +1313,8 @@
               harga: i.harga,
               total: i.total
             })),
+            subtotal: rounding.base,
+            rounding: rounding.amount,
             totalItem,
             grandTotal,
             catatan,
