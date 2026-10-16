@@ -1674,16 +1674,20 @@ document.getElementById('btnDownloadDebtTemplate')
               const oldId = oldItem.id || currentTransferData.id;
               const remainingOld = Math.max(0, (oldItem.remaining ?? oldItem.amount ?? 0) - transferNominal);
 
+              const newDebtId = 'debt_' + now;
+
+              // 1. Catat ke si A link ID hutang si B (transferredDebtId)
               await firestoreDb.ref('debts/' + oldId).update({
                 remaining: remainingOld,
                 status: remainingOld === 0 ? 'paid' : 'active',
                 transferredTo: targetName,
+                transferredDebtId: newDebtId, // <-- PENTING AGAR BISA DI-RESTORE OTOMATIS
                 transferredAmount: transferNominal,
                 updatedAt: now,
                 note: (oldItem.note ? oldItem.note + ' | ' : '') + `Dialihkan ke ${targetName} sebesar ${Utils.formatRupiah(transferNominal)}`
               });
 
-              const newDebtId = 'debt_' + now;
+              // 2. Buat hutang si B DENGAN MEMBAWA RINCIAN PRODUK (items)
               await firestoreDb.ref('debts/' + newDebtId).set({
                 id: newDebtId,
                 name: targetName,
@@ -1692,6 +1696,9 @@ document.getElementById('btnDownloadDebtTemplate')
                 amount: transferNominal,
                 remaining: transferNominal,
                 dueDate: oldItem.dueDate || null,
+                items: oldItem.items || [],                // <-- PENTING: RINCIAN BARANG IKUT
+                invoiceNumber: oldItem.invoiceNumber || '',// <-- PENTING: NOTA IKUT
+                transactionId: oldItem.transactionId || '',// <-- PENTING: ID TRANSAKSI IKUT
                 note: `Pengalihan dari ${oldItem.name || 'Pelanggan'}${transferNote ? ' (' + transferNote + ')' : ''}`,
                 status: 'active',
                 transferredFrom: oldItem.name || 'Pelanggan',
@@ -1704,6 +1711,53 @@ document.getElementById('btnDownloadDebtTemplate')
                 kasRecorded: false,
                 source: 'transfer_hutang'
               });
+              
+            } else if (currentTransferData.mode === 'group') {
+              // Kumpulkan semua rincian barang belanjaan dari seluruh nota si A
+              const allItems = [];
+              currentTransferData.items.forEach(it => {
+                if (it.items && Array.isArray(it.items)) {
+                  allItems.push(...it.items);
+                }
+              });
+
+              const newDebtId = 'debt_' + now;
+
+              for (const it of currentTransferData.items) {
+                const sisa = Math.max(0, it.remaining ?? it.amount ?? 0);
+                if (sisa <= 0) continue;
+
+                await firestoreDb.ref('debts/' + it.id).update({
+                  remaining: 0,
+                  status: 'paid',
+                  transferredTo: targetName,
+                  transferredDebtId: newDebtId, // <-- Link ID
+                  transferredAt: now,
+                  updatedAt: now,
+                  note: (it.note ? it.note + ' | ' : '') + `Dialihkan seluruhnya ke ${targetName}`
+                });
+              }
+
+              await firestoreDb.ref('debts/' + newDebtId).set({
+                id: newDebtId,
+                name: targetName,
+                customerName: targetName,
+                type: currentTransferData.groupType || 'piutang',
+                amount: transferNominal,
+                remaining: transferNominal,
+                items: allItems, // <-- RINCIAN SEMUA BARANG IKUT TAMPIL DI B
+                note: `Pengalihan seluruh hutang dari ${currentTransferData.groupName}${transferNote ? ' (' + transferNote + ')' : ''}`,
+                status: 'active',
+                transferredFrom: currentTransferData.groupName,
+                userId: user?.uid || '',
+                userName: user?.name || user?.email || '',
+                createdAt: now,
+                updatedAt: now,
+                date: today,
+                kasRecorded: false,
+                source: 'transfer_hutang'
+              });
+            }
               
             } else if (currentTransferData.mode === 'group') {
               for (const it of currentTransferData.items) {
