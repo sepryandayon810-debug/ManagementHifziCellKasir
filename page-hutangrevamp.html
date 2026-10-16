@@ -2497,15 +2497,30 @@ try {
         };
 
         window.restoreHutang = (id) => {
-          Utils.confirm('Restore data ini ke status aktif?', async () => {
+          const item = hutangData[id];
+          const isTransfer = item && item.transferredDebtId;
+
+          const pesan = isTransfer 
+            ? 'Hutang ini sebelumnya dialihkan ke orang lain. Apakah Anda ingin membatalkan pengalihan dan mengembalikan tagihan ini ke status aktif?'
+            : 'Restore data ini ke status aktif?';
+
+          Utils.confirm(pesan, async () => {
             Utils.showLoading();
             try {
+              // Jika ini hasil transfer, hapus tagihan di penerima transfer agar tidak ganda
+              if (item.transferredDebtId) {
+                await firestoreDb.ref('debts/' + item.transferredDebtId).remove().catch(() => {});
+              }
+
               await firestoreDb.ref('debts/' + id).update({
                 status: 'active',
-                remaining: hutangData[id].amount,
+                remaining: item.amount,
+                transferredTo: null,
+                transferredDebtId: null,
                 restoredAt: Date.now()
               });
-              Utils.showToast('Data berhasil direstore', 'success');
+
+              Utils.showToast('Data berhasil dikembalikan seperti semula', 'success');
               loadAllData();
             } catch (error) {
               console.error('Error restoring hutang:', error);
@@ -2514,7 +2529,7 @@ try {
             Utils.hideLoading();
           });
         };
-
+        
         async function processPayment() {
           const affectKas = document.getElementById('affectKas').checked;
           const note = document.getElementById('paymentNote').value.trim();
