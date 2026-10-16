@@ -48,30 +48,32 @@ if (typeof window.RoleGuard === 'undefined') {
         item.style.display = 'none';
       }
     }
+  };
+}
+var RoleGuard = window.RoleGuard;
 
 // ==============================================================
-// ⬇️ HANYA TAMBAHKAN INI DI PALING BAWAH (KODE ASLI DI ATAS 100% UTUH)
+// ⬇️ PENAMBAHAN AMAN DI LUAR OBJEK (SETELAH VAR ROLEGUARD)
 // ==============================================================
 (function() {
   const originalApply = window.RoleGuard.apply;
   window.RoleGuard.apply = function(userRole) {
-    // 1. Jalankan RoleGuard asli Anda di atas (mengunci menu bawaan)
+    // 1. Jalankan penguncian asli Anda
     originalApply.call(window.RoleGuard, userRole);
 
-    // 2. Buka menu yang diberi izin ON khusus oleh Owner
     const role = (userRole || 'kasir').toLowerCase();
     if (role === 'owner' || role === 'developer') return;
 
     try {
-      const perms = JSON.parse(localStorage.getItem('webpos_role_permissions') || '{}');
-      const rolePerms = perms[role] || {};
+      // 2. Baca izin khusus akun kasir yang sedang login
+      const perms = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
 
-      Object.keys(rolePerms).forEach(menuKey => {
-        if (rolePerms[menuKey] === true) {
+      Object.keys(perms).forEach(menuKey => {
+        if (perms[menuKey] === true) {
           const el = document.querySelector(`[data-menu="${menuKey}"]`);
           if (el) {
             const item = el.closest('.nav-item') || el;
-            item.style.display = ''; // Buka menu
+            item.style.display = ''; // Munculkan menu yang diizinkan
           }
           if (menuKey === 'total_laba') {
             const laba = document.getElementById('totalLaba');
@@ -82,6 +84,3 @@ if (typeof window.RoleGuard === 'undefined') {
     } catch (e) {}
   };
 })();
-  };
-}
-var RoleGuard = window.RoleGuard;
