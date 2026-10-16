@@ -49,6 +49,8 @@ if (typeof window.RoleGuard === 'undefined') {
       }
     }
 
+var RoleGuard = window.RoleGuard;
+  
 // ==============================================================
 // ⬇️ HANYA TAMBAHKAN INI DI PALING BAWAH (KODE ASLI DI ATAS 100% UTUH)
 // ==============================================================
