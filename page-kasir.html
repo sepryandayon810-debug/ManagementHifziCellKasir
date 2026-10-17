@@ -51,15 +51,6 @@
   --danger:#ef4444;
   --info:#06b6d4;
 }
-[data-theme-color="blue"]{--primary:#3b82f6;--primary-dark:#2563eb;--secondary:#06b6d4}
-[data-theme-color="green"]{--primary:#059669;--primary-dark:#047857;--secondary:#84cc16}
-[data-theme-color="orange"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#f59e0b}
-[data-theme-color="purple"]{--primary:#8b5cf6;--primary-dark:#7c3aed;--secondary:#d946ef}
-[data-theme-color="red"]{--primary:#ef4444;--primary-dark:#dc2626;--secondary:#f97316}
-[data-theme-color="pink"]{--primary:#ec4899;--primary-dark:#db2777;--secondary:#8b5cf6}
-[data-theme-color="teal"]{--primary:#14b8a6;--primary-dark:#0d9488;--secondary:#06b6d4}
-[data-theme-color="sunset"]{--primary:#f97316;--primary-dark:#ea580c;--secondary:#ec4899}
-
 /* ===== BASE ===== */
 :root{
    --bg-primary:#f8fafc;
@@ -96,14 +87,8 @@
    --text-primary:#f8fafc;--text-secondary:#cbd5e1;--text-muted:#94a3b8;
    --border-color:#2e384d;--primary-light:rgba(79, 70, 229, 0.2);
  }
-[data-theme-color="indigo"]{
-  --primary:#4f46e5;--primary-dark:#4338ca;--secondary:#8b5cf6;
-  --bg-primary:#f8fafc;--bg-secondary:#f1f5f9;--bg-card:#ffffff;
-  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#64748b;
-  --border-color:#e2e8f0;
-  --shadow-sm:0 1px 2px rgba(15,23,42,0.05);--shadow-md:0 4px 12px rgba(15,23,42,0.08);--shadow-lg:0 10px 30px rgba(15,23,42,0.12);
-}
-[data-theme-color="indigo"] body{
+
+  [data-theme-color="indigo"] body{
   background:var(--bg-primary);
 }
 [data-theme="dark"][data-theme-color="indigo"]{
@@ -4690,7 +4675,19 @@ async function loadHeaderStats() {
     function updateResellerModeUI(){var normal=document.getElementById('btnNormalMode'),reseller=document.getElementById('btnResellerMode');if(!normal||!reseller)return;normal.classList.toggle('active',!resellerMode);reseller.classList.toggle('active',resellerMode);normal.setAttribute('aria-pressed',resellerMode?'false':'true');reseller.setAttribute('aria-pressed',resellerMode?'true':'false');}
     function setResellerMode(nextMode){if(nextMode&&!products.some(function(p){return getResellerPrice(p)!==null;})){showToast('Belum ada harga reseller','warning');return;}if(cart.length){showToast('Kosongkan keranjang dulu','warning');return;}resellerMode=!!nextMode;updateResellerModeUI();renderProducts();}
     function toggleResellerMode(){setResellerMode(!resellerMode);}
-    function applyKasirSettings(data){if(!data||typeof data!=='object')return;var storeName=data.storeName||data.name||data.brandName||data.webName,theme=data.theme||data.appearanceTheme||data.themeMode||data.mode,color=data.themeColor||data.color||data.primaryColor||data.colorTheme||data.palette||data.colorName;if(theme!=='light'&&theme!=='dark'){var darkValue=data.darkMode??data.isDarkMode;if(typeof darkValue==='boolean')theme=darkValue?'dark':'light';}if(storeName){document.querySelectorAll('.logo-text').forEach(function(e){e.textContent=storeName;});document.title=storeName+' - Kasir';try{localStorage.setItem('webpos_store_name',storeName);}catch(e){}}if(theme==='light'||theme==='dark'){document.documentElement.setAttribute('data-theme',theme);try{localStorage.setItem('webpos_theme',theme);}catch(e){}var icon=document.querySelector('#btnTheme i');if(icon)icon.className=theme==='dark'?'fas fa-moon':'fas fa-moon';}var colors=['indigo','blue','green','orange','purple','red','pink','teal','sunset'];if(colors.indexOf(color)>=0){document.documentElement.setAttribute('data-theme-color',color);try{localStorage.setItem('webpos_theme_color',color);}catch(e){}}var rh=data.receiptHeader;if(!rh&&(data.name||data.address||data.phone||data.footerNote)){rh={storeName:data.name,address:data.address,phone:data.phone,note:data.footerNote};}if(rh&&typeof rh==='object'){try{localStorage.setItem('receiptHeader',JSON.stringify(rh));}catch(e){}}}
+  async function syncStoreBrandName() {
+  const logoEl = document.querySelector(".logo-text");
+  if (!logoEl) return;
+  const cachedName = localStorage.getItem("webpos_store_name");
+  if (cachedName) logoEl.textContent = cachedName;
+  try {
+    const doc = await firebase.firestore().collection("settings").doc("store").get();
+    if (doc.exists && doc.data().name) {
+      logoEl.textContent = doc.data().name;
+      localStorage.setItem("webpos_store_name", doc.data().name);
+    }
+  } catch (e) {}
+}
     async function syncKasirSettings(){
       try{applyKasirSettings({storeName:localStorage.getItem('webpos_store_name'),theme:localStorage.getItem('webpos_theme'),themeColor:localStorage.getItem('webpos_theme_color')});}catch(e){}
       try{
@@ -6807,7 +6804,7 @@ if (kurangiSaldo) {
     // ===== BAGIAN 18: INISIALISASI & NAVIGASI BERLAPIS =====
     // ===== INISIALISASI =====
     function runInit() {
-      syncKasirSettings();
+       syncStoreBrandName();
       loadUserData();
       loadCategories();
       loadProducts();
