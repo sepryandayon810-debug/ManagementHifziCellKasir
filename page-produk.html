@@ -430,8 +430,19 @@
     .image-upload-box:hover { border-color: var(--primary); }
     .image-preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm); margin-top: 0.5rem; display: none; }
 
-   .kategori-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
-@media(max-width: 768px) { .kategori-grid { grid-template-columns: repeat(4, 1fr); gap: 0.5rem; } }
+   .kategori-grid { 
+      display: grid !important; 
+      grid-template-columns: repeat(4, 1fr) !important; 
+      gap: 0.5rem !important; 
+      width: 100% !important;
+    }
+    @media(max-width: 768px) { 
+      .page-content { padding: 1rem 0.65rem !important; } /* kurangi padding samping HP agar 4 kolom muat pas */
+      .kategori-grid { 
+        grid-template-columns: repeat(4, 1fr) !important; 
+        gap: 0.35rem !important; 
+      } 
+    }
     .kategori-list { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
     .kategori-list .kategori-card { flex-direction: row; align-items: center; padding: 0.75rem 1rem; width: 100%; }
     .kategori-card {
@@ -1454,15 +1465,15 @@
         const iconTag = c.imageUrl ? `<img src="${c.imageUrl}" alt="${c.name}">` : `<i class="fas fa-tags"></i>`;
 
         return `
-          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')" style="flex-direction:column; align-items:center; text-align:center; padding:0.65rem 0.4rem; gap:0.35rem; height:100% !important; display:flex !important;">
-            <div class="kategori-icon" style="background:var(--primary); width:44px; height:44px; font-size:1.1rem; flex-shrink:0;">${iconTag}</div>
-            <div class="kategori-info" style="width:100%; flex:1; display:flex; flex-direction:column; min-width:0;">
-              <div class="kategori-name" style="font-size:0.75rem; font-weight:700; height:2.1rem !important; line-height:1.05rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;">${c.name}</div>
-              <div class="kategori-count" style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">${count} produk</div>
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${c.name}')" style="box-sizing:border-box !important; width:100% !important; height:142px !important; min-height:142px !important; max-height:142px !important; flex-direction:column !important; align-items:center !important; text-align:center !important; padding:0.6rem 0.3rem !important; display:flex !important; justify-content:space-between !important; overflow:hidden !important;">
+            <div class="kategori-icon" style="background:var(--primary); width:42px; height:42px; min-height:42px; font-size:1.1rem; flex-shrink:0;">${iconTag}</div>
+            <div class="kategori-info" style="width:100%; min-width:0; padding:0 0.1rem; margin:auto 0;">
+              <div class="kategori-name" style="font-size:0.75rem; font-weight:700; height:1.9rem; line-height:0.95rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;">${c.name}</div>
+              <div class="kategori-count" style="font-size:0.65rem; color:var(--text-muted); margin-top:0.15rem;">${count} produk</div>
             </div>
-            <div style="display:flex; gap:0.25rem; margin-top:auto !important; width:100%; justify-content:center;" onclick="event.stopPropagation()">
-              <button class="btn btn-secondary" style="padding:0.3rem 0.45rem; font-size:0.7rem; height:28px;" onclick="window.editKat('${c.id}', '${c.name}', '${c.imageUrl || ''}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="padding:0.3rem 0.45rem; font-size:0.7rem; height:28px;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+            <div style="display:flex; gap:0.25rem; width:100%; justify-content:center; flex-shrink:0;" onclick="event.stopPropagation()">
+              <button class="btn btn-secondary" style="padding:0.25rem 0.4rem; font-size:0.7rem; height:26px;" onclick="window.editKat('${c.id}', '${c.name}', '${c.imageUrl || ''}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="padding:0.25rem 0.4rem; font-size:0.7rem; height:26px;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
             </div>
           </div>
         `;
