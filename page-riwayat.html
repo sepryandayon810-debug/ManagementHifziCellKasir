@@ -1566,13 +1566,26 @@ if ((cat === 'jual' || cat === 'top_up') && met === 'utang') {
     .then(s => Promise.all(s.docs.map(d => d.ref.delete())));
 }
 await db.collection('transactions').doc(id).delete();
-          Utils.hideLoading();
-          Utils.showToast(
-            stockResult.restored
-              ? 'Transaksi dihapus dan stok dikembalikan'
-              : 'Transaksi berhasil dihapus',
-            'success'
-          );
+
+// ⬇️ TAMBAHKAN BARIS INI (Catat ke Log Audit)
+if (window.AuditLogger) {
+  const catName = TYPE_LABELS[KasCore.getCategory(transaction)] || 'Transaksi';
+  const nominalStr = Utils.formatRupiah(KasCore.getNominal(transaction));
+  await AuditLogger.log(
+    'HAPUS_TRANSAKSI',
+    `Menghapus ${catName} (ID: ${id}) senilai ${nominalStr}. Keterangan: ${transaction.note || transaction.catatan || '-'}`,
+    'Riwayat Transaksi',
+    id
+  );
+}
+
+Utils.hideLoading();
+Utils.showToast(
+  stockResult.restored
+    ? 'Transaksi dihapus dan stok dikembalikan'
+    : 'Transaksi berhasil dihapus',
+  'success'
+);
           loadTransactions();
         } catch(e) {
           Utils.hideLoading();
@@ -1643,12 +1656,22 @@ if (KasCore.getCategory(transaction) !== 'jual') {
   });
 }
           if (KasCore.getCategory(transaction) === 'pembelian') {
-            await db.collection('purchases').doc(id).update(updates);
-          }
-          await db.collection('transactions').doc(id).update(updates);
+  await db.collection('purchases').doc(id).update(updates);
+}
+await db.collection('transactions').doc(id).update(updates);
 
-          closeTransactionEditModal();
-          Utils.showToast('Transaksi berhasil diperbarui', 'success');
+// ⬇️ TAMBAHKAN BARIS INI (Catat Edit ke Log Audit)
+if (window.AuditLogger) {
+  await AuditLogger.log(
+    'EDIT_TRANSAKSI',
+    `Mengubah transaksi ${id} (Metode: ${newMethod.toUpperCase()}, Catatan: "${updates.catatan}")`,
+    'Riwayat Transaksi',
+    id
+  );
+}
+
+closeTransactionEditModal();
+Utils.showToast('Transaksi berhasil diperbarui', 'success');
           loadTransactions();
         } catch(e) {
           Utils.showToast(e.message || 'Gagal memperbarui transaksi', 'error');
