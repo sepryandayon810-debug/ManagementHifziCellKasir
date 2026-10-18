@@ -52,7 +52,7 @@ const Utils = {
 };
 
 // ==============================================================
-// 🛡️ PENCATAT LOG AUDIT (TAMBAHAN AMAN DI BARIS TERAKHIR)
+// 🛡️ PENCATAT LOG AUDIT (SUDAH DIPERBAIKI DETEKSI ROLE)
 // ==============================================================
 window.AuditLogger = {
   log: async function(action, detail, module = 'Kasir', targetDoc = '') {
@@ -61,27 +61,52 @@ window.AuditLogger = {
       const dbInstance = window.db || firebase.firestore();
       const user = (firebase.auth && firebase.auth().currentUser) ? firebase.auth().currentUser : null;
 
+      // 1. Ambil Nama User
       const userNameEl = document.getElementById('userName');
-      const userName = (userNameEl && userNameEl.textContent !== 'Memuat...') 
+      const userName = (userNameEl && userNameEl.textContent !== 'Memuat...' && userNameEl.textContent !== 'Loading...') 
         ? userNameEl.textContent 
         : (user ? (user.displayName || user.email.split('@')[0]) : 'Sistem');
 
-      const userRole = (window.currentUserRole || localStorage.getItem('webpos_user_role') || 'kasir');
+      // 2. Ambil Role User yang Akurat (Cek variabel -> Cek sidebar -> Cek Firestore)
+      let userRole = window.currentUserRole || localStorage.getItem('webpos_user_role');
+      
+      // Jika belum ada, baca dari teks role di sidebar bawah
+      if (!userRole) {
+        const userRoleEl = document.getElementById('userRole');
+        if (userRoleEl && userRoleEl.textContent && userRoleEl.textContent !== '-') {
+          userRole = userRoleEl.textContent.trim().toLowerCase();
+        }
+      }
 
+      // Jika masih belum dapat, tarik langsung dari Firestore
+      if ((!userRole || userRole === 'kasir') && user) {
+        try {
+          const uDoc = await dbInstance.collection('users').doc(user.uid).get();
+          if (uDoc.exists && uDoc.data() && uDoc.data().role) {
+            userRole = uDoc.data().role.toLowerCase();
+            window.currentUserRole = userRole;
+            localStorage.setItem('webpos_user_role', userRole);
+          }
+        } catch (e) {}
+      }
+
+      userRole = userRole || 'kasir';
+
+      // 3. Simpan ke koleksi audit_logs
       await dbInstance.collection('audit_logs').add({
-        action: action,            // Contoh: 'HAPUS_TRANSAKSI', 'UBAH_HARGA', 'VOID'
-        detail: detail,            // Penjelasan: 'Menghapus transaksi #101 senilai Rp 50.000'
-        module: module,            // Modul: 'Kasir', 'Riwayat', 'Produk'
-        targetDoc: targetDoc,      // ID dokumen yang dihapus
+        action: action,            
+        detail: detail,            
+        module: module,            
+        targetDoc: targetDoc,      
         userName: userName,
         userEmail: user ? user.email : '',
         userId: user ? user.uid : '',
-        userRole: userRole,
+        userRole: userRole,        // Sekarang role akan benar: 'developer' / 'owner' / 'admin'
         timestamp: Date.now(),
         date: new Date().toISOString().split('T')[0],
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      console.log('🛡️ Log Audit berhasil disimpan:', action);
+      console.log('🛡️ Log Audit berhasil disimpan sebagai:', userRole, action);
     } catch (err) {
       console.warn('Gagal mencatat log audit:', err);
     }
