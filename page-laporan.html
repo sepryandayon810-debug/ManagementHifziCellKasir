@@ -365,10 +365,14 @@
       </header>
 
       <div class="page-content">
-        <!-- Report Tabs -->
+       <!-- Report Tabs -->
         <div class="report-tabs">
           <button class="report-tab active" data-report="penjualan">Penjualan</button>
           <button class="report-tab" data-report="kas">Kas & Mutasi</button>
+          <!-- Tab Log Audit: Default display:none, hanya dimunculkan untuk Owner & Developer -->
+          <button class="report-tab" data-report="audit" id="tabAudit" style="display: none;">
+            <i class="fas fa-user-shield"></i> Log Audit
+          </button>
         </div>
 
         <!-- Filters -->
@@ -561,6 +565,12 @@
               if (typeof RoleGuard !== 'undefined') {
                 RoleGuard.apply(currentUserRole);
               }
+
+              // Buka Tab Log Audit HANYA jika Owner atau Developer
+              const tabAudit = document.getElementById('tabAudit');
+              if (tabAudit && (currentUserRole === 'owner' || currentUserRole === 'developer')) {
+                tabAudit.style.display = 'inline-flex';
+              }
             }
           } catch(e) {}
 
@@ -656,12 +666,21 @@
 
         document.querySelectorAll('.report-tab').forEach(tab => {
           tab.onclick = function() {
+            const targetReport = this.dataset.report;
+
+            // 1. Validasi akses PALING AWAL sebelum mengubah UI
+            if (targetReport === 'audit' && currentUserRole !== 'owner' && currentUserRole !== 'developer') {
+              Utils.showToast('Akses ditolak: Hanya Owner & Developer yang dapat melihat Log Audit', 'error');
+              return;
+            }
+
             document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
-            currentReport = this.dataset.report;
+            currentReport = targetReport;
             
             const titleEl = document.getElementById('mainHeaderTitle');
             const chartTitleEl = document.getElementById('chartCardTitle');
+            const btnImport = document.getElementById('btnImport');
             
             if (currentReport === 'penjualan') {
               titleEl.textContent = 'Laporan Penjualan';
@@ -669,23 +688,28 @@
               document.getElementById('labelStat1').textContent = 'Total Penjualan';
               document.getElementById('labelStat3').textContent = 'Rata-rata / Transaksi';
               document.getElementById('labelStat4').textContent = 'Total Laba Bersih';
-            } else {
+              if (btnImport) btnImport.style.display = 'inline-flex';
+            } else if (currentReport === 'kas') {
               titleEl.textContent = 'Laporan Kas & Mutasi';
               chartTitleEl.innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Grafik Mutasi Kas Bersih';
               document.getElementById('labelStat1').textContent = 'Total Mutasi Kas';
               document.getElementById('labelStat3').textContent = 'Transaksi Masuk';
               document.getElementById('labelStat4').textContent = 'Transaksi Keluar';
+              if (btnImport) btnImport.style.display = 'inline-flex';
+            } else if (currentReport === 'audit') {
+              titleEl.textContent = 'Laporan & Log Audit Keamanan';
+              chartTitleEl.innerHTML = '<i class="fas fa-shield-alt" style="color: var(--primary);"></i> Frekuensi Aktivitas Sensitif';
+              document.getElementById('labelStat1').textContent = 'Total Aktivitas Audit';
+              document.getElementById('labelStat3').textContent = 'Aksi Edit / Update';
+              document.getElementById('labelStat4').textContent = 'Aksi Hapus / Void';
+              // Sembunyikan import saat di tab audit
+              if (btnImport) btnImport.style.display = 'none';
             }
 
-            if (reportData.length > 0) {
-              calculateStats(reportData);
-              renderSummary(reportData);
-              renderTransactionList(reportData);
-              renderChart(reportData);
-            }
+            generateReport();
           };
         });
-
+        
         document.getElementById('periodSelect').addEventListener('change', (e) => {
           const period = e.target.value;
           if (period === 'custom') return;
@@ -743,13 +767,20 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
             return;
           }
 
-         const summary = await KasCore.getPeriodSummary({
-  startDate: dateFrom,
-  endDate: dateTo
-});
+          // JIKA TAB LOG AUDIT DIPILIH:
+          if (currentReport === 'audit') {
+            await fetchAuditLogs(dateFrom, dateTo);
+            return;
+          }
 
-currentSummary = summary;
-reportData = summary.validTransactions || [];
+          // Untuk tab Penjualan dan Kas biasa:
+          const summary = await KasCore.getPeriodSummary({
+            startDate: dateFrom,
+            endDate: dateTo
+          });
+
+          currentSummary = summary;
+          reportData = summary.validTransactions || [];
           calculateStats(reportData);
           renderSummary(reportData);
           renderTransactionList(reportData);
@@ -764,6 +795,208 @@ reportData = summary.validTransactions || [];
         }
       }
 
+     // ==============================================================
+      // ⬇️ LOGIKA KHUSUS LOG AUDIT (HANYA OWNER & DEVELOPER)
+      // ==============================================================
+
+      // 1. Helper Waktu (Mencegah error extractLogTime is not defined)
+      function extractLogTime(l) {
+        if (!l) return 0;
+        if (typeof l.timestamp === 'number') return l.timestamp;
+        if (l.timestamp && typeof l.timestamp.toMillis === 'function') return l.timestamp.toMillis();
+        if (l.timestamp && typeof l.timestamp.toDate === 'function') return l.timestamp.toDate().getTime();
+        if (l.createdAt && typeof l.createdAt.toMillis === 'function') return l.createdAt.toMillis();
+        if (l.createdAt && typeof l.createdAt.toDate === 'function') return l.createdAt.toDate().getTime();
+        if (l.date) {
+          const t = new Date(l.date).getTime();
+          if (!isNaN(t)) return t;
+        }
+        return 0;
+      }
+
+      // 2. Ambil Log Audit (Fleksibel: Cek 'audit_logs', jika kosong cek 'activity_logs')
+      async function fetchAuditLogs(dateFrom, dateTo) {
+        try {
+          const startTimestamp = new Date(dateFrom + 'T00:00:00').getTime();
+          const endTimestamp = new Date(dateTo + 'T23:59:59').getTime();
+
+          let logs = [];
+
+          // Coba dari collection 'audit_logs'
+          try {
+            const snap = await db.collection('audit_logs')
+              .where('timestamp', '>=', startTimestamp)
+              .where('timestamp', '<=', endTimestamp)
+              .orderBy('timestamp', 'desc')
+              .limit(300)
+              .get();
+
+            snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+          } catch (e1) {
+            console.warn("Collection audit_logs dilewati.");
+          }
+
+          // Jika audit_logs kosong, coba tarik dari collection 'activity_logs'
+          if (logs.length === 0) {
+            try {
+              const snapAlt = await db.collection('activity_logs')
+                .where('timestamp', '>=', startTimestamp)
+                .where('timestamp', '<=', endTimestamp)
+                .orderBy('timestamp', 'desc')
+                .limit(300)
+                .get();
+
+              snapAlt.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+            } catch (e2) {}
+          }
+
+          reportData = logs;
+          renderAuditStats(logs);
+          renderAuditSummaryTable(logs);
+          renderAuditList(logs);
+          renderAuditChart(logs);
+
+          Utils.showToast('Log Audit berhasil dimuat (' + logs.length + ' catatan)', 'success');
+        } catch (err) {
+          console.error("Gagal mengambil audit log:", err);
+          renderAuditFallbackList();
+          Utils.showToast('Gagal memuat log audit', 'warning');
+        }
+      }
+
+      // 3. Tampilkan 4 Kartu Statistik Audit
+      function renderAuditStats(logs) {
+        const total = logs.length;
+        const edits = logs.filter(l => {
+          const act = (l.action || l.tipe || l.type || '').toLowerCase();
+          return act.includes('edit') || act.includes('update') || act.includes('ubah');
+        }).length;
+
+        const deletes = logs.filter(l => {
+          const act = (l.action || l.tipe || l.type || '').toLowerCase();
+          return act.includes('delete') || act.includes('hapus') || act.includes('void') || act.includes('reset');
+        }).length;
+
+        document.getElementById('statPenjualan').textContent = total.toLocaleString('id-ID') + ' Aktivitas';
+        document.getElementById('statTransaksi').textContent = total.toLocaleString('id-ID');
+        document.getElementById('statRataRata').textContent = edits + ' Perubahan';
+        document.getElementById('statLaba').textContent = deletes + ' Penghapusan';
+      }
+
+      // 4. Tampilkan Tabel Ringkasan Tipe Aksi
+      function renderAuditSummaryTable(logs) {
+        const tbody = document.getElementById('summaryTableBody');
+        const actionCounts = {};
+        logs.forEach(l => {
+          const act = (l.action || l.tipe || l.type || l.activity || 'LAINNYA').toUpperCase();
+          actionCounts[act] = (actionCounts[act] || 0) + 1;
+        });
+
+        if (Object.keys(actionCounts).length === 0) {
+          tbody.innerHTML = `<tr><td colspan="2" class="empty-state">Tidak ada rekaman log audit</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = Object.entries(actionCounts).map(([act, count]) => `
+          <tr>
+            <td><strong>${act}</strong></td>
+            <td style="text-align: right; font-weight: 700; color: var(--primary);">${count}x</td>
+          </tr>
+        `).join('');
+      }
+
+      // 5. Tampilkan Daftar Rincian Log Audit (Hanya 1 fungsi, tidak duplikat)
+      function renderAuditList(logs) {
+        const list = document.getElementById('transactionList');
+        if (!logs || logs.length === 0) {
+          list.innerHTML = `<div class="empty-state"><i class="fas fa-shield-alt"></i><p>Tidak ada catatan audit pada rentang tanggal ini</p></div>`;
+          return;
+        }
+
+        list.innerHTML = logs.map(l => {
+          const rawAction = (l.action || l.tipe || l.type || 'LOG').toLowerCase();
+          const isDanger = rawAction.includes('hapus') || rawAction.includes('delete') || rawAction.includes('reset') || rawAction.includes('void');
+          const isWarning = rawAction.includes('edit') || rawAction.includes('update') || rawAction.includes('ubah');
+          const badgeColor = isDanger ? 'var(--danger)' : (isWarning ? 'var(--warning)' : 'var(--primary)');
+          
+          const timeMs = extractLogTime(l);
+          const timeStr = timeMs ? new Date(timeMs).toLocaleString('id-ID') : (l.date || '-');
+
+          return `
+            <div class="transaction-item" style="border-left: 4px solid ${badgeColor}; padding-left: 1rem;">
+              <div>
+                <div class="transaction-title">
+                  <span style="display:inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; color: #fff; background: ${badgeColor}; margin-right: 6px;">
+                    ${(l.action || l.tipe || l.type || 'LOG').toUpperCase()}
+                  </span>
+                  ${l.detail || l.keterangan || l.note || l.deskripsi || '-'}
+                </div>
+                <div class="transaction-meta" style="margin-top: 4px;">
+                  <i class="fas fa-clock"></i> ${timeStr} | 
+                  <i class="fas fa-user"></i> <b>${l.userName || l.userEmail || l.userId || 'Sistem'}</b> 
+                  (${l.userRole || l.role || 'User'})
+                </div>
+              </div>
+              <div class="transaction-amount" style="font-size:0.8rem; color:var(--text-muted);">
+                ${l.targetDoc || l.module || l.modul || ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 6. Tampilkan Grafik Batang Log Audit
+      function renderAuditChart(logs) {
+        const ctx = document.getElementById('reportChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        const byDate = {};
+        logs.forEach(l => {
+          const timeMs = extractLogTime(l);
+          const d = timeMs ? new Date(timeMs).toISOString().split('T')[0] : (l.date || 'Lainnya');
+          byDate[d] = (byDate[d] || 0) + 1;
+        });
+
+        const labels = Object.keys(byDate).sort();
+        const data = labels.map(d => byDate[d]);
+
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels.map(d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
+            datasets: [{
+              label: 'Jumlah Log Audit',
+              data: data,
+              backgroundColor: 'rgba(239, 68, 68, 0.7)',
+              borderColor: '#dc2626',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+              }
+            }
+          }
+        });
+      }
+
+      // 7. Fallback jika data kosong atau index belum ada
+      function renderAuditFallbackList() {
+        document.getElementById('transactionList').innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-info-circle"></i>
+            <p>Collection <b>audit_logs</b> atau <b>activity_logs</b> belum memiliki data.</p>
+          </div>
+        `;
+      }
+      
       // Nominal utama transaksi — KasCore memakai urutan nominal/total/harga_jual/amount/nilai.
       // Catatan: KasCore.getAmount() tidak ada di API saat ini.
       function getTxNominal(t) {
@@ -918,32 +1151,48 @@ transactions.forEach(t => {
       }
 
       function exportCSV() {
-  if (reportData.length === 0) { Utils.showToast('Tidak ada data untuk diexport', 'warning'); return; }
-  let csv = '';
-  if (currentReport === 'penjualan') {
-    csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
-    reportData.forEach(t => {
-      if (KasCore.isValidTransaction(t) && KasCore.getCategory(t) === 'jual') {
-        csv += `"${t.id}","${t.date || ''}","${KasCore.getCategory(t)}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},${KasCore.calculateTransactionProfit(t)},"${t.note || ''}","${t.userName || ''}"\n`;
-      }
-    });
-  } else {
-    csv = 'ID,Tanggal,Tipe,Metode,Jumlah,Keterangan,Kasir\n';
-    reportData.forEach(t => {
-      const cat = KasCore.getCategory(t);
-      if (KasCore.isValidTransaction(t) && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
-        csv += `"${t.id}","${t.date || ''}","${cat}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
-      }
-    });
-  }
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  Utils.showToast('Laporan berhasil diexport ke CSV', 'success');
-}
+        if (!reportData || reportData.length === 0) { 
+          Utils.showToast('Tidak ada data untuk diexport', 'warning'); 
+          return; 
+        }
 
+        let csv = '';
+        if (currentReport === 'penjualan') {
+          csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
+          reportData.forEach(t => {
+            if (KasCore.isValidTransaction(t) && KasCore.getCategory(t) === 'jual') {
+              csv += `"${t.id}","${t.date || ''}","${KasCore.getCategory(t)}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},${KasCore.calculateTransactionProfit(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+            }
+          });
+        } else if (currentReport === 'kas') {
+          csv = 'ID,Tanggal,Tipe,Metode,Jumlah,Keterangan,Kasir\n';
+          reportData.forEach(t => {
+            const cat = KasCore.getCategory(t);
+            if (KasCore.isValidTransaction(t) && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
+              csv += `"${t.id}","${t.date || ''}","${cat}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+            }
+          });
+        } else if (currentReport === 'audit') {
+          // EXPORT LOG AUDIT
+          csv = 'ID,Waktu,Pengguna,Role,Aksi,Modul,Detail Keterangan\n';
+          reportData.forEach(l => {
+            const timeMs = extractLogTime(l);
+            const timeStr = timeMs ? new Date(timeMs).toLocaleString('id-ID') : '';
+            const detailSafe = (l.detail || l.keterangan || l.note || '').replace(/"/g, '""');
+            csv += `"${l.id}","${timeStr}","${l.userName || l.userEmail || ''}","${l.userRole || l.role || ''}","${l.action || l.tipe || ''}","${l.module || l.modul || ''}","${detailSafe}"\n`;
+          });
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `laporan_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        Utils.showToast('Laporan ' + currentReport + ' berhasil diexport ke CSV', 'success');
+      }
+      
   let importFileSelected = null;
 
 function downloadTemplate() {
