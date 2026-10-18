@@ -50,3 +50,40 @@ const Utils = {
     }
   }
 };
+
+// ==============================================================
+// 🛡️ PENCATAT LOG AUDIT (TAMBAHAN AMAN DI BARIS TERAKHIR)
+// ==============================================================
+window.AuditLogger = {
+  log: async function(action, detail, module = 'Kasir', targetDoc = '') {
+    try {
+      if (typeof firebase === 'undefined' || !firebase.firestore) return;
+      const dbInstance = window.db || firebase.firestore();
+      const user = (firebase.auth && firebase.auth().currentUser) ? firebase.auth().currentUser : null;
+
+      const userNameEl = document.getElementById('userName');
+      const userName = (userNameEl && userNameEl.textContent !== 'Memuat...') 
+        ? userNameEl.textContent 
+        : (user ? (user.displayName || user.email.split('@')[0]) : 'Sistem');
+
+      const userRole = (window.currentUserRole || localStorage.getItem('webpos_user_role') || 'kasir');
+
+      await dbInstance.collection('audit_logs').add({
+        action: action,            // Contoh: 'HAPUS_TRANSAKSI', 'UBAH_HARGA', 'VOID'
+        detail: detail,            // Penjelasan: 'Menghapus transaksi #101 senilai Rp 50.000'
+        module: module,            // Modul: 'Kasir', 'Riwayat', 'Produk'
+        targetDoc: targetDoc,      // ID dokumen yang dihapus
+        userName: userName,
+        userEmail: user ? user.email : '',
+        userId: user ? user.uid : '',
+        userRole: userRole,
+        timestamp: Date.now(),
+        date: new Date().toISOString().split('T')[0],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('🛡️ Log Audit berhasil disimpan:', action);
+    } catch (err) {
+      console.warn('Gagal mencatat log audit:', err);
+    }
+  }
+};
