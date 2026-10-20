@@ -1430,9 +1430,21 @@
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
         if (!modalData || !modalData.amount) {
-          // ⬅️ GANTI BAGIAN ALERT LAMA DENGAN INI:
-          const cached = localStorage.getItem("webpos_latest_uang_kasir");
-          const tele = cached ? JSON.parse(cached) : null;
+          let tele = null;
+          try {
+            const cached = localStorage.getItem("webpos_latest_uang_kasir");
+            if (cached) tele = JSON.parse(cached);
+
+            // Jika cache HP kosong, ambil langsung dari Firestore:
+            if (!tele || !tele.nominal) {
+              const snap = await db.collection("saldo_sisa_history").where("toolName", "==", "UANG KASIR").get();
+              snap.forEach(doc => {
+                const d = doc.data();
+                const t = d.timestamp || 0;
+                if (!tele || t > (tele.timestamp || 0)) tele = { ...d, timestamp: t };
+              });
+            }
+          } catch(e) {}
 
           if (tele && tele.nominal > 0) {
             document.getElementById("choiceTeleNominalDisplay").textContent = formatRupiah(tele.nominal);
@@ -1459,7 +1471,6 @@
             return;
           }
 
-          // Jika belum ada riwayat telegram, arahkan ke form modal biasa:
           localStorage.setItem("fromDashboard", "true");
           window.location.href = "page-modal-harian.html";
           return;
