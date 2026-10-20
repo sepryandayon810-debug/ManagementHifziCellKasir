@@ -1116,6 +1116,7 @@
     titleEl.textContent = title;
     msgEl.textContent = message;
     btnConfirm.textContent = confirmText;
+    btnCancel.textContent = cancelText;
 
     iconWrap.className = `dialog-icon-wrap ${iconType}`;
     if (iconType === "warning") iconWrap.innerHTML = '<i class="fas fa-coins"></i>';
@@ -1123,6 +1124,7 @@
     else iconWrap.innerHTML = '<i class="fas fa-circle-check"></i>';
 
     btnCancel.style.display = showCancel ? "block" : "none";
+    btnCancel.onclick = () => { closeCustomAlert(); if (onCancel) onCancel(); };
     btnConfirm.onclick = () => { closeCustomAlert(); if (onConfirm) onConfirm(); };
     backdrop.classList.add("open");
   };
@@ -1422,10 +1424,33 @@
   async function toggleShift(user) {
     const today = getTodayString();
 
+    // ⬇️ TEMPATKAN KODE ANDA DI SINI:
     if (isShiftOpen) {
-      window.location.href = "page-kas-shift.html";
+      showCustomAlert({
+        title: "Shift Sedang Berjalan",
+        message: "Operasional kasir sedang aktif. Apakah Anda ingin membatalkan pembukaan shift uji coba ini?",
+        iconType: "warning",
+        confirmText: "Ya, Batalkan Shift (Reset)",
+        showCancel: true,
+        cancelText: "Batal / Tetap Buka",
+        onConfirm: async () => {
+          const modalId = `${today}_${user.uid}`;
+          // Hapus dokumen shift & modal hari ini dari database
+          await db.collection("shifts").doc(modalId).delete();
+          await db.collection("modal").doc(modalId).delete();
+          
+          toast("Shift uji coba berhasil dibatalkan. Status kembali TUTUP.", "success");
+          setTimeout(() => location.reload(), 1000);
+        },
+        onCancel: () => {
+          // Tetap di dashboard atau masuk ke ringkasan shift
+          closeCustomAlert();
+        }
+      });
     } else {
+      // (Di bawah ini adalah kode "else" lama untuk buka shift, biarkan tetap ada)
       try {
+
         const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
