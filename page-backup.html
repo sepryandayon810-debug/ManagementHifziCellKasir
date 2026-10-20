@@ -429,6 +429,45 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    /* STYLING UNTUK VIEWER TABEL ONLINE & PANDUAN MODAL GAS */
+    .table-viewer-tabs {
+      display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.5rem;
+      scrollbar-width: thin;
+    }
+    .viewer-tab-btn {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.5rem 0.85rem; border-radius: var(--radius-md);
+      font-size: 0.8rem; font-weight: 700; background: var(--bg-subtle);
+      border: 1px solid var(--border); color: var(--text-sub);
+      cursor: pointer; white-space: nowrap; transition: all 0.15s ease;
+    }
+    .viewer-tab-btn:hover {
+      background: var(--primary-light); color: var(--primary); border-color: var(--primary);
+    }
+    .viewer-tab-btn.active {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+      box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+    }
+    .viewer-tab-btn span {
+      background: rgba(0,0,0,0.12); padding: 2px 6px; border-radius: 999px;
+      font-size: 0.72rem;
+    }
+    .viewer-tab-btn.active span { background: rgba(255,255,255,0.25); }
+    .modal-content-lg { max-width: 760px; max-height: 85vh; display: flex; flex-direction: column; }
+    .modal-content-lg .modal-body { overflow-y: auto; }
+    .guide-step { display: flex; gap: 0.85rem; margin-bottom: 1rem; align-items: flex-start; }
+    .guide-num {
+      width: 26px; height: 26px; border-radius: 50%; background: var(--primary);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 800; flex-shrink: 0; margin-top: 2px;
+    }
+    .code-box {
+      background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: var(--radius-md);
+      font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.78rem;
+      max-height: 280px; overflow-y: auto; line-height: 1.5;
+    }
+    
   </style>
 
   <!-- Firebase Compat -->
@@ -436,7 +475,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/kas-core.js"></script>
   <script src="js/sidebar-filter.js"></script>
   <script src="js/role-guard.js"></script>
 </head>
@@ -599,50 +640,128 @@
         </div>
       </div>
 
-      <!-- Auto Backup Card -->
+      <!-- CARD SINKRONISASI KE GOOGLE SHEETS -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-robot" style="color:var(--primary)"></i> Auto Backup (Google Sheets)</div>
-          <span class="badge badge-success" id="autoBadge">Aktif</span>
+          <div class="card-title">
+            <i class="fab fa-google-drive" style="color:#0f9d58"></i>
+            Sinkronisasi Database ke Google Sheets
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="openSetupGuideModal()">
+              <i class="fas fa-book-open"></i> Panduan & Script Sheets
+            </button>
+            <button class="btn btn-sheet btn-sm" id="btnOpenSheetTab" onclick="openGoogleSheetDirect()" style="display:none; background:#0f9d58; color:#fff;">
+              <i class="fas fa-external-link-alt"></i> Buka Google Sheet
+            </button>
+          </div>
         </div>
         <div class="card-body">
-          <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;margin-bottom:1.25rem">
-            Data otomatis di-backup ke Google Sheets setiap malam pukul 00:00. Tidak perlu klik apa pun — berjalan sendiri di background.
+          <p style="color:var(--text-muted);font-size:.88rem;line-height:1.6;margin-bottom:1.25rem">
+            Kumpulkan seluruh koleksi database (Transaksi, Produk, Hutang/Piutang, Kas &amp; Shift, Pembelian, Pelanggan, Penggajian, dan Saldo Tools) lalu kirim langsung ke Google Sheets dalam tab terpisah otomatis.
           </p>
 
-          <!-- Sheet ID -->
+          <!-- Input URL Google Apps Script Webhook -->
           <div class="form-group">
             <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
-              <i class="fas fa-id-card" style="font-size:.8rem;color:var(--text-muted)"></i> Sheet ID Backup
-              <button type="button" class="btn-icon-box" style="width:28px;height:28px;margin-left:auto" onclick="toggleVisibility('sheetIdInput','sheetIdEye')" title="Tampilkan/Sembunyikan">
-                <i class="fas fa-eye" id="sheetIdEye"></i>
+              <i class="fas fa-link" style="color:var(--primary)"></i> Google Apps Script Web App URL (Penerima Data)
+              <button type="button" class="btn-icon-box" style="width:26px;height:26px;margin-left:auto" onclick="toggleVisibility('scriptUrlInput','scriptUrlEye')">
+                <i class="fas fa-eye" id="scriptUrlEye"></i>
               </button>
             </label>
-            <input type="password" class="form-input" id="sheetIdInput" placeholder="••••••••••••••••••••••••••" style="font-family:monospace;letter-spacing:.05em" readonly>
-            <small style="color:var(--text-muted);font-size:.75rem;margin-top:.25rem;display:block">
-              <i class="fas fa-lock"></i> Data disimpan aman di localStorage device kamu
+            <input type="password" class="form-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="font-family:monospace;font-size:0.85rem">
+            <small style="color:var(--text-muted);font-size:.74rem;margin-top:.25rem;display:block">
+              <i class="fas fa-info-circle"></i> URL dari menu <strong>Extensions &gt; Apps Script &gt; Deploy as Web App</strong> di Google Sheet Anda.
             </small>
           </div>
 
-          <!-- Firebase URL -->
+          <!-- Input Google Sheet URL / ID -->
           <div class="form-group">
             <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
-              <i class="fas fa-database" style="font-size:.8rem;color:var(--text-muted)"></i> Firebase DB URL
-              <button type="button" class="btn-icon-box" style="width:28px;height:28px;margin-left:auto" onclick="toggleVisibility('dbUrlInput','dbUrlEye')" title="Tampilkan/Sembunyikan">
-                <i class="fas fa-eye" id="dbUrlEye"></i>
-              </button>
+              <i class="fas fa-table" style="color:#0f9d58"></i> Tautan / ID Google Spreadsheet
             </label>
-            <input type="password" class="form-input" id="dbUrlInput" placeholder="••••••••••••••••••••••••••" style="font-family:monospace;letter-spacing:.05em" readonly>
+            <input type="text" class="form-input" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../edit" style="font-size:0.85rem">
           </div>
 
-          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <button class="btn btn-outline" onclick="saveSettings()"><i class="fas fa-save"></i> Simpan</button>
-            <button class="btn btn-outline" onclick="editSettings()"><i class="fas fa-edit"></i> Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="clearSettings()"><i class="fas fa-trash"></i> Hapus</button>
+          <!-- Tombol Aksi -->
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-top:1.25rem">
+            <button class="btn" id="btnSyncToSheets" onclick="syncAllToGoogleSheets()" style="flex:1;min-width:200px;background:#0f9d58;color:#fff;">
+              <i class="fas fa-cloud-upload-alt"></i> Kirim Semua Data ke Google Sheets
+            </button>
+            <button class="btn btn-primary" onclick="exportFullWorkbookXLSX()" style="flex:1;min-width:200px">
+              <i class="fas fa-file-excel"></i> Download Excel Lengkap (.xlsx Multi-Tab)
+            </button>
+            <button class="btn btn-outline" onclick="saveSheetSettings()">
+              <i class="fas fa-save"></i> Simpan URL
+            </button>
+          </div>
+
+          <!-- Progress Bar -->
+          <div id="syncProgressWrapper" style="display:none;margin-top:1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;font-weight:700;margin-bottom:0.35rem;">
+              <span id="syncProgressLabel"><i class="fas fa-spinner fa-spin"></i> Mengumpulkan seluruh data database...</span>
+              <span id="syncProgressPct" style="color:var(--primary)">0%</span>
+            </div>
+            <div class="progress-bar-outer" style="margin-top:0;">
+              <div class="progress-bar-fill" id="syncProgressFill" style="width:0%"></div>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- CARD PENAMPIL TABEL ONLINE DI HALAMAN (LIVE TABLE VIEWER) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fas fa-table-list" style="color:var(--primary)"></i>
+            Laporan Tabel Online (Live Database Viewer)
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <input type="text" class="form-input" id="tableSearchInput" placeholder="Cari dalam tabel..." style="padding:0.4rem 0.6rem; font-size:0.8rem;" oninput="filterViewerTable()">
+            <button class="btn btn-outline btn-sm" onclick="exportCurrentViewerTabCSV()">
+              <i class="fas fa-file-csv"></i> Download CSV Tab Ini
+            </button>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:0.75rem;">
+          <!-- 8 Tab Kategori Data -->
+          <div class="table-viewer-tabs" id="viewerTabs" style="display:flex;gap:0.4rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:1rem;">
+            <button class="viewer-tab-btn active" data-tab="transaksi" onclick="switchViewerTab('transaksi')">
+              <i class="fas fa-receipt"></i> Transaksi (<span id="countVTransactions">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="produk" onclick="switchViewerTab('produk')">
+              <i class="fas fa-box"></i> Produk (<span id="countVProducts">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="hutang" onclick="switchViewerTab('hutang')">
+              <i class="fas fa-hand-holding-usd"></i> Hutang/Piutang (<span id="countVDebts">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="kas" onclick="switchViewerTab('kas')">
+              <i class="fas fa-wallet"></i> Kas &amp; Shift (<span id="countVKas">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="pembelian" onclick="switchViewerTab('pembelian')">
+              <i class="fas fa-shopping-cart"></i> Pembelian (<span id="countVPurchases">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="pelanggan" onclick="switchViewerTab('pelanggan')">
+              <i class="fas fa-users"></i> Pelanggan (<span id="countVCustomers">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="gaji" onclick="switchViewerTab('gaji')">
+              <i class="fas fa-money-check-alt"></i> Penggajian (<span id="countVPayrolls">0</span>)
+            </button>
+            <button class="viewer-tab-btn" data-tab="saldo" onclick="switchViewerTab('saldo')">
+              <i class="fab fa-telegram"></i> Saldo Tools (<span id="countVSaldo">0</span>)
+            </button>
+          </div>
+
+          <!-- Wadah Konten Tabel -->
+          <div class="table-container" style="max-height: 420px; overflow-y: auto;">
+            <table class="table">
+              <thead id="viewerTableHead"><tr><th>Memuat kolom...</th></tr></thead>
+              <tbody id="viewerTableBody"><tr><td style="text-align:center;padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Menyiapkan tabel...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
       <!-- Export Manual Card -->
       <div class="card">
         <div class="card-header">
@@ -753,6 +872,70 @@
   </div>
 </div>
 
+  <!-- MODAL PANDUAN & KODE GOOGLE APPS SCRIPT -->
+<div class="modal-overlay" id="setupGuideModal">
+  <div class="modal-content modal-content-lg">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fab fa-google-drive" style="color:#0f9d58"></i> Panduan &amp; Kode Script Google Sheets</div>
+      <button class="modal-close" onclick="closeSetupGuideModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="guide-step">
+        <div class="guide-num">1</div>
+        <div>
+          <strong>Buka Google Spreadsheet Baru</strong>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-top:2px;">
+            Buka <a href="https://sheets.new" target="_blank" style="color:var(--primary)">sheets.new</a> di browser Anda.
+          </p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">2</div>
+        <div>
+          <strong>Buka Menu Apps Script</strong>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-top:2px;">
+            Klik menu <strong>Extensions (Ekstensi)</strong> &gt; <strong>Apps Script</strong>.
+          </p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">3</div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong>Salin Kode Script Penerima Data</strong>
+            <button class="btn btn-sm btn-outline" onclick="copyGasCodeToClipboard()">
+              <i class="fas fa-copy"></i> Salin Seluruh Kode
+            </button>
+          </div>
+          <div class="code-box" id="gasCodeDisplay">// Sedang memuat kode Google Apps Script...</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">4</div>
+        <div>
+          <strong>Deploy sebagai Web App</strong>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-top:2px;">
+            Klik <strong>Deploy</strong> &gt; <strong>New deployment</strong> &gt; Pilih <strong>Web app</strong>. Atur <em>Who has access</em>: <strong style="color:var(--danger)">Anyone (Siapa saja)</strong>.
+          </p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">5</div>
+        <div>
+          <strong>Tempel URL ke Form WebPOS</strong>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-top:2px;">
+            Salin Web App URL (berakhiran <code>/exec</code>), lalu tempel ke kolom Web App URL di halaman ini.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSetupGuideModal()">Tutup</button>
+      <button class="btn btn-primary" onclick="copyGasCodeToClipboard()"><i class="fas fa-copy"></i> Salin Kode Script</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL KONFIRMASI INTERNAL (PENGGANTI WINDOWS DIALOG) -->
 <div class="custom-modal-backdrop" id="customConfirmModal">
   <div class="custom-dialog-card">
@@ -779,6 +962,7 @@
 <script src="js/firebase-config.js?v=2"></script>
 <script src="js/sidebar-filter.js"></script>
 <script src="js/role-guard.js"></script>
+<script src="js/sheets-sync.js"></script>
 
 <script>
   let currentUser = null;
@@ -786,8 +970,6 @@
 
   const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
   const savedDbUrl = localStorage.getItem('backup_db_url') || '';
-  document.getElementById('sheetIdInput').value = savedSheetId;
-  document.getElementById('dbUrlInput').value = savedDbUrl;
   if (savedSheetId) document.getElementById('sheetIdInput').readOnly = true;
   if (savedDbUrl) document.getElementById('dbUrlInput').readOnly = true;
 
