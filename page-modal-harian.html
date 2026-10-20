@@ -560,6 +560,50 @@
             </button>
           </div>
 
+          <!-- 2 PILIHAN METODE MODAL: TELEGRAM VS INPUT SENDIRI -->
+<div style="margin-bottom: 1.25rem;">
+  <label class="form-label" style="font-size:0.82rem; font-weight:800; color:var(--text-sub); margin-bottom:0.5rem;">
+    <i class="fas fa-hand-holding-dollar" style="color:var(--primary);"></i> Tentukan Sumber Modal Kasir:
+  </label>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem;">
+    
+    <!-- PILIHAN 1: PANGGIL SALDO TELEGRAM -->
+    <div id="cardSourceTelegram" onclick="setModalSource('telegram')" style="border:2px solid var(--border); background:var(--bg-subtle); border-radius:var(--radius-lg); padding:1rem; cursor:pointer; transition:all 0.2s;">
+      <div style="display:flex; align-items:flex-start; gap:0.75rem;">
+        <div style="width:40px; height:40px; border-radius:10px; background:#0088cc; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
+          <i class="fab fa-telegram-plane"></i>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:0.68rem; font-weight:800; color:#0088cc; text-transform:uppercase;">Pilihan 1 (Otomatis)</div>
+          <div style="font-size:0.92rem; font-weight:800; color:var(--text-main);">Panggil Saldo Telegram</div>
+          <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:4px;">Sisa Uang Kasir terakhir di Saldo Telegram</div>
+          <div id="badgeTelegramKasir" style="font-size:0.85rem; font-weight:800; color:#0088cc; background:rgba(0,136,204,0.12); padding:0.25rem 0.6rem; border-radius:6px; display:inline-block;">
+            <i class="fas fa-spinner fa-spin"></i> Memeriksa saldo...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PILIHAN 2: INPUTKAN SENDIRI -->
+    <div id="cardSourceManual" onclick="setModalSource('manual')" style="border:2px solid var(--primary); background:var(--primary-light); border-radius:var(--radius-lg); padding:1rem; cursor:pointer; transition:all 0.2s;">
+      <div style="display:flex; align-items:flex-start; gap:0.75rem;">
+        <div style="width:40px; height:40px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;">
+          <i class="fas fa-keyboard"></i>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:0.68rem; font-weight:800; color:var(--primary); text-transform:uppercase;">Pilihan 2 (Manual)</div>
+          <div style="font-size:0.92rem; font-weight:800; color:var(--text-main);">Inputkan Sendiri</div>
+          <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:4px;">Ketik nominal manual atau hitung pecahan fisik</div>
+          <div style="font-size:0.75rem; font-weight:700; color:var(--primary); background:rgba(79,70,229,0.1); padding:0.25rem 0.6rem; border-radius:6px; display:inline-block;">
+            Manual / Koin Laci
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
           <div class="modal-input-display">
             <span class="modal-label-text">Total Modal Awal (Ketik Angka di Bawah)</span>
             <input type="text" class="modal-amount-input" id="totalModalInput" value="Rp 0" placeholder="Rp 0" autocomplete="off">
@@ -1431,6 +1475,76 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
   }
 }
+
+  let latestTelegramData = null;
+  let currentModalSource = "manual";
+
+  // 1. Ambil Sisa Uang Kasir terakhir dari Saldo Telegram
+  async function loadLatestTelegramKasir() {
+    const badge = document.getElementById("badgeTelegramKasir");
+    try {
+      let latest = null;
+      const snap = await db.collection("saldo_sisa_history").where("toolName", "==", "UANG KASIR").get();
+      snap.forEach(doc => {
+        const d = doc.data();
+        const t = d.timestamp || 0;
+        if (!latest || t > (latest.timestamp || 0)) latest = { id: doc.id, ...d, timestamp: t };
+      });
+
+      if (!latest) {
+        const cached = localStorage.getItem("webpos_latest_uang_kasir");
+        if (cached) latest = JSON.parse(cached);
+      }
+
+      if (latest && latest.nominal !== undefined) {
+        latestTelegramData = latest;
+        badge.innerHTML = `<i class="fas fa-check-circle"></i> ${formatRupiah(latest.nominal)}`;
+        // Jika ada parameter URL source=telegram, langsung aktifkan
+        if (new URLSearchParams(window.location.search).get("source") === "telegram") {
+          setModalSource("telegram");
+        }
+      } else {
+        badge.innerHTML = `Rp 0 (Belum ada catatan)`;
+      }
+    } catch(e) {
+      badge.innerHTML = `Gunakan Saldo Telegram`;
+    }
+  }
+
+  // 2. Fungsi Tombol Pengganti Sumber Modal
+  window.setModalSource = function(source) {
+    currentModalSource = source;
+    const cardTele = document.getElementById("cardSourceTelegram");
+    const cardManual = document.getElementById("cardSourceManual");
+    const secManual = document.getElementById("sectionManual");
+    const secPecahan = document.getElementById("sectionPecahan");
+    const btnSave = document.getElementById("btnSaveModal");
+
+    if (source === "telegram") {
+      cardTele.style.borderColor = "#0088cc";
+      cardTele.style.background = "rgba(0,136,204,0.08)";
+      cardManual.style.borderColor = "var(--border)";
+      cardManual.style.background = "var(--bg-subtle)";
+
+      if (secManual) secManual.style.display = "none";
+      if (secPecahan) secPecahan.style.display = "none";
+
+      rawModalAmount = latestTelegramData ? latestTelegramData.nominal : 0;
+      updateModalDisplay();
+
+      btnSave.style.background = "#0088cc";
+      btnSave.innerHTML = `<i class="fab fa-telegram-plane"></i> Gunakan Saldo Telegram & Buka Shift`;
+    } else {
+      cardManual.style.borderColor = "var(--primary)";
+      cardManual.style.background = "var(--primary-light)";
+      cardTele.style.borderColor = "var(--border)";
+      cardTele.style.background = "var(--bg-subtle)";
+
+      if (secManual) secManual.style.display = "block";
+      btnSave.style.background = "var(--primary)";
+      btnSave.innerHTML = `<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift`;
+    }
+  };
 
 })();
 </script>
