@@ -1008,6 +1008,37 @@
   </div>
 </div>
 
+<!-- MODAL PILIHAN BUKA SHIFT (TELEGRAM VS INPUT SENDIRI) -->
+<div class="custom-modal-backdrop" id="openShiftChoiceModal">
+  <div class="custom-dialog-card" style="max-width: 420px; text-align: left;">
+    <h3 class="dialog-title" style="margin-bottom:2px; font-size:1.1rem;">Buka Shift Kasir</h3>
+    <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">Tentukan saldo modal awal laci hari ini</p>
+    
+    <!-- PILIHAN 1: PANGGIL TELEGRAM -->
+    <div onclick="executeOpenWithTelegram()" style="border:2px solid #0088cc; background:rgba(0,136,204,0.06); border-radius:12px; padding:0.9rem 1rem; margin-bottom:0.75rem; cursor:pointer;">
+      <div style="font-size:0.7rem; font-weight:800; color:#0088cc;"><i class="fab fa-telegram-plane"></i> PILIHAN 1: REKOMENDASI CEPAT</div>
+      <div style="font-weight:800; font-size:0.9rem; color:var(--text-main);">Panggil dari Saldo Telegram</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <span style="font-size:1.2rem; font-weight:800; color:#0088cc;" id="choiceTeleNominalDisplay">Rp 0</span>
+        <button type="button" class="btn btn-sm" style="background:#0088cc; color:#fff; border-radius:6px; padding:0.35rem 0.75rem; font-size:0.78rem;">
+          Pakai & Buka →
+        </button>
+      </div>
+    </div>
+
+    <!-- PILIHAN 2: INPUT SENDIRI -->
+    <div onclick="window.location.href='page-modal-harian.html'" style="border:1.5px solid var(--border); background:var(--bg-subtle); border-radius:12px; padding:0.9rem 1rem; cursor:pointer;">
+      <div style="font-size:0.7rem; font-weight:800; color:var(--primary);"><i class="fas fa-keyboard"></i> PILIHAN 2: MANUAL</div>
+      <div style="font-weight:800; font-size:0.88rem; color:var(--text-main);">Inputkan Modal Sendiri</div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Ketik nominal bebas atau hitung lembaran laci</div>
+    </div>
+
+    <div style="margin-top:1rem; text-align:right;">
+      <button type="button" class="dialog-btn dialog-btn-secondary" style="width:auto; padding:0.45rem 1rem;" onclick="document.getElementById('openShiftChoiceModal').classList.remove('open')">Batal</button>
+    </div>
+  </div>
+</div>
+
 <!-- CUSTOM POPUP DIALOG -->
 <div class="custom-modal-backdrop" id="customAlertModal">
   <div class="custom-dialog-card">
@@ -1399,19 +1430,41 @@
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
         if (!modalData || !modalData.amount) {
-          showCustomAlert({
-            title: "Modal Awal Belum Diisi",
-            message: "Silakan alokasikan saldo modal awal laci terlebih dahulu sebelum membuka shift.",
-            iconType: "warning",
-            confirmText: "Set Modal Sekarang",
-            onConfirm: () => {
-              localStorage.setItem("fromDashboard", "true");
-              window.location.href = "page-modal-harian.html";
-            }
-          });
+          // ⬅️ GANTI BAGIAN ALERT LAMA DENGAN INI:
+          const cached = localStorage.getItem("webpos_latest_uang_kasir");
+          const tele = cached ? JSON.parse(cached) : null;
+
+          if (tele && tele.nominal > 0) {
+            document.getElementById("choiceTeleNominalDisplay").textContent = formatRupiah(tele.nominal);
+            document.getElementById("openShiftChoiceModal").classList.add("open");
+
+            window.executeOpenWithTelegram = async () => {
+              document.getElementById("openShiftChoiceModal").classList.remove("open");
+              const modalId = `${today}_${user.uid}`;
+              const dName = document.getElementById("userName").textContent;
+
+              await db.collection("modal").doc(modalId).set({
+                id: modalId, date: today, userId: user.uid, userName: dName,
+                amount: tele.nominal, source: "telegram", category: "modal_awal"
+              }, { merge: true });
+
+              await db.collection("shifts").doc(modalId).set({
+                id: "shift_" + Date.now(), status: "open", openTime: Date.now(),
+                userId: user.uid, userName: dName, modalAwal: tele.nominal
+              }, { merge: true });
+
+              toast(`Shift dibuka dengan modal ${formatRupiah(tele.nominal)} dari Telegram!`, "success");
+              loadDashboardStats(user);
+            };
+            return;
+          }
+
+          // Jika belum ada riwayat telegram, arahkan ke form modal biasa:
+          localStorage.setItem("fromDashboard", "true");
+          window.location.href = "page-modal-harian.html";
           return;
         }
-
+        
         const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
         if (shiftDoc.exists && shiftDoc.data().status === "open") {
           showCustomAlert({ title: "Informasi", message: "Shift Anda hari ini sudah terbuka.", iconType: "success" });
