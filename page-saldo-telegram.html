@@ -2014,35 +2014,44 @@ const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
         }
       };
 
-      window.saveStaticBalance = async function(toolName) {
-        const inp = document.getElementById('inlineStaticInput');
-        const nominal = parseInt(inp && inp.value) || 0;
+     //  YANG BENAR:
+window.saveStaticBalance = async function(toolName) {
+  const inp = document.getElementById('inlineStaticInput');
+  const nominal = parseInt(inp && inp.value) || 0;
 
-        // Sinkronkan ke cache agar terbaca instan di Modal Harian & Buka Shift:
-  if (toolName === "UANG KASIR") {
-    localStorage.setItem("webpos_latest_uang_kasir", JSON.stringify({
+  if (nominal < 0) {
+    Utils.showToast('Nominal tidak valid', 'warning');
+    return;
+  }
+
+  Utils.showLoading('Menyimpan...');
+  try {
+    const now = new Date(); // 1. Buat 'now' dulu
+
+    // 2. Simpan ke database
+    await db.collection(COLLECTION_SISA).add({
+      toolName: toolName,
       nominal: nominal,
       date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      timestamp: now.getTime()
-    }));
-  }
-        
-        if (nominal < 0) {
-          Utils.showToast('Nominal tidak valid', 'warning');
-          return;
-        }
+      timestamp: now.getTime(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-        Utils.showLoading('Menyimpan...');
-        try {
-          const now = new Date();
-          await db.collection(COLLECTION_SISA).add({
-            toolName: toolName,
-            nominal: nominal,
-            date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            timestamp: now.getTime(),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+    // 3. BARU SINKRONKAN KE CACHE (DI SINI POSISI YANG BENAR):
+    if (toolName === "UANG KASIR") {
+      localStorage.setItem("webpos_latest_uang_kasir", JSON.stringify({
+        nominal: nominal,
+        date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        timestamp: now.getTime()
+      }));
+    }
 
+    editingStatic = null;
+    renderStaticBalanceCard(toolName);
+    Utils.hideLoading();
+    Utils.showToast(labelStatic(toolName) + ' berhasil diperbarui!', 'success');
+    await loadSisaHistory();
+    
           // ✅ LANGSUNG KEMBALIKAN TAMPILAN KARTU KE NORMAL (RUPIAH)
           editingStatic = null;
           renderStaticBalanceCard(toolName);
