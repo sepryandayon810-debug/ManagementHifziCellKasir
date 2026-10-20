@@ -968,11 +968,6 @@
   let currentUser = null;
   let pendingImportFile = null;
 
-  const savedSheetId = localStorage.getItem('backup_sheet_id') || '';
-  const savedDbUrl = localStorage.getItem('backup_db_url') || '';
-  if (savedSheetId) document.getElementById('sheetIdInput').readOnly = true;
-  if (savedDbUrl) document.getElementById('dbUrlInput').readOnly = true;
-
   function formatDate(ts) {
     if (!ts) return '-';
     const d = new Date(Number(ts));
@@ -1128,8 +1123,11 @@
         const totalBackedUp = log.summary ? Object.values(log.summary).reduce((a,b)=>a+b,0) : 0;
         document.getElementById('autoStatus').textContent = totalBackedUp > 0 ? totalBackedUp.toLocaleString('id-ID') + ' REC' : 'AKTIF';
         document.getElementById('autoStatus').style.color = log.status==='success' ? 'var(--success)' : 'var(--danger)';
-        document.getElementById('autoBadge').textContent = log.status==='success' ? 'Aktif' : 'Gagal';
-        document.getElementById('autoBadge').className = 'badge ' + (log.status==='success'?'badge-success':'badge-danger');
+        const autoBadge = document.getElementById('autoBadge');
+if (autoBadge) {
+  autoBadge.textContent = log.status === 'success' ? 'Aktif' : 'Gagal';
+  autoBadge.className = 'badge ' + (log.status === 'success' ? 'badge-success' : 'badge-danger');
+}
       } else {
         document.getElementById('lastBackupTime').textContent = 'Belum pernah';
         document.getElementById('autoStatus').textContent = 'MENUNGGU';
