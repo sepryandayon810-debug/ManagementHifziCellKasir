@@ -1452,7 +1452,7 @@ if (typeof window.KasCore === 'undefined') {
           if (String(debt.type || 'piutang') !== 'piutang') return;
           if (String(debt.status || '') !== 'active') return;
           if (debt.kasRecorded === false) return;
-          if (debt.date && debt.date !== date) return;
+          if (!debt.date || debt.date !== date) return;
           if (KAS_CONFIG.piutangIkutScopeRole) {
             if (!inScope(debt.userId)) return;
           } else if (debt.userId !== currentUserId) {
