@@ -862,18 +862,14 @@
         </table>
       </div>
 
-      <!-- Catatan & Total -->
-      <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 220px;">
-          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Catatan Transaksi:</div>
-          <div style="font-size: 0.82rem; color: var(--text-main); margin-top: 2px; background: var(--bg-subtle); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px dashed var(--border);" id="modalBeliCatatan">-</div>
-          <div style="margin-top: 0.45rem; font-size: 0.75rem;" id="modalBeliKasEffect"></div>
+      <!-- Status Kas & Total -->
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div id="modalBeliKasEffect" style="font-size: 0.78rem;"></div>
+          <div style="background: var(--bg-subtle); padding: 0.75rem 1.15rem; border-radius: var(--radius-md); border: 1.5px solid var(--border); text-align: right; min-width: 220px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Biaya Pembelian</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: var(--success); margin-top: 2px;" id="modalBeliGrandTotal">Rp 0</div>
+          </div>
         </div>
-        <div style="background: var(--bg-subtle); padding: 0.75rem 1.15rem; border-radius: var(--radius-md); border: 1.5px solid var(--border); text-align: right; min-width: 220px;">
-          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Biaya Pembelian</div>
-          <div style="font-size: 1.3rem; font-weight: 800; color: var(--success); margin-top: 2px;" id="modalBeliGrandTotal">Rp 0</div>
-        </div>
-      </div>
     </div>
 
     <div class="modal-footer" style="padding: 0.85rem 1.25rem;">
@@ -1510,7 +1506,47 @@ await db
       };
 
       // Variabel penampung data pembelian
+      // Variabel penampung data pembelian & cache kasir
       let allCachedPurchases = [];
+      let usersMap = {};
+
+      // =========================================================
+      // RESOLUSI IDENTITAS KASIR / PETUGAS (DARI BERBAGAI FORMAT DB)
+      // =========================================================
+      function resolveCashierName(obj) {
+        if (!obj) return '-';
+
+        // 1. Cek langsung field nama kasir
+        const directName = obj.userName || obj.kasir || obj.cashier || obj.namaKasir || obj.petugas || obj.operator || obj.createdByName;
+        if (directName && directName !== '-' && directName !== 'unknown') {
+          return directName;
+        }
+
+        // 2. Cek jika field user bertipe object atau string
+        if (obj.user && typeof obj.user === 'object') {
+          const uName = obj.user.name || obj.user.username || obj.user.displayName || obj.user.email;
+          if (uName) return uName;
+        } else if (typeof obj.user === 'string' && obj.user !== '-' && obj.user !== 'unknown') {
+          return obj.user;
+        }
+
+        // 3. Resolusi dari userId via mapping tabel users
+        const uid = obj.userId || obj.uid || (obj.user && obj.user.uid);
+        if (uid && usersMap[uid]) {
+          return usersMap[uid];
+        }
+
+        // 4. Fallback jika transaksi dari Kasir
+        if (obj.source === 'kasir' || (obj.catatan && obj.catatan.toLowerCase().includes('kasir'))) {
+          const currentActiveUser = document.getElementById('userName')?.textContent;
+          if (currentActiveUser && currentActiveUser !== 'Kasir' && currentActiveUser !== '-') {
+            return currentActiveUser;
+          }
+          return 'Kasir POS';
+        }
+
+        return '-';
+      }
 
       // =========================================================
       // FUNGSI POP-UP DETAIL (1X KLIK LANGSUNG MUNCUL RINCIAN)
@@ -1522,6 +1558,7 @@ await db
           return;
         }
 
+        // 1. Info Header Pop-up
         const subEl = document.getElementById('modalBeliSubtitle');
         if (subEl) subEl.textContent = 'No. Transaksi: ' + (p.id || '-');
 
@@ -1534,8 +1571,9 @@ await db
         const suppEl = document.getElementById('modalBeliSupplier');
         if (suppEl) suppEl.textContent = p.supplier || 'Supplier Umum';
 
+        // Petugas kasir otomatis terbaca akurat
         const userEl = document.getElementById('modalBeliUser');
-        if (userEl) userEl.textContent = p.userName || '-';
+        if (userEl) userEl.textContent = resolveCashierName(p);
 
         const isKasir = p.source === 'kasir' || (p.catatan && p.catatan.toLowerCase().includes('kasir'));
         const sourceEl = document.getElementById('modalBeliSource');
@@ -1545,6 +1583,7 @@ await db
             : '<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:700; color:#15803d; background:#dcfce7; padding:2px 8px; border-radius:99px;"><i class="fas fa-shopping-cart"></i> Menu Pembelian</span>';
         }
 
+        // 2. Rincian Barang
         const tbody = document.getElementById('modalBeliItemsBody');
         let items = (p.items && Array.isArray(p.items)) ? p.items : [];
 
@@ -1556,20 +1595,27 @@ await db
             items = parts.map(pt => {
               const trimmed = pt.trim();
               const match = trimmed.match(/(.+)\((\d+)\s*pcs\)/i);
-              if (match) {
-                const q = parseInt(match[2]) || 1;
-                return {
-                  productName: match[1].trim(),
-                  qty: q,
-                  harga: Math.round((p.grandTotal || p.total || 0) / q),
-                  total: p.grandTotal || p.total || 0
-                };
+              const pName = match ? match[1].trim() : (trimmed || 'Barang Pembelian');
+              const q = match ? (parseInt(match[2]) || 1) : 1;
+
+              // Otomatis cari produk di master produk untuk mengambil Harga Jual
+              let matched = null;
+              if (productsList && productsList.length > 0) {
+                const cleanN = pName.toLowerCase();
+                matched = productsList.find(pr => (pr.name || '').trim().toLowerCase() === cleanN)
+                       || productsList.find(pr => {
+                            const dbN = (pr.name || '').trim().toLowerCase();
+                            return dbN && (cleanN.includes(dbN) || dbN.includes(cleanN));
+                          });
               }
+
               return {
-                productName: trimmed || 'Barang Pembelian',
-                qty: 1,
-                harga: p.grandTotal || p.total || 0,
-                total: p.grandTotal || p.total || 0
+                productName: pName,
+                qty: q,
+                harga: Math.round((p.grandTotal || p.total || 0) / q),
+                total: p.grandTotal || p.total || 0,
+                sellingPrice: matched ? (matched.sellingPrice || matched.hargaJual || matched.price || 0) : 0,
+                resellerPrice: matched ? (matched.resellerPrice || 0) : 0
               };
             });
           }
@@ -1582,7 +1628,27 @@ await db
             totalQty += qty;
             const hargaBeli = it.harga || it.costPrice || 0;
             const subtotal = it.total || (hargaBeli * qty);
-            const sellPrice = it.sellingPrice || it.normalPrice || 0;
+
+            // Lookup ke database produk jika harga jual belum tersimpan di riwayat
+            let matched = null;
+            const pName = (it.productName || it.name || '').trim().toLowerCase();
+            if (productsList && productsList.length > 0) {
+              if (it.productId) {
+                matched = productsList.find(pr => pr.id === it.productId);
+              }
+              if (!matched && pName) {
+                matched = productsList.find(pr => (pr.name || '').trim().toLowerCase() === pName);
+              }
+              if (!matched && pName) {
+                matched = productsList.find(pr => {
+                  const dbName = (pr.name || '').trim().toLowerCase();
+                  return dbName && (pName.includes(dbName) || dbName.includes(pName));
+                });
+              }
+            }
+
+            const sellPrice = it.sellingPrice || it.normalPrice || (matched ? (matched.sellingPrice || matched.hargaJual || matched.price || 0) : 0);
+            const reseller = it.resellerPrice || (matched ? (matched.resellerPrice || 0) : 0);
 
             return `
               <tr>
@@ -1595,7 +1661,8 @@ await db
                 <td style="text-align: right; color: var(--text-muted);">${Utils.formatRupiah(hargaBeli)}</td>
                 <td style="text-align: right; font-weight: 800; color: var(--primary);">${Utils.formatRupiah(subtotal)}</td>
                 <td style="text-align: right; font-size: 0.78rem;">
-                  ${sellPrice > 0 ? `<div style="font-weight: 700; color: var(--text-main);">${Utils.formatRupiah(sellPrice)}</div>` : '<span style="color: var(--text-muted);">-</span>'}
+                  ${sellPrice > 0 ? `<div style="font-weight: 700; color: var(--text-main);">${Utils.formatRupiah(sellPrice)}</div>` : '<span style="color: var(--text-muted); font-size:0.75rem;">-</span>'}
+                  ${reseller > 0 ? `<div style="font-size: 0.7rem; color: var(--primary); font-weight: 600;">Reseller: ${Utils.formatRupiah(reseller)}</div>` : ''}
                 </td>
               </tr>
             `;
@@ -1611,9 +1678,20 @@ await db
           `;
         }
 
-        document.getElementById('modalBeliTotalPcs').textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
-        document.getElementById('modalBeliCatatan').textContent = p.catatan || p.note || 'Tidak ada catatan';
-        document.getElementById('modalBeliGrandTotal').textContent = Utils.formatRupiah(p.grandTotal || p.total || 0);
+        const totalPcsEl = document.getElementById('modalBeliTotalPcs');
+        if (totalPcsEl) totalPcsEl.textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
+
+        // Status Efek Kas (Aman tanpa error null)
+        const isKasKeluar = p.kurangiSaldo === true || p.kategori === 'pembelian' || (p.catatan && p.catatan.toLowerCase().includes('kasir'));
+        const kasEffectEl = document.getElementById('modalBeliKasEffect');
+        if (kasEffectEl) {
+          kasEffectEl.innerHTML = isKasKeluar
+            ? '<span style="color: var(--danger); font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-arrow-circle-down"></i> Saldo Kasir Dipotong (Kas Keluar Otomatis)</span>'
+            : '<span style="color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Tidak memotong saldo kasir (Hanya tambah stok)</span>';
+        }
+
+        const totalEl = document.getElementById('modalBeliGrandTotal');
+        if (totalEl) totalEl.textContent = Utils.formatRupiah(p.grandTotal || p.total || 0);
 
         const modal = document.getElementById('modalDetailPembelian');
         if (modal) modal.classList.add('active');
@@ -1635,12 +1713,27 @@ await db
           const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
           let purchasesMap = new Map();
 
-          // 1. Ambil dari purchases
+          // 0. Ambil daftar user kasir untuk mapping nama
+          try {
+            const uSnap = await db.collection("users").get();
+            uSnap.forEach(uDoc => {
+              const uData = uDoc.data();
+              usersMap[uDoc.id] = uData.name || uData.username || uData.displayName || uData.email || 'Kasir';
+            });
+          } catch(e) {}
+
+          // 1. Ambil dari collection purchases
           try {
             const snap = await db.collection("purchases").get();
             snap.forEach(doc => {
               const d = doc.data();
-              if (d) purchasesMap.set(doc.id, { id: doc.id, ...d });
+              if (d) {
+                purchasesMap.set(doc.id, {
+                  id: doc.id,
+                  ...d,
+                  userName: resolveCashierName(d)
+                });
+              }
             });
           } catch(e) {}
 
@@ -1650,19 +1743,27 @@ await db
             txSnap.forEach(doc => {
               const t = doc.data();
               const key = t.relatedPurchaseId || doc.id;
+              const cashierName = resolveCashierName(t);
               if (!purchasesMap.has(key)) {
                 purchasesMap.set(key, {
                   id: key,
                   date: t.date || (t.timestamp ? new Date(t.timestamp).toISOString().split('T')[0] : today),
-                  supplier: t.supplier || "Supplier Kasir",
+                  supplier: t.supplier || "Supplier Umum",
                   grandTotal: t.nominal || t.total || 0,
                   totalItem: (t.items && Array.isArray(t.items)) ? t.items.length : 1,
                   items: t.items || [],
                   catatan: t.note || t.catatan || "-",
-                  userName: t.userName || "-",
+                  userName: cashierName,
                   source: 'kasir',
-                  timestamp: t.waktu || t.timestamp || 0
+                  kurangiSaldo: true,
+                  timestamp: t.waktu || t.timestamp || 0,
+                  userId: t.userId || null
                 });
+              } else {
+                const existing = purchasesMap.get(key);
+                if (!existing.userName || existing.userName === '-' || existing.userName === 'unknown') {
+                  existing.userName = cashierName;
+                }
               }
             });
           } catch(e) {}
@@ -1704,7 +1805,7 @@ await db
                   ? '<span style="font-size: 0.72rem; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 2px 7px; border-radius: 4px;"><i class="fas fa-cash-register"></i> Kasir POS</span>'
                   : '<span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 2px 7px; border-radius: 4px;"><i class="fas fa-shopping-cart"></i> Menu Beli</span>'}
               </td>
-              <td style="color: var(--text-muted); font-size: 0.8rem;">${p.userName || '-'}</td>
+              <td style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">${resolveCashierName(p)}</td>
               <td style="text-align: center;">
                 <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.72rem;" onclick="event.stopPropagation(); openDetailPembelianModal('${p.id}')">
                   <i class="fas fa-eye" style="color: var(--primary);"></i> Detail
@@ -1735,7 +1836,7 @@ await db
             <td><span style="background: var(--bg-subtle); padding: 3px 8px; border-radius: 6px; font-weight: 700;">${p.totalItem || 1} item</span></td>
             <td style="font-weight: 800; color: var(--success);">${Utils.formatRupiah(p.grandTotal || p.total || 0)}</td>
             <td>${p.source === 'kasir' ? '<span style="color:#4338ca;background:#e0e7ff;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;"><i class="fas fa-cash-register"></i> Kasir POS</span>' : '<span style="color:#15803d;background:#dcfce7;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;"><i class="fas fa-shopping-cart"></i> Menu Beli</span>'}</td>
-            <td style="color: var(--text-muted); font-size: 0.8rem;">${p.userName || '-'}</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">${resolveCashierName(p)}</td>
             <td style="text-align: center;">
               <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.72rem;" onclick="event.stopPropagation(); openDetailPembelianModal('${p.id}')">
                 <i class="fas fa-eye" style="color: var(--primary);"></i> Detail
@@ -1744,7 +1845,7 @@ await db
           </tr>
         `).join('');
       }
-
+      
     })();
   </script>
 
