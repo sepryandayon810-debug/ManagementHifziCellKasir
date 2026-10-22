@@ -705,16 +705,14 @@
                 <div class="table-container">
                   <table class="pembelian-table">
                     <thead>
-                      <tr>
-                        <th>Tanggal</th>
-                        <th>Supplier</th>
-                        <th>Item</th>
-                        <th>Total</th>
-                        <th>Sumber</th>
-                        <th>Kasir</th>
-                        <th style="text-align: center;">Aksi</th>
-                      </tr>
-                    </thead>
+  <tr>
+    <th>Produk</th>
+    <th>Qty</th>
+    <th>Harga Beli</th>
+    <th>Total</th>
+    <th style="text-align: center;">Aksi</th>
+  </tr>
+</thead>
                     <tbody id="tbodyPembelian">
                       <tr>
                         <td colspan="5" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
@@ -745,14 +743,16 @@
                 <div class="table-container">
                   <table class="pembelian-table">
                     <thead>
-                      <tr>
-                        <th>Tanggal</th>
-                        <th>Supplier</th>
-                        <th>Item</th>
-                        <th>Total</th>
-                        <th>Kasir</th>
-                      </tr>
-                    </thead>
+  <tr>
+    <th>Tanggal</th>
+    <th>Supplier</th>
+    <th>Item</th>
+    <th>Total</th>
+    <th>Sumber</th>
+    <th>Kasir</th>
+    <th style="text-align: center;">Aksi</th>
+  </tr>
+</thead>
                     <tbody id="tbodyRiwayat">
                       <tr>
                         <td colspan="5" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
@@ -1721,10 +1721,31 @@ await db
 
       async function loadRiwayatCustom(startDate, endDate) {
         await loadRiwayat('all');
-        let filtered = allCachedPurchases.filter(p => (p.date || '') >= startDate && (p.date || '') <= endDate);
+        const filtered = allCachedPurchases.filter(p => (p.date || '') >= startDate && (p.date || '') <= endDate);
         allCachedPurchases = filtered;
-        // render filtered
+        const tbody = document.getElementById('tbodyRiwayat');
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);"><i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i><p>Tidak ada pembelian pada rentang tanggal tersebut</p></td></tr>';
+          return;
+        }
+        tbody.innerHTML = filtered.map(p => `
+          <tr style="cursor: pointer;" onclick="openDetailPembelianModal('${p.id}')">
+            <td style="font-size: 0.82rem; font-weight: 700;"><i class="fas fa-calendar-day" style="color: var(--primary); margin-right: 4px;"></i>${p.date || '-'}</td>
+            <td style="font-weight: 700;">${p.supplier || 'Supplier Umum'}</td>
+            <td><span style="background: var(--bg-subtle); padding: 3px 8px; border-radius: 6px; font-weight: 700;">${p.totalItem || 1} item</span></td>
+            <td style="font-weight: 800; color: var(--success);">${Utils.formatRupiah(p.grandTotal || p.total || 0)}</td>
+            <td>${p.source === 'kasir' ? '<span style="color:#4338ca;background:#e0e7ff;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;"><i class="fas fa-cash-register"></i> Kasir POS</span>' : '<span style="color:#15803d;background:#dcfce7;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;"><i class="fas fa-shopping-cart"></i> Menu Beli</span>'}</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${p.userName || '-'}</td>
+            <td style="text-align: center;">
+              <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.72rem;" onclick="event.stopPropagation(); openDetailPembelianModal('${p.id}')">
+                <i class="fas fa-eye" style="color: var(--primary);"></i> Detail
+              </button>
+            </td>
+          </tr>
+        `).join('');
       }
+
+    })();
   </script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1893,15 +1914,13 @@ async function importPurchases(event) {
 
     await loadRiwayat("today");
 
-  } catch (error) {
+ } catch (error) {
     Utils.hideLoading();
-
-    Utils.showToast(
-      "Gagal import pembelian: " +
-      error.message,
-      "error"
-    );
-  
+    Utils.showToast("Gagal import pembelian: " + error.message, "error");
+  } finally {
+    if (event && event.target) event.target.value = "";
+  }
+}
 </script>
 </body>
 </html>
