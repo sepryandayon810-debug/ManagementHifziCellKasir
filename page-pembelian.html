@@ -1684,7 +1684,7 @@ await db
         if (totalPcsEl) totalPcsEl.textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
 
         // Status Efek Kas (Aman tanpa error null)
-        const isKasKeluar = p.kurangiSaldo === true || p.pengaruhi_kas_global === true;
+        const isKasKeluar = p.kurangiSaldo === true;
         const kasEffectEl = document.getElementById('modalBeliKasEffect');
         if (kasEffectEl) {
           kasEffectEl.innerHTML = isKasKeluar
@@ -1749,7 +1749,10 @@ await db
               if (!purchasesMap.has(key)) {
                 purchasesMap.set(key, {
                   id: key,
-                  date: t.date || (t.timestamp ? new Date(t.timestamp).toISOString().split('T')[0] : today),
+                  date: t.date || (t.timestamp ? (function(ts){
+  const d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+})(t.timestamp) : today),
                   supplier: t.supplier || "Supplier Umum",
                   grandTotal: t.nominal || t.total || 0,
                   totalItem: (t.items && Array.isArray(t.items)) ? t.items.length : 1,
