@@ -1564,12 +1564,18 @@ await db
         const subEl = document.getElementById('modalBeliSubtitle');
         if (subEl) subEl.textContent = 'No. Transaksi: ' + (p.id || '-');
 
+        // Hitung tanggal lokal dari timestamp perangkat (agar akurat sesuai jam beli, bukan UTC)
+        const localDateStr = p.timestamp ? (function(ts){
+          const d = new Date(ts);
+          return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        })(p.timestamp) : (p.date || '-');
+
         const timeFormatted = p.timestamp ? new Date(p.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
         const dateEl = document.getElementById('modalBeliDate');
         if (dateEl) {
-          dateEl.innerHTML = `${p.date || '-'} ${timeFormatted ? `<small style="color:var(--text-muted); font-weight:normal;">(${timeFormatted})</small>` : ''}`;
+          dateEl.innerHTML = `${localDateStr} ${timeFormatted ? `<small style="color:var(--text-muted); font-weight:normal;">(${timeFormatted})</small>` : ''}`;
         }
-
+        
         const suppEl = document.getElementById('modalBeliSupplier');
         if (suppEl) suppEl.textContent = p.supplier || 'Supplier Umum';
 
@@ -1683,13 +1689,14 @@ await db
         const totalPcsEl = document.getElementById('modalBeliTotalPcs');
         if (totalPcsEl) totalPcsEl.textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
 
-        // Status Efek Kas (Aman tanpa error null)
-        const isKasKeluar = p.kurangiSaldo === true;
+        // Status Efek Kas: HANYA dianggap kas keluar jika kurangiSaldo bernilai true murni
+        // Transaksi lama tanpa centang atau bernilai false tidak akan berwarna merah
+        const isKasKeluar = p.kurangiSaldo === true || (p.pengaruhi_kas_global === true && p.kurangiSaldo !== false && p.source !== 'kasir');
         const kasEffectEl = document.getElementById('modalBeliKasEffect');
         if (kasEffectEl) {
           kasEffectEl.innerHTML = isKasKeluar
             ? '<span style="color: var(--danger); font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-arrow-circle-down"></i> Saldo Kasir Dipotong (Kas Keluar Otomatis)</span>'
-            : '<span style="color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Tidak memotong saldo kasir (Hanya tambah stok)</span>';
+            : '<span style="color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check-circle" style="color:var(--success);"></i> Tidak memotong saldo kasir (Hanya tambah stok)</span>';
         }
 
         const totalEl = document.getElementById('modalBeliGrandTotal');
@@ -1712,7 +1719,10 @@ await db
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem 1rem;"><i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; font-size: 0.82rem;">Memuat seluruh riwayat pembelian...</p></td></tr>';
 
         try {
-          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+const today = (function(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+})();
           let purchasesMap = new Map();
 
           // 0. Ambil daftar user kasir untuk mapping nama
@@ -1724,15 +1734,26 @@ await db
             });
           } catch(e) {}
 
+          // Helper fungsi tanggal lokal
+          const getLocalDate = (ts, fallbackDate) => {
+            if (ts) {
+              const d = new Date(ts);
+              return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            return fallbackDate || today;
+          };
+
           // 1. Ambil dari collection purchases
           try {
             const snap = await db.collection("purchases").get();
             snap.forEach(doc => {
               const d = doc.data();
               if (d) {
+                const fixedDate = getLocalDate(d.timestamp || d.createdAt, d.date);
                 purchasesMap.set(doc.id, {
                   id: doc.id,
                   ...d,
+                  date: fixedDate, // Menggunakan tanggal lokal asli
                   userName: resolveCashierName(d)
                 });
               }
