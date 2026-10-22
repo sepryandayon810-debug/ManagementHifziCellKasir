@@ -1394,6 +1394,8 @@
             id: purchaseId,
             type: 'pembelian',
             supplier,
+            kurangiSaldo: kurangiSaldo, // <-- Tambahkan ini
+            pengaruhi_kas_global: Boolean(kurangiSaldo),
             items: pembelianList.map(i => ({
               productId: i.productId,
               productName: i.productName,
@@ -1682,7 +1684,7 @@ await db
         if (totalPcsEl) totalPcsEl.textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
 
         // Status Efek Kas (Aman tanpa error null)
-        const isKasKeluar = p.kurangiSaldo === true || p.kategori === 'pembelian' || (p.catatan && p.catatan.toLowerCase().includes('kasir'));
+        const isKasKeluar = p.kurangiSaldo === true || p.pengaruhi_kas_global === true;
         const kasEffectEl = document.getElementById('modalBeliKasEffect');
         if (kasEffectEl) {
           kasEffectEl.innerHTML = isKasKeluar
@@ -1755,7 +1757,7 @@ await db
                   catatan: t.note || t.catatan || "-",
                   userName: cashierName,
                   source: 'kasir',
-                  kurangiSaldo: true,
+                  kurangiSaldo: Boolean(t.pengaruhi_kas_global),
                   timestamp: t.waktu || t.timestamp || 0,
                   userId: t.userId || null
                 });
