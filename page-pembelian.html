@@ -346,6 +346,16 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .25s; padding: 1rem; }
     .modal-overlay.active { opacity: 1; visibility: visible; }
     .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 380px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+    .modal-content.modal-content-lg { 
+  max-width: 720px; 
+  max-height: 90vh; 
+  display: flex; 
+  flex-direction: column; 
+}
+.modal-content.modal-content-lg .modal-body { 
+  overflow-y: auto; 
+  max-height: calc(90vh - 140px); 
+}
     .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .modal-body { padding: 1.25rem; }
     .modal-footer { padding: 0.85rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; justify-content: flex-end; background: var(--bg-subtle); }
@@ -774,6 +784,84 @@
         <h3 class="modal-title" style="font-size: 1rem;"><i class="fas fa-calendar-alt" style="color: var(--primary);"></i> Rentang Tanggal</h3>
         <button class="btn-icon-box" onclick="closeCustomDateModal()" style="width: 32px; height: 32px;"><i class="fas fa-times"></i></button>
       </div>
+      <!-- MODAL POP-UP DETAIL PEMBELIAN (1X KLIK LANGSUNG MUNCUL POP-UP LENGKAP) -->
+<div class="modal-overlay" id="modalDetailPembelian" onclick="if(event.target === this) closeDetailPembelianModal()">
+  <div class="modal-content modal-content-lg">
+    <div class="modal-header" style="background: var(--bg-subtle);">
+      <div style="display: flex; align-items: center; gap: 0.65rem;">
+        <div style="width: 38px; height: 38px; border-radius: 10px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+          <i class="fas fa-boxes-stacked"></i>
+        </div>
+        <div>
+          <h3 class="modal-title" style="font-size: 1rem; font-weight: 800; margin: 0; color: var(--text-main);">Detail Riwayat Pembelian</h3>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin: 0;" id="modalBeliSubtitle">No. Transaksi: -</p>
+        </div>
+      </div>
+      <button class="btn-icon-box" onclick="closeDetailPembelianModal()" style="width: 32px; height: 32px; border-radius: 8px;" title="Tutup Modal"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Informasi Header Transaksi -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 0.65rem; background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 1rem;">
+        <div>
+          <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Waktu / Tanggal</div>
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-top: 2px;" id="modalBeliDate">-</div>
+        </div>
+        <div>
+          <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Supplier</div>
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-top: 2px;" id="modalBeliSupplier">-</div>
+        </div>
+        <div>
+          <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Petugas / Kasir</div>
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-top: 2px;" id="modalBeliUser">-</div>
+        </div>
+        <div>
+          <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Sumber Input</div>
+          <div style="margin-top: 2px;" id="modalBeliSource">-</div>
+        </div>
+      </div>
+
+      <!-- Tabel Rincian Barang yang Diinputkan -->
+      <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+        <span><i class="fas fa-list-ul" style="color: var(--primary); margin-right: 4px;"></i> Rincian Barang yang Diinput:</span>
+        <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: 700;" id="modalBeliTotalPcs">Total: -</span>
+      </div>
+      
+      <div class="table-container" style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow-x: auto; background: var(--bg-surface);">
+        <table class="pembelian-table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th style="width: 32px; text-align: center;">#</th>
+              <th>Nama Produk / Barang</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Harga Beli</th>
+              <th style="text-align: right;">Subtotal</th>
+              <th style="text-align: right;">Harga Jual</th>
+            </tr>
+          </thead>
+          <tbody id="modalBeliItemsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Catatan & Total -->
+      <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Catatan Transaksi:</div>
+          <div style="font-size: 0.82rem; color: var(--text-main); margin-top: 2px; background: var(--bg-subtle); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px dashed var(--border);" id="modalBeliCatatan">-</div>
+          <div style="margin-top: 0.45rem; font-size: 0.75rem;" id="modalBeliKasEffect"></div>
+        </div>
+        <div style="background: var(--bg-subtle); padding: 0.75rem 1.15rem; border-radius: var(--radius-md); border: 1.5px solid var(--border); text-align: right; min-width: 220px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Biaya Pembelian</div>
+          <div style="font-size: 1.3rem; font-weight: 800; color: var(--success); margin-top: 2px;" id="modalBeliGrandTotal">Rp 0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 0.85rem 1.25rem;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeDetailPembelianModal()"><i class="fas fa-times"></i> Tutup</button>
+    </div>
+  </div>
+</div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Dari Tanggal</label>
