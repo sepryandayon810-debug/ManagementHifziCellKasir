@@ -1796,6 +1796,223 @@ async function importPurchases(event) {
     event.target.value = "";
   }
 }
+
+  // Variabel penampung data pembelian
+      let allCachedPurchases = [];
+
+      // =========================================================
+      // FUNGSI POP-UP DETAIL (1X KLIK LANGSUNG MUNCUL RINCIAN)
+      // =========================================================
+      window.openDetailPembelianModal = function(purchaseId) {
+        const p = allCachedPurchases.find(item => item.id === purchaseId);
+        if (!p) {
+          Utils.showToast('Data rincian pembelian tidak ditemukan', 'warning');
+          return;
+        }
+
+        // 1. Info Header
+        const subEl = document.getElementById('modalBeliSubtitle');
+        if (subEl) subEl.textContent = 'No. Transaksi: ' + (p.id || '-');
+
+        const timeFormatted = p.timestamp ? new Date(p.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+        const dateEl = document.getElementById('modalBeliDate');
+        if (dateEl) {
+          dateEl.innerHTML = `${p.date || '-'} ${timeFormatted ? `<small style="color:var(--text-muted); font-weight:normal;">(${timeFormatted})</small>` : ''}`;
+        }
+
+        const suppEl = document.getElementById('modalBeliSupplier');
+        if (suppEl) suppEl.textContent = p.supplier || 'Supplier Umum';
+
+        const userEl = document.getElementById('modalBeliUser');
+        if (userEl) userEl.textContent = p.userName || '-';
+
+        const isKasir = p.source === 'kasir' || (p.catatan && p.catatan.toLowerCase().includes('kasir'));
+        const sourceEl = document.getElementById('modalBeliSource');
+        if (sourceEl) {
+          sourceEl.innerHTML = isKasir
+            ? '<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:2px 8px; border-radius:99px;"><i class="fas fa-cash-register"></i> Input Kasir POS</span>'
+            : '<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:700; color:#15803d; background:#dcfce7; padding:2px 8px; border-radius:99px;"><i class="fas fa-shopping-cart"></i> Menu Pembelian</span>';
+        }
+
+        // 2. Ekstrak Barang (Bisa dari array items ATAU diuraikan otomatis dari catatan transaksi lama)
+        const tbody = document.getElementById('modalBeliItemsBody');
+        let items = (p.items && Array.isArray(p.items)) ? p.items : [];
+
+        if (items.length === 0 && (p.catatan || p.note)) {
+          const rawNote = p.catatan || p.note;
+          if (rawNote.startsWith('Pembelian:')) {
+            const parts = rawNote.replace('Pembelian:', '').split(',');
+            items = parts.map(pt => {
+              const trimmed = pt.trim();
+              const match = trimmed.match(/(.+)\((\d+)\s*pcs\)/i);
+              if (match) {
+                const q = parseInt(match[2]) || 1;
+                return {
+                  productName: match[1].trim(),
+                  qty: q,
+                  harga: Math.round((p.grandTotal || p.total || 0) / q),
+                  total: p.grandTotal || p.total || 0
+                };
+              }
+              return {
+                productName: trimmed || 'Barang Pembelian',
+                qty: 1,
+                harga: p.grandTotal || p.total || 0,
+                total: p.grandTotal || p.total || 0
+              };
+            });
+          }
+        }
+
+        let totalQty = 0;
+        if (items.length > 0) {
+          tbody.innerHTML = items.map((it, idx) => {
+            const qty = parseInt(it.qty) || 1;
+            totalQty += qty;
+            const hargaBeli = it.harga || it.costPrice || 0;
+            const subtotal = it.total || (hargaBeli * qty);
+            const sellPrice = it.sellingPrice || it.normalPrice || 0;
+
+            return `
+              <tr>
+                <td style="text-align: center; color: var(--text-muted); font-size: 0.75rem;">${idx + 1}</td>
+                <td>
+                  <strong style="color: var(--text-main); font-size: 0.85rem;">${it.productName || it.name || 'Barang'}</strong>
+                  ${it.isNewProduct ? '<span style="font-size: 0.65rem; color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">Baru</span>' : ''}
+                </td>
+                <td style="text-align: center; font-weight: 700; color: var(--text-main);">${qty} pcs</td>
+                <td style="text-align: right; color: var(--text-muted);">${Utils.formatRupiah(hargaBeli)}</td>
+                <td style="text-align: right; font-weight: 800; color: var(--primary);">${Utils.formatRupiah(subtotal)}</td>
+                <td style="text-align: right; font-size: 0.78rem;">
+                  ${sellPrice > 0 ? `<div style="font-weight: 700; color: var(--text-main);">${Utils.formatRupiah(sellPrice)}</div>` : '<span style="color: var(--text-muted);">-</span>'}
+                </td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
+                <i class="fas fa-box-open" style="font-size: 1.5rem; margin-bottom: 0.4rem; display: block; opacity: 0.5;"></i>
+                Tidak ada data rincian item satuan pada transaksi ini
+              </td>
+            </tr>
+          `;
+        }
+
+        document.getElementById('modalBeliTotalPcs').textContent = `Total: ${totalQty > 0 ? totalQty + ' pcs' : items.length + ' item'}`;
+        document.getElementById('modalBeliCatatan').textContent = p.catatan || p.note || 'Tidak ada catatan';
+        document.getElementById('modalBeliGrandTotal').textContent = Utils.formatRupiah(p.grandTotal || p.total || 0);
+
+        // Tampilkan Modal
+        const modal = document.getElementById('modalDetailPembelian');
+        if (modal) modal.classList.add('active');
+      };
+
+      window.closeDetailPembelianModal = function() {
+        const modal = document.getElementById('modalDetailPembelian');
+        if (modal) modal.classList.remove('active');
+      };
+
+      // =========================================================
+      // LOAD RIWAYAT LENGKAP (HARI INI & HARI-HARI SEBELUMNYA)
+      // =========================================================
+      async function loadRiwayat(filter = 'today') {
+        const tbody = document.getElementById('tbodyRiwayat');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem 1rem;"><i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; font-size: 0.82rem;">Memuat seluruh riwayat pembelian...</p></td></tr>';
+
+        try {
+          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          let purchasesMap = new Map();
+
+          // 1. Ambil dari collection purchases
+          try {
+            const snap = await db.collection("purchases").get();
+            snap.forEach(doc => {
+              const d = doc.data();
+              if (d) purchasesMap.set(doc.id, { id: doc.id, ...d });
+            });
+          } catch(e) {}
+
+          // 2. Ambil dari transactions (pembelian dari kasir)
+          try {
+            const txSnap = await db.collection("transactions").where("kategori", "==", "pembelian").get();
+            txSnap.forEach(doc => {
+              const t = doc.data();
+              const key = t.relatedPurchaseId || doc.id;
+              if (!purchasesMap.has(key)) {
+                purchasesMap.set(key, {
+                  id: key,
+                  date: t.date || (t.timestamp ? new Date(t.timestamp).toISOString().split('T')[0] : today),
+                  supplier: t.supplier || "Supplier Kasir",
+                  grandTotal: t.nominal || t.total || 0,
+                  totalItem: (t.items && Array.isArray(t.items)) ? t.items.length : 1,
+                  items: t.items || [],
+                  catatan: t.note || t.catatan || "-",
+                  userName: t.userName || "-",
+                  source: 'kasir',
+                  timestamp: t.waktu || t.timestamp || 0
+                });
+              }
+            });
+          } catch(e) {}
+
+          let all = Array.from(purchasesMap.values());
+
+          // Filter Tanggal
+          if (filter === 'today') {
+            all = all.filter(p => (p.date || '').startsWith(today));
+          } else if (filter === 'week') {
+            const past7 = new Date(); past7.setDate(past7.getDate() - 7);
+            const past7Str = past7.toISOString().split('T')[0];
+            all = all.filter(p => (p.date || '') >= past7Str);
+          } else if (filter === 'month') {
+            const past30 = new Date(); past30.setDate(past30.getDate() - 30);
+            const past30Str = past30.toISOString().split('T')[0];
+            all = all.filter(p => (p.date || '') >= past30Str);
+          }
+          // Jika filter === 'all', tidak difilter (semua hari keluar)
+
+          all.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          allCachedPurchases = all;
+
+          if (all.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);"><i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i><p>Belum ada riwayat pembelian pada periode ini</p></td></tr>';
+            return;
+          }
+
+          // Render baris tabel dengan efek klik & cursor pointer
+          tbody.innerHTML = all.map(p => `
+            <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="openDetailPembelianModal('${p.id}')" title="Klik 1x untuk melihat detail barang">
+              <td style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); white-space: nowrap;">
+                <i class="fas fa-calendar-day" style="color: var(--primary); margin-right: 4px;"></i>${p.date || '-'}
+              </td>
+              <td style="font-weight: 700; color: var(--text-main);">${p.supplier || 'Supplier Umum'}</td>
+              <td>
+                <span style="background: var(--bg-subtle); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; border: 1px solid var(--border);">
+                  <i class="fas fa-boxes" style="color: var(--primary); margin-right: 4px;"></i>${p.totalItem || (p.items ? p.items.length : 1)} item
+                </span>
+              </td>
+              <td style="font-weight: 800; color: var(--success); font-size: 0.95rem;">${Utils.formatRupiah(p.grandTotal || p.total || 0)}</td>
+              <td>
+                ${p.source === 'kasir'
+                  ? '<span style="font-size: 0.72rem; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 2px 7px; border-radius: 4px;"><i class="fas fa-cash-register"></i> Kasir POS</span>'
+                  : '<span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 2px 7px; border-radius: 4px;"><i class="fas fa-shopping-cart"></i> Menu Beli</span>'}
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${p.userName || '-'}</td>
+              <td style="text-align: center;">
+                <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.72rem;" onclick="event.stopPropagation(); openDetailPembelianModal('${p.id}')">
+                  <i class="fas fa-eye" style="color: var(--primary);"></i> Detail
+                </button>
+              </td>
+            </tr>
+          `).join('');
+
+        } catch (e) {
+          console.error("Error loading riwayat:", e);
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--danger);"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat riwayat pembelian</p></td></tr>';
+        }
+      }
 </script>
 </body>
 </html>
