@@ -1340,7 +1340,10 @@
         Utils.showLoading('Menyimpan pembelian & update stok...');
         try {
           const user = auth.currentUser;
-          const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+          const today = (function(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+})();
           const timestamp = Date.now();
           const purchaseId = 'PUR_' + timestamp;
           const supplier = document.getElementById('supplierName').value.trim() || 'Supplier Umum';
@@ -1767,13 +1770,13 @@ const today = (function(){
               const t = doc.data();
               const key = t.relatedPurchaseId || doc.id;
               const cashierName = resolveCashierName(t);
+              const txTime = t.waktu || t.timestamp || 0;
+              const fixedTxDate = getLocalDate(txTime, t.date);
+
               if (!purchasesMap.has(key)) {
                 purchasesMap.set(key, {
                   id: key,
-                  date: t.date || (t.timestamp ? (function(ts){
-  const d = new Date(ts);
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-})(t.timestamp) : today),
+                  date: fixedTxDate, // <-- Gunakan tanggal lokal hasil konversi waktu
                   supplier: t.supplier || "Supplier Umum",
                   grandTotal: t.nominal || t.total || 0,
                   totalItem: (t.items && Array.isArray(t.items)) ? t.items.length : 1,
@@ -1782,7 +1785,7 @@ const today = (function(){
                   userName: cashierName,
                   source: 'kasir',
                   kurangiSaldo: Boolean(t.pengaruhi_kas_global),
-                  timestamp: t.waktu || t.timestamp || 0,
+                  timestamp: txTime,
                   userId: t.userId || null
                 });
               } else {
@@ -1793,7 +1796,7 @@ const today = (function(){
               }
             });
           } catch(e) {}
-
+          
           let all = Array.from(purchasesMap.values());
 
           if (filter === 'today') {
