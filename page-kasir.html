@@ -6869,17 +6869,30 @@ function goToSaldoTelegramPage() {
 // Data Pelanggan Pop-up Cepat
 let kasirCustomerData = [];
 
+// ============================================================
+// PINTASAN PELANGGAN KASIR: CARI, SALIN, TAMBAH, EDIT, HAPUS
+// ============================================================
+let kasirCustomerData = [];
+
 async function openModalPelangganKasir() {
   document.getElementById('modalPelangganKasir').classList.add('active');
+  closeFormCustomerKasir();
   const searchInput = document.getElementById('kasirSearchCustomer');
   if (searchInput) {
     searchInput.value = '';
     setTimeout(() => searchInput.focus(), 100);
   }
-  
+  await loadCustomerKasirData();
+}
+
+function closeModalPelangganKasir() {
+  document.getElementById('modalPelangganKasir').classList.remove('active');
+  closeFormCustomerKasir();
+}
+
+async function loadCustomerKasirData() {
   const container = document.getElementById('kasirCustomerList');
   container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Memuat data pelanggan...</div>';
-  
   try {
     const snap = await firebase.firestore().collection("customer_directory_v2").orderBy("name", "asc").get();
     kasirCustomerData = [];
@@ -6890,27 +6903,35 @@ async function openModalPelangganKasir() {
   }
 }
 
-function closeModalPelangganKasir() {
-  document.getElementById('modalPelangganKasir').classList.remove('active');
-}
-
 function renderCustomerKasirList(list) {
   const container = document.getElementById('kasirCustomerList');
   if (!list.length) {
     container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.8rem;">Data tidak ditemukan</div>';
     return;
   }
-  container.innerHTML = list.slice(0, 50).map(c => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.75rem;">
-      <div style="min-width:0;flex:1;">
-        <div style="font-weight:700;font-size:0.82rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-        <div style="font-family:monospace;font-size:0.8rem;color:var(--primary);font-weight:600;">${c.phone || '-'}</div>
+  container.innerHTML = list.slice(0, 50).map(c => {
+    const safeName = (c.name || '').replace(/'/g, "\\'");
+    const safePhone = (c.phone || '').replace(/'/g, "\\'");
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.75rem;gap:0.5rem;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:700;font-size:0.82rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+          <div style="font-family:monospace;font-size:0.8rem;color:var(--primary);font-weight:600;">${c.phone || '-'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.3rem;flex-shrink:0;">
+          <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.6rem;font-size:0.75rem;" onclick="copyCustomerTokenKasir('${safePhone}')" title="Salin Nomor">
+            <i class="fas fa-copy"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.6rem;font-size:0.75rem;color:var(--warning);" onclick="openFormCustomerKasir('${c.id}', '${safeName}', '${safePhone}')" title="Edit">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.6rem;font-size:0.75rem;color:var(--danger);" onclick="deleteCustomerFromKasir('${c.id}', '${safeName}')" title="Hapus">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
-      <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.65rem;font-size:0.75rem;" onclick="copyCustomerTokenKasir('${c.phone || ''}')">
-        <i class="fas fa-copy"></i> Salin
-      </button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function filterCustomerKasir() {
@@ -6926,6 +6947,70 @@ function copyCustomerTokenKasir(phone) {
   if (!phone) { showToast('Tidak ada nomor untuk disalin', 'warning'); return; }
   navigator.clipboard.writeText(phone);
   showToast('Nomor/Token disalin: ' + phone, 'success');
+}
+
+// Buka Form Input / Edit
+function openFormCustomerKasir(id = '', name = '', phone = '') {
+  document.getElementById('inputCustKasirId').value = id;
+  document.getElementById('inputCustKasirName').value = name;
+  document.getElementById('inputCustKasirPhone').value = phone;
+  document.getElementById('titleFormCustKasir').textContent = id ? '✎ Edit Data Pelanggan' : '+ Tambah Pelanggan Baru';
+  document.getElementById('formCustomerKasirWrap').style.display = 'block';
+  setTimeout(() => document.getElementById('inputCustKasirName').focus(), 50);
+}
+
+function closeFormCustomerKasir() {
+  document.getElementById('formCustomerKasirWrap').style.display = 'none';
+  document.getElementById('inputCustKasirId').value = '';
+  document.getElementById('inputCustKasirName').value = '';
+  document.getElementById('inputCustKasirPhone').value = '';
+}
+
+// Simpan (Tambah / Update) ke Firestore
+async function saveCustomerFromKasir() {
+  const id = document.getElementById('inputCustKasirId').value.trim();
+  const name = document.getElementById('inputCustKasirName').value.trim();
+  const phone = document.getElementById('inputCustKasirPhone').value.trim();
+
+  if (!name || !phone) {
+    showToast('Nama dan Nomor/Token wajib diisi', 'error');
+    return;
+  }
+
+  try {
+    if (id) {
+      await firebase.firestore().collection("customer_directory_v2").doc(id).update({
+        name: name,
+        phone: phone,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('Data pelanggan berhasil diubah!', 'success');
+    } else {
+      await firebase.firestore().collection("customer_directory_v2").add({
+        name: name,
+        phone: phone,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('Pelanggan berhasil ditambahkan!', 'success');
+    }
+    closeFormCustomerKasir();
+    await loadCustomerKasirData();
+  } catch (err) {
+    showToast('Gagal menyimpan: ' + err.message, 'error');
+  }
+}
+
+// Hapus Pelanggan dari Kasir
+function deleteCustomerFromKasir(id, name) {
+  showCustomConfirm(`Yakin ingin menghapus "${name}" dari direktori?`, async () => {
+    try {
+      await firebase.firestore().collection("customer_directory_v2").doc(id).delete();
+      showToast(`Data "${name}" berhasil dihapus`, 'success');
+      await loadCustomerKasirData();
+    } catch (err) {
+      showToast('Gagal menghapus: ' + err.message, 'error');
+    }
+  });
 }
   
   </script>
@@ -7038,33 +7123,62 @@ function copyCustomerTokenKasir(phone) {
   </div>
 </div>
 
-  <!-- MODAL POPUP DATA PELANGGAN -->
+  <!-- MODAL POPUP DATA PELANGGAN (LENGKAP: CARI, SALIN, TAMBAH, EDIT, HAPUS) -->
 <div class="modal-overlay" id="modalPelangganKasir" style="z-index: 9999;" onclick="if(event.target===this)closeModalPelangganKasir()">
-  <div class="modal" style="max-width: 440px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
-    <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);">
+  <div class="modal" style="max-width: 440px; width: 92%; max-height: 88vh; display: flex; flex-direction: column;">
+    
+    <!-- Header Modal -->
+    <div class="modal-header" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color);">
       <h3 class="modal-title" style="font-size: 1rem; font-weight: 700;">
-        <i class="fas fa-address-book" style="color: #6366f1; margin-right: 0.5rem;"></i>
+        <i class="fas fa-address-book" style="color: #6366f1; margin-right: 0.4rem;"></i>
         Direktori Pelanggan & Token
       </h3>
       <button class="modal-close" onclick="closeModalPelangganKasir()" style="cursor: pointer;">
         <i class="fas fa-times"></i>
       </button>
     </div>
+
     <div class="modal-body" style="padding: 1rem; flex: 1; overflow-y: auto;">
-      <div style="position: relative; margin-bottom: 0.75rem;">
-        <i class="fas fa-search" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
-        <input type="text" id="kasirSearchCustomer" class="form-input" placeholder="Cari nama atau nomor token..." oninput="filterCustomerKasir()" style="padding-left: 2.2rem; font-size: 0.88rem;">
+      <!-- Baris Search & Tombol + Tambah -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <div style="position: relative; flex: 1;">
+          <i class="fas fa-search" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+          <input type="text" id="kasirSearchCustomer" class="form-input" placeholder="Cari nama atau nomor token..." oninput="filterCustomerKasir()" style="padding-left: 2.2rem; font-size: 0.88rem; width: 100%;">
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" onclick="openFormCustomerKasir()" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">
+          <i class="fas fa-plus"></i> Tambah
+        </button>
       </div>
-      <div id="kasirCustomerList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto;">
+
+      <!-- Form Input / Edit (Tersembunyi, Muncul Saat Klik Tambah / Edit) -->
+      <div id="formCustomerKasirWrap" style="display: none; background: var(--bg-secondary); border: 1.5px dashed var(--border-color); border-radius: 0.75rem; padding: 0.75rem; margin-bottom: 0.75rem;">
+        <input type="hidden" id="inputCustKasirId">
+        <div style="font-weight: 700; font-size: 0.8rem; margin-bottom: 0.5rem; color: var(--primary);" id="titleFormCustKasir">
+          + Tambah Pelanggan Baru
+        </div>
+        <input type="text" class="form-input" id="inputCustKasirName" placeholder="Nama / Keterangan (contoh: TOKEN AFLISNAYETI)" style="margin-bottom: 0.4rem; font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+        <input type="text" class="form-input" id="inputCustKasirPhone" placeholder="Nomor HP / Token ID" style="margin-bottom: 0.6rem; font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="closeFormCustomerKasir()" style="flex: 1; font-size: 0.78rem;">Batal</button>
+          <button type="button" class="btn btn-sm btn-primary" onclick="saveCustomerFromKasir()" style="flex: 1; font-size: 0.78rem;">
+            <i class="fas fa-save"></i> Simpan
+          </button>
+        </div>
+      </div>
+
+      <!-- Daftar List Pelanggan -->
+      <div id="kasirCustomerList" style="display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto;">
         <!-- Diisi otomatis oleh JS -->
       </div>
     </div>
+
+    <!-- Footer Modal -->
     <div class="modal-footer" style="padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; align-items: center;">
       <button class="btn btn-secondary" onclick="closeModalPelangganKasir()">Batal</button>
     </div>
   </div>
 </div>
-
+  
 <!-- MODAL POPUP SALDO TOOLS & SISA -->
 <div class="modal-overlay" id="modalSaldoKasir" style="z-index: 9999;" onclick="if(event.target===this)closeModalSaldoKasir()">
   <div class="modal" style="max-width: 440px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
