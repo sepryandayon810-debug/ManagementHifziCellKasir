@@ -3254,20 +3254,23 @@ html,body{overflow-x:hidden;max-width:100vw}
 #ptrIndicator.spin i { animation: ptrSpin 0.8s linear infinite; }
 @keyframes ptrSpin { to { transform: rotate(360deg); } }
 
-/* Styling tombol logo di samping Uang Global */
+/* Posisi Tombol Pas di Kotak Merah (Tengah Berdampingan, Tidak Mepet Layar) */
 .header-stats-global {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: center !important; /* Tetap di tengah */
+  gap: 0.85rem !important;            /* Jarak pas di kiri & kanan Uang Global */
   padding: 0.35rem 0.5rem !important;
+  width: 100% !important;
 }
 
 .btn-stat-shortcut {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 10px;
   border: 1.5px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: var(--bg-card);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3281,7 +3284,6 @@ html,body{overflow-x:hidden;max-width:100vw}
 .btn-stat-shortcut:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
-  background: var(--bg-card);
 }
 
 .btn-stat-shortcut:active {
@@ -3534,15 +3536,15 @@ html,body{overflow-x:hidden;max-width:100vw}
     </div>
   </div>
 
-  <!-- Baris 2: Uang Global Diapit 2 Tombol Ikon Ramping -->
+  <!-- Baris 2: Uang Global Diapit 2 Tombol Logo (Pas di Kotak Merah) -->
   <div class="header-stats-global" id="headerStatsGlobal">
-    <!-- Tombol Ikon Kiri: Data Pelanggan -->
+    <!-- Tombol Kiri: Pop-up Data Pelanggan -->
     <button type="button" class="btn-stat-shortcut" onclick="openModalPelangganKasir()" title="Data Pelanggan & Token">
       <i class="fas fa-address-book" style="color: #6366f1;"></i>
     </button>
 
-    <!-- Poros Tengah: Uang Global (Tetap Asli & Proporsional) -->
-    <div class="stat-item">
+    <!-- Tengah: Uang Global (Tidak Berubah & Proporsional) -->
+    <div class="stat-item" style="flex: 0 1 auto; text-align: center; min-width: 160px;">
       <span class="stat-label">
         <i class="fas fa-money-bill-wave" style="margin-right:0.25rem;"></i>
         Uang Global (Kas di Tangan)
@@ -3550,12 +3552,12 @@ html,body{overflow-x:hidden;max-width:100vw}
       <span class="stat-value" id="headerUangGlobal">Rp 0</span>
     </div>
 
-    <!-- Tombol Ikon Kanan: Saldo Telegram & Tools -->
-    <button type="button" class="btn-stat-shortcut" onclick="openModalSaldoKasir()" title="Saldo Top Up & Sisa Tools">
+    <!-- Tombol Kanan: Direct ke Halaman Saldo Telegram -->
+    <button type="button" class="btn-stat-shortcut" onclick="goToSaldoTelegramPage()" title="Buka Halaman Saldo Telegram">
       <i class="fab fa-telegram-plane" style="color: #059669;"></i>
     </button>
   </div>
-
+       
   <div class="header-actions">
     <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode">
       <i class="fas fa-moon"></i>
@@ -6845,12 +6847,15 @@ function getSortedCategories() {
       }, { passive: true });
     })();
 
-  // ============================================================
-// PINTASAN DI SAMPING UANG GLOBAL: PELANGGAN & SALDO TOOLS
-// ============================================================
+// Direct ke halaman Saldo Telegram dengan tanda kembali dari kasir
+function goToSaldoTelegramPage() {
+  localStorage.setItem('fromKasir', 'true');
+  window.location.href = 'page-saldo-telegram.html';
+}
+
+// Data Pelanggan Pop-up Cepat
 let kasirCustomerData = [];
 
-// 1. Data Pelanggan Cepat
 async function openModalPelangganKasir() {
   document.getElementById('modalPelangganKasir').classList.add('active');
   const searchInput = document.getElementById('kasirSearchCustomer');
@@ -6908,43 +6913,6 @@ function copyCustomerTokenKasir(phone) {
   if (!phone) { showToast('Tidak ada nomor untuk disalin', 'warning'); return; }
   navigator.clipboard.writeText(phone);
   showToast('Nomor/Token disalin: ' + phone, 'success');
-}
-
-// 2. Saldo Tools Cepat
-async function openModalSaldoKasir() {
-  document.getElementById('modalSaldoKasir').classList.add('active');
-  const grid = document.getElementById('kasirSaldoGrid');
-  grid.innerHTML = '<div style="grid-column:span 2;text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Memuat saldo...</div>';
-  
-  try {
-    const snap = await firebase.firestore().collection("saldo_sisa_history").get();
-    const map = {};
-    snap.forEach(doc => {
-      const d = doc.data();
-      if (!map[d.toolName] || (d.timestamp || 0) > (map[d.toolName].timestamp || 0)) {
-        map[d.toolName] = d;
-      }
-    });
-
-    const items = Object.entries(map);
-    if (!items.length) {
-      grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:var(--text-muted);font-size:0.8rem;">Belum ada catatan sisa saldo</div>';
-      return;
-    }
-
-    grid.innerHTML = items.map(([tool, data]) => `
-      <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.75rem;padding:0.65rem;text-align:center;">
-        <div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">${tool}</div>
-        <div style="font-size:0.95rem;font-weight:800;color:var(--success);margin-top:0.2rem;">Rp ${Math.round(data.nominal || 0).toLocaleString('id-ID')}</div>
-      </div>
-    `).join('');
-  } catch (err) {
-    grid.innerHTML = '<div style="grid-column:span 2;color:var(--danger);font-size:0.8rem;text-align:center;">Gagal: ' + err.message + '</div>';
-  }
-}
-
-function closeModalSaldoKasir() {
-  document.getElementById('modalSaldoKasir').classList.remove('active');
 }
   
   </script>
