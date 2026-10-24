@@ -365,7 +365,6 @@ function applyGlobalTranslations() {
     location.reload(); 
     return;
   }
-
   // 1. Terjemahkan Menu Sidebar
   const menuMap = {
     "dashboard": dict.dashboard,
