@@ -424,7 +424,7 @@ const WEBPOS_DICTIONARY = {
 };
 
 // =========================================================
-// ENGINE TERJEMAHAN GLOBAL
+// ENGINE TERJEMAHAN GLOBAL (PAKSA RUBAH SEMUA KOMPONEN)
 // =========================================================
 function applyGlobalTranslations() {
   const lang = localStorage.getItem("webpos_language") || "id";
@@ -439,7 +439,24 @@ function applyGlobalTranslations() {
     document.documentElement.removeAttribute("dir");
   }
 
-  // 1. Terjemahkan Menu Sidebar
+  // Helper aman memperbarui teks tanpa merusak icon FontAwesome <i>
+  function setSafeText(el, text) {
+    if (!el || !text) return;
+    const span = el.querySelector("span");
+    if (span) {
+      span.textContent = text;
+      return;
+    }
+    for (let node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.nodeValue.trim()) {
+        node.nodeValue = " " + text;
+        return;
+      }
+    }
+    el.appendChild(document.createTextNode(" " + text));
+  }
+
+  // 1. Terjemahkan Menu Sidebar Navigasi
   const menuMap = {
     "dashboard": dict.dashboard,
     "kasir": dict.kasir,
@@ -494,28 +511,228 @@ function applyGlobalTranslations() {
     else if (text.includes("tarik") && dict.tarik) span.textContent = dict.tarik;
   });
 
-  // 4. Terjemahkan Header Judul Halaman
+  // 4. Terjemahkan Header Judul Halaman Utama
   const headerTitle = document.querySelector(".header-title");
   if (headerTitle) {
     const curHdr = headerTitle.textContent.trim().toLowerCase();
-    if (curHdr.includes("pembelian") || curHdr.includes("purchase") || curHdr.includes("kulakan")) {
+    if (curHdr.includes("pembelian") || curHdr.includes("purchase") || curHdr.includes("kulakan") || curHdr.includes("balanja")) {
       headerTitle.textContent = dict.hdr_pembelian || dict.pembelian;
-    } else if (curHdr.includes("kasir") || curHdr.includes("cashier")) {
+    } else if (curHdr.includes("kasir") || curHdr.includes("cashier") || curHdr.includes("juruwang")) {
       headerTitle.textContent = dict.hdr_kasir || dict.kasir;
-    } else if (curHdr.includes("pengaturan") || curHdr.includes("setting")) {
+    } else if (curHdr.includes("pengaturan") || curHdr.includes("setting") || curHdr.includes("tetapan") || curHdr.includes("setelan")) {
       headerTitle.textContent = dict.hdr_setting || dict.setting;
+    } else if (curHdr.includes("dashboard") || curHdr.includes("pemuka") || curHdr.includes("ngarep")) {
+      headerTitle.textContent = dict.dashboard;
+    } else if (curHdr.includes("riwayat") || curHdr.includes("history") || curHdr.includes("sejarah") || curHdr.includes("catetan")) {
+      headerTitle.textContent = dict.riwayat;
     }
   }
 
-  // 5. Terjemahkan Input Placeholder
+  // 5. Kamus Khusus untuk Komponen Halaman (Tab, Dashboard Card & Form)
+  const compDict = {
+    en: {
+      toko: "Store", akun: "Account", printer: "Printer", tampilan: "Appearance", bahasa: "Language", lanjutan: "Advanced",
+      kas_laci: "CASH IN DRAWER", penjualan_hari_ini: "TODAY'S SALES", tutup: "Closed", buka: "Open",
+      ops_kasir: "Cashier Operations", buka_shift: "Open Work Shift", tutup_shift: "Close Work Shift",
+      modal_toko: "TOTAL STORE CAPITAL", total_tx: "TOTAL TRANSACTIONS", kasir_tugas: "DUTY CASHIER", laba_bersih: "TOTAL NET PROFIT",
+      hitung_kas: "Drawer Cash Physical Calculation", filter_hari_ini: "Today",
+      modal_staf: "Total Staff Capital", uang_masuk: "Other Cash In", kas_keluar: "Store Cash Out",
+      jual_produk: "Product Sales", topup_admin: "Top Up + Admin (Cash)", tarik_tunai: "Cash Withdrawal (Out)",
+      jual_nontunai: "Non-Cash Sales", tarik_nontunai: "Non-Cash Withdrawal",
+      toko_title: "Store & Receipt Identity", nama_toko: "Store / Business Name", alamat_toko: "Full Address",
+      telp_toko: "WhatsApp / Phone No.", footer_struk: "Receipt Footer Note", btn_simpan_toko: "Save Store Information",
+      profil_title: "Your Account Profile", nama_lengkap: "Full Name", btn_ubah_nama: "Update Name", btn_ganti_pass: "Change Password",
+      btn_scan_bt: "Scan Bluetooth Printer", btn_bersihkan_semua: "Clear All", btn_test_print: "Test Print", btn_putuskan: "Disconnect",
+      bahasa_title: "System Language (All Pages)", bahasa_desc: "Choose display language for menus, buttons, receipts, and system navigation.",
+      zona_bahaya: "Danger Zone", btn_reset_halaman: "Go to Data Reset Page"
+    },
+    ms: {
+      toko: "Kedai", akun: "Akaun", printer: "Pencetak", tampilan: "Rupa", bahasa: "Bahasa", lanjutan: "Lanjutan",
+      kas_laci: "TUNAI DI LACI", penjualan_hari_ini: "JUALAN HARI INI", tutup: "Tutup", buka: "Buka",
+      ops_kasir: "Operasi Juruwang", buka_shift: "Buka Syif Kerja", tutup_shift: "Tutup Syif Kerja",
+      modal_toko: "JUMLAH MODAL KEDAI", total_tx: "JUMLAH TRANSAKSI", kasir_tugas: "JURUWANG BERTUGAS", laba_bersih: "JUMLAH UNTUNG BERSIH",
+      hitung_kas: "Kiraan Tunai Fizikal Laci", filter_hari_ini: "Hari Ini",
+      modal_staf: "Jumlah Modal Semua Staf", uang_masuk: "Wang Masuk Lain", kas_keluar: "Tunai Keluar Kedai",
+      jual_produk: "Jualan Produk", topup_admin: "Tambah Nilai + Admin (Tunai)", tarik_tunai: "Pengeluaran Tunai (Keluar)",
+      jual_nontunai: "Jualan Bukan Tunai", tarik_nontunai: "Pengeluaran Bukan Tunai",
+      toko_title: "Identiti & Resit Kedai", nama_toko: "Nama Perniagaan / Kedai", alamat_toko: "Alamat Penuh",
+      telp_toko: "No. WhatsApp / Telefon", footer_struk: "Nota Kaki Resit", btn_simpan_toko: "Simpan Maklumat Kedai",
+      profil_title: "Profil Akaun Anda", nama_lengkap: "Nama Penuh", btn_ubah_nama: "Kemas Kini Nama", btn_ganti_pass: "Tukar Kata Laluan",
+      btn_scan_bt: "Imbas Pencetak Bluetooth", btn_bersihkan_semua: "Bersihkan Semua", btn_test_print: "Uji Cetak", btn_putuskan: "Putuskan",
+      bahasa_title: "Bahasa Sistem (Semua Halaman)", bahasa_desc: "Pilih bahasa paparan untuk menu, butang, resit, dan navigasi WebPOS.",
+      zona_bahaya: "Zon Bahaya", btn_reset_halaman: "Pergi ke Halaman Set Semula Data"
+    },
+    jv: {
+      toko: "Toko", akun: "Akun", printer: "Printer", tampilan: "Rupa", bahasa: "Basa", lanjutan: "Liyane",
+      kas_laci: "DHUWIT NENG LACI", penjualan_hari_ini: "PAYU DINA IKI", tutup: "Tutup", buka: "Bukak",
+      ops_kasir: "Operasional Kasir", buka_shift: "Bukak Giliran Kerja", tutup_shift: "Tutup Giliran Kerja",
+      modal_toko: "GUNGGUNG MODHAL TOKO", total_tx: "GUNGGUNG TRANSAKSI", kasir_tugas: "KASIR BERTUGAS", laba_bersih: "BATHI BERSIH",
+      hitung_kas: "Itungan Dhuwit Fisik Laci", filter_hari_ini: "Dina Iki",
+      modal_staf: "Gunggung Modhal Staf", uang_masuk: "Dhuwit Mlebu Liyane", kas_keluar: "Dhuwit Kas Metu",
+      jual_produk: "Payu Dagangan", topup_admin: "Isi Saldo + Admin", tarik_tunai: "Tarik Dhuwit Tunai",
+      jual_nontunai: "Payu Non-Tunai", tarik_nontunai: "Tarik Non-Tunai",
+      toko_title: "Identitas & Struk Toko", nama_toko: "Jeneng Usaha / Toko", alamat_toko: "Alamat Jangkep",
+      telp_toko: "No. WhatsApp / Telpon", footer_struk: "Catetan Buntut Struk", btn_simpan_toko: "Simpen Info Toko",
+      profil_title: "Profil Akun Sampeyan", nama_lengkap: "Jeneng Jangkep", btn_ubah_nama: "Anyari Jeneng", btn_ganti_pass: "Ganti Password",
+      btn_scan_bt: "Pindai Printer Bluetooth", btn_bersihkan_semua: "Busek Kabeh", btn_test_print: "Tes Print", btn_putuskan: "Pedhotake",
+      bahasa_title: "Basa Sistem (Kabeh Kaca)", bahasa_desc: "Pilih basa tampilan kanggo menu, tombol, struk, lan sakabehe navigasi WebPOS.",
+      zona_bahaya: "Tlatah Mbebayani", btn_reset_halaman: "Mlebu Kaca Busek Data"
+    },
+    su: {
+      toko: "Toko", akun: "Akun", printer: "Printer", tampilan: "Rupa", bahasa: "Basa", lanjutan: "Lanjutan",
+      kas_laci: "DUIT DINA LACI", penjualan_hari_ini: "PAJALAN DINTEN IEU", tutup: "Tutup", buka: "Buka",
+      ops_kasir: "Operasional Kasir", buka_shift: "Buka Giliran Gawé", tutup_shift: "Tutup Giliran Gawé",
+      modal_toko: "JUMLAH MODAL TOKO", total_tx: "JUMLAH TRANSAKSI", kasir_tugas: "KASIR TUGAS", laba_bersih: "BATI BERSIH",
+      hitung_kas: "Itungan Duit Fisik Laci", filter_hari_ini: "Dinten Ieu",
+      modal_staf: "Jumlah Modal Sadaya Staf", uang_masuk: "Duit Lebet Sanesna", kas_keluar: "Duit Kas Kaluar",
+      jual_produk: "Pajalan Dagangan", topup_admin: "Eusi Saldo + Admin", tarik_tunai: "Tarik Duit Tunai",
+      jual_nontunai: "Pajalan Non-Tunai", tarik_nontunai: "Tarik Non-Tunai",
+      toko_title: "Idéntitas & Struk Toko", nama_toko: "Nami Usaha / Toko", alamat_toko: "Alamat Lengkep",
+      telp_toko: "No. WhatsApp / Telepon", footer_struk: "Catetan Handap Struk", btn_simpan_toko: "Simpen Inpormasi Toko",
+      profil_title: "Profil Akun Anjeun", nama_lengkap: "Nami Lengkep", btn_ubah_nama: "Robi Nami", btn_ganti_pass: "Gentos Sandi",
+      btn_scan_bt: "Parios Printer Bluetooth", btn_bersihkan_semua: "Beresihan Sadayana", btn_test_print: "Cobi Citak", btn_putuskan: "Pegatkeun",
+      bahasa_title: "Basa Sistem (Sadaya Kaca)", bahasa_desc: "Pilih basa tampilan kanggo menu, tombol, struk, sareng sadaya navigasi WebPOS.",
+      zona_bahaya: "Zona Bahaya", btn_reset_halaman: "Kaca Mupus Sadaya Data"
+    },
+    ar: {
+      toko: "المتجر", akun: "الحساب", printer: "الطابعة", tampilan: "المظهر", bahasa: "اللغة", lanjutan: "متقدم",
+      kas_laci: "نقدية الدرج", penjualan_hari_ini: "مبيعات اليوم", tutup: "مغلق", buka: "مفتوح",
+      ops_kasir: "عمليات الكاشير", buka_shift: "فتح المناوبة", tutup_shift: "إغلاق المناوبة",
+      modal_toko: "إجمالي رأس المال", total_tx: "إجمالي المعاملات", kasir_tugas: "الكاشير المناوب", laba_bersih: "صافي الأرباح",
+      hitung_kas: "جرد نقدية الدرج الفعلية", filter_hari_ini: "اليوم",
+      modal_staf: "رأس مال الموظفين", uang_masuk: "إيرادات أخرى", kas_keluar: "مصروفات المتجر",
+      jual_produk: "مبيعات المنتجات", topup_admin: "شحن رصيد + عمولة", tarik_tunai: "سحب نقدي (خارج)",
+      jual_nontunai: "مبيعات غير نقدية", tarik_nontunai: "سحب غير نقدي",
+      toko_title: "بيانات المتجر والإيصال", nama_toko: "اسم المتجر / النشاط", alamat_toko: "العنوان بالكامل",
+      telp_toko: "رقم الهاتف / واتساب", footer_struk: "ملاحظة تذييل الإيصال", btn_simpan_toko: "حفظ بيانات المتجر",
+      profil_title: "الملف الشخصي", nama_lengkap: "الاسم الكامل", btn_ubah_nama: "تحديث الاسم", btn_ganti_pass: "تغيير كلمة المرور",
+      btn_scan_bt: "البحث عن طابعة بلوتوث", btn_bersihkan_semua: "مسح الكل", btn_test_print: "طباعة تجريبية", btn_putuskan: "قطع الاتصال",
+      bahasa_title: "لغة النظام (لكل الصفحات)", bahasa_desc: "اختر لغة العرض للقوائم والأزرار والإيصالات ونظام الملاحة.",
+      zona_bahaya: "منطقة الخطر", btn_reset_halaman: "الانتقال إلى صفحة إعادة الضبط"
+    },
+    id: {
+      toko: "Toko", akun: "Akun", printer: "Printer", tampilan: "Tampilan", bahasa: "Bahasa", lanjutan: "Lanjutan",
+      kas_laci: "KAS DI LACI", penjualan_hari_ini: "PENJUALAN HARI INI", tutup: "Tutup", buka: "Buka",
+      ops_kasir: "Operasional Kasir", buka_shift: "Buka Shift Kerja", tutup_shift: "Tutup Shift Kerja",
+      modal_toko: "TOTAL MODAL TOKO", total_tx: "TOTAL TRANSAKSI", kasir_tugas: "KASIR BERTUGAS", laba_bersih: "TOTAL LABA BERSIH",
+      hitung_kas: "Perhitungan Kas Fisik Laci", filter_hari_ini: "Hari Ini",
+      modal_staf: "Total Modal Seluruh Staf", uang_masuk: "Uang Masuk Lain", kas_keluar: "Kas Keluar Toko",
+      jual_produk: "Penjualan Produk", topup_admin: "Top Up + Admin (Fisik)", tarik_tunai: "Tarik Tunai (Fisik Keluar)",
+      jual_nontunai: "Penjualan Non-Tunai", tarik_nontunai: "Tarik Non-Tunai",
+      toko_title: "Identitas & Struk Toko", nama_toko: "Nama Usaha / Toko", alamat_toko: "Alamat Lengkap",
+      telp_toko: "No. WhatsApp / Telepon", footer_struk: "Catatan Footer Struk", btn_simpan_toko: "Simpan Informasi Toko",
+      profil_title: "Profil Akun Anda", nama_lengkap: "Nama Lengkap", btn_ubah_nama: "Perbarui Nama", btn_ganti_pass: "Ganti Password",
+      btn_scan_bt: "Pindai (Scan) Printer Bluetooth", btn_bersihkan_semua: "Bersihkan Semua", btn_test_print: "Test Print", btn_putuskan: "Putuskan",
+      bahasa_title: "Bahasa Sistem (Berlaku Semua Halaman)", bahasa_desc: "Pilih bahasa tampilan untuk menu, tombol, struk, dan seluruh navigasi sistem WebPOS.",
+      zona_bahaya: "Zona Berbahaya", btn_reset_halaman: "Masuk ke Halaman Reset Data"
+    }
+  };
+
+  const curT = compDict[lang] || compDict["id"];
+
+  // A. Terjemahkan Tab Setting (Toko, Akun, Printer, Tampilan, Bahasa, Lanjutan)
+  const tabToko = document.querySelector('.tab-btn[data-tab="tab-toko"]');
+  if (tabToko) setSafeText(tabToko, curT.toko);
+  const tabAkun = document.querySelector('.tab-btn[data-tab="tab-akun"]');
+  if (tabAkun) setSafeText(tabAkun, curT.akun);
+  const tabPrinter = document.querySelector('.tab-btn[data-tab="tab-printer"]');
+  if (tabPrinter) setSafeText(tabPrinter, curT.printer);
+  const tabTampilan = document.querySelector('.tab-btn[data-tab="tab-tampilan"]');
+  if (tabTampilan) setSafeText(tabTampilan, curT.tampilan);
+  const tabBahasa = document.querySelector('.tab-btn[data-tab="tab-bahasa"]');
+  if (tabBahasa) setSafeText(tabBahasa, curT.bahasa);
+  const tabLanjutan = document.querySelector('.tab-btn[data-tab="tab-lanjutan"]');
+  if (tabLanjutan) setSafeText(tabLanjutan, curT.lanjutan);
+
+  // B. Terjemahkan Card Title & Judul Modul di Halaman Setting & Dashboard
+  document.querySelectorAll(".card-title").forEach(ct => {
+    const txt = ct.textContent.trim().toLowerCase();
+    if (txt.includes("identitas & struk") || txt.includes("store & receipt") || txt.includes("identiti & resit")) setSafeText(ct, curT.toko_title);
+    else if (txt.includes("profil akun") || txt.includes("account profile") || txt.includes("profil akaun")) setSafeText(ct, curT.profil_title);
+    else if (txt.includes("bahasa sistem") || txt.includes("system language")) setSafeText(ct, curT.bahasa_title);
+    else if (txt.includes("zona berbahaya") || txt.includes("danger zone") || txt.includes("zon bahaya")) setSafeText(ct, curT.zona_bahaya);
+  });
+
+  // C. Terjemahkan Deskripsi di Tab Bahasa
+  const descEl = document.querySelector('#tab-bahasa .card-body p');
+  if (descEl) descEl.textContent = curT.bahasa_desc;
+
+  // D. Terjemahkan Form Label di Pengaturan
+  document.querySelectorAll(".form-label").forEach(lbl => {
+    const t = lbl.textContent.trim().toLowerCase();
+    if (t.includes("nama usaha") || t.includes("store / business name") || t.includes("nama perniagaan")) lbl.textContent = curT.nama_toko;
+    else if (t.includes("alamat lengkap") || t.includes("full address") || t.includes("alamat penuh")) lbl.textContent = curT.alamat_toko;
+    else if (t.includes("whatsapp") || t.includes("telepon") || t.includes("telefon") || t.includes("phone")) lbl.textContent = curT.telp_toko;
+    else if (t.includes("footer") || t.includes("kaki resit")) lbl.textContent = curT.footer_struk;
+    else if (t.includes("nama lengkap") || t.includes("full name") || t.includes("nama penuh")) lbl.textContent = curT.nama_lengkap;
+  });
+
+  // E. Terjemahkan Tombol-Tombol Aksi di Pengaturan
+  const btnSaveStore = document.getElementById("btnSaveStore");
+  if (btnSaveStore) setSafeText(btnSaveStore, curT.btn_simpan_toko);
+
+  const btnSaveProfile = document.getElementById("btnSaveProfile");
+  if (btnSaveProfile) setSafeText(btnSaveProfile, curT.btn_ubah_nama);
+
+  const btnOpenPasswordModal = document.getElementById("btnOpenPasswordModal");
+  if (btnOpenPasswordModal) setSafeText(btnOpenPasswordModal, curT.btn_ganti_pass);
+
+  const btnScanBluetooth = document.getElementById("btnScanBluetooth");
+  if (btnScanBluetooth) setSafeText(btnScanBluetooth, curT.btn_scan_bt);
+
+  const btnTestPrint = document.getElementById("btnTestPrint");
+  if (btnTestPrint) setSafeText(btnTestPrint, curT.btn_test_print);
+
+  const btnDisconnectPrinter = document.getElementById("btnDisconnectPrinter");
+  if (btnDisconnectPrinter) setSafeText(btnDisconnectPrinter, curT.btn_putuskan);
+
+  // F. Terjemahkan Elemen di Dashboard (index.html)
+  // 1. Header KAS DI LACI & PENJUALAN HARI INI
+  document.querySelectorAll(".main-header div, .main-header span").forEach(el => {
+    const t = el.textContent.trim().toUpperCase();
+    if (t === "KAS DI LACI" || t === "CASH IN DRAWER" || t === "TUNAI DI LACI") el.textContent = curT.kas_laci;
+    else if (t === "PENJUALAN HARI INI" || t === "TODAY'S SALES" || t === "JUALAN HARI INI") el.textContent = curT.penjualan_hari_ini;
+  });
+
+  // 2. Status Buka / Tutup di Header
+  document.querySelectorAll(".main-header button, .main-header .badge, #shiftStatusBadge").forEach(el => {
+    const t = el.textContent.trim().toLowerCase();
+    if (t === "tutup" || t === "closed") setSafeText(el, curT.tutup);
+    else if (t === "buka" || t === "open") setSafeText(el, curT.buka);
+  });
+
+  // 3. Card Operasional Kasir & Statistik Dashboard
+  document.querySelectorAll(".main-content div, .main-content span, .main-content h2, .main-content h3").forEach(el => {
+    if (el.children.length === 0) {
+      const t = el.textContent.trim();
+      if (t === "Operasional Kasir" || t === "Cashier Operations" || t === "Operasi Juruwang") el.textContent = curT.ops_kasir;
+      else if (t === "Buka Shift Kerja" || t === "Open Work Shift" || t === "Buka Syif Kerja") el.textContent = curT.buka_shift;
+      else if (t === "Tutup Shift Kerja" || t === "Close Work Shift" || t === "Tutup Syif Kerja") el.textContent = curT.tutup_shift;
+      else if (t === "TOTAL MODAL TOKO" || t === "TOTAL STORE CAPITAL" || t === "JUMLAH MODAL KEDAI") el.textContent = curT.modal_toko;
+      else if (t === "TOTAL TRANSAKSI" || t === "TOTAL TRANSACTIONS" || t === "JUMLAH TRANSAKSI") el.textContent = curT.total_tx;
+      else if (t === "KASIR BERTUGAS" || t === "DUTY CASHIER" || t === "JURUWANG BERTUGAS") el.textContent = curT.kasir_tugas;
+      else if (t === "TOTAL LABA BERSIH" || t === "TOTAL NET PROFIT" || t === "JUMLAH UNTUNG BERSIH") el.textContent = curT.laba_bersih;
+      else if (t === "Perhitungan Kas Fisik Laci" || t === "Drawer Cash Physical Calculation" || t === "Kiraan Tunai Fizikal Laci") el.textContent = curT.hitung_kas;
+      else if (t === "Total Modal Seluruh Staf" || t === "Total Staff Capital") el.textContent = curT.modal_staf;
+      else if (t === "Uang Masuk Lain" || t === "Other Cash In") el.textContent = curT.uang_masuk;
+      else if (t === "Kas Keluar Toko" || t === "Store Cash Out") el.textContent = curT.kas_keluar;
+      else if (t === "Penjualan Produk" || t === "Product Sales") el.textContent = curT.jual_produk;
+      else if (t === "Top Up + Admin (Fisik)" || t === "Top Up + Admin (Cash)") el.textContent = curT.topup_admin;
+      else if (t === "Tarik Tunai (Fisik Keluar)" || t === "Cash Withdrawal (Out)") el.textContent = curT.tarik_tunai;
+      else if (t === "Penjualan Non-Tunai" || t === "Non-Cash Sales") el.textContent = curT.jual_nontunai;
+      else if (t === "Tarik Non-Tunai" || t === "Non-Cash Withdrawal") el.textContent = curT.tarik_nontunai;
+    }
+  });
+
+  // 6. Terjemahkan Input Placeholder
   const searchInput = document.getElementById("menuSearch");
   if (searchInput && dict.cari) searchInput.placeholder = dict.cari;
 
-  // 6. Terjemahkan Tombol Logout
+  // 7. Terjemahkan Tombol Logout
   const btnLogout = document.getElementById("btnLogout");
   if (btnLogout && dict.logout) btnLogout.setAttribute("title", dict.logout);
 
-  // 7. Terjemahkan Bottom Nav Mobile
+  // 8. Terjemahkan Bottom Nav Mobile
   document.querySelectorAll(".mobile-nav-item, .mobile-bar-item").forEach(item => {
     const span = item.querySelector("span");
     const href = item.getAttribute("href") || "";
@@ -530,23 +747,6 @@ function applyGlobalTranslations() {
 
 // Hubungkan ke window agar bisa dipanggil langsung dari setting
 window.applyGlobalTranslations = applyGlobalTranslations;
-
-// Jalankan seketika (support DOM loaded maupun saat loading)
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    applyGlobalTranslations();
-    applyMenuVisibility();
-  });
-} else {
-  applyGlobalTranslations();
-  applyMenuVisibility();
-}
-
-// Jalankan ulang saat tab kembali aktif atau bahasa diganti
-window.addEventListener("pageshow", applyGlobalTranslations);
-window.addEventListener("storage", (e) => {
-  if (e.key === "webpos_language") applyGlobalTranslations();
-});
 
 // Jalankan saat dokumen selesai dimuat
 document.addEventListener("DOMContentLoaded", applyMenuVisibility);
