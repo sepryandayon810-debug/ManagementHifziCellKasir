@@ -1595,12 +1595,15 @@ Utils.showToast(
     : 'Transaksi berhasil dihapus',
   'success'
 );
-          loadTransactions();
+
+// HAPUS LANGSUNG DARI TAMPILAN TANPA DOWNLOAD ULANG DATABASE (HEMAT KUOTA 100%)
+allTransactions = allTransactions.filter(item => item.id !== id);
+filterAndRender();
+
         } catch(e) {
           Utils.hideLoading();
           Utils.showToast(e.message || 'Gagal menghapus transaksi', 'error');
         }
-      };
 
       window.editTransaction = function(id) {
         const transaction = allTransactions.find(item => item.id === id);
