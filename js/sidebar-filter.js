@@ -360,10 +360,11 @@ const WEBPOS_DICTIONARY = {
 
 function applyGlobalTranslations() {
   const lang = localStorage.getItem("webpos_language") || "id";
-  if (lang === "id") return; // Jika Indonesia, biarkan default
-
-  const dict = WEBPOS_DICTIONARY[lang];
-  if (!dict) return;
+  if (lang === "id") {
+    // Kembalikan ke teks asli Indonesia jika berpindah dari bahasa lain
+    location.reload(); 
+    return;
+  }
 
   // 1. Terjemahkan Menu Sidebar
   const menuMap = {
