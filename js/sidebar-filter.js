@@ -748,5 +748,19 @@ function applyGlobalTranslations() {
 // Hubungkan ke window agar bisa dipanggil langsung dari setting
 window.applyGlobalTranslations = applyGlobalTranslations;
 
-// Jalankan saat dokumen selesai dimuat
-document.addEventListener("DOMContentLoaded", applyMenuVisibility);
+// Jalankan otomatis saat halaman selesai dimuat (DOM ready)
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    applyGlobalTranslations();
+    applyMenuVisibility();
+  });
+} else {
+  applyGlobalTranslations();
+  applyMenuVisibility();
+}
+
+// Jalankan ulang saat tab kembali aktif atau saat ganti bahasa di tab lain
+window.addEventListener("pageshow", applyGlobalTranslations);
+window.addEventListener("storage", (e) => {
+  if (e.key === "webpos_language") applyGlobalTranslations();
+});
