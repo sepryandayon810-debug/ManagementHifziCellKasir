@@ -1236,6 +1236,37 @@
     const darkModeToggle = document.getElementById("darkModeToggle");
     const currentTheme = localStorage.getItem("webpos_theme") || "light";
     const currentColor = localStorage.getItem("webpos_theme_color") || "indigo";
+
+    // ===== SISTEM PENGATURAN BAHASA GLOBAL =====
+    const currentLang = localStorage.getItem("webpos_language") || "id";
+    document.querySelectorAll(".lang-card").forEach(card => {
+      if (card.dataset.lang === currentLang) {
+        card.style.borderColor = "var(--primary)";
+        card.style.background = "var(--primary-light)";
+      } else {
+        card.style.borderColor = "var(--border)";
+        card.style.background = "var(--bg-subtle)";
+      }
+
+      card.onclick = () => {
+        document.querySelectorAll(".lang-card").forEach(c => {
+          c.style.borderColor = "var(--border)";
+          c.style.background = "var(--bg-subtle)";
+        });
+        card.style.borderColor = "var(--primary)";
+        card.style.background = "var(--primary-light)";
+
+        const langKey = card.dataset.lang;
+        localStorage.setItem("webpos_language", langKey);
+        
+        // Langsung terjemahkan menu saat itu juga
+        if (typeof applyGlobalTranslations === "function") {
+          applyGlobalTranslations();
+        }
+        toast(`Bahasa ${card.querySelector('div:nth-child(2)').textContent} aktif di semua halaman!`, "success");
+      };
+    });
+    
     // ===== SISTEM PENGATURAN 15 FONT GLOBAL =====
     const currentFont = localStorage.getItem("webpos_theme_font") || "jakarta";
     document.querySelectorAll(".theme-font-card").forEach(card => {
