@@ -177,194 +177,22 @@ function hideMenuItem(selector) {
   styleEl.textContent = css;
 })();
 
-// ==============================================================
-// 🌐 GLOBAL MULTI-LANGUAGE ENGINE (BERLAKU DI SEMUA HALAMAN)
-// ==============================================================
-const WEBPOS_DICTIONARY = {
-  en: {
-    dashboard: "Dashboard",
-    kasir: "Cashier",
-    produk: "Products",
-    riwayat: "Transaction History",
-    kas: "Cash Management",
-    ringkasan_kas: "Cash Summary",
-    modal_harian: "Daily Capital",
-    kas_masuk: "Cash In",
-    kas_keluar: "Cash Out",
-    kas_shift: "Cash & Shift",
-    closing: "Shift Closing",
-    topup: "Top Up",
-    tarik: "Cash Withdrawal",
-    pembelian: "Purchase / Restock",
-    hutang: "Debt & Credit",
-    laporan: "Sales Report",
-    laporan_stok: "Stock Report",
-    terlaris: "Best Sellers",
-    telegram: "Telegram Balance",
-    pelanggan: "Customer Data",
-    penggajian: "Payroll Data",
-    pengguna: "User Accounts",
-    setting: "Settings",
-    backup: "Backup & Sync",
-    log: "Activity Log",
-    printer: "Printer & Receipt",
-    reset: "Reset Data",
-    logout: "Log Out",
-    simpan: "Save",
-    batal: "Cancel",
-    tambah: "Add",
-    hapus: "Delete",
-    cari: "Search menu..."
-  },
-  ms: {
-    dashboard: "Papan Pemuka",
-    kasir: "Juruwang",
-    produk: "Produk",
-    riwayat: "Sejarah Transaksi",
-    kas: "Pengurusan Tunai",
-    ringkasan_kas: "Ringkasan Tunai",
-    modal_harian: "Modal Harian",
-    kas_masuk: "Tunai Masuk",
-    kas_keluar: "Tunai Keluar",
-    kas_shift: "Tunai & Syif",
-    closing: "Tutup Syif",
-    topup: "Tambah Nilai",
-    tarik: "Tarik Tunai",
-    pembelian: "Belian / Stok",
-    hutang: "Hutang & Piutang",
-    laporan: "Laporan Jualan",
-    laporan_stok: "Laporan Stok",
-    terlaris: "Barang Terlaris",
-    telegram: "Baki Telegram",
-    pelanggan: "Data Pelanggan",
-    penggajian: "Gaji Pekerja",
-    pengguna: "Akaun Pengguna",
-    setting: "Tetapan",
-    backup: "Sandaran & Segerak",
-    log: "Log Aktiviti",
-    printer: "Pencetak & Resit",
-    reset: "Set Semula Data",
-    logout: "Keluar",
-    simpan: "Simpan",
-    batal: "Batal",
-    tambah: "Tambah",
-    hapus: "Padam",
-    cari: "Cari menu..."
-  },
-  jv: {
-    dashboard: "Kaca Ngarep",
-    kasir: "Kasir",
-    produk: "Dagangan",
-    riwayat: "Catatan Dagang",
-    kas: "Ngatur Dhuwit Kas",
-    ringkasan_kas: "Ringkesan Kas",
-    modal_harian: "Modal Saben Dina",
-    kas_masuk: "Dhuwit Mlebu",
-    kas_keluar: "Dhuwit Metu",
-    kas_shift: "Kas & Giliran",
-    closing: "Tutup Giliran",
-    topup: "Isi Saldo",
-    tarik: "Jupuk Dhuwit",
-    pembelian: "Kulakan Barang",
-    hutang: "Utang & Piutang",
-    laporan: "Laporan Payu",
-    laporan_stok: "Laporan Simpenan",
-    terlaris: "Paling Laris",
-    telegram: "Saldo Telegram",
-    pelanggan: "Data Langganan",
-    penggajian: "Bayaran Karyawan",
-    pengguna: "Panganggo",
-    setting: "Setelan",
-    backup: "Nyimpen & Sengkuyung",
-    log: "Catatan Polah",
-    printer: "Mesin Cetak",
-    reset: "Busek Kabeh",
-    logout: "Metu",
-    simpan: "Simpen",
-    batal: "Wurung",
-    tambah: "Wuwuh",
-    hapus: "Busek",
-    cari: "Goleki menu..."
-  },
-  su: {
-    dashboard: "Kaca Utama",
-    kasir: "Kasir",
-    produk: "Barang Dagangan",
-    riwayat: "Riywayat Transaksi",
-    kas: "Ngalarapkeun Kas",
-    ringkasan_kas: "Ringkesan Kas",
-    modal_harian: "Modal Sapopoe",
-    kas_masuk: "Duit Asup",
-    kas_keluar: "Duit Kaluar",
-    kas_shift: "Kas & Shift",
-    closing: "Tutup Shift",
-    topup: "Eusi Saldo",
-    tarik: "Tarik Duit",
-    pembelian: "Balanja Stok",
-    hutang: "Hutang & Sambetan",
-    laporan: "Laporan Pajalan",
-    laporan_stok: "Laporan Stok",
-    terlaris: "Pangpayuna",
-    telegram: "Saldo Telegram",
-    pelanggan: "Data Langganan",
-    penggajian: "Gajih Pagawé",
-    pengguna: "Pamaké",
-    setting: "Setélan",
-    backup: "Cadangan & Singkron",
-    log: "Catatan Gawé",
-    printer: "Mesin Citak",
-    reset: "Hapus Sadayana",
-    logout: "Kaluar",
-    simpan: "Simpen",
-    batal: "Bongkar",
-    tambah: "Tambihan",
-    hapus: "Hapus",
-    cari: "Milari menu..."
-  },
-  ar: {
-    dashboard: "لوحة التحكم",
-    kasir: "نقطة البيع",
-    produk: "المنتجات",
-    riwayat: "سجل المعاملات",
-    kas: "إدارة الصندوق",
-    ringkasan_kas: "ملخص النقد",
-    modal_harian: "رأس المال اليومي",
-    kas_masuk: "واردات الصندوق",
-    kas_keluar: "مصروفات الصندوق",
-    kas_shift: "الوردية والنقد",
-    closing: "إغلاق الوردية",
-    topup: "شحن رصيد",
-    tarik: "سحب نقدي",
-    pembelian: "المشتريات / المخزون",
-    hutang: "الديون والمستحقات",
-    laporan: "تقرير المبيعات",
-    laporan_stok: "تقرير المخزون",
-    terlaris: "الأكثر مبيعاً",
-    telegram: "رصيد تيليجرام",
-    pelanggan: "بيانات العملاء",
-    penggajian: "كشف الرواتب",
-    pengguna: "المستخدمين",
-    setting: "الإعدادات",
-    backup: "النسخ الاحتياطي",
-    log: "سجل النشاط",
-    printer: "الطابعة والإيصالات",
-    reset: "إعادة ضبط",
-    logout: "تسجيل خروج",
-    simpan: "حفظ",
-    batal: "إلغاء",
-    tambah: "إضافة",
-    hapus: "حذف",
-    cari: "بحث في القائمة..."
-  }
-};
-
+// =========================================================
+// ENGINE TERJEMAHAN GLOBAL
+// =========================================================
 function applyGlobalTranslations() {
   const lang = localStorage.getItem("webpos_language") || "id";
-  if (lang === "id") {
-    // Kembalikan ke teks asli Indonesia jika berpindah dari bahasa lain
-    location.reload(); 
-    return;
+  const dict = WEBPOS_DICTIONARY[lang] || WEBPOS_DICTIONARY["id"];
+  if (!dict) return;
+
+  // Atur atribut lang & direction (RTL untuk Bahasa Arab)
+  document.documentElement.setAttribute("lang", lang);
+  if (lang === "ar") {
+    document.documentElement.setAttribute("dir", "rtl");
+  } else {
+    document.documentElement.removeAttribute("dir");
   }
+
   // 1. Terjemahkan Menu Sidebar
   const menuMap = {
     "dashboard": dict.dashboard,
@@ -392,11 +220,21 @@ function applyGlobalTranslations() {
     if (el && translatedText) el.textContent = translatedText;
   });
 
-  // 2. Terjemahkan Dropdown Kas Management
+  // 2. Terjemahkan Judul Section Sidebar
+  const sectionTitles = document.querySelectorAll(".nav-section-title");
+  if (sectionTitles.length >= 6) {
+    if (dict.sec_utama) sectionTitles[0].textContent = dict.sec_utama;
+    if (dict.sec_transaksi) sectionTitles[1].textContent = dict.sec_transaksi;
+    if (dict.sec_laporan) sectionTitles[2].textContent = dict.sec_laporan;
+    if (dict.sec_integrasi) sectionTitles[3].textContent = dict.sec_integrasi;
+    if (dict.sec_penggajian) sectionTitles[4].textContent = dict.sec_penggajian;
+    if (dict.sec_sistem) sectionTitles[5].textContent = dict.sec_sistem;
+  }
+
+  // 3. Terjemahkan Dropdown Kas Management & Submenunya
   const kasToggle = document.querySelector('.nav-dropdown-toggle[data-menu="kas"] span, .nav-dropdown-toggle[onclick*="dropdownKas"] span');
   if (kasToggle && dict.kas) kasToggle.textContent = dict.kas;
 
-  // Submenu Kas
   const sublinks = document.querySelectorAll(".nav-submenu a.nav-link span");
   sublinks.forEach(span => {
     const text = span.textContent.trim().toLowerCase();
@@ -410,15 +248,28 @@ function applyGlobalTranslations() {
     else if (text.includes("tarik") && dict.tarik) span.textContent = dict.tarik;
   });
 
-  // 3. Terjemahkan Input Cari Menu
+  // 4. Terjemahkan Header Judul Halaman
+  const headerTitle = document.querySelector(".header-title");
+  if (headerTitle) {
+    const curHdr = headerTitle.textContent.trim().toLowerCase();
+    if (curHdr.includes("pembelian") || curHdr.includes("purchase") || curHdr.includes("kulakan")) {
+      headerTitle.textContent = dict.hdr_pembelian || dict.pembelian;
+    } else if (curHdr.includes("kasir") || curHdr.includes("cashier")) {
+      headerTitle.textContent = dict.hdr_kasir || dict.kasir;
+    } else if (curHdr.includes("pengaturan") || curHdr.includes("setting")) {
+      headerTitle.textContent = dict.hdr_setting || dict.setting;
+    }
+  }
+
+  // 5. Terjemahkan Input Placeholder
   const searchInput = document.getElementById("menuSearch");
   if (searchInput && dict.cari) searchInput.placeholder = dict.cari;
 
-  // 4. Terjemahkan Tombol Logout Tooltip
+  // 6. Terjemahkan Tombol Logout
   const btnLogout = document.getElementById("btnLogout");
   if (btnLogout && dict.logout) btnLogout.setAttribute("title", dict.logout);
 
-  // 5. Terjemahkan Mobile Bottom Nav
+  // 7. Terjemahkan Bottom Nav Mobile
   document.querySelectorAll(".mobile-nav-item, .mobile-bar-item").forEach(item => {
     const span = item.querySelector("span");
     const href = item.getAttribute("href") || "";
@@ -431,8 +282,25 @@ function applyGlobalTranslations() {
   });
 }
 
-// Jalankan otomatis saat halaman selesai dimuat di SEMUA halaman
-document.addEventListener("DOMContentLoaded", applyGlobalTranslations);
+// Hubungkan ke window agar bisa dipanggil langsung dari setting
+window.applyGlobalTranslations = applyGlobalTranslations;
+
+// Jalankan seketika (support DOM loaded maupun saat loading)
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    applyGlobalTranslations();
+    applyMenuVisibility();
+  });
+} else {
+  applyGlobalTranslations();
+  applyMenuVisibility();
+}
+
+// Jalankan ulang saat tab kembali aktif atau bahasa diganti
+window.addEventListener("pageshow", applyGlobalTranslations);
+window.addEventListener("storage", (e) => {
+  if (e.key === "webpos_language") applyGlobalTranslations();
+});
 
 // Jalankan saat dokumen selesai dimuat
 document.addEventListener("DOMContentLoaded", applyMenuVisibility);
