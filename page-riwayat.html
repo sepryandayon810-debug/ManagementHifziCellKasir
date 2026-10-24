@@ -1471,26 +1471,32 @@ itemsText + '\n' +
 
       async function restoreStockForTransaction(transaction) {
         if (KasCore.getCategory(transaction) !== 'jual') return { restored: 0 };
+        // Jika tidak ada detail item, lewati tanpa error agar transaksi tetap bisa dihapus
         if (!Array.isArray(transaction.items) || transaction.items.length === 0) {
-          throw new Error('Detail item penjualan tidak ditemukan. Transaksi tidak dihapus agar stok tidak salah.');
+          return { restored: 0 };
         }
 
         const quantitiesByProduct = new Map();
-        const unresolvedItems = [];
         (transaction.items || []).forEach(item => {
           const productId = getItemProductId(item);
           const quantity = getItemQuantity(item);
-          if (!productId || quantity <= 0) {
-            unresolvedItems.push(item && (item.name || 'item tanpa nama'));
+
+          // LEWATI produk manual atau produk digital tanpa stok
+          if (
+            item.isManual || 
+            item.isUnlimited || 
+            (productId && String(productId).startsWith('manual_'))
+          ) {
             return;
           }
-          const key = String(productId);
-          quantitiesByProduct.set(key, (quantitiesByProduct.get(key) || 0) + quantity);
+
+          if (productId && quantity > 0) {
+            const key = String(productId);
+            quantitiesByProduct.set(key, (quantitiesByProduct.get(key) || 0) + quantity);
+          }
         });
 
-        if (unresolvedItems.length > 0) {
-          throw new Error('ID produk tidak ditemukan untuk: ' + unresolvedItems.join(', ') + '. Transaksi tidak dihapus.');
-        }
+        // Jika semua item adalah produk manual / tidak ada stok fisik, langsung izinkan hapus
         if (quantitiesByProduct.size === 0) return { restored: 0 };
 
         const productRefs = [...quantitiesByProduct.keys()].map(productId =>
@@ -1504,11 +1510,14 @@ itemsText + '\n' +
           }
 
           productSnapshots.forEach((productSnapshot, index) => {
+            // Jika produk fisik sudah dihapus dari master produk, jangan gagalkan hapus riwayat
             if (!productSnapshot.exists) {
-              throw new Error('Produk dengan ID ' + productRefs[index].id + ' tidak ditemukan.');
+              return;
             }
 
             const productData = productSnapshot.data() || {};
+            if (productData.isUnlimited) return; // Produk digital tidak perlu kembalikan stok
+
             const stockField = ['stock', 'stockQty', 'quantity', 'qty', 'stok']
               .find(field => Object.prototype.hasOwnProperty.call(productData, field)) || 'stock';
             const currentStock = Number(productData[stockField]) || 0;
@@ -1522,7 +1531,7 @@ itemsText + '\n' +
 
         return { restored: quantitiesByProduct.size };
       }
-
+      
       window.deleteTransaction = function(id) {
         const transaction = allTransactions.find(item => item.id === id);
         if (!transaction) return;
