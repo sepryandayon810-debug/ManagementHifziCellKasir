@@ -2752,20 +2752,58 @@ html,body{overflow-x:hidden;max-width:100vw}
 
 .kas-action-bar {
   width: 100% !important;
-
   display: grid !important;
-
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-
-  gap: .75rem !important;
-
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 0.5rem !important;
   margin: 0 0 1rem !important;
-
   padding: 0 !important;
-
-  overflow: visible !important;
 }
 
+.kas-action-bar .kas-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.85rem !important;
+  border: 1.5px solid transparent !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.kas-action-bar .kas-btn i {
+  font-size: 1.15rem !important;
+  margin: 0 !important;
+}
+
+.kas-action-bar .kas-masuk  { background: #d1fae5 !important; color: #059669 !important; border-color: #a7f3d0 !important; }
+.kas-action-bar .kas-keluar { background: #fee2e2 !important; color: #dc2626 !important; border-color: #fecaca !important; }
+.kas-action-bar .kas-hutang { background: #fef3c7 !important; color: #d97706 !important; border-color: #fde68a !important; }
+.kas-action-bar .kas-beli   { background: #dbeafe !important; color: #2563eb !important; border-color: #bfdbfe !important; }
+.kas-action-bar .kas-rekap  { background: #e0e7ff !important; color: #4f46e5 !important; border-color: #c7d2fe !important; }
+
+.kas-action-bar .kas-btn:hover {
+  transform: translateY(-2px) !important;
+  filter: brightness(0.95) !important;
+}
+
+@media (max-width: 768px) {
+  .kas-action-bar {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 0.4rem !important;
+  }
+  .kas-action-bar .kas-btn {
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 0.75rem !important;
+  }
+  .kas-action-bar .kas-btn i {
+    font-size: 1rem !important;
+  }
+}
 
 /* Semua tombol kas */
 .kas-action-bar .kas-btn {
@@ -3302,6 +3340,8 @@ html,body{overflow-x:hidden;max-width:100vw}
 .main-header .header-stats-global .btn-stat-shortcut:active {
   transform: scale(0.92) !important;
 }
+
+
   
 </style>
 <base target="">
@@ -3604,21 +3644,25 @@ html,body{overflow-x:hidden;max-width:100vw}
         </div>
 
         
-                <!-- ===== KAS ACTION BAR (4 TOMBOL) ===== -->
+               <!-- ===== KAS ACTION BAR (5 TOMBOL LOGO IKON) ===== -->
         <div class="kas-action-bar">
-          <button class="kas-btn kas-masuk" onclick="openKasMasuk()">
-            <i class="fas fa-arrow-down"></i> Kas Masuk
+          <button type="button" class="kas-btn kas-masuk" onclick="openKasMasuk()" title="Kas Masuk">
+            <i class="fas fa-arrow-down"></i>
           </button>
-          <button class="kas-btn kas-keluar" onclick="openKasKeluar()">
-            <i class="fas fa-arrow-up"></i> Kas Keluar
+          <button type="button" class="kas-btn kas-keluar" onclick="openKasKeluar()" title="Kas Keluar">
+            <i class="fas fa-arrow-up"></i>
           </button>
-          <button class="kas-btn kas-hutang" onclick="openBayarHutang()">
-            <i class="fas fa-hand-holding-usd"></i> Hutang/Piutang
+          <button type="button" class="kas-btn kas-hutang" onclick="openBayarHutang()" title="Hutang / Piutang">
+            <i class="fas fa-hand-holding-usd"></i>
           </button>
-          <button class="kas-btn kas-beli" onclick="openModalBeli()">
-    <i class="fas fa-cart-plus"></i> Beli Barang
-  </button>
-</div>
+          <button type="button" class="kas-btn kas-beli" onclick="openModalBeli()" title="Beli Barang / Restock">
+            <i class="fas fa-cart-plus"></i>
+          </button>
+          <!-- Tombol Logo Khusus: Rekap Saldo Masuk Akun / Tarik Tunai -->
+          <button type="button" class="kas-btn kas-rekap" onclick="openModalLogSaldoMasuk()" title="Rekap Saldo Masuk Akun (DANA, Bank, dll)">
+            <i class="fas fa-university"></i>
+          </button>
+        </div>
         
         <!-- ===== MODAL BELI BARANG ===== -->
         <div class="modal-overlay" id="modalBeliBarang" onclick="if(event.target===this)closeModalBeli()">
@@ -7140,6 +7184,124 @@ function resetHitungUangSementara() {
   hitungUangFisikSementara();
   showToast('Hitungan fisik sementara direset', 'info');
 }
+
+// ============================================================
+// LOG & REKAP KOLEKSI SALDO MASUK (DANA 1, DANA 2, BRI, BNI, DLL)
+// ============================================================
+async function openModalLogSaldoMasuk() {
+  document.getElementById('modalLogSaldoMasuk').classList.add('active');
+  await loadRekapSaldoMasukData();
+}
+
+function closeModalLogSaldoMasuk() {
+  document.getElementById('modalLogSaldoMasuk').classList.remove('active');
+}
+
+async function loadRekapSaldoMasukData() {
+  const akunContainer = document.getElementById('rekapPerAkunContainer');
+  const logContainer = document.getElementById('rekapLogTarikContainer');
+
+  akunContainer.innerHTML = '<div style="text-align:center;padding:0.75rem;color:var(--text-muted);font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Memuat data akun...</div>';
+  logContainer.innerHTML = '';
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Ambil transaksi hari ini lewat KasCore
+    const txs = await KasCore.getTransactionsByDateRange({
+      startDate: today,
+      endDate: today,
+      category: 'tarik_tunai'
+    });
+
+    let totalTransferMasuk = 0;
+    let totalFisikKeluar = 0;
+    let totalAdminToko = 0;
+    const perAkun = {}; // Menyimpan total uang masuk per nama akun/bank
+
+    txs.forEach(t => {
+      const nominal = KasCore.getNominal(t);
+      const admin = KasCore.getAdmin(t);
+      const fisik = Math.max(0, nominal - admin);
+      const namaAkun = (t.catatan || t.note || 'Tarik Tunai').trim();
+
+      totalTransferMasuk += nominal;
+      totalFisikKeluar += fisik;
+      totalAdminToko += admin;
+
+      if (!perAkun[namaAkun]) {
+        perAkun[namaAkun] = { total: 0, count: 0 };
+      }
+      perAkun[namaAkun].total += nominal;
+      perAkun[namaAkun].count += 1;
+    });
+
+    // Update Header Total
+    document.getElementById('rekapTotalMasukHariIni').textContent = formatRupiah(totalTransferMasuk);
+    document.getElementById('rekapTotalFisikKeluar').textContent = formatRupiah(totalFisikKeluar);
+    document.getElementById('rekapTotalAdminToko').textContent = formatRupiah(totalAdminToko);
+
+    // Render Box Per Akun (DANA 1, DANA 2, BRI, dll)
+    const akunKeys = Object.keys(perAkun);
+    if (!akunKeys.length) {
+      akunContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem;">Belum ada penarikan saldo hari ini.</div>';
+    } else {
+      akunContainer.innerHTML = akunKeys.map(nama => {
+        const item = perAkun[nama];
+        const isDana = nama.toLowerCase().includes('dana');
+        const icon = isDana ? 'fab fa-wallet' : 'fas fa-university';
+        const color = isDana ? '#118eea' : '#059669';
+
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.75rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:0.95rem;">
+                <i class="${icon}"></i>
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">${nama}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${item.count} transaksi penarikan</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:800;font-size:0.95rem;color:var(--primary);">${formatRupiah(item.total)}</div>
+              <span style="font-size:0.68rem;padding:0.15rem 0.4rem;border-radius:4px;background:#ecfdf5;color:#047857;font-weight:700;">Masuk Akun</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Log Riwayat Transaksi Tarik Tunai
+    if (!txs.length) {
+      logContainer.innerHTML = '<div style="text-align:center;padding:0.5rem;color:var(--text-muted);font-size:0.78rem;">Tidak ada riwayat tarik tunai.</div>';
+    } else {
+      logContainer.innerHTML = txs.map(t => {
+        const nominal = KasCore.getNominal(t);
+        const admin = KasCore.getAdmin(t);
+        const waktuStr = t.waktu ? new Date(t.waktu).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : '-';
+        const akun = t.catatan || t.note || 'Tarik Tunai';
+
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0.65rem;background:var(--bg-subtle);border-radius:0.5rem;font-size:0.78rem;">
+            <div>
+              <span style="font-weight:700;color:var(--text-main);">${akun}</span>
+              <span style="color:var(--text-muted);font-size:0.7rem;margin-left:0.35rem;">(${waktuStr})</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-weight:700;color:var(--primary);">${formatRupiah(nominal)}</span>
+              ${admin > 0 ? `<span style="font-size:0.68rem;color:var(--success);display:block;">Fee: ${formatRupiah(admin)}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error("Gagal load rekap saldo masuk:", err);
+    akunContainer.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:center;">Gagal memuat data rekap.</div>';
+  }
+}
   
   </script>
     <!-- Edit Cart Modal -->
@@ -7389,6 +7551,64 @@ function resetHitungUangSementara() {
     <!-- Footer Modal -->
     <div class="modal-footer" style="padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
       <button type="button" class="btn btn-secondary btn-sm" onclick="closeModalHitungUang()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POPUP REKAP SALDO MASUK AKUN / BANK (TARIK TUNAI) -->
+<div class="modal-overlay" id="modalLogSaldoMasuk" style="z-index: 9999;" onclick="if(event.target===this)closeModalLogSaldoMasuk()">
+  <div class="modal" style="max-width: 440px; width: 92%; max-height: 88vh; display: flex; flex-direction: column;">
+    
+    <!-- Header Modal -->
+    <div class="modal-header" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="modal-title" style="font-size: 1rem; font-weight: 700;">
+        <i class="fas fa-university" style="color: var(--primary); margin-right: 0.4rem;"></i>
+        Koleksi Saldo Masuk (Tarik Tunai)
+      </h3>
+      <button class="modal-close" onclick="closeModalLogSaldoMasuk()" style="cursor: pointer;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Body Modal -->
+    <div class="modal-body" style="padding: 1rem; flex: 1; overflow-y: auto;">
+      
+      <!-- Kartu Total Saldo Masuk Hari Ini -->
+      <div style="background: var(--bg-secondary); border: 1.5px solid var(--border-color); border-radius: 1rem; padding: 0.85rem 1rem; margin-bottom: 1rem;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+          Total Saldo Masuk Hari Ini (Untuk Dicollect):
+        </div>
+        <div style="font-size: 1.4rem; font-weight: 800; color: var(--primary); margin: 0.2rem 0;" id="rekapTotalMasukHariIni">
+          Rp 0
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 0.4rem; margin-top: 0.4rem;">
+          <span>Uang Fisik Keluar: <strong id="rekapTotalFisikKeluar" style="color:var(--danger)">Rp 0</strong></span>
+          <span>Total Admin: <strong id="rekapTotalAdminToko" style="color:var(--success)">Rp 0</strong></span>
+        </div>
+      </div>
+
+      <!-- Rangkuman Saldo Per Akun / Bank -->
+      <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.45rem;">
+        <i class="fas fa-wallet" style="color: var(--primary); margin-right: 0.3rem;"></i> Rincian Per Akun / Bank Penerima:
+      </div>
+      <div id="rekapPerAkunContainer" style="display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem;">
+        <!-- Diisi otomatis oleh JavaScript -->
+      </div>
+
+      <!-- Log Riwayat Tarik Tunai Terakhir -->
+      <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.45rem;">
+        <i class="fas fa-history" style="color: var(--text-muted); margin-right: 0.3rem;"></i> Log Tarik Tunai Hari Ini:
+      </div>
+      <div id="rekapLogTarikContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 220px; overflow-y: auto;">
+        <!-- Diisi otomatis oleh JavaScript -->
+      </div>
+
+    </div>
+
+    <!-- Footer Modal -->
+    <div class="modal-footer" style="padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <small style="color: var(--text-muted); font-size: 0.72rem;">*Data realtime dari transaksi tarik tunai</small>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModalLogSaldoMasuk()">Tutup</button>
     </div>
   </div>
 </div>
