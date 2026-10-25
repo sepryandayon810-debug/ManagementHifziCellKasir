@@ -7383,21 +7383,6 @@ async function loadRekapSaldoMasukData() {
   logContainer.innerHTML = '';
 
   try {
-    
-    function changeRekapDate(val) {
-  const today = new Date();
-  if (val === 'today') {
-    currentRekapQueryDate = getLocalDateString(today);
-  } else if (val === 'yesterday') {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    currentRekapQueryDate = getLocalDateString(yesterday);
-  } else if (val) {
-    currentRekapQueryDate = val;
-  }
-  loadRekapSaldoMasukData(currentRekapQueryDate);
-}
-    
     // Ambil transaksi hari ini lewat KasCore
     const txs = await KasCore.getTransactionsByDateRange({
       startDate: today,
@@ -7424,6 +7409,20 @@ async function loadRekapSaldoMasukData() {
     console.error("Gagal load rekap saldo masuk:", err);
     akunContainer.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:center;">Gagal memuat data rekap.</div>';
   }
+}
+
+  function changeRekapDate(val) {
+  const today = new Date();
+  if (val === 'today') {
+    currentRekapQueryDate = getLocalDateString(today);
+  } else if (val === 'yesterday') {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    currentRekapQueryDate = getLocalDateString(yesterday);
+  } else if (val) {
+    currentRekapQueryDate = val;
+  }
+  loadRekapSaldoMasukData(currentRekapQueryDate);
 }
 
 function renderRekapFromCurrentState() {
