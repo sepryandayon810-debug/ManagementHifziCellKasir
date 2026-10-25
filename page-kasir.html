@@ -7383,7 +7383,20 @@ async function loadRekapSaldoMasukData() {
   logContainer.innerHTML = '';
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    
+    function changeRekapDate(val) {
+  const today = new Date();
+  if (val === 'today') {
+    currentRekapQueryDate = getLocalDateString(today);
+  } else if (val === 'yesterday') {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    currentRekapQueryDate = getLocalDateString(yesterday);
+  } else if (val) {
+    currentRekapQueryDate = val;
+  }
+  loadRekapSaldoMasukData(currentRekapQueryDate);
+}
     
     // Ambil transaksi hari ini lewat KasCore
     const txs = await KasCore.getTransactionsByDateRange({
