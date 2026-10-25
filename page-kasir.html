@@ -7226,6 +7226,22 @@ async function quickAssignAllBank(bankName, subAccName) {
   // Langsung hitung ulang dan render tampilan rekap otomatis
   renderRekapFromCurrentState();
 }
+// Mengembalikan fungsi modal & variabel state yang hilang
+async function openModalLogSaldoMasuk() {
+  const modal = document.getElementById('modalLogSaldoMasuk');
+  if (modal) modal.classList.add('active');
+  await loadRekapSaldoMasukData();
+}
+
+function closeModalLogSaldoMasuk() {
+  const modal = document.getElementById('modalLogSaldoMasuk');
+  if (modal) modal.classList.remove('active');
+}
+
+let currentTarikTxs = [];
+const DEFAULT_SUB_ACCOUNTS = ['Akun 1', 'Akun 2', 'Akun 3'];
+let currentEditingBankForSubAccounts = 'DANA';
+  
   function getAvailableSubAccounts(bankName) {
   const cleanBank = (bankName || 'DANA').toUpperCase().trim();
   try {
