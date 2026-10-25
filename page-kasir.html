@@ -7171,9 +7171,82 @@ async function openModalLogSaldoMasuk() {
   await loadRekapSaldoMasukData();
 }
 
-function closeModalLogSaldoMasuk() {
-  document.getElementById('modalLogSaldoMasuk').classList.remove('active');
+// ============================================================
+// LOG & REKAP KOLEKSI SALDO MASUK (DENGAN PENGELOMPOKAN SUB-AKUN OTOMATIS)
+// ============================================================
+let currentTarikTxs = [];
+const DEFAULT_SUB_ACCOUNTS = ['Akun 1', 'Akun 2', 'Akun 3'];
+
+function getAvailableSubAccounts(bankName) {
+  const cleanBank = (bankName || 'DANA').toUpperCase().trim();
+  try {
+    const saved = localStorage.getItem('webpos_sub_acc_' + cleanBank);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return DEFAULT_SUB_ACCOUNTS;
 }
+
+async function updateTxSubAccount(txId, subAccName) {
+  try {
+    // 1. Update cache lokal di memori
+    const target = currentTarikTxs.find(t => t.id === txId);
+    if (target) {
+      target.sub_akun = subAccName;
+    }
+    
+    // Simpan di local storage sebagai cadangan
+    try {
+      const localSubMap = JSON.parse(localStorage.getItem('webpos_tx_sub_accounts') || '{}');
+      localSubMap[txId] = subAccName;
+      localStorage.setItem('webpos_tx_sub_accounts', JSON.stringify(localSubMap));
+    } catch(e) {}
+
+    // 2. Simpan ke Firestore
+    if (window.firebase && firebase.firestore) {
+      await firebase.firestore().collection('transactions').doc(txId).update({
+        sub_akun: subAccName,
+        sub_account_updated_at: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    showToast(`Berhasil dikelompokkan ke: ${subAccName}`, 'success');
+    renderRekapFromCurrentState();
+  } catch(err) {
+    console.error("Gagal simpan sub-akun:", err);
+    renderRekapFromCurrentState();
+    showToast(`Disimpan lokal ke: ${subAccName}`, 'info');
+  }
+}
+
+async function quickAssignAllBank(bankName, subAccName) {
+  if (!confirm(`Tandai semua transaksi ${bankName} yang belum ada label ke "${subAccName}"?`)) return;
+  const targets = currentTarikTxs.filter(t => {
+    const b = (t.catatan || t.note || 'Tarik Tunai').trim();
+    return b.toLowerCase() === bankName.toLowerCase() && !t.sub_akun;
+  });
+
+  for (const t of targets) {
+    t.sub_akun = subAccName;
+    try {
+      if (window.firebase && firebase.firestore) {
+        firebase.firestore().collection('transactions').doc(t.id).update({ sub_akun: subAccName });
+      }
+    } catch(e) {}
+  }
+  showToast(`${targets.length} transaksi ditandai ke ${subAccName}`, 'success');
+  renderRekapFromCurrentState();
+}
+
+let activeBankFilter = null;
+
+window.toggleBankFilter = function(bankName) {
+  if (activeBankFilter && activeBankFilter.toLowerCase() === bankName.toLowerCase()) {
+    activeBankFilter = null;
+  } else {
+    activeBankFilter = bankName;
+  }
+  renderRekapFromCurrentState();
+};
 
 async function loadRekapSaldoMasukData() {
   const akunContainer = document.getElementById('rekapPerAkunContainer');
@@ -7192,92 +7265,200 @@ async function loadRekapSaldoMasukData() {
       category: 'tarik_tunai'
     });
 
-    let totalTransferMasuk = 0;
-    let totalFisikKeluar = 0;
-    let totalAdminToko = 0;
-    const perAkun = {}; // Menyimpan total uang masuk per nama akun/bank
+    // Sinkronkan sub_akun dari localStorage jika ada
+    let localSubMap = {};
+    try {
+      localSubMap = JSON.parse(localStorage.getItem('webpos_tx_sub_accounts') || '{}');
+    } catch(e) {}
 
-    txs.forEach(t => {
-      const nominal = KasCore.getNominal(t);
-      const admin = KasCore.getAdmin(t);
-      const fisik = Math.max(0, nominal - admin);
-      const namaAkun = (t.catatan || t.note || 'Tarik Tunai').trim();
-
-      totalTransferMasuk += nominal;
-      totalFisikKeluar += fisik;
-      totalAdminToko += admin;
-
-      if (!perAkun[namaAkun]) {
-        perAkun[namaAkun] = { total: 0, count: 0 };
+    currentTarikTxs = txs.map(t => {
+      if (!t.sub_akun && localSubMap[t.id]) {
+        t.sub_akun = localSubMap[t.id];
       }
-      perAkun[namaAkun].total += nominal;
-      perAkun[namaAkun].count += 1;
+      return t;
     });
 
-    // Update Header Total
-    document.getElementById('rekapTotalMasukHariIni').textContent = formatRupiah(totalTransferMasuk);
-    document.getElementById('rekapTotalFisikKeluar').textContent = formatRupiah(totalFisikKeluar);
-    document.getElementById('rekapTotalAdminToko').textContent = formatRupiah(totalAdminToko);
-
-    // Render Box Per Akun (DANA 1, DANA 2, BRI, dll)
-    const akunKeys = Object.keys(perAkun);
-    if (!akunKeys.length) {
-      akunContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem;">Belum ada penarikan saldo hari ini.</div>';
-    } else {
-      akunContainer.innerHTML = akunKeys.map(nama => {
-        const item = perAkun[nama];
-        const isDana = nama.toLowerCase().includes('dana');
-        const icon = isDana ? 'fab fa-wallet' : 'fas fa-university';
-        const color = isDana ? '#118eea' : '#059669';
-
-        return `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.75rem;">
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:0.95rem;">
-                <i class="${icon}"></i>
-              </div>
-              <div>
-                <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">${nama}</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">${item.count} transaksi penarikan</div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-weight:800;font-size:0.95rem;color:var(--primary);">${formatRupiah(item.total)}</div>
-              <span style="font-size:0.68rem;padding:0.15rem 0.4rem;border-radius:4px;background:#ecfdf5;color:#047857;font-weight:700;">Masuk Akun</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Render Log Riwayat Transaksi Tarik Tunai
-    if (!txs.length) {
-      logContainer.innerHTML = '<div style="text-align:center;padding:0.5rem;color:var(--text-muted);font-size:0.78rem;">Tidak ada riwayat tarik tunai.</div>';
-    } else {
-      logContainer.innerHTML = txs.map(t => {
-        const nominal = KasCore.getNominal(t);
-        const admin = KasCore.getAdmin(t);
-        const waktuStr = t.waktu ? new Date(t.waktu).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : '-';
-        const akun = t.catatan || t.note || 'Tarik Tunai';
-
-        return `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0.65rem;background:var(--bg-subtle);border-radius:0.5rem;font-size:0.78rem;">
-            <div>
-              <span style="font-weight:700;color:var(--text-main);">${akun}</span>
-              <span style="color:var(--text-muted);font-size:0.7rem;margin-left:0.35rem;">(${waktuStr})</span>
-            </div>
-            <div style="text-align:right;">
-              <span style="font-weight:700;color:var(--primary);">${formatRupiah(nominal)}</span>
-              ${admin > 0 ? `<span style="font-size:0.68rem;color:var(--success);display:block;">Fee: ${formatRupiah(admin)}</span>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
+    renderRekapFromCurrentState();
 
   } catch (err) {
     console.error("Gagal load rekap saldo masuk:", err);
     akunContainer.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:center;">Gagal memuat data rekap.</div>';
+  }
+}
+
+function renderRekapFromCurrentState() {
+  const akunContainer = document.getElementById('rekapPerAkunContainer');
+  const logContainer = document.getElementById('rekapLogTarikContainer');
+  const txs = currentTarikTxs || [];
+
+  let totalTransferMasuk = 0;
+  let totalFisikKeluar = 0;
+  let totalAdminToko = 0;
+  const perBank = {}; // Menyimpan total uang masuk per nama bank utama & sub-akunnya
+
+  txs.forEach(t => {
+    const nominal = KasCore.getNominal(t);
+    const admin = KasCore.getAdmin(t);
+    const fisik = Math.max(0, nominal - admin);
+    const bankName = (t.catatan || t.note || 'Tarik Tunai').trim();
+    const sub = t.sub_akun || 'Belum Dikelompokkan';
+
+    totalTransferMasuk += nominal;
+    totalFisikKeluar += fisik;
+    totalAdminToko += admin;
+
+    if (!perBank[bankName]) {
+      perBank[bankName] = { 
+        total: 0, 
+        count: 0, 
+        subBreakdown: {} 
+      };
+    }
+    perBank[bankName].total += nominal;
+    perBank[bankName].count += 1;
+
+    if (!perBank[bankName].subBreakdown[sub]) {
+      perBank[bankName].subBreakdown[sub] = { total: 0, count: 0 };
+    }
+    perBank[bankName].subBreakdown[sub].total += nominal;
+    perBank[bankName].subBreakdown[sub].count += 1;
+  });
+
+  // Update Header Total
+  document.getElementById('rekapTotalMasukHariIni').textContent = formatRupiah(totalTransferMasuk);
+  document.getElementById('rekapTotalFisikKeluar').textContent = formatRupiah(totalFisikKeluar);
+  document.getElementById('rekapTotalAdminToko').textContent = formatRupiah(totalAdminToko);
+
+  // Render Box Per Bank dengan Rincian Sub-Akun
+  const bankKeys = Object.keys(perBank);
+  if (!bankKeys.length) {
+    akunContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem;">Belum ada penarikan saldo hari ini.</div>';
+  } else {
+    akunContainer.innerHTML = bankKeys.map(namaBank => {
+      const item = perBank[namaBank];
+      const isDana = namaBank.toLowerCase().includes('dana');
+      const icon = isDana ? 'fab fa-wallet' : 'fas fa-university';
+      const color = isDana ? '#118eea' : '#059669';
+      const isFiltered = activeBankFilter && activeBankFilter.toLowerCase() === namaBank.toLowerCase();
+
+      const subKeys = Object.keys(item.subBreakdown);
+      const subItemsHtml = subKeys.map(subKey => {
+        const subData = item.subBreakdown[subKey];
+        const isUnassigned = subKey === 'Belum Dikelompokkan';
+        const badgeColor = isUnassigned ? '#f59e0b' : '#3b82f6';
+
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:0.5rem;font-size:0.75rem;">
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${badgeColor};"></span>
+              <span style="font-weight:700;color:var(--text-main);">${subKey}</span>
+              <span style="font-size:0.68rem;color:var(--text-muted);">(${subData.count}x)</span>
+            </div>
+            <div style="font-weight:800;color:var(--primary);font-size:0.8rem;">
+              ${formatRupiah(subData.total)}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div style="background:${isFiltered ? 'color-mix(in srgb, var(--primary) 6%, var(--bg-secondary))' : 'var(--bg-secondary)'};border:${isFiltered ? '2px solid var(--primary)' : '1.5px solid var(--border-color)'};border-radius:0.85rem;padding:0.75rem;margin-bottom:0.25rem;transition:all 0.15s ease;">
+          <div onclick="toggleBankFilter('${namaBank}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:0.55rem;" title="Klik untuk memfilter log transaksi di bawah">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <div style="width:34px;height:34px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:1rem;">
+                <i class="${icon}"></i>
+              </div>
+              <div>
+                <div style="font-weight:800;font-size:0.9rem;color:var(--text-main);display:flex;align-items:center;gap:0.35rem;">
+                  ${namaBank}
+                  ${isFiltered ? '<span style="font-size:0.65rem;font-weight:700;color:#fff;background:var(--primary);padding:0.1rem 0.35rem;border-radius:4px;">Filter Aktif</span>' : '<span style="font-size:0.65rem;color:var(--text-muted);font-weight:600;"><i class="fas fa-filter"></i> klik filter</span>'}
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${item.count} total penarikan</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:900;font-size:1.05rem;color:var(--primary);">${formatRupiah(item.total)}</div>
+              <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:4px;background:#ecfdf5;color:#047857;font-weight:700;">Total Masuk</span>
+            </div>
+          </div>
+
+          <!-- Rincian Akun 1, Akun 2, Akun 3 -->
+          <div style="border-top:1px dashed var(--border-color);padding-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
+              <span>Rincian Saldo Akun:</span>
+              <button type="button" onclick="quickAssignAllBank('${namaBank}', 'Akun 1')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.68rem;font-weight:700;padding:0;">
+                + Set Semua ke Akun 1
+              </button>
+            </div>
+            ${subItemsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Filter log transaksi jika user klik salah satu kartu bank
+  const displayTxs = activeBankFilter 
+    ? txs.filter(t => (t.catatan || t.note || 'Tarik Tunai').trim().toLowerCase().includes(activeBankFilter.toLowerCase()))
+    : txs;
+
+  // Render Log Riwayat Transaksi Tarik Tunai dengan Pilihan Akun 1-Klik
+  if (!displayTxs.length) {
+    logContainer.innerHTML = `
+      <div style="text-align:center;padding:0.8rem;color:var(--text-muted);font-size:0.78rem;">
+        Tidak ada riwayat tarik tunai ${activeBankFilter ? `untuk ${activeBankFilter}` : ''}.
+        ${activeBankFilter ? `<br><button type="button" onclick="toggleBankFilter('${activeBankFilter}')" style="margin-top:0.4rem;padding:0.25rem 0.6rem;font-size:0.72rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-card);cursor:pointer;">Tampilkan Semua Bank</button>` : ''}
+      </div>`;
+  } else {
+    const filterBannerHtml = activeBankFilter ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;background:color-mix(in srgb, var(--primary) 10%, var(--bg-card));border-radius:6px;margin-bottom:0.5rem;font-size:0.72rem;">
+        <span>Filter: <b>${activeBankFilter}</b> (${displayTxs.length} transaksi)</span>
+        <button type="button" onclick="toggleBankFilter('${activeBankFilter}')" style="background:none;border:none;color:var(--primary);font-weight:700;cursor:pointer;font-size:0.72rem;">Reset Filter</button>
+      </div>
+    ` : '';
+
+    logContainer.innerHTML = filterBannerHtml + displayTxs.map(t => {
+      const nominal = KasCore.getNominal(t);
+      const admin = KasCore.getAdmin(t);
+      const waktuStr = t.waktu ? new Date(t.waktu).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : '-';
+      const bankName = (t.catatan || t.note || 'Tarik Tunai').trim();
+      const currentSub = t.sub_akun || '';
+      const availableSubs = getAvailableSubAccounts(bankName);
+
+      const buttonsHtml = availableSubs.map(s => {
+        const isActive = currentSub === s;
+        return `
+          <button type="button" 
+            onclick="updateTxSubAccount('${t.id}', '${s}')"
+            style="padding:0.2rem 0.5rem;font-size:0.68rem;font-weight:700;border-radius:0.4rem;border:1px solid ${isActive ? 'var(--primary)' : 'var(--border-color)'};background:${isActive ? 'var(--primary)' : 'var(--bg-card)'};color:${isActive ? '#fff' : 'var(--text-muted)'};cursor:pointer;transition:all 0.15s;">
+            ${isActive ? '✓ ' : ''}${s}
+          </button>
+        `;
+      }).join('');
+
+      return `
+        <div style="background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:0.6rem;padding:0.5rem 0.65rem;font-size:0.78rem;display:flex;flex-direction:column;gap:0.35rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-weight:800;color:var(--text-main);">${bankName}</span>
+              <span style="color:var(--text-muted);font-size:0.7rem;margin-left:0.35rem;">(${waktuStr})</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-weight:800;color:var(--primary);font-size:0.85rem;">${formatRupiah(nominal)}</span>
+              ${admin > 0 ? `<span style="font-size:0.65rem;color:var(--success);display:block;">Fee: ${formatRupiah(admin)}</span>` : ''}
+            </div>
+          </div>
+
+          <!-- Baris Tag Sub-Akun (1 Klik) -->
+          <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px dashed var(--border-color);padding-top:0.35rem;gap:0.4rem;flex-wrap:wrap;">
+            <span style="font-size:0.68rem;color:var(--text-muted);font-weight:600;">Masuk ke:</span>
+            <div style="display:flex;gap:0.3rem;align-items:center;">
+              ${buttonsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 }
   
