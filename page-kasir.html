@@ -7214,10 +7214,47 @@ async function openModalLogSaldoMasuk() {
 }
 
 // ============================================================
-// LOG & REKAP KOLEKSI SALDO MASUK (DENGAN PENGELOMPOKAN SUB-AKUN OTOMATIS)
+// LOG & REKAP KOLEKSI SALDO MASUK (TANPA POPUP WINDOW BROWSER)
 // ============================================================
+async function quickAssignAllBank(bankName, subAccName) {
+  const targets = currentTarikTxs.filter(t => {
+    const b = (t.catatan || t.note || 'Tarik Tunai').trim();
+    return b.toLowerCase() === bankName.toLowerCase() && !t.sub_akun;
+  });
+
+  if (!targets.length) {
+    showToast(`Semua transaksi ${bankName} sudah memiliki label akun`, 'info');
+    return;
+  }
+
+  // Langsung terapkan 1-klik tanpa window.confirm
+  for (const t of targets) {
+    t.sub_akun = subAccName;
+    try {
+      if (window.firebase && firebase.firestore) {
+        firebase.firestore().collection('transactions').doc(t.id).update({ sub_akun: subAccName });
+      }
+    } catch(e) {}
+  }
+  showToast(`✓ ${targets.length} transaksi ${bankName} langsung diset ke ${subAccName}`, 'success');
+  renderRekapFromCurrentState();
+}
+
+async function openModalLogSaldoMasuk() {
+  const modal = document.getElementById('modalLogSaldoMasuk');
+  if (modal) modal.classList.add('active');
+  await loadRekapSaldoMasukData();
+}
+
+function closeModalLogSaldoMasuk() {
+  const modal = document.getElementById('modalLogSaldoMasuk');
+  if (modal) modal.classList.remove('active');
+}
+
+// Sub-Akun Dinamis (Bisa diedit / ditambah Akun 4, Akun 5, dst)
 let currentTarikTxs = [];
 const DEFAULT_SUB_ACCOUNTS = ['Akun 1', 'Akun 2', 'Akun 3'];
+let currentEditingBankForSubAccounts = 'DANA';
 
 function getAvailableSubAccounts(bankName) {
   const cleanBank = (bankName || 'DANA').toUpperCase().trim();
@@ -7228,22 +7265,105 @@ function getAvailableSubAccounts(bankName) {
   return DEFAULT_SUB_ACCOUNTS;
 }
 
+// MODAL KELOLA NAMA AKUN
+function openModalKelolaSubAkun(bankName) {
+  currentEditingBankForSubAccounts = (bankName || 'DANA').toUpperCase().trim();
+  const titleEl = document.getElementById('titleKelolaSubAkun');
+  if (titleEl) {
+    titleEl.innerText = `Kelola Akun: ${currentEditingBankForSubAccounts}`;
+  }
+  
+  const currentSubs = getAvailableSubAccounts(currentEditingBankForSubAccounts);
+  renderSubAccountInputs(currentSubs);
+  
+  const modal = document.getElementById('modalKelolaSubAkun');
+  if (modal) modal.classList.add('active');
+}
+
+function closeModalKelolaSubAkun() {
+  const modal = document.getElementById('modalKelolaSubAkun');
+  if (modal) modal.classList.remove('active');
+}
+
+function renderSubAccountInputs(subList) {
+  const container = document.getElementById('subAccountInputsList');
+  if (!container) return;
+  container.innerHTML = '';
+  subList.forEach(name => {
+    addSubAccountInputRow(name);
+  });
+}
+
+function addSubAccountInputRow(defaultText = '') {
+  const container = document.getElementById('subAccountInputsList');
+  if (!container) return;
+  const currentCount = container.children.length;
+  const val = defaultText || `Akun ${currentCount + 1}`;
+  
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:0.4rem;align-items:center;';
+  row.innerHTML = `
+    <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);width:22px;">#${currentCount + 1}</span>
+    <input type="text" class="form-input sub-account-input" value="${val}" placeholder="Nama Akun" style="padding:0.4rem 0.6rem;font-size:0.8rem;flex:1;">
+    <button type="button" class="btn btn-sm btn-danger" onclick="removeSubAccountInputRow(this)" style="padding:0.35rem 0.55rem;font-size:0.75rem;" title="Hapus akun ini">
+      <i class="fas fa-trash"></i>
+    </button>
+  `;
+  container.appendChild(row);
+}
+
+function removeSubAccountInputRow(btn) {
+  const container = document.getElementById('subAccountInputsList');
+  if (!container) return;
+  if (container.children.length <= 1) {
+    showToast('Minimal harus ada 1 nama akun!', 'warning');
+    return;
+  }
+  const row = btn.closest('div');
+  if (row) row.remove();
+  
+  Array.from(container.children).forEach((child, i) => {
+    const numSpan = child.querySelector('span');
+    if (numSpan) numSpan.innerText = `#${i + 1}`;
+  });
+}
+
+function saveSubAccountsModal() {
+  const container = document.getElementById('subAccountInputsList');
+  if (!container) return;
+  const inputs = container.querySelectorAll('.sub-account-input');
+  const newNames = [];
+  inputs.forEach(input => {
+    const v = input.value.trim();
+    if (v && !newNames.includes(v)) {
+      newNames.push(v);
+    }
+  });
+
+  if (!newNames.length) {
+    showToast('Nama akun tidak boleh kosong!', 'warning');
+    return;
+  }
+
+  localStorage.setItem('webpos_sub_acc_' + currentEditingBankForSubAccounts, JSON.stringify(newNames));
+  showToast(`✓ Berhasil menyimpan ${newNames.length} akun untuk ${currentEditingBankForSubAccounts}`, 'success');
+  closeModalKelolaSubAkun();
+  renderRekapFromCurrentState();
+}
+
 async function updateTxSubAccount(txId, subAccName) {
   try {
-    // 1. Update cache lokal di memori
     const target = currentTarikTxs.find(t => t.id === txId);
     if (target) {
       target.sub_akun = subAccName;
     }
     
-    // Simpan di local storage sebagai cadangan
     try {
       const localSubMap = JSON.parse(localStorage.getItem('webpos_tx_sub_accounts') || '{}');
       localSubMap[txId] = subAccName;
       localStorage.setItem('webpos_tx_sub_accounts', JSON.stringify(localSubMap));
     } catch(e) {}
 
-    // 2. Simpan ke Firestore
     if (window.firebase && firebase.firestore) {
       await firebase.firestore().collection('transactions').doc(txId).update({
         sub_akun: subAccName,
@@ -7254,31 +7374,10 @@ async function updateTxSubAccount(txId, subAccName) {
     showToast(`Berhasil dikelompokkan ke: ${subAccName}`, 'success');
     renderRekapFromCurrentState();
   } catch(err) {
-    console.error("Gagal simpan sub-akun:", err);
     renderRekapFromCurrentState();
     showToast(`Disimpan lokal ke: ${subAccName}`, 'info');
   }
 }
-
-async function quickAssignAllBank(bankName, subAccName) {
-  if (!confirm(`Tandai semua transaksi ${bankName} yang belum ada label ke "${subAccName}"?`)) return;
-  const targets = currentTarikTxs.filter(t => {
-    const b = (t.catatan || t.note || 'Tarik Tunai').trim();
-    return b.toLowerCase() === bankName.toLowerCase() && !t.sub_akun;
-  });
-
-  for (const t of targets) {
-    t.sub_akun = subAccName;
-    try {
-      if (window.firebase && firebase.firestore) {
-        firebase.firestore().collection('transactions').doc(t.id).update({ sub_akun: subAccName });
-      }
-    } catch(e) {}
-  }
-  showToast(`${targets.length} transaksi ditandai ke ${subAccName}`, 'success');
-  renderRekapFromCurrentState();
-}
-
 let activeBankFilter = null;
 
 window.toggleBankFilter = function(bankName) {
@@ -7425,13 +7524,17 @@ function renderRekapFromCurrentState() {
           </div>
 
           <!-- Rincian Akun 1, Akun 2, Akun 3 -->
-          <div style="border-top:1px dashed var(--border-color);padding-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
-              <span>Rincian Saldo Akun:</span>
-              <button type="button" onclick="quickAssignAllBank('${namaBank}', 'Akun 1')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.68rem;font-weight:700;padding:0;">
-                + Set Semua ke Akun 1
-              </button>
-            </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
+  <span style="display:flex;align-items:center;gap:0.4rem;">
+    <span>Rincian Saldo:</span>
+    <button type="button" onclick="openModalKelolaSubAkun('${namaBank}')" style="background:var(--bg-card);border:1px solid var(--border-color);color:var(--primary);cursor:pointer;font-size:0.68rem;font-weight:700;padding:0.15rem 0.45rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.25rem;">
+      <i class="fas fa-cog"></i> Kelola Nama
+    </button>
+  </span>
+  <button type="button" onclick="quickAssignAllBank('${namaBank}', '${(getAvailableSubAccounts(namaBank)[0] || 'Akun 1')}')">
+    + Set Semua ke ${(getAvailableSubAccounts(namaBank)[0] || 'Akun 1')}
+  </button>
+</div>
             ${subItemsHtml}
           </div>
         </div>
