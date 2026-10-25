@@ -7177,42 +7177,6 @@ function resetHitungUangSementara() {
   showToast('Hitungan fisik sementara direset', 'info');
 }
 
-// SEBELUM: Menggunakan window.confirm browser (DIHAPUS)
-// if (!confirm(...)) return;
-
-// SESUDAH: Eksekusi instan 1-klik tanpa pop-up window yang memblokir
-async function quickAssignAllBank(bankName, subAccName) {
-  const targets = currentTarikTxs.filter(t => {
-    const b = (t.catatan || t.note || 'Tarik Tunai').trim();
-    return b.toLowerCase() === bankName.toLowerCase() && !t.sub_akun;
-  });
-
-  if (!targets.length) {
-    showToast(`Semua transaksi ${bankName} sudah memiliki label akun`, 'info');
-    return;
-  }
-
-  // Langsung terapkan ke transaksi
-  for (const t of targets) {
-    t.sub_akun = subAccName;
-    try {
-      if (window.firebase && firebase.firestore) {
-        firebase.firestore().collection('transactions').doc(t.id).update({ sub_akun: subAccName });
-      }
-    } catch(e) {}
-  }
-  showToast(`✓ ${targets.length} transaksi ${bankName} langsung diset ke ${subAccName}`, 'success');
-  renderRekapFromCurrentState();
-}
-  
-// ============================================================
-// LOG & REKAP KOLEKSI SALDO MASUK (DANA 1, DANA 2, BRI, BNI, DLL)
-// ============================================================
-async function openModalLogSaldoMasuk() {
-  document.getElementById('modalLogSaldoMasuk').classList.add('active');
-  await loadRekapSaldoMasukData();
-}
-
 // ============================================================
 // LOG & REKAP KOLEKSI SALDO MASUK (TANPA POPUP WINDOW BROWSER)
 // ============================================================
