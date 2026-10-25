@@ -7180,47 +7180,53 @@ function resetHitungUangSementara() {
 // ============================================================
 // LOG & REKAP KOLEKSI SALDO MASUK (TANPA POPUP WINDOW BROWSER)
 // ============================================================
+// ============================================================
+// FUNGSI GABUNG SEMUA SALDO KE SATU AKUN (SUDAH DIPERBAIKI)
+// ============================================================
 async function quickAssignAllBank(bankName, subAccName) {
+  const normBank = (bankName || '').trim().toLowerCase();
+  
+  // Ambil semua transaksi bank ini yang saat ini BELUM berada di sub-akun tujuan
   const targets = currentTarikTxs.filter(t => {
-    const b = (t.catatan || t.note || 'Tarik Tunai').trim();
-    return b.toLowerCase() === bankName.toLowerCase() && !t.sub_akun;
+    const b = (t.catatan || t.note || 'Tarik Tunai').trim().toLowerCase();
+    const isThisBank = b === normBank || b.includes(normBank) || normBank.includes(b);
+    return isThisBank && t.sub_akun !== subAccName;
   });
 
   if (!targets.length) {
-    showToast(`Semua transaksi ${bankName} sudah memiliki label akun`, 'info');
+    showToast(`Semua transaksi ${bankName} sudah berada di ${subAccName}`, 'info');
     return;
   }
 
-  // Langsung terapkan 1-klik tanpa window.confirm
+  // Update localStorage agar tersimpan di browser
+  let localSubMap = {};
+  try {
+    localSubMap = JSON.parse(localStorage.getItem('webpos_tx_sub_accounts') || '{}');
+  } catch(e) {}
+
+  // Update data in-memory dan database Firestore
   for (const t of targets) {
     t.sub_akun = subAccName;
+    localSubMap[t.id] = subAccName;
     try {
       if (window.firebase && firebase.firestore) {
-        firebase.firestore().collection('transactions').doc(t.id).update({ sub_akun: subAccName });
+        firebase.firestore().collection('transactions').doc(t.id).update({ 
+          sub_akun: subAccName,
+          sub_account_updated_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
       }
     } catch(e) {}
   }
-  showToast(`✓ ${targets.length} transaksi ${bankName} langsung diset ke ${subAccName}`, 'success');
+
+  try {
+    localStorage.setItem('webpos_tx_sub_accounts', JSON.stringify(localSubMap));
+  } catch(e) {}
+
+  showToast(`✓ Berhasil menggabungkan ${targets.length} transaksi ${bankName} ke ${subAccName}`, 'success');
+  // Langsung hitung ulang dan render tampilan rekap otomatis
   renderRekapFromCurrentState();
 }
-
-async function openModalLogSaldoMasuk() {
-  const modal = document.getElementById('modalLogSaldoMasuk');
-  if (modal) modal.classList.add('active');
-  await loadRekapSaldoMasukData();
-}
-
-function closeModalLogSaldoMasuk() {
-  const modal = document.getElementById('modalLogSaldoMasuk');
-  if (modal) modal.classList.remove('active');
-}
-
-// Sub-Akun Dinamis (Bisa diedit / ditambah Akun 4, Akun 5, dst)
-let currentTarikTxs = [];
-const DEFAULT_SUB_ACCOUNTS = ['Akun 1', 'Akun 2', 'Akun 3'];
-let currentEditingBankForSubAccounts = 'DANA';
-
-function getAvailableSubAccounts(bankName) {
+  function getAvailableSubAccounts(bankName) {
   const cleanBank = (bankName || 'DANA').toUpperCase().trim();
   try {
     const saved = localStorage.getItem('webpos_sub_acc_' + cleanBank);
