@@ -7468,35 +7468,75 @@ function renderRekapFromCurrentState() {
       const color = isDana ? '#118eea' : '#059669';
       const isFiltered = activeBankFilter && activeBankFilter.toLowerCase() === namaBank.toLowerCase();
 
+      const availableSubs = getAvailableSubAccounts(namaBank);
       const subKeys = Object.keys(item.subBreakdown);
+
+      const SUB_PALETTES = [
+        { bg: 'rgba(59, 130, 246, 0.07)', border: '#bfdbfe', text: '#1d4ed8', badge: '#3b82f6', label: '1' },
+        { bg: 'rgba(16, 185, 129, 0.07)', border: '#a7f3d0', text: '#047857', badge: '#10b981', label: '2' },
+        { bg: 'rgba(139, 92, 246, 0.07)', border: '#ddd6fe', text: '#6d28d9', badge: '#8b5cf6', label: '3' },
+        { bg: 'rgba(245, 158, 11, 0.07)', border: '#fde68a', text: '#b45309', badge: '#f59e0b', label: '4' },
+        { bg: 'rgba(236, 72, 153, 0.07)', border: '#fbcfe8', text: '#be185d', badge: '#ec4899', label: '5' }
+      ];
+
       const subItemsHtml = subKeys.map(subKey => {
         const subData = item.subBreakdown[subKey];
         const isUnassigned = subKey === 'Belum Dikelompokkan';
-        const badgeColor = isUnassigned ? '#f59e0b' : '#3b82f6';
+        const subIdx = availableSubs.indexOf(subKey);
+        const palette = isUnassigned 
+          ? { bg: 'rgba(239, 68, 68, 0.07)', border: '#fecdd3', text: '#dc2626', badge: '#ef4444', label: '!' }
+          : (subIdx >= 0 ? SUB_PALETTES[subIdx % SUB_PALETTES.length] : SUB_PALETTES[0]);
+
+        const pct = item.total > 0 ? Math.round((subData.total / item.total) * 100) : 0;
 
         return `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:0.5rem;font-size:0.75rem;">
-            <div style="display:flex;align-items:center;gap:0.4rem;">
-              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${badgeColor};"></span>
-              <span style="font-weight:700;color:var(--text-main);">${subKey}</span>
-              <span style="font-size:0.68rem;color:var(--text-muted);">(${subData.count}x)</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0.65rem;background:${palette.bg};border:1px solid ${palette.border};border-radius:0.6rem;margin-bottom:0.25rem;transition:all 0.15s ease;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <div style="width:24px;height:24px;border-radius:6px;background:${palette.badge};color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                ${palette.label}
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:0.8rem;color:var(--text-main);display:flex;align-items:center;gap:0.35rem;">
+                  <span>${subKey}</span>
+                  <span style="font-size:0.65rem;font-weight:600;padding:0.05rem 0.35rem;border-radius:999px;background:rgba(0,0,0,0.06);color:var(--text-muted);">${subData.count}x</span>
+                </div>
+                <div style="font-size:0.65rem;color:var(--text-muted);">${pct}% dari total saldo ${namaBank}</div>
+              </div>
             </div>
-            <div style="font-weight:800;color:var(--primary);font-size:0.8rem;">
-              ${formatRupiah(subData.total)}
+            <div style="text-align:right;">
+              <div style="font-weight:800;color:${palette.text};font-size:0.88rem;">
+                ${formatRupiah(subData.total)}
+              </div>
             </div>
           </div>
         `;
       }).join('');
 
+      // Tombol Quick Merge / Gabung Semua ke Akun Pilihan
+      const quickMergeButtons = availableSubs.map((s, idx) => {
+        const inThis = item.subBreakdown[s] ? item.subBreakdown[s].count : 0;
+        const isAllInThis = inThis === item.count;
+        return `
+          <button type="button" 
+            onclick="quickAssignAllBank('${namaBank}', '${s}')"
+            style="background:${isAllInThis ? 'var(--primary)' : 'var(--bg-card)'};color:${isAllInThis ? '#fff' : 'var(--text-main)'};border:1px solid ${isAllInThis ? 'var(--primary)' : 'var(--border-color)'};padding:0.22rem 0.5rem;border-radius:0.4rem;font-size:0.68rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:0.25rem;transition:all 0.15s ease;box-shadow:0 1px 2px rgba(0,0,0,0.03);"
+            title="Gabungkan semua transaksi ${namaBank} ke ${s}">
+            <i class="${isAllInThis ? 'fas fa-check' : 'fas fa-arrow-right'}" style="font-size:0.6rem;"></i>
+            ${s}
+          </button>
+        `;
+      }).join('');
+
       return `
-        <div style="background:${isFiltered ? 'color-mix(in srgb, var(--primary) 6%, var(--bg-secondary))' : 'var(--bg-secondary)'};border:${isFiltered ? '2px solid var(--primary)' : '1.5px solid var(--border-color)'};border-radius:0.85rem;padding:0.75rem;margin-bottom:0.25rem;transition:all 0.15s ease;">
+        <div style="background:${isFiltered ? 'color-mix(in srgb, var(--primary) 6%, var(--bg-secondary))' : 'var(--bg-secondary)'};border:${isFiltered ? '2px solid var(--primary)' : '1.5px solid var(--border-color)'};border-radius:0.85rem;padding:0.75rem;margin-bottom:0.4rem;box-shadow:0 1px 3px rgba(0,0,0,0.02);transition:all 0.15s ease;">
+          <!-- Header Bank -->
           <div onclick="toggleBankFilter('${namaBank}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:0.55rem;" title="Klik untuk memfilter log transaksi di bawah">
             <div style="display:flex;align-items:center;gap:0.5rem;">
-              <div style="width:34px;height:34px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:1rem;">
+              <div style="width:36px;height:36px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:1.05rem;">
                 <i class="${icon}"></i>
               </div>
               <div>
-                <div style="font-weight:800;font-size:0.9rem;color:var(--text-main);display:flex;align-items:center;gap:0.35rem;">
+                <div style="font-weight:800;font-size:0.92rem;color:var(--text-main);display:flex;align-items:center;gap:0.35rem;">
                   ${namaBank}
                   ${isFiltered ? '<span style="font-size:0.65rem;font-weight:700;color:#fff;background:var(--primary);padding:0.1rem 0.35rem;border-radius:4px;">Filter Aktif</span>' : '<span style="font-size:0.65rem;color:var(--text-muted);font-weight:600;"><i class="fas fa-filter"></i> klik filter</span>'}
                 </div>
@@ -7504,24 +7544,39 @@ function renderRekapFromCurrentState() {
               </div>
             </div>
             <div style="text-align:right;">
-              <div style="font-weight:900;font-size:1.05rem;color:var(--primary);">${formatRupiah(item.total)}</div>
+              <div style="font-weight:900;font-size:1.1rem;color:var(--primary);">${formatRupiah(item.total)}</div>
               <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:4px;background:#ecfdf5;color:#047857;font-weight:700;">Total Masuk</span>
             </div>
           </div>
 
-          <!-- Rincian Akun 1, Akun 2, Akun 3 -->
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
-  <span style="display:flex;align-items:center;gap:0.4rem;">
-    <span>Rincian Saldo:</span>
-    <button type="button" onclick="openModalKelolaSubAkun('${namaBank}')" style="background:var(--bg-card);border:1px solid var(--border-color);color:var(--primary);cursor:pointer;font-size:0.68rem;font-weight:700;padding:0.15rem 0.45rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.25rem;">
-      <i class="fas fa-cog"></i> Kelola Nama
-    </button>
-  </span>
-  <button type="button" onclick="quickAssignAllBank('${namaBank}', '${(getAvailableSubAccounts(namaBank)[0] || 'Akun 1')}')">
-    + Set Semua ke ${(getAvailableSubAccounts(namaBank)[0] || 'Akun 1')}
-  </button>
-</div>
-            ${subItemsHtml}
+          <!-- Rincian Akun & Quick Merge -->
+          <div style="margin-top:0.55rem;padding-top:0.5rem;border-top:1px dashed var(--border-color);">
+            <!-- Sub Header -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+              <div style="font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.02em;display:flex;align-items:center;gap:0.35rem;">
+                <i class="fas fa-layer-group" style="color:var(--primary);font-size:0.72rem;"></i>
+                <span>Rincian Saldo Akun:</span>
+              </div>
+              <button type="button" onclick="openModalKelolaSubAkun('${namaBank}')" 
+                style="background:var(--bg-card);border:1px solid var(--border-color);color:var(--primary);cursor:pointer;font-size:0.68rem;font-weight:700;padding:0.2rem 0.5rem;border-radius:0.4rem;display:inline-flex;align-items:center;gap:0.3rem;box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                <i class="fas fa-cog"></i> Kelola Nama
+              </button>
+            </div>
+
+            <!-- List Card Sub-Akun -->
+            <div style="display:flex;flex-direction:column;gap:0.25rem;">
+              ${subItemsHtml}
+            </div>
+
+            <!-- Baris Quick Merge 1-Klik -->
+            <div style="margin-top:0.45rem;padding:0.4rem 0.55rem;background:color-mix(in srgb, var(--primary) 5%, var(--bg-card));border:1px dashed color-mix(in srgb, var(--primary) 22%, var(--border-color));border-radius:0.55rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.35rem;">
+              <span style="font-size:0.68rem;font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;">
+                <i class="fas fa-bolt" style="color:#f59e0b;"></i> Gabung Semua ke:
+              </span>
+              <div style="display:flex;gap:0.3rem;align-items:center;flex-wrap:wrap;">
+                ${quickMergeButtons}
+              </div>
+            </div>
           </div>
         </div>
       `;
