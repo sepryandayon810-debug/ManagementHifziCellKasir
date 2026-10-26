@@ -655,6 +655,9 @@
       padding: 0.65rem 0.8rem; border: 1px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-surface);
     }
+    .kas-item-value, .kas-total-value, .nt-summary-row strong, .nt-summary-total span:last-child {
+      white-space: nowrap; flex-shrink: 0;
+    }
   </style>
     
   </style>
@@ -945,20 +948,20 @@
 </div>
 
 <div class="kas-item">
-  <div class="kas-item-info">
-    <div class="kas-item-icon income"><i class="fas fa-mobile-screen"></i></div>
-    <span class="kas-item-label">Top Up Non-Tunai (Bank)</span>
-  </div>
-  <span class="kas-item-value income" id="kasTopUpNonTunai">+ Rp 0</span>
-</div>
+            <div class="kas-item-info">
+              <div class="kas-item-icon income"><i class="fas fa-mobile-screen"></i></div>
+              <span class="kas-item-label">Saldo Masuk Bank (Tarik Tunai / TF)</span>
+            </div>
+            <span class="kas-item-value income" id="kasTopUpNonTunai">+ Rp 0</span>
+          </div>
 
-<div class="kas-item">
-  <div class="kas-item-info">
-    <div class="kas-item-icon expense"><i class="fas fa-building-columns"></i></div>
-    <span class="kas-item-label">Tarik Non-Tunai (Bank Keluar)</span>
-  </div>
-  <span class="kas-item-value expense" id="kasTarikNonTunai">- Rp 0</span>
-</div>
+          <div class="kas-item">
+            <div class="kas-item-info">
+              <div class="kas-item-icon expense"><i class="fas fa-building-columns"></i></div>
+              <span class="kas-item-label">Saldo Keluar Bank (Top Up / TF)</span>
+            </div>
+            <span class="kas-item-value expense" id="kasTarikNonTunai">- Rp 0</span>
+          </div>
 
           <div class="kas-item">
             <div class="kas-item-info">
@@ -974,13 +977,10 @@
           <div class="kas-total-value" id="kasGlobal">Rp 0</div>
         </div>
 
-          <div class="kas-total kas-bank-clickable" id="btnOpenNonTunaiModal" onclick="openNonTunaiModal()" title="Klik untuk melihat detail mutasi Non-Tunai">
+        <div class="kas-total kas-bank-clickable" id="btnOpenNonTunaiModal" onclick="openNonTunaiModal()">
           <div class="kas-total-label">
             <i class="fas fa-credit-card" style="color:var(--accent);"></i>
-            <div>
-              <div>Total Saldo Bank (Non-Tunai)</div>
-              <div style="font-size:0.7rem; font-weight:600; color:var(--accent);">Klik lihat detail mutasi & logika <i class="fas fa-chevron-right" style="font-size:0.62rem;"></i></div>
-            </div>
+            <span>Total Saldo Bank (Non-Tunai)</span>
           </div>
           <div class="kas-total-value" id="kasBank" style="color:var(--accent); font-size:1.3rem;">Rp 0</div>
         </div>
@@ -1436,15 +1436,29 @@
     });
   }
 
-  // ==========================================
-  // DASHBOARD — NAVIGASI TANGGAL & DETAIL NON-TUNAI
+// ==========================================
+  // DASHBOARD — NAVIGASI TANGGAL & DETAIL NON-TUNAI (TOP UP + TARIK + QRIS)
   // ==========================================
   let selectedDashboardDate = getTodayString();
   let lastDashboardUser = null;
-  let cachedKasDisplay = null;
-  let cachedDayTransactions = [];
+  let cachedNonTunaiSummary = { penjualanNT: 0, bankMasuk: 0, bankKeluar: 0, totalBank: 0 };
+  let cachedNonTunaiItems = [];
   let cachedUsersMap = {};
   let currentNonTunaiFilter = "all";
+
+  function safeNum(v) {
+    if (typeof KasCore !== "undefined" && typeof KasCore.normalizeNumber === "function") {
+      return KasCore.normalizeNumber(v);
+    }
+    const n = Number(String(v ?? 0).replace(/[^0-9.-]/g, ""));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatSignedRupiah(num) {
+    const val = Math.round(safeNum(num));
+    if (val < 0) return "- " + formatRupiah(Math.abs(val));
+    return formatRupiah(val);
+  }
 
   function shiftDateStr(dateStr, deltaDays) {
     const parts = dateStr.split("-").map(Number);
@@ -1533,15 +1547,286 @@
     if (icon) icon.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
   };
 
+  // Ambil dokumen transaksi & koleksi Top Up / Tarik Tunai dari seluruh koleksi KasCore
+  async function collectAllDayRecords(targetDate, baseTransactions) {
+    const mergedById = new Map();
+    const noIdRecords = [];
+
+    (baseTransactions || []).forEach(tx => {
+      if (!tx) return;
+      if (tx.id) mergedById.set(tx.id, { ...tx });
+      else noIdRecords.push({ ...tx });
+    });
+
+    try {
+      let sourceText = Object.values(KasCore || {})
+        .map(v => (typeof v === "function" ? v.toString() : typeof v === "string" ? v : ""))
+        .join("\n");
+      try {
+        const resp = await fetch("js/kas-core.js");
+        if (resp.ok) sourceText += "\n" + (await resp.text());
+      } catch (eFetch) {}
+
+      const foundCols = new Set([
+        "transactions", "kas_topup", "kas_tarik", "topup", "tarik_tunai",
+        "tarik", "kas_masuk", "kas_keluar", "mutasi_kas", "kas_mutasi", "kas"
+      ]);
+      const rxCol = /collection\(\s*['"]([^'"]+)['"]\s*\)/g;
+      const rxConst = /(?:COL|COLLECTION)[A-Z0-9_]*\s*=\s*['"]([^'"]+)['"]/g;
+      let m;
+      while ((m = rxCol.exec(sourceText)) !== null) foundCols.add(m[1]);
+      while ((m = rxConst.exec(sourceText)) !== null) foundCols.add(m[1]);
+
+      const skipCols = new Set([
+        "users", "settings", "shifts", "modal", "products", "produk",
+        "customers", "pelanggan", "categories", "kategori", "hutang",
+        "piutang", "pembelian", "penggajian", "log_aktivitas",
+        "saldo_sisa_history", "closing", "closings"
+      ]);
+
+      const p = targetDate.split("-").map(Number);
+      const startDt = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0);
+      const endDt   = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999);
+      const startMs = startDt.getTime();
+      const endMs   = endDt.getTime();
+      const startIso = startDt.toISOString();
+      const endIso   = endDt.toISOString();
+
+      const cols = [...foundCols].filter(c => c && !skipCols.has(c.toLowerCase()));
+      await Promise.all(cols.map(async (colName) => {
+        try {
+          let snap = await db.collection(colName).where("date", "==", targetDate).get();
+          if (snap.empty) {
+            try { snap = await db.collection(colName).where("tanggal", "==", targetDate).get(); } catch (e1) {}
+          }
+          if (snap.empty) {
+            try {
+              snap = await db.collection(colName)
+                .where("timestamp", ">=", startMs)
+                .where("timestamp", "<=", endMs)
+                .get();
+            } catch (e2) {}
+          }
+          if (snap.empty) {
+            try {
+              snap = await db.collection(colName)
+                .where("createdAt", ">=", startDt)
+                .where("createdAt", "<=", endDt)
+                .get();
+            } catch (e3) {}
+          }
+          if (snap.empty) {
+            try {
+              snap = await db.collection(colName)
+                .where("createdAt", ">=", startIso)
+                .where("createdAt", "<=", endIso)
+                .get();
+            } catch (e4) {}
+          }
+          snap.forEach(doc => {
+            const rawData = { id: doc.id, _colName: colName, ...doc.data() };
+            if (mergedById.has(doc.id)) {
+              mergedById.set(doc.id, { ...rawData, ...mergedById.get(doc.id), _colName: colName });
+            } else {
+              mergedById.set(doc.id, rawData);
+            }
+          });
+        } catch (eCol) {}
+      }));
+    } catch (e) {}
+
+    return [...mergedById.values(), ...noIdRecords];
+  }
+
+  function buildNonTunaiReport(kas, allRecords, user) {
+    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
+    const isAdmin = currentUserRole === "admin";
+
+    let inferredBankIn = 0;
+    let inferredBankOut = 0;
+    let inferredSalesNT = 0;
+    let matchedTopUpCount = 0;
+    let matchedTarikCount = 0;
+    const items = [];
+
+    (allRecords || []).forEach(tx => {
+      if (!tx) return;
+      const st = String(tx.status || "").toLowerCase();
+      if (st === "batal" || st === "cancelled" || st === "void" || st === "deleted" || tx.isDeleted || tx.deleted) return;
+
+      const uId = (typeof KasCore.getUserId === "function" ? KasCore.getUserId(tx) : null) || tx.userId || tx.kasirId || tx.uid || tx.createdBy || "";
+      if (!isBoss) {
+        if (isAdmin) {
+          const uRole = ((cachedUsersMap[uId]?.role) || tx.role || "kasir").toLowerCase();
+          if (uRole !== "kasir" && uId !== user.uid) return;
+        } else if (uId && uId !== user.uid) {
+          return;
+        }
+      }
+
+      const typeFields = [
+        tx.type, tx.jenis, tx.category, tx.kategori, tx.trxType, tx.subType,
+        tx.kasType, tx.flowType, tx.source, tx.sumber, tx.modul, tx.menu, tx._colName
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      const noteFields = [
+        tx.title, tx.judul, tx.keterangan, tx.note, tx.catatan, tx.deskripsi,
+        tx.description, tx.layanan, tx.provider, tx.namaBank, tx.bank
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      const methodStr = String(tx.paymentMethod || tx.metode || tx.metodePembayaran || tx.payment || "").toLowerCase();
+
+      const isTopUp = /top\s*up|top_up|top-up|topup|isi\s*saldo|isisaldo/.test(typeFields) ||
+        (/top\s*up|top_up|top-up|isi\s*saldo/.test(noteFields) && !/tarik/.test(typeFields));
+      const isTarik = !isTopUp && (
+        /tarik|withdraw/.test(typeFields) ||
+        /tarik\s*tunai|tarik_tunai|tarik-tunai|tarik\s*saldo/.test(noteFields)
+      );
+
+      if (!isTopUp && !isTarik && !tx._colName && typeof KasCore.isValidTransaction === "function" && !KasCore.isValidTransaction(tx)) {
+        return;
+      }
+
+      let bIn  = safeNum(tx.bank_in ?? tx.bankIn ?? 0);
+      let bOut = safeNum(tx.bank_out ?? tx.bankOut ?? 0);
+      let cIn  = safeNum(tx.cash_in ?? tx.cashIn ?? 0);
+      let cOut = safeNum(tx.cash_out ?? tx.cashOut ?? 0);
+
+      const admin         = safeNum(tx.admin ?? tx.biayaAdmin ?? tx.biaya_admin ?? tx.adminFee ?? tx.fee ?? 0);
+      const explicitPokok = safeNum(tx.nominalPokok ?? tx.pokok ?? tx.nominalTopup ?? tx.nominal_topup ?? tx.nominalTarik ?? tx.nominal_tarik ?? tx.hargaModal ?? 0);
+      const rawNominal    = safeNum(tx.nominal ?? tx.jumlah ?? tx.amount ?? 0);
+      const totalTx       = safeNum(tx.total ?? tx.grandTotal ?? tx.totalBayar ?? 0);
+      const adminBank     = safeNum(tx.adminBank ?? tx.biayaAdminBank ?? 0);
+      const explicitTf    = safeNum(tx.nominalTransfer ?? tx.jumlahTransfer ?? tx.totalTransfer ?? 0);
+
+      if (isTopUp) {
+        matchedTopUpCount++;
+        if (cIn === 0 && bIn === 0) cIn = totalTx || ((explicitPokok || rawNominal) + admin);
+        // Pelanggan Top Up: uang tunai masuk laci (+), saldo bank/aplikasi keluar (-) sebesar pokok
+        if (bOut === 0) {
+          let calcOut = 0;
+          if (explicitPokok > 0) calcOut = explicitPokok + adminBank;
+          else if (rawNominal > 0 && cIn > 0 && rawNominal < cIn) calcOut = rawNominal + adminBank;
+          else if (cIn > 0 && admin > 0 && cIn > admin) calcOut = (cIn - admin) + adminBank;
+          else calcOut = (rawNominal || cIn || totalTx) + adminBank;
+          bOut = calcOut;
+          inferredBankOut += calcOut;
+        }
+      } else if (isTarik) {
+        matchedTarikCount++;
+        if (cOut === 0 && bOut === 0) cOut = totalTx || Math.max(0, (explicitPokok || rawNominal) - admin);
+        // Pelanggan Tarik Tunai: pelanggan transfer ke bank toko (+), uang fisik keluar laci (-) sebesar (Tarik - Admin)
+        if (bIn === 0) {
+          let calcIn = 0;
+          if (explicitTf > 0) calcIn = explicitTf;
+          else if (explicitPokok > 0) calcIn = explicitPokok;
+          else if (rawNominal > cOut && cOut > 0) calcIn = rawNominal;
+          else if (cOut > 0 && admin > 0 && cIn === 0) calcIn = cOut + admin;
+          else calcIn = rawNominal || cOut || totalTx;
+          bIn = calcIn;
+          inferredBankIn += calcIn;
+        }
+      } else if (bIn === 0 && bOut === 0 && /(qris|transfer|bank|non_tunai|nontunai|debit|dana|ovo|gopay|shopeepay|linkaja)/.test(methodStr)) {
+        if (cOut > 0 || /keluar|expense|out/.test(typeFields)) {
+          bOut = totalTx || rawNominal || cOut;
+          if (safeNum(kas.tarikNonTunai) === 0) inferredBankOut += bOut;
+        } else {
+          bIn = totalTx || rawNominal || cIn;
+          if (!/kas_masuk|masuk/.test(typeFields) && safeNum(kas.penjualanNonTunai) === 0) {
+            inferredSalesNT += bIn;
+          } else if (/kas_masuk|masuk/.test(typeFields) && safeNum(kas.topupNonTunai) === 0) {
+            inferredBankIn += bIn;
+          }
+        }
+      }
+
+      if (bIn <= 0 && bOut <= 0) return;
+
+      let title = "Penjualan Non-Tunai (QRIS/TF)";
+      if (isTopUp) title = "Top Up / Isi Saldo (Bank Keluar)";
+      else if (isTarik) title = "Tarik Tunai (Bank Masuk)";
+      else if (bOut > 0 && bIn === 0) title = "Mutasi Keluar Bank";
+      else if (/kas_masuk/.test(typeFields)) title = "Mutasi Masuk Bank";
+
+      const descParts = [
+        tx.provider || tx.layanan || tx.namaBank || tx.bank || "",
+        tx.tujuan || tx.nomorTujuan || tx.noTujuan || tx.pelanggan || tx.customerName || "",
+        tx.keterangan || tx.note || tx.catatan || tx.deskripsi || "",
+        Array.isArray(tx.items) ? tx.items.map(i => i.nama || i.name).filter(Boolean).join(", ") : ""
+      ].filter(Boolean);
+      const desc = descParts.join(" · ") || (methodStr ? methodStr.toUpperCase() : "Transaksi Non-Tunai");
+
+      let timeStr = "--:--";
+      let ts = 0;
+      const rawDate = tx.createdAt?.toDate ? tx.createdAt.toDate() : (tx.timestamp ? new Date(tx.timestamp) : (typeof tx.createdAt === "string" ? new Date(tx.createdAt) : null));
+      if (rawDate && !isNaN(rawDate.getTime())) {
+        ts = rawDate.getTime();
+        timeStr = rawDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || tx.kasir || "";
+      let laciNote = "Tanpa mutasi laci fisik";
+      if (cIn > 0) laciNote = "Laci Masuk: + " + formatRupiah(cIn) + (admin > 0 ? " (Admin " + formatRupiah(admin) + ")" : "");
+      else if (cOut > 0) laciNote = "Laci Keluar: - " + formatRupiah(cOut) + (admin > 0 ? " (Admin " + formatRupiah(admin) + ")" : "");
+
+      items.push({ title, desc, timeStr, staffName, bIn, bOut, laciNote, ts });
+    });
+
+    // Fallback aman bila KasCore hanya mengekspos nilai rekap kas.tarikFisik / kas.topupFisik
+    if (matchedTarikCount === 0 && safeNum(kas.tarikFisik) > 0 && safeNum(kas.topupNonTunai) === 0) {
+      const valIn = safeNum(kas.tarikFisik);
+      inferredBankIn += valIn;
+      items.push({
+        title: "Tarik Tunai (Bank Masuk)",
+        desc: "Rekap transfer masuk dari transaksi Tarik Tunai",
+        timeStr: "Rekap",
+        staffName: "",
+        bIn: valIn,
+        bOut: 0,
+        laciNote: "Laci Keluar: - " + formatRupiah(valIn),
+        ts: 1
+      });
+    }
+    if (matchedTopUpCount === 0 && safeNum(kas.topupFisik) > 0 && safeNum(kas.tarikNonTunai) === 0) {
+      const valOut = safeNum(kas.topupFisik);
+      inferredBankOut += valOut;
+      items.push({
+        title: "Top Up / Isi Saldo (Bank Keluar)",
+        desc: "Rekap saldo terpakai untuk transaksi Top Up",
+        timeStr: "Rekap",
+        staffName: "",
+        bIn: 0,
+        bOut: valOut,
+        laciNote: "Laci Masuk: + " + formatRupiah(valOut),
+        ts: 0
+      });
+    }
+
+    items.sort((a, b) => b.ts - a.ts);
+
+    const penjualanNT = safeNum(kas.penjualanNonTunai) + inferredSalesNT;
+    const bankMasuk   = safeNum(kas.topupNonTunai) + inferredBankIn;
+    const bankKeluar  = safeNum(kas.tarikNonTunai) + inferredBankOut;
+    const totalBank   = penjualanNT + bankMasuk - bankKeluar;
+
+    return {
+      summary: { penjualanNT, bankMasuk, bankKeluar, totalBank },
+      items
+    };
+  }
+
   window.openNonTunaiModal = function() {
     const modal = document.getElementById("modalNonTunaiDetail");
     if (!modal) return;
-    const kas = cachedKasDisplay || {};
+    const s = cachedNonTunaiSummary;
     document.getElementById("ntModalDateLabel").textContent = "Periode: " + formatKasDateLabel(selectedDashboardDate);
-    document.getElementById("ntSumPenjualan").textContent = "+ " + formatRupiah(kas.penjualanNonTunai || 0);
-    document.getElementById("ntSumMasuk").textContent     = "+ " + formatRupiah(kas.topupNonTunai || 0);
-    document.getElementById("ntSumKeluar").textContent    = "- " + formatRupiah(kas.tarikNonTunai || 0);
-    document.getElementById("ntSumTotal").textContent     = formatRupiah(kas.totalBank || 0);
+    document.getElementById("ntSumPenjualan").textContent = "+ " + formatRupiah(s.penjualanNT);
+    document.getElementById("ntSumMasuk").textContent     = "+ " + formatRupiah(s.bankMasuk);
+    document.getElementById("ntSumKeluar").textContent    = "- " + formatRupiah(s.bankKeluar);
+
+    const sumTotalEl = document.getElementById("ntSumTotal");
+    sumTotalEl.textContent = formatSignedRupiah(s.totalBank);
+    sumTotalEl.style.color = s.totalBank < 0 ? "var(--danger)" : "var(--accent)";
 
     filterNonTunaiList("all");
     modal.classList.add("active");
@@ -1561,69 +1846,18 @@
     const listEl = document.getElementById("ntTransactionList");
     if (!listEl) return;
 
-    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
-    const isAdmin = currentUserRole === "admin";
-
-    const items = [];
-    (cachedDayTransactions || []).forEach(tx => {
-      if (typeof KasCore.isValidTransaction === "function" && !KasCore.isValidTransaction(tx)) return;
-      const uId = typeof KasCore.getUserId === "function" ? KasCore.getUserId(tx) : tx.userId;
-
-      if (!isBoss) {
-        if (isAdmin) {
-          const uRole = ((cachedUsersMap[uId]?.role) || tx.role || "kasir").toLowerCase();
-          if (uRole !== "kasir" && uId !== lastDashboardUser?.uid) return;
-        } else if (uId && lastDashboardUser && uId !== lastDashboardUser.uid) {
-          return;
-        }
-      }
-
-      let bIn  = KasCore.normalizeNumber(tx.bank_in ?? tx.bankIn ?? 0);
-      let bOut = KasCore.normalizeNumber(tx.bank_out ?? tx.bankOut ?? 0);
-      const cIn  = KasCore.normalizeNumber(tx.cash_in ?? tx.cashIn ?? 0);
-      const cOut = KasCore.normalizeNumber(tx.cash_out ?? tx.cashOut ?? 0);
-
-      const methodStr = String(tx.paymentMethod || tx.metode || tx.metodePembayaran || "").toLowerCase();
-      if (bIn === 0 && bOut === 0 && /(qris|transfer|bank|non|debit|dana|ovo|gopay|shopeepay)/.test(methodStr)) {
-        bIn = KasCore.normalizeNumber(tx.total ?? tx.grandTotal ?? tx.nominal ?? tx.amount ?? 0);
-      }
-
-      if (bIn <= 0 && bOut <= 0) return;
-      if (currentNonTunaiFilter === "in" && bIn <= 0) return;
-      if (currentNonTunaiFilter === "out" && bOut <= 0) return;
-
-      const rawType = String(tx.type || tx.jenis || tx.category || tx.kategori || "").toLowerCase();
-      let title = "Transaksi Non-Tunai";
-      if (rawType.includes("topup") || rawType.includes("top_up")) title = "Top Up / Isi Saldo";
-      else if (rawType.includes("tarik")) title = "Tarik Tunai";
-      else if (bIn > 0 && bOut === 0) title = "Penjualan Non-Tunai (QRIS/TF)";
-      else if (bOut > 0) title = "Mutasi Keluar Bank";
-
-      const desc = tx.keterangan || tx.note || tx.catatan || tx.provider || tx.metode || tx.paymentMethod ||
-        (Array.isArray(tx.items) ? tx.items.map(i => i.nama || i.name).filter(Boolean).join(", ") : "") || "-";
-
-      let timeStr = "--:--";
-      const rawDate = tx.createdAt?.toDate ? tx.createdAt.toDate() : (tx.timestamp ? new Date(tx.timestamp) : null);
-      if (rawDate && !isNaN(rawDate.getTime())) {
-        timeStr = rawDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-      }
-
-      const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || "";
-      let laciNote = "Tanpa mutasi uang fisik laci";
-      if (cIn > 0) laciNote = "Laci Fisik Masuk: + " + formatRupiah(cIn);
-      else if (cOut > 0) laciNote = "Laci Fisik Keluar: - " + formatRupiah(cOut);
-
-      items.push({ title, desc, timeStr, staffName, bIn, bOut, laciNote, ts: rawDate ? rawDate.getTime() : 0 });
+    const filtered = cachedNonTunaiItems.filter(it => {
+      if (currentNonTunaiFilter === "in") return it.bIn > 0;
+      if (currentNonTunaiFilter === "out") return it.bOut > 0;
+      return true;
     });
 
-    items.sort((a, b) => b.ts - a.ts);
-
-    if (items.length === 0) {
+    if (filtered.length === 0) {
       listEl.innerHTML = '<div style="text-align:center; padding:1.25rem; color:var(--text-muted); font-size:0.8rem;">Belum ada rincian transaksi non-tunai pada filter & tanggal ini.</div>';
       return;
     }
 
-    listEl.innerHTML = items.map(it => {
+    listEl.innerHTML = filtered.map(it => {
       const badgeHtml = [];
       if (it.bIn > 0) badgeHtml.push('<div style="color:var(--success); font-weight:800; font-size:0.86rem;">+ ' + formatRupiah(it.bIn) + '</div>');
       if (it.bOut > 0) badgeHtml.push('<div style="color:var(--danger); font-weight:800; font-size:0.86rem;">- ' + formatRupiah(it.bOut) + '</div>');
@@ -1639,6 +1873,77 @@
     }).join("");
   };
 
+  async function loadDashboardStats(user) {
+    lastDashboardUser = user;
+    const targetDate = selectedDashboardDate || getTodayString();
+    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
+    const isAdmin = currentUserRole === "admin";
+    syncDateNavigatorUI();
+
+    ["kasPenjualanNonTunai", "kasTopUpNonTunai", "kasTarikNonTunai"].forEach(id => {
+      const box = document.getElementById(id)?.closest(".kas-item");
+      if (box && !box.dataset.ntBound) {
+        box.dataset.ntBound = "1";
+        box.style.cursor = "pointer";
+        box.onclick = () => window.openNonTunaiModal();
+      }
+    });
+
+    try {
+      const [kas, allTransactions, usersSnap] = await Promise.all([
+        KasCore.getKasLaciDisplay({
+          date: targetDate,
+          userId: user.uid,
+          scope: 'role'
+        }),
+        KasCore.getTransactionsByDateRange({ startDate: targetDate, endDate: targetDate }),
+        (isBoss || isAdmin) ? db.collection("users").get() : Promise.resolve(null)
+      ]);
+
+      if (usersSnap) {
+        const uMap = {};
+        usersSnap.forEach(doc => { uMap[doc.id] = { id: doc.id, ...doc.data() }; });
+        cachedUsersMap = uMap;
+      }
+
+      const combinedRecords = await collectAllDayRecords(targetDate, allTransactions);
+      const ntReport = buildNonTunaiReport(kas, combinedRecords, user);
+
+      cachedNonTunaiSummary = ntReport.summary;
+      cachedNonTunaiItems = ntReport.items;
+
+      document.getElementById("kasDitangan").textContent          = formatRupiah(kas.totalLaci);
+      document.getElementById("totalPenjualan").textContent      = formatRupiah(kas.totalPenjualan);
+      document.getElementById("modalAwal").textContent            = formatRupiah(kas.modalAwal);
+      document.getElementById("totalTransaksi").textContent       = String(kas.totalTransaksi || 0);
+      document.getElementById("totalLaba").textContent           = formatRupiah(kas.totalLaba);
+      document.getElementById("kasModalAwal").textContent         = formatRupiah(kas.modalAwal);
+      document.getElementById("kasUangMasuk").textContent        = "+ " + formatRupiah(kas.uangMasukLain);
+      document.getElementById("kasUangKeluar").textContent        = "- " + formatRupiah(kas.kasKeluarToko);
+      document.getElementById("kasPenjualan").textContent         = "+ " + formatRupiah(kas.penjualanTunai);
+      document.getElementById("kasTopUp").textContent             = "+ " + formatRupiah(kas.topupFisik);
+      document.getElementById("kasTarik").textContent            = "- " + formatRupiah(kas.tarikFisik);
+      document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(ntReport.summary.penjualanNT);
+      document.getElementById("kasTopUpNonTunai").textContent     = "+ " + formatRupiah(ntReport.summary.bankMasuk);
+      document.getElementById("kasTarikNonTunai").textContent     = "- " + formatRupiah(ntReport.summary.bankKeluar);
+      document.getElementById("kasPiutang").textContent           = formatRupiah(kas.piutang);
+
+      const kasBankEl = document.getElementById("kasBank");
+      kasBankEl.textContent = formatSignedRupiah(ntReport.summary.totalBank);
+      kasBankEl.style.color = ntReport.summary.totalBank < 0 ? "var(--danger)" : "var(--accent)";
+
+      document.getElementById("kasGlobal").textContent           = formatRupiah(kas.totalLaci);
+
+      if (isBoss || isAdmin) {
+        const modalSummary = await KasCore.getModalSummary({ date: targetDate });
+        const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, cachedUsersMap);
+        renderStaffReportTable(staffData, isBoss, isAdmin);
+      }
+
+    } catch (err) {
+      console.error("dashboard: gagal memuat statistik", err);
+    }
+  }
   async function loadDashboardStats(user) {
     lastDashboardUser = user;
     const targetDate = selectedDashboardDate || getTodayString();
