@@ -16,7 +16,6 @@
     })();
   </script>
   <script>
-    <script>
     (function() {
       try {
         const referrer = document.referrer || '';
@@ -1200,45 +1199,36 @@ const CustomerStorage = {
   }
 };
 
+ // =========================================================
+    // HANYA MUNCULKAN TOMBOL PANAH JIKA DATANG DARI KASIR
     // =========================================================
-// HANYA MUNCULKAN TOMBOL PANAH JIKA DATANG DARI KASIR
-// =========================================================
-document.addEventListener('DOMContentLoaded', () => {
-  const btnBack = document.getElementById('btnBackKasir');
-  if (!btnBack) return;
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnBack = document.getElementById('btnBackKasir');
+      if (!btnBack) return;
 
-  // Cek apakah halaman dibuka langsung dari page-kasir
-// =========================================================
-// HANYA MUNCULKAN TOMBOL PANAH JIKA DATANG DARI KASIR
-// =========================================================
-document.addEventListener('DOMContentLoaded', () => {
-  const btnBack = document.getElementById('btnBackKasir');
-  if (!btnBack) return;
+      const isFromKasir = document.referrer.includes('page-kasir') || sessionStorage.getItem('fromKasir') === 'true';
 
-  // Hanya bernilai true jika benar-benar datang dari page-kasir
-  const isFromKasir = document.referrer.includes('page-kasir') || sessionStorage.getItem('fromKasir') === 'true';
+      if (isFromKasir) {
+        btnBack.style.display = 'inline-flex';
+      } else {
+        btnBack.style.display = 'none';
+      }
 
-  if (isFromKasir) {
-    btnBack.style.display = 'inline-flex';
-  } else {
-    btnBack.style.display = 'none';
-  }
+      // Jika user mengklik menu di sidebar, hilangkan tombol panah
+      document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          sessionStorage.removeItem('fromKasir');
+          localStorage.removeItem('fromKasir');
+        });
+      });
+    });
 
-  // Jika user mengklik menu apapun di sidebar, hilangkan tombol panah
-  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-    link.addEventListener('click', () => {
+    // Fungsi saat tombol panah [ ← ] diklik
+    window.kembaliKeKasir = function() {
       sessionStorage.removeItem('fromKasir');
       localStorage.removeItem('fromKasir');
-    });
-  });
-});
-
-// Fungsi saat tombol panah [ ← ] diklik
-window.kembaliKeKasir = function() {
-  sessionStorage.removeItem('fromKasir');
-  localStorage.removeItem('fromKasir');
-  window.location.href = 'page-kasir.html';
-};
+      window.location.href = 'page-kasir.html';
+    };
     });
   });
 });
