@@ -7375,18 +7375,33 @@ window.toggleBankFilter = function(bankName) {
   renderRekapFromCurrentState();
 };
 
-async function loadRekapSaldoMasukData() {
+// Helper Tanggal Lokal (Bukan UTC): Format YYYY-MM-DD sesuai zona waktu lokal
+function getLocalDateString(d = new Date()) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+let currentRekapQueryDate = getLocalDateString(new Date());
+
+async function loadRekapSaldoMasukData(targetDate) {
   const akunContainer = document.getElementById('rekapPerAkunContainer');
   const logContainer = document.getElementById('rekapLogTarikContainer');
+
+  // Ambil tanggal lokal perangkat (bukan UTC)
+  const queryDate = targetDate || currentRekapQueryDate || getLocalDateString(new Date());
+  currentRekapQueryDate = queryDate;
 
   akunContainer.innerHTML = '<div style="text-align:center;padding:0.75rem;color:var(--text-muted);font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Memuat data akun...</div>';
   logContainer.innerHTML = '';
 
   try {
-    // Ambil transaksi hari ini lewat KasCore
+    // Ambil transaksi hari ini berdasarkan tanggal lokal lewat KasCore
     const txs = await KasCore.getTransactionsByDateRange({
-      startDate: today,
-      endDate: today,
+      startDate: queryDate,
+      endDate: queryDate,
       category: 'tarik_tunai'
     });
 
@@ -7411,7 +7426,7 @@ async function loadRekapSaldoMasukData() {
   }
 }
 
-  function changeRekapDate(val) {
+function changeRekapDate(val) {
   const today = new Date();
   if (val === 'today') {
     currentRekapQueryDate = getLocalDateString(today);
@@ -7424,7 +7439,6 @@ async function loadRekapSaldoMasukData() {
   }
   loadRekapSaldoMasukData(currentRekapQueryDate);
 }
-
 function renderRekapFromCurrentState() {
   const akunContainer = document.getElementById('rekapPerAkunContainer');
   const logContainer = document.getElementById('rekapLogTarikContainer');
