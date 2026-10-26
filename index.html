@@ -657,9 +657,7 @@
     }
     .kas-item-value, .kas-total-value, .nt-summary-row strong, .nt-summary-total span:last-child {
       white-space: nowrap; flex-shrink: 0;
-    }
-  </style>
-    
+    }    
   </style>
 
   <!-- Firebase Compat -->
@@ -1444,6 +1442,7 @@
   let cachedNonTunaiSummary = { penjualanNT: 0, bankMasuk: 0, bankKeluar: 0, totalBank: 0 };
   let cachedNonTunaiItems = [];
   let cachedUsersMap = {};
+  let cachedKasCoreCols = null;
   let currentNonTunaiFilter = "all";
 
   function safeNum(v) {
@@ -1547,7 +1546,37 @@
     if (icon) icon.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
   };
 
-  // Ambil dokumen transaksi & koleksi Top Up / Tarik Tunai dari seluruh koleksi KasCore
+  async function getOfficialKasCoreCollections() {
+    if (Array.isArray(cachedKasCoreCols)) return cachedKasCoreCols;
+    const foundCols = new Set();
+    try {
+      let sourceText = Object.values(KasCore || {})
+        .map(v => (typeof v === "function" ? v.toString() : typeof v === "string" ? v : ""))
+        .join("\n");
+      if (window.location.protocol !== "file:") {
+        try {
+          const resp = await fetch("js/kas-core.js");
+          if (resp.ok) sourceText += "\n" + (await resp.text());
+        } catch (eFetch) {}
+      }
+
+      const rxCol = /collection\(\s*['"]([^'"]+)['"]\s*\)/g;
+      const rxConst = /(?:COL|COLLECTION)[A-Z0-9_]*\s*=\s*['"]([^'"]+)['"]/g;
+      let m;
+      while ((m = rxCol.exec(sourceText)) !== null) foundCols.add(m[1]);
+      while ((m = rxConst.exec(sourceText)) !== null) foundCols.add(m[1]);
+    } catch (e) {}
+
+    const skipCols = new Set([
+      "users", "settings", "shifts", "modal", "products", "produk",
+      "customers", "pelanggan", "categories", "kategori", "hutang",
+      "piutang", "pembelian", "penggajian", "log_aktivitas",
+      "saldo_sisa_history", "closing", "closings"
+    ]);
+    cachedKasCoreCols = [...foundCols].filter(c => c && !skipCols.has(c.toLowerCase()));
+    return cachedKasCoreCols;
+  }
+
   async function collectAllDayRecords(targetDate, baseTransactions) {
     const mergedById = new Map();
     const noIdRecords = [];
@@ -1559,69 +1588,22 @@
     });
 
     try {
-      let sourceText = Object.values(KasCore || {})
-        .map(v => (typeof v === "function" ? v.toString() : typeof v === "string" ? v : ""))
-        .join("\n");
-      try {
-        const resp = await fetch("js/kas-core.js");
-        if (resp.ok) sourceText += "\n" + (await resp.text());
-      } catch (eFetch) {}
-
-      const foundCols = new Set([
-        "transactions", "kas_topup", "kas_tarik", "topup", "tarik_tunai",
-        "tarik", "kas_masuk", "kas_keluar", "mutasi_kas", "kas_mutasi", "kas"
-      ]);
-      const rxCol = /collection\(\s*['"]([^'"]+)['"]\s*\)/g;
-      const rxConst = /(?:COL|COLLECTION)[A-Z0-9_]*\s*=\s*['"]([^'"]+)['"]/g;
-      let m;
-      while ((m = rxCol.exec(sourceText)) !== null) foundCols.add(m[1]);
-      while ((m = rxConst.exec(sourceText)) !== null) foundCols.add(m[1]);
-
-      const skipCols = new Set([
-        "users", "settings", "shifts", "modal", "products", "produk",
-        "customers", "pelanggan", "categories", "kategori", "hutang",
-        "piutang", "pembelian", "penggajian", "log_aktivitas",
-        "saldo_sisa_history", "closing", "closings"
-      ]);
-
+      const cols = await getOfficialKasCoreCollections();
       const p = targetDate.split("-").map(Number);
-      const startDt = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0);
-      const endDt   = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999);
-      const startMs = startDt.getTime();
-      const endMs   = endDt.getTime();
-      const startIso = startDt.toISOString();
-      const endIso   = endDt.toISOString();
+      const startMs = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
+      const endMs   = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999).getTime();
 
-      const cols = [...foundCols].filter(c => c && !skipCols.has(c.toLowerCase()));
       await Promise.all(cols.map(async (colName) => {
         try {
           let snap = await db.collection(colName).where("date", "==", targetDate).get();
           if (snap.empty) {
-            try { snap = await db.collection(colName).where("tanggal", "==", targetDate).get(); } catch (e1) {}
+            snap = await db.collection(colName).where("tanggal", "==", targetDate).get();
           }
           if (snap.empty) {
-            try {
-              snap = await db.collection(colName)
-                .where("timestamp", ">=", startMs)
-                .where("timestamp", "<=", endMs)
-                .get();
-            } catch (e2) {}
-          }
-          if (snap.empty) {
-            try {
-              snap = await db.collection(colName)
-                .where("createdAt", ">=", startDt)
-                .where("createdAt", "<=", endDt)
-                .get();
-            } catch (e3) {}
-          }
-          if (snap.empty) {
-            try {
-              snap = await db.collection(colName)
-                .where("createdAt", ">=", startIso)
-                .where("createdAt", "<=", endIso)
-                .get();
-            } catch (e4) {}
+            snap = await db.collection(colName)
+              .where("timestamp", ">=", startMs)
+              .where("timestamp", "<=", endMs)
+              .get();
           }
           snap.forEach(doc => {
             const rawData = { id: doc.id, _colName: colName, ...doc.data() };
@@ -1702,7 +1684,6 @@
       if (isTopUp) {
         matchedTopUpCount++;
         if (cIn === 0 && bIn === 0) cIn = totalTx || ((explicitPokok || rawNominal) + admin);
-        // Pelanggan Top Up: uang tunai masuk laci (+), saldo bank/aplikasi keluar (-) sebesar pokok
         if (bOut === 0) {
           let calcOut = 0;
           if (explicitPokok > 0) calcOut = explicitPokok + adminBank;
@@ -1715,7 +1696,6 @@
       } else if (isTarik) {
         matchedTarikCount++;
         if (cOut === 0 && bOut === 0) cOut = totalTx || Math.max(0, (explicitPokok || rawNominal) - admin);
-        // Pelanggan Tarik Tunai: pelanggan transfer ke bank toko (+), uang fisik keluar laci (-) sebesar (Tarik - Admin)
         if (bIn === 0) {
           let calcIn = 0;
           if (explicitTf > 0) calcIn = explicitTf;
@@ -1772,7 +1752,6 @@
       items.push({ title, desc, timeStr, staffName, bIn, bOut, laciNote, ts });
     });
 
-    // Fallback aman bila KasCore hanya mengekspos nilai rekap kas.tarikFisik / kas.topupFisik
     if (matchedTarikCount === 0 && safeNum(kas.tarikFisik) > 0 && safeNum(kas.topupNonTunai) === 0) {
       const valIn = safeNum(kas.tarikFisik);
       inferredBankIn += valIn;
@@ -1890,20 +1869,45 @@
     });
 
     try {
-      const [kas, allTransactions, usersSnap] = await Promise.all([
-        KasCore.getKasLaciDisplay({
-          date: targetDate,
-          userId: user.uid,
-          scope: 'role'
-        }),
-        KasCore.getTransactionsByDateRange({ startDate: targetDate, endDate: targetDate }),
-        (isBoss || isAdmin) ? db.collection("users").get() : Promise.resolve(null)
-      ]);
+      const kas = await KasCore.getKasLaciDisplay({
+        date: targetDate,
+        userId: user.uid,
+        scope: 'role'
+      });
 
-      if (usersSnap) {
-        const uMap = {};
-        usersSnap.forEach(doc => { uMap[doc.id] = { id: doc.id, ...doc.data() }; });
-        cachedUsersMap = uMap;
+      document.getElementById("kasDitangan").textContent          = formatRupiah(kas.totalLaci);
+      document.getElementById("totalPenjualan").textContent      = formatRupiah(kas.totalPenjualan);
+      document.getElementById("modalAwal").textContent            = formatRupiah(kas.modalAwal);
+      document.getElementById("totalTransaksi").textContent       = String(kas.totalTransaksi || 0);
+      document.getElementById("totalLaba").textContent           = formatRupiah(kas.totalLaba);
+      document.getElementById("kasModalAwal").textContent         = formatRupiah(kas.modalAwal);
+      document.getElementById("kasUangMasuk").textContent        = "+ " + formatRupiah(kas.uangMasukLain);
+      document.getElementById("kasUangKeluar").textContent        = "- " + formatRupiah(kas.kasKeluarToko);
+      document.getElementById("kasPenjualan").textContent         = "+ " + formatRupiah(kas.penjualanTunai);
+      document.getElementById("kasTopUp").textContent             = "+ " + formatRupiah(kas.topupFisik);
+      document.getElementById("kasTarik").textContent            = "- " + formatRupiah(kas.tarikFisik);
+      document.getElementById("kasPiutang").textContent           = formatRupiah(kas.piutang);
+      document.getElementById("kasGlobal").textContent           = formatRupiah(kas.totalLaci);
+
+      let allTransactions = [];
+      if (typeof KasCore.getTransactionsByDateRange === "function") {
+        try {
+          allTransactions = (await KasCore.getTransactionsByDateRange({
+            startDate: targetDate,
+            endDate: targetDate
+          })) || [];
+        } catch (eTx) {
+          allTransactions = [];
+        }
+      }
+
+      if (isBoss || isAdmin) {
+        try {
+          const usersSnap = await db.collection("users").get();
+          const uMap = {};
+          usersSnap.forEach(doc => { uMap[doc.id] = { id: doc.id, ...doc.data() }; });
+          cachedUsersMap = uMap;
+        } catch (eUsers) {}
       }
 
       const combinedRecords = await collectAllDayRecords(targetDate, allTransactions);
@@ -1912,101 +1916,27 @@
       cachedNonTunaiSummary = ntReport.summary;
       cachedNonTunaiItems = ntReport.items;
 
-      document.getElementById("kasDitangan").textContent          = formatRupiah(kas.totalLaci);
-      document.getElementById("totalPenjualan").textContent      = formatRupiah(kas.totalPenjualan);
-      document.getElementById("modalAwal").textContent            = formatRupiah(kas.modalAwal);
-      document.getElementById("totalTransaksi").textContent       = String(kas.totalTransaksi || 0);
-      document.getElementById("totalLaba").textContent           = formatRupiah(kas.totalLaba);
-      document.getElementById("kasModalAwal").textContent         = formatRupiah(kas.modalAwal);
-      document.getElementById("kasUangMasuk").textContent        = "+ " + formatRupiah(kas.uangMasukLain);
-      document.getElementById("kasUangKeluar").textContent        = "- " + formatRupiah(kas.kasKeluarToko);
-      document.getElementById("kasPenjualan").textContent         = "+ " + formatRupiah(kas.penjualanTunai);
-      document.getElementById("kasTopUp").textContent             = "+ " + formatRupiah(kas.topupFisik);
-      document.getElementById("kasTarik").textContent            = "- " + formatRupiah(kas.tarikFisik);
       document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(ntReport.summary.penjualanNT);
       document.getElementById("kasTopUpNonTunai").textContent     = "+ " + formatRupiah(ntReport.summary.bankMasuk);
       document.getElementById("kasTarikNonTunai").textContent     = "- " + formatRupiah(ntReport.summary.bankKeluar);
-      document.getElementById("kasPiutang").textContent           = formatRupiah(kas.piutang);
 
       const kasBankEl = document.getElementById("kasBank");
       kasBankEl.textContent = formatSignedRupiah(ntReport.summary.totalBank);
       kasBankEl.style.color = ntReport.summary.totalBank < 0 ? "var(--danger)" : "var(--accent)";
 
-      document.getElementById("kasGlobal").textContent           = formatRupiah(kas.totalLaci);
-
       if (isBoss || isAdmin) {
-        const modalSummary = await KasCore.getModalSummary({ date: targetDate });
-        const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, cachedUsersMap);
-        renderStaffReportTable(staffData, isBoss, isAdmin);
+        try {
+          const modalSummary = await KasCore.getModalSummary({ date: targetDate });
+          const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, cachedUsersMap);
+          renderStaffReportTable(staffData, isBoss, isAdmin);
+        } catch (eStaff) {}
       }
 
     } catch (err) {
       console.error("dashboard: gagal memuat statistik", err);
     }
   }
-  async function loadDashboardStats(user) {
-    lastDashboardUser = user;
-    const targetDate = selectedDashboardDate || getTodayString();
-    const isBoss = currentUserRole === "owner" || currentUserRole === "developer";
-    const isAdmin = currentUserRole === "admin";
-    syncDateNavigatorUI();
-
-    ["kasPenjualanNonTunai", "kasTopUpNonTunai", "kasTarikNonTunai"].forEach(id => {
-      const box = document.getElementById(id)?.closest(".kas-item");
-      if (box && !box.dataset.ntBound) {
-        box.dataset.ntBound = "1";
-        box.style.cursor = "pointer";
-        box.title = "Klik untuk rincian Non-Tunai";
-        box.onclick = () => window.openNonTunaiModal();
-      }
-    });
-
-    try {
-      const [kas, allTransactions] = await Promise.all([
-        KasCore.getKasLaciDisplay({
-          date: targetDate,
-          userId: user.uid,
-          scope: 'role'
-        }),
-        KasCore.getTransactionsByDateRange({ startDate: targetDate, endDate: targetDate })
-      ]);
-
-      cachedKasDisplay = kas;
-      cachedDayTransactions = allTransactions || [];
-
-      document.getElementById("kasDitangan").textContent          = formatRupiah(kas.totalLaci);
-      document.getElementById("totalPenjualan").textContent      = formatRupiah(kas.totalPenjualan);
-      document.getElementById("modalAwal").textContent            = formatRupiah(kas.modalAwal);
-      document.getElementById("totalTransaksi").textContent       = String(kas.totalTransaksi || 0);
-      document.getElementById("totalLaba").textContent           = formatRupiah(kas.totalLaba);
-      document.getElementById("kasModalAwal").textContent         = formatRupiah(kas.modalAwal);
-      document.getElementById("kasUangMasuk").textContent        = "+ " + formatRupiah(kas.uangMasukLain);
-      document.getElementById("kasUangKeluar").textContent        = "- " + formatRupiah(kas.kasKeluarToko);
-      document.getElementById("kasPenjualan").textContent         = "+ " + formatRupiah(kas.penjualanTunai);
-      document.getElementById("kasTopUp").textContent             = "+ " + formatRupiah(kas.topupFisik);
-      document.getElementById("kasTarik").textContent            = "- " + formatRupiah(kas.tarikFisik);
-      document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(kas.penjualanNonTunai);
-      document.getElementById("kasTopUpNonTunai").textContent     = "+ " + formatRupiah(kas.topupNonTunai);
-      document.getElementById("kasTarikNonTunai").textContent     = "- " + formatRupiah(kas.tarikNonTunai);
-      document.getElementById("kasPiutang").textContent           = formatRupiah(kas.piutang);
-      document.getElementById("kasBank").textContent              = formatRupiah(kas.totalBank);
-      document.getElementById("kasGlobal").textContent           = formatRupiah(kas.totalLaci);
-
-      if (isBoss || isAdmin) {
-        const usersSnap = await db.collection("users").get();
-        const usersMap = {};
-        usersSnap.forEach(doc => { usersMap[doc.id] = { id: doc.id, ...doc.data() }; });
-        cachedUsersMap = usersMap;
-
-        const modalSummary = await KasCore.getModalSummary({ date: targetDate });
-        const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, usersMap);
-        renderStaffReportTable(staffData, isBoss, isAdmin);
-      }
-
-    } catch (err) {
-      console.error("dashboard: gagal memuat statistik", err);
-    }
-  }
+  
   
   // Helper lokal penyeragaman Performa Staf jika KasCore.buildStaffPerformance belum didefinisikan
   function buildStaffPerformanceHelper(modalEntries, transactions, usersMap) {
@@ -2240,12 +2170,14 @@
   };
 
   window.executeTransfer = async function() {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
     const targetUid = document.getElementById("transferTargetUser").value;
     if (!targetUid) {
       toast("Pilih rekan penerima shift terlebih dahulu!", "error");
       return;
     }
-
+    
     const targetUser = availableTransferUsers.find(u => u.uid === targetUid);
     const today = getTodayString();
 
