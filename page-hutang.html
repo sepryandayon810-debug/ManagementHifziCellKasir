@@ -16,11 +16,17 @@
     })();
   </script>
   <script>
+    <script>
     (function() {
       try {
-        const referrerPath = (document.referrer || '').split(/[?#]/)[0].replace(/\/+$/, '');
-        if (referrerPath.endsWith('/page-kasir.html') || referrerPath === 'page-kasir.html') {
-          localStorage.setItem('fromKasir', 'true');
+        const referrer = document.referrer || '';
+        const isFromKasir = referrer.includes('page-kasir');
+        if (isFromKasir) {
+          sessionStorage.setItem('fromKasir', 'true');
+        } else {
+          // Jika dibuka dari sidebar / menu lain, bersihkan memori kasir
+          sessionStorage.removeItem('fromKasir');
+          localStorage.removeItem('fromKasir');
         }
       } catch (e) {
         console.warn('Tidak dapat membaca asal navigasi:', e);
@@ -1202,7 +1208,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!btnBack) return;
 
   // Cek apakah halaman dibuka langsung dari page-kasir
-  const isFromKasir = document.referrer.includes('page-kasir') || localStorage.getItem('fromKasir') === 'true';
+// =========================================================
+// HANYA MUNCULKAN TOMBOL PANAH JIKA DATANG DARI KASIR
+// =========================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const btnBack = document.getElementById('btnBackKasir');
+  if (!btnBack) return;
+
+  // Hanya bernilai true jika benar-benar datang dari page-kasir
+  const isFromKasir = document.referrer.includes('page-kasir') || sessionStorage.getItem('fromKasir') === 'true';
 
   if (isFromKasir) {
     btnBack.style.display = 'inline-flex';
@@ -1210,11 +1224,21 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBack.style.display = 'none';
   }
 
-  // Jika user mengklik menu apapun di sidebar, hapus status kasir
-  // agar saat dibuka via sidebar tombol panah TIDAK muncul lagi
+  // Jika user mengklik menu apapun di sidebar, hilangkan tombol panah
   document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', () => {
+      sessionStorage.removeItem('fromKasir');
       localStorage.removeItem('fromKasir');
+    });
+  });
+});
+
+// Fungsi saat tombol panah [ ← ] diklik
+window.kembaliKeKasir = function() {
+  sessionStorage.removeItem('fromKasir');
+  localStorage.removeItem('fromKasir');
+  window.location.href = 'page-kasir.html';
+};
     });
   });
 });
