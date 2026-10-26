@@ -1572,14 +1572,35 @@
     return cachedKasCoreCols;
   }
 
+  function makeTxSignature(tx) {
+    const uId = tx.userId || tx.kasirId || tx.uid || tx.createdBy || "";
+    const tsVal = tx.createdAt?.seconds || tx.timestamp || tx.createdAt || "";
+    return [
+      uId,
+      String(tsVal),
+      safeNum(tx.cash_in ?? tx.cashIn),
+      safeNum(tx.cash_out ?? tx.cashOut),
+      safeNum(tx.bank_in ?? tx.bankIn),
+      safeNum(tx.bank_out ?? tx.bankOut),
+      safeNum(tx.nominal ?? tx.jumlah ?? tx.amount ?? tx.total)
+    ].join("|");
+  }
+
   async function collectAllDayRecords(targetDate, baseTransactions) {
     const mergedById = new Map();
+    const aliasToPrimaryKey = new Map();
     const noIdRecords = [];
 
     (baseTransactions || []).forEach(tx => {
       if (!tx) return;
-      if (tx.id) mergedById.set(tx.id, { ...tx });
-      else noIdRecords.push({ ...tx });
+      const primaryId = tx.id ? String(tx.id) : (tx.docId ? String(tx.docId) : "");
+      if (primaryId) {
+        mergedById.set(primaryId, { ...tx });
+        aliasToPrimaryKey.set(primaryId, primaryId);
+        if (tx.docId) aliasToPrimaryKey.set(String(tx.docId), primaryId);
+      } else {
+        noIdRecords.push({ ...tx });
+      }
     });
 
     try {
@@ -1601,18 +1622,37 @@
               .get();
           }
           snap.forEach(doc => {
-            const rawData = { id: doc.id, _colName: colName, ...doc.data() };
-            if (mergedById.has(doc.id)) {
-              mergedById.set(doc.id, { ...rawData, ...mergedById.get(doc.id), _colName: colName });
+            const docData = doc.data() || {};
+            const innerId = docData.id ? String(docData.id) : "";
+            const rawData = { id: doc.id, _docId: doc.id, _colName: colName, ...docData };
+            const existingKey = aliasToPrimaryKey.get(doc.id) || (innerId ? aliasToPrimaryKey.get(innerId) : null);
+
+            if (existingKey && mergedById.has(existingKey)) {
+              mergedById.set(existingKey, { ...rawData, ...mergedById.get(existingKey), _colName: colName });
+              aliasToPrimaryKey.set(doc.id, existingKey);
+              if (innerId) aliasToPrimaryKey.set(innerId, existingKey);
             } else {
               mergedById.set(doc.id, rawData);
+              aliasToPrimaryKey.set(doc.id, doc.id);
+              if (innerId) aliasToPrimaryKey.set(innerId, doc.id);
             }
           });
         } catch (eCol) {}
       }));
     } catch (e) {}
 
-    return [...mergedById.values(), ...noIdRecords];
+    const seenSignatures = new Set();
+    for (const item of mergedById.values()) {
+      seenSignatures.add(makeTxSignature(item));
+    }
+    const uniqueNoId = noIdRecords.filter(tx => {
+      const sig = makeTxSignature(tx);
+      if (seenSignatures.has(sig)) return false;
+      seenSignatures.add(sig);
+      return true;
+    });
+
+    return [...mergedById.values(), ...uniqueNoId];
   }
 
   function buildNonTunaiReport(kas, allRecords, user) {
