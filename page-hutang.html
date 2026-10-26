@@ -508,6 +508,9 @@
       <header class="main-header">
          <div class="header-left">
           <button class="btn-icon-box d-md-none" id="mobileMenuToggle" title="Menu"><i class="fas fa-bars"></i></button>
+           <button class="btn-icon-box" id="btnBackKasir" style="display:none;" onclick="kembaliKeKasir()" title="Kembali ke Kasir">
+      <i class="fas fa-arrow-left"></i>
+    </button>
           <h1 class="header-title">Hutang/Piutang</h1>
         </div>
         
@@ -1191,16 +1194,37 @@ const CustomerStorage = {
   }
 };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      if (localStorage.getItem('fromKasir') === 'true') {
-        const btnBack = document.getElementById('btnBackKasir');
-        if (btnBack) btnBack.style.display = 'inline-flex';
-      }
+    // =========================================================
+// HANYA MUNCULKAN TOMBOL PANAH JIKA DATANG DARI KASIR
+// =========================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const btnBack = document.getElementById('btnBackKasir');
+  if (!btnBack) return;
 
-      window.kembaliKeKasir = function() {
-        localStorage.removeItem('fromKasir');
-        window.location.href = 'page-kasir.html';
-      };
+  // Cek apakah halaman dibuka langsung dari page-kasir
+  const isFromKasir = document.referrer.includes('page-kasir') || localStorage.getItem('fromKasir') === 'true';
+
+  if (isFromKasir) {
+    btnBack.style.display = 'inline-flex';
+  } else {
+    btnBack.style.display = 'none';
+  }
+
+  // Jika user mengklik menu apapun di sidebar, hapus status kasir
+  // agar saat dibuka via sidebar tombol panah TIDAK muncul lagi
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      localStorage.removeItem('fromKasir');
+    });
+  });
+});
+
+// Fungsi saat tombol panah [ ← ] diklik
+window.kembaliKeKasir = function() {
+  localStorage.removeItem('fromKasir');
+  window.location.href = 'page-kasir.html';
+};
+    
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
         if (!logoEl) return;
