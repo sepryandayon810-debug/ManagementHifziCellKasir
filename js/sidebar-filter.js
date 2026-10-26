@@ -163,16 +163,19 @@ function hideMenuItem(selector) {
                   radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 0 1px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 8px 9px !important;
       background-color: #1e293b !important; background-size: 16px 16px !important;
     }
-    [data-theme-style="standard"], [data-theme-style="standard"] body, [data-theme-style="standard"] .main-content, [data-theme-style="standard"] .sidebar {
+   [data-theme-style="standard"], [data-theme-style="standard"] body, [data-theme-style="standard"] .main-content, [data-theme-style="standard"] .sidebar {
       background-image: none !important;
     }
 
-    /* ===== ANIMASI TRANSISI SMOOTH ANTAR STATE MENU SIDEBAR ===== */
-    .sidebar .nav-link, .sidebar .nav-dropdown-toggle {
+    /* ===== ANIMASI TRANSISI SMOOTH: SIDEBAR & BOTTOM NAV MOBILE ===== */
+    .sidebar .nav-link, .sidebar .nav-dropdown-toggle, .mobile-nav-item, .mobile-bar-item {
       transition: background-color 0.24s cubic-bezier(0.22, 1, 0.36, 1),
                   color 0.24s cubic-bezier(0.22, 1, 0.36, 1),
                   transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
                   box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }
+    .mobile-nav-item, .mobile-bar-item {
+      border-radius: 10px;
     }
     .sidebar .nav-link:not(.active):hover, .sidebar .nav-dropdown-toggle:hover {
       transform: translateX(4px);
@@ -180,11 +183,12 @@ function hideMenuItem(selector) {
     [dir="rtl"] .sidebar .nav-link:not(.active):hover, [dir="rtl"] .sidebar .nav-dropdown-toggle:hover {
       transform: translateX(-4px);
     }
-    .sidebar .nav-link:active, .sidebar .nav-dropdown-toggle:active {
-      transform: scale(0.98);
+    .sidebar .nav-link:active, .sidebar .nav-dropdown-toggle:active, .mobile-nav-item:active, .mobile-bar-item:active {
+      transform: scale(0.96);
     }
     .sidebar .nav-link i:not(.fa-chevron-down):not(.fa-angle-down),
-    .sidebar .nav-dropdown-toggle i:not(.fa-chevron-down):not(.fa-angle-down) {
+    .sidebar .nav-dropdown-toggle i:not(.fa-chevron-down):not(.fa-angle-down),
+    .mobile-nav-item i, .mobile-bar-item i {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -198,8 +202,15 @@ function hideMenuItem(selector) {
       transform: scale(1.15) !important;
       filter: brightness(1.08);
     }
+    .mobile-nav-item:hover i, .mobile-bar-item:hover i {
+      transform: translateY(-2px) scale(1.15) !important;
+      filter: brightness(1.08);
+    }
     .sidebar .nav-link.active i:not(.fa-chevron-down):not(.fa-angle-down) {
       transform: scale(1.08);
+    }
+    .mobile-nav-item.active i, .mobile-bar-item.active i {
+      transform: translateY(-1px) scale(1.1);
     }
     .sidebar .nav-dropdown-toggle .fa-chevron-down, .sidebar .nav-dropdown-toggle .fa-angle-down {
       transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1) !important;
@@ -207,6 +218,8 @@ function hideMenuItem(selector) {
     .sidebar .nav-submenu {
       transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
     }
+
+    /* State Aktif Elegan: Sidebar & Bottom Nav selaras dengan latar lembut */
     .sidebar .nav-link.active {
       background-color: var(--primary-light, #eef2ff) !important;
       color: var(--primary, #4f46e5) !important;
@@ -216,27 +229,33 @@ function hideMenuItem(selector) {
     [dir="rtl"] .sidebar .nav-link.active {
       box-shadow: inset -3px 0 0 var(--primary, #4f46e5);
     }
+    .mobile-nav-item.active, .mobile-bar-item.active {
+      background-color: var(--primary-light, #eef2ff) !important;
+      color: var(--primary, #4f46e5) !important;
+      font-weight: 600 !important;
+      box-shadow: inset 0 2.5px 0 var(--primary, #4f46e5);
+    }
 
-    /* ===== 23 WARNA KHAS IKON SIDEBAR OTOMATIS ===== */
-    .sidebar [data-menu="dashboard"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-home, .sidebar .nav-link i.fa-chart-pie { color: #3b82f6 !important; }
-    .sidebar [data-menu="kasir"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-cash-register { color: #6366f1 !important; }
-    .sidebar [data-menu="produk"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-box { color: #10b981 !important; }
-    .sidebar [data-menu="riwayat"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-history { color: #06b6d4 !important; }
-    .sidebar [data-menu="kas"] i:not(.fa-chevron-down):not(.fa-angle-down), .sidebar .nav-dropdown-toggle i.fa-wallet { color: #16a34a !important; }
+    /* ===== 23 WARNA KHAS IKON (SIDEBAR & BOTTOM NAV SELARAS) ===== */
+    .sidebar [data-menu="dashboard"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-home, .sidebar .nav-link i.fa-chart-pie, .mobile-nav-item[href*="index"] i, .mobile-bar-item[href*="index"] i, .mobile-nav-item i.fa-home, .mobile-bar-item i.fa-home, .mobile-nav-item i.fa-chart-pie, .mobile-bar-item i.fa-chart-pie { color: #3b82f6 !important; }
+    .sidebar [data-menu="kasir"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-cash-register, .mobile-nav-item[href*="kasir"] i, .mobile-bar-item[href*="kasir"] i, .mobile-nav-item i.fa-cash-register, .mobile-bar-item i.fa-cash-register { color: #6366f1 !important; }
+    .sidebar [data-menu="produk"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-box, .mobile-nav-item[href*="produk"] i, .mobile-bar-item[href*="produk"] i, .mobile-nav-item i.fa-box, .mobile-bar-item i.fa-box { color: #10b981 !important; }
+    .sidebar [data-menu="riwayat"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-history, .mobile-nav-item[href*="riwayat"] i, .mobile-bar-item[href*="riwayat"] i, .mobile-nav-item i.fa-history, .mobile-bar-item i.fa-history { color: #06b6d4 !important; }
+    .sidebar [data-menu="kas"] i:not(.fa-chevron-down):not(.fa-angle-down), .sidebar .nav-dropdown-toggle i.fa-wallet, .mobile-nav-item i.fa-wallet, .mobile-bar-item i.fa-wallet { color: #16a34a !important; }
     .sidebar [data-menu="modal-harian"] i, .sidebar .nav-submenu i.fa-coins { color: #0d9488 !important; }
     .sidebar [data-menu="kas-masuk"] i, .sidebar .nav-submenu i.fa-arrow-down { color: #22c55e !important; }
     .sidebar [data-menu="kas-keluar"] i, .sidebar .nav-submenu i.fa-arrow-up { color: #ef4444 !important; }
     .sidebar [data-menu="closing-shift"] i, .sidebar .nav-submenu i.fa-door-closed { color: #f59e0b !important; }
-    .sidebar [data-menu="pembelian"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-shopping-cart { color: #f97316 !important; }
-    .sidebar [data-menu="hutang"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-hand-holding-usd { color: #f43f5e !important; }
-    .sidebar [data-menu="laporan"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-chart-line { color: #8b5cf6 !important; }
+    .sidebar [data-menu="pembelian"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-shopping-cart, .mobile-nav-item[href*="pembelian"] i, .mobile-bar-item[href*="pembelian"] i { color: #f97316 !important; }
+    .sidebar [data-menu="hutang"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-hand-holding-usd, .mobile-nav-item[href*="hutang"] i, .mobile-bar-item[href*="hutang"] i { color: #f43f5e !important; }
+    .sidebar [data-menu="laporan"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-chart-line, .mobile-nav-item[href*="laporan"] i, .mobile-bar-item[href*="laporan"] i { color: #8b5cf6 !important; }
     .sidebar [data-menu="laporan-stok"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-boxes { color: #d97706 !important; }
     .sidebar [data-menu="laporan-terlaris"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-crown { color: #eab308 !important; }
     .sidebar [data-menu="telegram"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-telegram, .sidebar .nav-link i.fa-paper-plane { color: #229ed9 !important; }
-    .sidebar [data-menu="pelanggan"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-users { color: #ec4899 !important; }
+    .sidebar [data-menu="pelanggan"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-users, .mobile-nav-item[href*="pelanggan"] i, .mobile-bar-item[href*="pelanggan"] i { color: #ec4899 !important; }
     .sidebar [data-menu="penggajian"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-money-check-alt, .sidebar .nav-link i.fa-money-check-dollar { color: #059669 !important; }
     .sidebar [data-menu="pengguna"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-user-cog, .sidebar .nav-link i.fa-user-gear { color: #4f46e5 !important; }
-    .sidebar [data-menu="setting"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-sliders-h, .sidebar .nav-link i.fa-sliders { color: #64748b !important; }
+    .sidebar [data-menu="setting"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-sliders-h, .sidebar .nav-link i.fa-sliders, .mobile-nav-item[href*="setting"] i, .mobile-bar-item[href*="setting"] i, .mobile-nav-item i.fa-sliders-h, .mobile-bar-item i.fa-sliders-h, .mobile-nav-item i.fa-cog, .mobile-bar-item i.fa-cog, .mobile-nav-item i.fa-gear, .mobile-bar-item i.fa-gear { color: #64748b !important; }
     .sidebar [data-menu="backup"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-cloud-upload-alt, .sidebar .nav-link i.fa-cloud-arrow-up { color: #0ea5e9 !important; }
     .sidebar [data-menu="log-aktivitas"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-clipboard-list { color: #0284c7 !important; }
     .sidebar [data-menu="printer"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-print { color: #7c3aed !important; }
