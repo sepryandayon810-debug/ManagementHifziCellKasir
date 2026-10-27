@@ -312,6 +312,14 @@
     .transaction-type.kas_masuk{background:var(--success-light);color:var(--success)}
     .transaction-type.kas_keluar{background:var(--danger-light);color:var(--danger)}
     .transaction-type.pembelian{background:var(--warning-light);color:var(--warning)}
+    .transaction-type.reseller{background:rgba(124,58,237,.14);color:#7c3aed}
+    [data-theme="dark"] .transaction-type.reseller{background:rgba(139,92,246,.22);color:#c4b5fd}
+    .reseller-counter-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.12rem .45rem;border-radius:6px;background:rgba(124,58,237,.1);color:#7c3aed;font-size:.68rem;font-weight:700}
+    [data-theme="dark"] .reseller-counter-badge{background:rgba(139,92,246,.22);color:#c4b5fd}
+    .reseller-group-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:1rem 1.25rem;margin-bottom:1.15rem;box-shadow:var(--shadow-sm)}
+    .reseller-group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.65rem;margin-top:.75rem}
+    .reseller-counter-item{padding:.7rem .85rem;border-radius:var(--radius-md);border:1.5px solid var(--border);background:var(--bg-subtle);cursor:pointer;transition:all .15s}
+    .reseller-counter-item:hover,.reseller-counter-item.active{border-color:#7c3aed;background:rgba(124,58,237,.08)}
 
     /* EXPAND DETAIL */
     .expand-btn{
@@ -572,26 +580,29 @@
           </div>
 
 <div class="category-tabs">
-  <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
-  <button class="category-tab" data-category="penjualan"><i class="fas fa-shopping-bag"></i> Penjualan (Reguler)</button>
-  <button class="category-tab" data-category="reseller"><i class="fas fa-users"></i> Penjualan Reseller</button>
-  <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
-  <button class="category-tab" data-category="operasional"><i class="fas fa-wallet"></i> Operasional (Kas & Beli)</button>
-  <button class="category-tab" data-category="all">Semua (Audit)</button>
-</div>
+            <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
+            <button class="category-tab" data-category="penjualan">Penjualan Umum</button>
+            <button class="category-tab" data-category="reseller"><i class="fas fa-store"></i> Reseller (Konter)</button>
+            <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
+            <button class="category-tab" data-category="operasional"><i class="fas fa-wallet"></i> Operasional (Kas & Beli)</button>
+            <button class="category-tab" data-category="all">Semua (Audit)</button>
+          </div>
         </div>
 
         <!-- Search Toolbar -->
         <div class="riwayat-search-toolbar">
           <div class="riwayat-search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchRiwayat" placeholder="Cari keterangan, kasir, pelanggan...">
+            <input type="text" id="searchRiwayat" placeholder="Cari keterangan, nama konter, kasir...">
           </div>
         </div>
 
         <!-- Summary Cards Dinamis -->
         <div class="summary-cards" id="summaryCardsContainer"></div>
 
+        <!-- Rekap Pengelompokan Per Nama Konter (Khusus Tab Reseller) -->
+        <div id="resellerGroupContainer" style="display:none;"></div>
+        
         <!-- Transactions Table Card -->
         <div class="card">
           <div class="card-header">
@@ -1073,46 +1084,134 @@ const TYPE_ICONS = {
   return false;
 }
 
+      let activeResellerCounterKey = '';
+
+      function isResellerTx(t) {
+        if (!t || KasCore.getCategory(t) !== 'jual') return false;
+        if (t.resellerMode === true || t.priceMode === 'reseller' || t.isReseller === true) return true;
+        if (t.resellerName && String(t.resellerName).trim() !== '') return true;
+        if (Array.isArray(t.items) && t.items.some(i => i && i.priceType === 'reseller')) return true;
+        return /^reseller\s*:/i.test(String(t.note || t.catatan || '').trim());
+      }
+
+      function getResellerCounterName(t) {
+        const direct = t && (t.resellerName || t.namaKonter || t.customerName);
+        if (direct && String(direct).trim()) return String(direct).trim().replace(/\s+/g, ' ');
+        const noteStr = String((t && (t.note || t.catatan)) || '');
+        const m = noteStr.match(/reseller:\s*([^•|\n]+)/i);
+        if (m && m[1] && m[1].trim()) return m[1].trim().replace(/\s+/g, ' ');
+        return 'Reseller Umum';
+      }
+
+      window.filterByResellerCounter = function(counterKey) {
+        activeResellerCounterKey = activeResellerCounterKey === counterKey ? '' : counterKey;
+        filterAndRender();
+      };
+
+      function renderResellerGroupPanel(resellerTxs) {
+        const box = document.getElementById('resellerGroupContainer');
+        if (!box) return;
+        if (currentFilter !== 'reseller') {
+          box.style.display = 'none';
+          box.innerHTML = '';
+          return;
+        }
+        box.style.display = 'block';
+        if (!resellerTxs.length) {
+          box.innerHTML = '';
+          return;
+        }
+
+        const groups = {};
+        resellerTxs.forEach(t => {
+          const rawName = getResellerCounterName(t);
+          const key = rawName.toLowerCase();
+          if (!groups[key]) {
+            groups[key] = { key, displayName: rawName, txCount: 0, itemQty: 0, omset: 0, profit: 0 };
+          }
+          groups[key].txCount += 1;
+          groups[key].omset += KasCore.getNominal(t);
+          groups[key].profit += KasCore.calculateTransactionProfit(t);
+          if (Array.isArray(t.items)) {
+            groups[key].itemQty += t.items.reduce((s, i) => s + (Number(i.quantity || i.qty) || 1), 0);
+          }
+        });
+
+        const sortedGroups = Object.values(groups).sort((a, b) => b.omset - a.omset);
+        const resetBtnHtml = activeResellerCounterKey
+          ? '<button type="button" class="btn btn-sm btn-secondary" onclick="filterByResellerCounter(\'\')">Tampilkan Semua Konter</button>'
+          : '<span style="font-size:.72rem;color:var(--text-muted);">Klik nama konter untuk filter rincian</span>';
+
+        const cardsHtml = sortedGroups.map(g => {
+          const isAct = activeResellerCounterKey === g.key ? 'active' : '';
+          const safeKey = g.key.replace(/'/g, "\\'");
+          return '<div class="reseller-counter-item ' + isAct + '" onclick="filterByResellerCounter(\'' + safeKey + '\')">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem;">' +
+              '<div style="font-weight:800;font-size:.85rem;color:var(--text-main);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + g.displayName + '</div>' +
+              '<span style="font-size:.68rem;font-weight:700;padding:.1rem .4rem;border-radius:99px;background:rgba(124,58,237,.14);color:#7c3aed;white-space:nowrap;">' + g.txCount + ' Nota</span>' +
+            '</div>' +
+            '<div style="font-size:1.05rem;font-weight:800;color:#7c3aed;margin:.25rem 0 .15rem;">' + Utils.formatRupiah(g.omset) + '</div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);">' +
+              '<span>' + g.itemQty + ' pcs barang</span>' +
+              '<span style="color:var(--success);font-weight:700;">Laba: ' + Utils.formatRupiah(g.profit) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+        box.innerHTML = '<div class="reseller-group-card">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">' +
+            '<div style="font-weight:800;font-size:.9rem;color:var(--text-main);display:flex;align-items:center;gap:.45rem;">' +
+              '<i class="fas fa-store" style="color:#7c3aed;"></i>' +
+              '<span>Rekap Belanja Per Nama Konter / Mitra (' + sortedGroups.length + ' Konter)</span>' +
+            '</div>' + resetBtnHtml +
+          '</div>' +
+          '<div class="reseller-group-grid">' + cardsHtml + '</div>' +
+        '</div>';
+      }
+
       function filterAndRender() {
+        if (currentFilter !== 'reseller' && activeResellerCounterKey) {
+          activeResellerCounterKey = '';
+        }
+
         let filtered = allTransactions;
 
         if (currentFilter !== 'all') {
-  filtered = filtered.filter(t => {
-    if (currentFilter === 'buku_kasir') {
-      const c = KasCore.getCategory(t);
-      return c === 'jual' || c === 'top_up' || c === 'tarik_tunai';
-    }
-    // Tab Penjualan Reguler: HANYA penjualan biasa (bukan reseller)
-    if (currentFilter === 'penjualan') {
-      return KasCore.getCategory(t) === 'jual' && !isResellerTransaction(t);
-    }
-    // Tab Penjualan Reseller: HANYA penjualan kategori jual bertanda reseller
-    if (currentFilter === 'reseller') {
-      return KasCore.getCategory(t) === 'jual' && isResellerTransaction(t);
-    }
-    if (currentFilter === 'topup_tarik') {
-      const c = KasCore.getCategory(t);
-      return c === 'top_up' || c === 'tarik_tunai';
-    }
-    if (currentFilter === 'operasional') {
-      const c = KasCore.getCategory(t);
-      return c === 'kas_masuk' || c === 'kas_keluar' || c === 'pembelian';
-    }
-    return true;
-  });
-}
-        
+          filtered = filtered.filter(t => {
+            const c = KasCore.getCategory(t);
+            if (currentFilter === 'buku_kasir') {
+              return c === 'jual' || c === 'top_up' || c === 'tarik_tunai';
+            }
+            if (currentFilter === 'penjualan') return c === 'jual' && !isResellerTx(t);
+            if (currentFilter === 'reseller') return c === 'jual' && isResellerTx(t);
+            if (currentFilter === 'topup_tarik') {
+              return c === 'top_up' || c === 'tarik_tunai';
+            }
+            if (currentFilter === 'operasional') {
+              return c === 'kas_masuk' || c === 'kas_keluar' || c === 'pembelian';
+            }
+            return true;
+          });
+        }
 
         if (currentSearch) {
           filtered = filtered.filter(t => {
             const desc = getTransactionDesc(t).toLowerCase();
             const note = (t.note || t.catatan || '').toLowerCase();
             const cashier = (t.userName || '').toLowerCase();
-            return desc.includes(currentSearch) || note.includes(currentSearch) || cashier.includes(currentSearch);
+            const konter = isResellerTx(t) ? getResellerCounterName(t).toLowerCase() : '';
+            return desc.includes(currentSearch) || note.includes(currentSearch) || cashier.includes(currentSearch) || konter.includes(currentSearch);
           });
         }
 
-        const chronologicalList = [...filtered].sort((a, b) => {
+        renderResellerGroupPanel(filtered);
+
+        let tableList = filtered;
+        if (currentFilter === 'reseller' && activeResellerCounterKey) {
+          tableList = filtered.filter(t => getResellerCounterName(t).toLowerCase() === activeResellerCounterKey);
+        }
+
+        const chronologicalList = [...tableList].sort((a, b) => {
           return getTimestampMillis(a) - getTimestampMillis(b) ||
             String(a.id).localeCompare(String(b.id));
         });
@@ -1121,15 +1220,15 @@ const TYPE_ICONS = {
           transaction.inputSequence = index + 1;
         });
 
-        filtered.sort((a, b) => {
+        tableList = [...tableList].sort((a, b) => {
           return getTimestampMillis(b) - getTimestampMillis(a) ||
             String(b.id).localeCompare(String(a.id));
         });
 
-        renderTable(filtered);
-        updateSummary(filtered);
+        renderTable(tableList);
+        updateSummary(tableList);
       }
-
+      
       function getTransactionDesc(t) {
   const cat = KasCore.getCategory(t);
   if (cat === 'jual' && t.items && t.items.length > 0) {
@@ -1154,21 +1253,27 @@ const TYPE_ICONS = {
 
         tbody.innerHTML = transactions.map(t => {
           const cat = KasCore.getCategory(t);
-const desc = getTransactionDesc(t);
-const icon = TYPE_ICONS[cat] || 'fa-circle';
-const itemsHtml = buildDetailItems(t);
-const amountValue = KasCore.getNominal(t);
-const displaySeq = t.inputSequence || '-';
+          const isReseller = isResellerTx(t);
+          const konterName = isReseller ? getResellerCounterName(t) : '';
+          const desc = getTransactionDesc(t);
+          const icon = isReseller ? 'fa-store' : (TYPE_ICONS[cat] || 'fa-circle');
+          const itemsHtml = buildDetailItems(t);
+          const amountValue = KasCore.getNominal(t);
+          const displaySeq = t.inputSequence || '-';
+          const typeBadgeHtml = isReseller
+            ? '<span class="transaction-type reseller"><i class="fas fa-store"></i> Reseller</span>'
+            : '<span class="transaction-type ' + cat + '">' + (TYPE_LABELS[cat] || cat) + '</span>';
 
           return `
             <tr class="data-row">
               <td><button class="expand-btn" id="expand-${t.id}" onclick="toggleDetail('${t.id}')"><i class="fas fa-chevron-down"></i></button></td>
               <td style="text-align:center;"><span class="transaction-sequence">${displaySeq}</span></td>
               <td>
-                <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:var(--primary);"></i>${desc}</div>
+                <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:${isReseller ? '#7c3aed' : 'var(--primary)'};"></i>${desc}</div>
+                ${isReseller ? `<div style="margin-top:2px;"><span class="reseller-counter-badge"><i class="fas fa-users"></i> ${konterName}</span></div>` : ''}
               </td>
               <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.waktu || t.timestamp)}</td>
-              <td><span class="transaction-type ${cat}">${TYPE_LABELS[cat] || cat}</span></td>
+              <td>${typeBadgeHtml}</td>
               <td class="hide-on-mobile">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</td>
               <td class="hide-on-mobile">${t.userName || '-'}</td>
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
@@ -1188,16 +1293,20 @@ const displaySeq = t.inputSequence || '-';
       }
 
       function buildDetailItems(t) {
+        const isReseller = isResellerTx(t);
+        const konterName = isReseller ? getResellerCounterName(t) : '-';
         let html = `
           <div class="detail-panel-grid">
             <div class="detail-panel-item"><div class="detail-panel-label">ID Transaksi</div><div class="detail-panel-value" style="font-family:monospace;">${t.id}</div></div>
+            <div class="detail-panel-item"><div class="detail-panel-label">Mode Harga</div><div class="detail-panel-value" style="color:${isReseller ? '#7c3aed' : 'var(--text-main)'};">${isReseller ? 'RESELLER (Harga Mitra)' : 'UMUM (Normal)'}</div></div>
+            ${isReseller ? `<div class="detail-panel-item"><div class="detail-panel-label">Nama Konter / Mitra</div><div class="detail-panel-value" style="color:#7c3aed;">${konterName}</div></div>` : ''}
             <div class="detail-panel-item"><div class="detail-panel-label">Petugas / Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Metode Bayar</div><div class="detail-panel-value">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">${KasCore.getCategory(t) === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${KasCore.getCategory(t) === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(KasCore.calculateTransactionProfit(t))}</div></div>
-
+          </div>
         `;
-
+      
         if (t.items && t.items.length > 0) {
           html += `
             <div style="font-weight:700;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">RINCIAN PRODUK</div>
@@ -1316,20 +1425,41 @@ if (cat === 'pembelian') totalBeli += nominal;
   card3Sub = 'keuntungan bersih reseller';
   card3Icon = 'fa-chart-line';
 
+        } else if (currentFilter === 'reseller') {
+          let totalReseller = 0;
+          let totalLabaReseller = 0;
+          const konterSet = new Set();
+          transactions.forEach(t => {
+            totalReseller += KasCore.getNominal(t);
+            totalLabaReseller += KasCore.calculateTransactionProfit(t);
+            konterSet.add(getResellerCounterName(t).toLowerCase());
+          });
+
+          card1Title = 'OMSET RESELLER';
+          card1Value = Utils.formatRupiah(totalReseller);
+          card1Sub = activeResellerCounterKey ? 'filter 1 konter aktif' : ('dari ' + konterSet.size + ' konter / mitra');
+          card1Icon = 'fa-store';
+          card2Title = 'NOTA RESELLER';
+          card2Sub = konterSet.size + ' konter bertransaksi';
+          card3Title = 'LABA RESELLER';
+          card3Value = Utils.formatRupiah(totalLabaReseller);
+          card3Sub = 'selisih harga reseller - modal';
+          card3Icon = 'fa-chart-line';
+
         } else if (currentFilter === 'penjualan') {
           let totalPenjualan = 0;
           let totalLaba = 0;
           transactions.forEach(t => {
             totalPenjualan += KasCore.getNominal(t);
-totalLaba += KasCore.calculateTransactionProfit(t);
+            totalLaba += KasCore.calculateTransactionProfit(t);
           });
 
-          card1Title = 'TOTAL PENJUALAN';
+          card1Title = 'PENJUALAN UMUM';
           card1Value = Utils.formatRupiah(totalPenjualan);
-          card1Sub = 'penjualan produk';
+          card1Sub = 'penjualan harga normal';
           card1Icon = 'fa-shopping-cart';
-          card2Sub = 'transaksi penjualan';
-          card3Title = 'TOTAL LABA PRODUK';
+          card2Sub = 'nota penjualan umum';
+          card3Title = 'LABA PENJUALAN UMUM';
           card3Value = Utils.formatRupiah(totalLaba);
           card3Sub = 'keuntungan bersih barang';
           card3Icon = 'fa-chart-line';
