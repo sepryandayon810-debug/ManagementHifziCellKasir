@@ -1408,24 +1408,6 @@ if (cat === 'pembelian') totalBeli += nominal;
           card3Icon = 'fa-boxes';
 
         } else if (currentFilter === 'reseller') {
-  let totalReseller = 0;
-  let totalLabaReseller = 0;
-  transactions.forEach(t => {
-    totalReseller += KasCore.getNominal(t);
-    totalLabaReseller += KasCore.calculateTransactionProfit(t);
-  });
-
-  card1Title = 'OMSET RESELLER';
-  card1Value = Utils.formatRupiah(totalReseller);
-  card1Sub = 'total penjualan reseller';
-  card1Icon = 'fa-users';
-  card2Sub = 'transaksi reseller';
-  card3Title = 'LABA RESELLER';
-  card3Value = Utils.formatRupiah(totalLabaReseller);
-  card3Sub = 'keuntungan bersih reseller';
-  card3Icon = 'fa-chart-line';
-
-        } else if (currentFilter === 'reseller') {
           let totalReseller = 0;
           let totalLabaReseller = 0;
           const konterSet = new Set();
@@ -1561,6 +1543,10 @@ if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
         const addressText = address ? '  ' + address + '\n' : '';
         const phoneText = phone ? '  Telp: ' + phone + '\n' : '';
 
+        const isReseller = isResellerTx(t);
+        const konterLine = isReseller
+          ? (' Konter : ' + getResellerCounterName(t) + '\n Tipe   : RESELLER\n')
+          : (t.customerName ? (' Plgn   : ' + t.customerName + '\n') : '');
         const paper = document.getElementById('strukPaper');
         paper.textContent = 
 '================================\n' +
@@ -1572,6 +1558,7 @@ phoneText +
 ' ID     : ' + t.id + '\n' +
 ' Waktu  : ' + formatDateTime(t.waktu || t.timestamp) + '\n' +
 ' Kasir  : ' + (t.userName || '-') + '\n' +
+konterLine +
 '--------------------------------\n' +
 itemsText + '\n' +
 '--------------------------------\n' +
@@ -1607,10 +1594,18 @@ itemsText + '\n' +
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
           let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
           c += '--------------------------------\x0A\x1B\x61\x00';
-          c += 'No   : ' + String(t.inputSequence || '-') + '\x0A';
-          c += 'ID   : ' + t.id + '\x0A';
-          c += 'Tgl  : ' + formatDateTime(t.waktu || t.timestamp) + '\x0A';
-          c += 'Kasir: ' + (t.userName || '-') + '\x0A--------------------------------\x0A';
+          const isReseller = isResellerTx(t);
+          c += 'No    : ' + String(t.inputSequence || '-') + '\x0A';
+          c += 'ID    : ' + t.id + '\x0A';
+          c += 'Tgl   : ' + formatDateTime(t.waktu || t.timestamp) + '\x0A';
+          c += 'Kasir : ' + (t.userName || '-') + '\x0A';
+          if (isReseller) {
+            c += '\x1B\x45\x01Konter: ' + getResellerCounterName(t) + '\x1B\x45\x00\x0A';
+            c += 'Tipe  : RESELLER\x0A';
+          } else if (t.customerName) {
+            c += 'Plgn  : ' + t.customerName + '\x0A';
+          }
+          c += '--------------------------------\x0A';
           if (t.items) {
             t.items.forEach(i => {
               c += (i.name || i.productName) + '\x0A  ' + (i.quantity || i.qty || 1) + ' x ' + Utils.formatRupiah(i.price || i.harga || 0) + ' = ' + Utils.formatRupiah(i.total || 0) + '\x0A';
@@ -1644,76 +1639,68 @@ itemsText + '\n' +
         return Number(item && (item.quantity ?? item.qty ?? item.count ?? 0)) || 0;
       }
 
-      async function restoreStockForTransaction(transaction) {
-        if (KasCore.getCategory(transaction) !== 'jual') return { restored: 0 };
-        // Jika tidak ada detail item, lewati tanpa error agar transaksi tetap bisa dihapus
-        if (!Array.isArray(transaction.items) || transaction.items.length === 0) {
-          return { restored: 0 };
-        }
+      // Cache metadata produk di memori agar hapus berulang tidak baca Firestore terus-menerus
+      const productStockMetaCache = new Map();
+
+      async function appendStockRestoreToBatch(batch, transaction) {
+        if (KasCore.getCategory(transaction) !== 'jual' || transaction.imported === true) return 0;
+        if (!Array.isArray(transaction.items) || transaction.items.length === 0) return 0;
 
         const quantitiesByProduct = new Map();
         (transaction.items || []).forEach(item => {
           const productId = getItemProductId(item);
           const quantity = getItemQuantity(item);
-
-          // LEWATI produk manual atau produk digital tanpa stok
-          if (
-            item.isManual || 
-            item.isUnlimited || 
-            (productId && String(productId).startsWith('manual_'))
-          ) {
+          if (item.isManual || item.isUnlimited || (productId && String(productId).startsWith('manual_'))) {
             return;
           }
-
           if (productId && quantity > 0) {
             const key = String(productId);
             quantitiesByProduct.set(key, (quantitiesByProduct.get(key) || 0) + quantity);
           }
         });
 
-        // Jika semua item adalah produk manual / tidak ada stok fisik, langsung izinkan hapus
-        if (quantitiesByProduct.size === 0) return { restored: 0 };
+        if (quantitiesByProduct.size === 0) return 0;
 
-        const productRefs = [...quantitiesByProduct.keys()].map(productId =>
-          db.collection('products').doc(productId)
-        );
-
-        await db.runTransaction(async firestoreTransaction => {
-          const productSnapshots = [];
-          for (const productRef of productRefs) {
-            productSnapshots.push(await firestoreTransaction.get(productRef));
-          }
-
-          productSnapshots.forEach((productSnapshot, index) => {
-            // Jika produk fisik sudah dihapus dari master produk, jangan gagalkan hapus riwayat
-            if (!productSnapshot.exists) {
-              return;
+        const uncachedIds = [...quantitiesByProduct.keys()].filter(pid => !productStockMetaCache.has(pid));
+        if (uncachedIds.length > 0) {
+          const snaps = await Promise.all(uncachedIds.map(pid => db.collection('products').doc(pid).get()));
+          snaps.forEach((snap, idx) => {
+            const pid = uncachedIds[idx];
+            if (!snap.exists) {
+              productStockMetaCache.set(pid, { exists: false });
+            } else {
+              const pData = snap.data() || {};
+              const stockField = ['stock', 'stockQty', 'quantity', 'qty', 'stok']
+                .find(f => Object.prototype.hasOwnProperty.call(pData, f)) || 'stock';
+              productStockMetaCache.set(pid, {
+                exists: true,
+                isUnlimited: !!pData.isUnlimited,
+                stockField
+              });
             }
-
-            const productData = productSnapshot.data() || {};
-            if (productData.isUnlimited) return; // Produk digital tidak perlu kembalikan stok
-
-            const stockField = ['stock', 'stockQty', 'quantity', 'qty', 'stok']
-              .find(field => Object.prototype.hasOwnProperty.call(productData, field)) || 'stock';
-            const currentStock = Number(productData[stockField]) || 0;
-            const restoredQuantity = quantitiesByProduct.get(productRefs[index].id) || 0;
-            firestoreTransaction.update(productRefs[index], {
-              [stockField]: currentStock + restoredQuantity,
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
           });
-        });
+        }
 
-        return { restored: quantitiesByProduct.size };
+        let restoredCount = 0;
+        quantitiesByProduct.forEach((qty, pid) => {
+          const meta = productStockMetaCache.get(pid);
+          if (!meta || !meta.exists || meta.isUnlimited) return;
+          batch.update(db.collection('products').doc(pid), {
+            [meta.stockField]: firebase.firestore.FieldValue.increment(qty),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          restoredCount++;
+        });
+        return restoredCount;
       }
-      
+
       window.deleteTransaction = function(id) {
         const transaction = allTransactions.find(item => item.id === id);
         if (!transaction) return;
 
         pendingDeleteId = id;
         const message = KasCore.getCategory(transaction) === 'jual'
-          ? 'Transaksi penjualan ini akan dihapus dan stok setiap item akan dikembalikan ke data Produk.'
+          ? 'Transaksi penjualan ini akan dihapus dan stok item fisik akan dikembalikan.'
           : 'Transaksi ini akan dihapus permanen dari riwayat.';
         document.getElementById('deleteConfirmMessage').textContent = message;
         document.getElementById('deleteConfirmModal').classList.add('active');
@@ -1734,53 +1721,51 @@ itemsText + '\n' +
 
         closeDeleteConfirmModal();
         try {
-          Utils.showLoading(KasCore.getCategory(transaction) === 'jual' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
-          const stockResult = await restoreStockForTransaction(transaction);
-          
-          if (KasCore.getCategory(transaction) === 'pembelian') {
-            await db.collection('purchases').doc(id).delete();
+          const cat = KasCore.getCategory(transaction);
+          const met = KasCore.getPaymentMethod(transaction);
+          Utils.showLoading(cat === 'jual' ? 'Mengembalikan stok dan menghapus...' : 'Menghapus...');
+
+          // Gabungkan semua operasi hapus + kembalikan stok ke 1 Batch (tanpa runTransaction & tanpa tulis AuditLogger)
+          const batch = db.batch();
+          const restoredCount = await appendStockRestoreToBatch(batch, transaction);
+
+          if (cat === 'pembelian') {
+            batch.delete(db.collection('purchases').doc(id));
           }
-const cat = KasCore.getCategory(transaction);
-const met = KasCore.getPaymentMethod(transaction);
-if ((cat === 'jual' || cat === 'top_up') && met === 'utang') {
-  await db.collection('debts').where('transactionId','==',id).get()
-    .then(s => Promise.all(s.docs.map(d => d.ref.delete())));
-} else if (cat === 'pinjaman_tunai') {
-  await db.collection('debts').where('transactionId','==',id).get()
-    .then(s => Promise.all(s.docs.map(d => d.ref.delete())));
-}
-await db.collection('transactions').doc(id).delete();
 
-// ⬇️ TAMBAHKAN BARIS INI (Catat ke Log Audit)
-if (window.AuditLogger) {
-  const catName = TYPE_LABELS[KasCore.getCategory(transaction)] || 'Transaksi';
-  const nominalStr = Utils.formatRupiah(KasCore.getNominal(transaction));
-  await AuditLogger.log(
-    'HAPUS_TRANSAKSI',
-    `Menghapus ${catName} (ID: ${id}) senilai ${nominalStr}. Keterangan: ${transaction.note || transaction.catatan || '-'}`,
-    'Riwayat Transaksi',
-    id
-  );
-}
+          if (((cat === 'jual' || cat === 'top_up') && met === 'utang') || cat === 'pinjaman_tunai') {
+            if (transaction.debtId) {
+              batch.delete(db.collection('debts').doc(String(transaction.debtId)));
+            } else {
+              const debtSnap = await db.collection('debts').where('transactionId', '==', id).get();
+              debtSnap.docs.forEach(d => batch.delete(d.ref));
+            }
+          }
 
-Utils.hideLoading();
-Utils.showToast(
-  stockResult.restored
-    ? 'Transaksi dihapus dan stok dikembalikan'
-    : 'Transaksi berhasil dihapus',
-  'success'
-);
+          batch.delete(db.collection('transactions').doc(id));
+          await batch.commit();
 
-// HAPUS LANGSUNG DARI TAMPILAN TANPA DOWNLOAD ULANG DATABASE (HEMAT KUOTA 100%)
-allTransactions = allTransactions.filter(item => item.id !== id);
-filterAndRender();
+          Utils.hideLoading();
+          Utils.showToast(
+            restoredCount > 0
+              ? 'Transaksi dihapus & stok dikembalikan (Hemat Kuota)'
+              : 'Transaksi berhasil dihapus',
+            'success'
+          );
 
+          allTransactions = allTransactions.filter(item => item.id !== id);
+          filterAndRender();
         } catch(e) {
           Utils.hideLoading();
-          Utils.showToast(e.message || 'Gagal menghapus transaksi', 'error');
+          const errMsg = String((e && (e.message || e.code)) || '');
+          if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
+            Utils.showToast('Kuota harian gratis Firebase sedang penuh (reset otomatis jam 14:00-15:00 WIB).', 'error');
+          } else {
+            Utils.showToast(e.message || 'Gagal menghapus transaksi', 'error');
+          }
         }
-        };
-
+      };
+      
       window.editTransaction = function(id) {
         const transaction = allTransactions.find(item => item.id === id);
         if (!transaction) return;
@@ -1858,9 +1843,10 @@ if (window.AuditLogger) {
   );
 }
 
+Object.assign(transaction, updates, { updatedAt: Date.now() });
 closeTransactionEditModal();
 Utils.showToast('Transaksi berhasil diperbarui', 'success');
-          loadTransactions();
+          filterAndRender();
         } catch(e) {
           Utils.showToast(e.message || 'Gagal memperbarui transaksi', 'error');
         } finally {
