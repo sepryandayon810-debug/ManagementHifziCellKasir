@@ -3861,11 +3861,13 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
-    <div class="reseller-toolbar" aria-label="Mode harga">
+   <div class="reseller-toolbar" aria-label="Mode harga">
       <button type="button" class="reseller-mode-btn active" id="btnNormalMode" aria-pressed="true"><i class="fas fa-store"></i>Normal</button>
       <button type="button" class="reseller-mode-btn" id="btnResellerMode" aria-pressed="false"><i class="fas fa-users"></i>Reseller</button>
-      <input type="text" id="resellerCounterInput" placeholder="Nama Konter / Mitra..." 
-    style="display:none; padding:0.35rem 0.65rem; font-size:0.75rem; border:1.5px solid var(--primary); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-primary); outline:none; max-width:170px;">
+      <input type="text" id="resellerCounterInput" list="resellerCounterDatalist" placeholder="Nama Konter / Mitra..." autocomplete="off"
+        oninput="handleResellerCounterInput(this.value)"
+        style="display:none; padding:0.35rem 0.65rem; font-size:0.75rem; border:1.5px solid var(--primary); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-primary); outline:none; max-width:190px;">
+      <datalist id="resellerCounterDatalist"></datalist>
     </div>
 
     <div class="products-container">
@@ -4546,27 +4548,84 @@ async function loadHeaderStats() {
       return value ? String(value) : null;
     }
     function updateResellerModeUI(){var normal=document.getElementById('btnNormalMode'),reseller=document.getElementById('btnResellerMode');if(!normal||!reseller)return;normal.classList.toggle('active',!resellerMode);reseller.classList.toggle('active',resellerMode);normal.setAttribute('aria-pressed',resellerMode?'false':'true');reseller.setAttribute('aria-pressed',resellerMode?'true':'false');}
+   function normalizeCounterName(raw) {
+      return String(raw || '').trim().replace(/\s+/g, ' ');
+    }
+
+    function renderResellerCounterDatalist() {
+      const dl = document.getElementById('resellerCounterDatalist');
+      if (!dl) return;
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem('webpos_reseller_counters') || '[]'); } catch (e) {}
+      const custNames = Object.values(customers || {}).map(c => c && c.name).filter(Boolean);
+      const unique = [...new Set([...saved, ...custNames].map(normalizeCounterName).filter(Boolean))];
+      dl.innerHTML = unique.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '"></option>').join('');
+    }
+
+    function rememberResellerCounterName(name) {
+      const clean = normalizeCounterName(name);
+      if (!clean || clean.toLowerCase() === 'reseller umum') return;
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem('webpos_reseller_counters') || '[]'); } catch (e) {}
+      const next = [clean, ...saved.filter(x => normalizeCounterName(x).toLowerCase() !== clean.toLowerCase())].slice(0, 50);
+      try { localStorage.setItem('webpos_reseller_counters', JSON.stringify(next)); } catch (e) {}
+      renderResellerCounterDatalist();
+    }
+
+    function clearActiveResellerInput() {
+      selectedResellerName = '';
+      const inp = document.getElementById('resellerCounterInput');
+      if (inp) inp.value = '';
+      try { localStorage.removeItem('kasir_reseller_name'); } catch (e) {}
+    }
+
+    window.handleResellerCounterInput = function(val) {
+      selectedResellerName = normalizeCounterName(val);
+      try { localStorage.setItem('kasir_reseller_name', selectedResellerName); } catch (e) {}
+    };
+
+    function getActiveResellerInfo() {
+      const isReseller = Boolean(resellerMode || cart.some(i => i && i.priceType === 'reseller'));
+      const inputEl = document.getElementById('resellerCounterInput');
+      const rawName = normalizeCounterName((inputEl && inputEl.value) || selectedResellerName || localStorage.getItem('kasir_reseller_name') || '');
+      return {
+        isReseller,
+        rawCounterName: rawName,
+        counterName: isReseller ? (rawName || 'Reseller Umum') : ''
+      };
+    }
+
     function setResellerMode(nextMode){
-  if(nextMode && !products.some(p => getResellerPrice(p) !== null)){
-    showToast('Belum ada harga reseller', 'warning');
-    return;
-  }
-  if(cart.length){
-    showToast('Kosongkan keranjang dulu', 'warning');
-    return;
-  }
-  resellerMode = !!nextMode;
+      if(nextMode && !products.some(p => getResellerPrice(p) !== null)){
+        showToast('Belum ada harga reseller', 'warning');
+        return;
+      }
+      if(cart.length){
+        showToast('Kosongkan keranjang dulu', 'warning');
+        return;
+      }
+      resellerMode = !!nextMode;
 
-  // Tampilkan/sembunyikan input nama konter
-  const counterInput = document.getElementById('resellerCounterInput');
-  if (counterInput) {
-    counterInput.style.display = resellerMode ? 'inline-block' : 'none';
-    if (resellerMode) setTimeout(() => counterInput.focus(), 50);
-  }
+      const counterInput = document.getElementById('resellerCounterInput');
+      if (counterInput) {
+        counterInput.style.display = resellerMode ? 'inline-block' : 'none';
+        if (resellerMode) {
+          renderResellerCounterDatalist();
+          const lastSaved = localStorage.getItem('kasir_reseller_name') || '';
+          if (!counterInput.value && lastSaved) {
+            counterInput.value = lastSaved;
+            selectedResellerName = lastSaved;
+          }
+          setTimeout(() => counterInput.focus(), 50);
+        } else {
+          clearActiveResellerInput();
+        }
+      }
 
-  updateResellerModeUI();
-  renderProducts();
-}
+      updateResellerModeUI();
+      renderProducts();
+    }
+  
     function toggleResellerMode(){setResellerMode(!resellerMode);}
   async function syncStoreBrandName() {
   const logoEl = document.querySelector(".logo-text");
@@ -5346,17 +5405,27 @@ await firebase.firestore().collection('debts').doc(result.debtId).update({
   invoiceNumber: result.id
 });
 
-          // ⬇️ TAMBAH: tempel rincian produk + nama kasir ke dokumen transaksi agar muncul di Riwayat
+        // ⬇️ TAMBAH: tempel rincian produk + penanda Reseller & Nama Konter ke dokumen transaksi
+const hutangReseller = getActiveResellerInfo();
+const finalHutangKonter = hutangReseller.isReseller ? (hutangReseller.rawCounterName || piutangName || 'Reseller Umum') : null;
+if (finalHutangKonter) rememberResellerCounterName(finalHutangKonter);
 await firebase.firestore().collection('transactions').doc(result.id).update({
   items: cart.map(i => ({
     productId: i.productId,
     name: i.name,
     price: i.price,
+    cost: toMoney(i.cost || 0),
+    regularPrice: toMoney(i.regularPrice || i.price),
+    priceType: i.priceType || (hutangReseller.isReseller ? 'reseller' : 'regular'),
     quantity: i.quantity,
     total: i.total
   })),
-  userName: document.getElementById('userName').textContent
+  userName: document.getElementById('userName').textContent,
+  priceMode: hutangReseller.isReseller ? 'reseller' : 'regular',
+  resellerMode: hutangReseller.isReseller,
+  resellerName: finalHutangKonter
 });
+if (hutangReseller.isReseller) clearActiveResellerInput();
 
 
 // data tambahan untuk struk
@@ -5448,6 +5517,13 @@ const transaction = {
 
         // ⭐ MUTASI BAKU: Jual Tunai/QRIS/Transfer — sesuai tabel approval
         const db = createFirestoreCompat();
+const saleReseller = getActiveResellerInfo();
+if (saleReseller.isReseller) rememberResellerCounterName(saleReseller.counterName);
+const baseNote = localStorage.getItem('kasir_note') || '';
+const finalSaleNote = saleReseller.isReseller
+  ? ('Reseller: ' + saleReseller.counterName + (baseNote ? ' • ' + baseNote : ''))
+  : baseNote;
+
 const result = await KasCore.saveTransaction({
   kategori: 'jual',
   metode_pembayaran: metodeKasCore,
@@ -5455,23 +5531,31 @@ const result = await KasCore.saveTransaction({
   modal_produk: getCartModal(),
   userId: user ? user.uid : 'unknown',
   shiftId: localStorage.getItem('active_shift_id') || null,
-  customerName: '',
-  catatan: localStorage.getItem('kasir_note') || '',
+  customerName: saleReseller.isReseller ? saleReseller.counterName : '',
+  catatan: finalSaleNote,
   waktu: Date.now()
 });
 
-        // ⬇️ TAMBAH: tempel rincian produk + nama kasir untuk Riwayat (mutasi KasCore tetap utuh)
+        // ⬇️ TAMBAH: tempel rincian produk + penanda Reseller & Nama Konter untuk Riwayat
 await firebase.firestore().collection('transactions').doc(result.id).update({
   items: cart.map(i => ({
     productId: i.productId,
     name: i.name,
     price: i.price,
+    cost: toMoney(i.cost || 0),
+    regularPrice: toMoney(i.regularPrice || i.price),
+    priceType: i.priceType || (saleReseller.isReseller ? 'reseller' : 'regular'),
     quantity: i.quantity,
     total: i.total
   })),
-  userName: document.getElementById('userName').textContent
+  userName: document.getElementById('userName').textContent,
+  customerName: saleReseller.isReseller ? saleReseller.counterName : '',
+  priceMode: saleReseller.isReseller ? 'reseller' : 'regular',
+  resellerMode: saleReseller.isReseller,
+  resellerName: saleReseller.isReseller ? saleReseller.counterName : null
 });
-
+if (saleReseller.isReseller) clearActiveResellerInput();
+        
 // data tambahan untuk struk (KasCore tidak simpan items)
 const transaction = {
   id: result.id,
