@@ -1061,7 +1061,7 @@ const TYPE_ICONS = {
         }
       }
 
-      function isResellerTransaction(t) {
+     function isResellerTransaction(t) {
   if (!t) return false;
   if (t.resellerMode === true || t.isReseller === true) return true;
   if (t.priceMode === 'reseller' || t.tipe_penjualan === 'reseller' || t.tipe_transaksi === 'reseller') return true;
@@ -1077,23 +1077,31 @@ const TYPE_ICONS = {
         let filtered = allTransactions;
 
         if (currentFilter !== 'all') {
-          filtered = filtered.filter(t => {
-           if (currentFilter === 'buku_kasir') {
-  const c = KasCore.getCategory(t);
-  return c === 'jual' || c === 'top_up' || c === 'tarik_tunai';
+  filtered = filtered.filter(t => {
+    if (currentFilter === 'buku_kasir') {
+      const c = KasCore.getCategory(t);
+      return c === 'jual' || c === 'top_up' || c === 'tarik_tunai';
+    }
+    // Tab Penjualan Reguler: HANYA penjualan biasa (bukan reseller)
+    if (currentFilter === 'penjualan') {
+      return KasCore.getCategory(t) === 'jual' && !isResellerTransaction(t);
+    }
+    // Tab Penjualan Reseller: HANYA penjualan kategori jual bertanda reseller
+    if (currentFilter === 'reseller') {
+      return KasCore.getCategory(t) === 'jual' && isResellerTransaction(t);
+    }
+    if (currentFilter === 'topup_tarik') {
+      const c = KasCore.getCategory(t);
+      return c === 'top_up' || c === 'tarik_tunai';
+    }
+    if (currentFilter === 'operasional') {
+      const c = KasCore.getCategory(t);
+      return c === 'kas_masuk' || c === 'kas_keluar' || c === 'pembelian';
+    }
+    return true;
+  });
 }
-if (currentFilter === 'penjualan') return KasCore.getCategory(t) === 'jual';
-if (currentFilter === 'topup_tarik') {
-  const c = KasCore.getCategory(t);
-  return c === 'top_up' || c === 'tarik_tunai';
-}
-if (currentFilter === 'operasional') {
-  const c = KasCore.getCategory(t);
-  return c === 'kas_masuk' || c === 'kas_keluar' || c === 'pembelian';
-}
-            return true;
-          });
-        }
+        
 
         if (currentSearch) {
           filtered = filtered.filter(t => {
