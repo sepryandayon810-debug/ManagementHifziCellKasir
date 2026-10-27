@@ -3864,6 +3864,8 @@ html,body{overflow-x:hidden;max-width:100vw}
     <div class="reseller-toolbar" aria-label="Mode harga">
       <button type="button" class="reseller-mode-btn active" id="btnNormalMode" aria-pressed="true"><i class="fas fa-store"></i>Normal</button>
       <button type="button" class="reseller-mode-btn" id="btnResellerMode" aria-pressed="false"><i class="fas fa-users"></i>Reseller</button>
+      <input type="text" id="resellerCounterInput" placeholder="Nama Konter / Mitra..." 
+    style="display:none; padding:0.35rem 0.65rem; font-size:0.75rem; border:1.5px solid var(--primary); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-primary); outline:none; max-width:170px;">
     </div>
 
     <div class="products-container">
@@ -4544,7 +4546,27 @@ async function loadHeaderStats() {
       return value ? String(value) : null;
     }
     function updateResellerModeUI(){var normal=document.getElementById('btnNormalMode'),reseller=document.getElementById('btnResellerMode');if(!normal||!reseller)return;normal.classList.toggle('active',!resellerMode);reseller.classList.toggle('active',resellerMode);normal.setAttribute('aria-pressed',resellerMode?'false':'true');reseller.setAttribute('aria-pressed',resellerMode?'true':'false');}
-    function setResellerMode(nextMode){if(nextMode&&!products.some(function(p){return getResellerPrice(p)!==null;})){showToast('Belum ada harga reseller','warning');return;}if(cart.length){showToast('Kosongkan keranjang dulu','warning');return;}resellerMode=!!nextMode;updateResellerModeUI();renderProducts();}
+    function setResellerMode(nextMode){
+  if(nextMode && !products.some(p => getResellerPrice(p) !== null)){
+    showToast('Belum ada harga reseller', 'warning');
+    return;
+  }
+  if(cart.length){
+    showToast('Kosongkan keranjang dulu', 'warning');
+    return;
+  }
+  resellerMode = !!nextMode;
+
+  // Tampilkan/sembunyikan input nama konter
+  const counterInput = document.getElementById('resellerCounterInput');
+  if (counterInput) {
+    counterInput.style.display = resellerMode ? 'inline-block' : 'none';
+    if (resellerMode) setTimeout(() => counterInput.focus(), 50);
+  }
+
+  updateResellerModeUI();
+  renderProducts();
+}
     function toggleResellerMode(){setResellerMode(!resellerMode);}
   async function syncStoreBrandName() {
   const logoEl = document.querySelector(".logo-text");
