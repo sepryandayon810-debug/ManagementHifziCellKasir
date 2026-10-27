@@ -301,6 +301,12 @@
       display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:50px;font-size:.68rem;font-weight:700;white-space:nowrap;text-transform:uppercase;
     }
     .transaction-type.jual{background:var(--primary-light);color:var(--primary)}
+    .transaction-type.reseller{background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe}
+[data-theme="dark"] .transaction-type.reseller{background:rgba(126,34,206,0.25);color:#d8b4fe;border-color:rgba(168,85,247,0.4)}
+.badge-reseller-tag{
+  display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:white;font-size:0.62rem;font-weight:800;padding:0.12rem 0.45rem;border-radius:4px;letter-spacing:0.02em;vertical-align:middle;margin-right:0.35rem;box-shadow:0 1px 2px rgba(124,58,237,0.25);
+}
 .transaction-type.top_up{background:var(--success-light);color:var(--success)}
 .transaction-type.tarik_tunai{background:var(--danger-light);color:var(--danger)}
     .transaction-type.kas_masuk{background:var(--success-light);color:var(--success)}
@@ -565,13 +571,14 @@
             <button class="btn btn-primary btn-sm" id="btnFilter"><i class="fas fa-filter"></i> Terapkan</button>
           </div>
 
-          <div class="category-tabs">
-            <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
-            <button class="category-tab" data-category="penjualan">Penjualan</button>
-            <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
-            <button class="category-tab" data-category="operasional"><i class="fas fa-wallet"></i> Operasional (Kas & Beli)</button>
-            <button class="category-tab" data-category="all">Semua (Audit)</button>
-          </div>
+<div class="category-tabs">
+  <button class="category-tab active" data-category="buku_kasir"><i class="fas fa-cash-register"></i> Buku Kasir</button>
+  <button class="category-tab" data-category="penjualan"><i class="fas fa-shopping-bag"></i> Penjualan (Reguler)</button>
+  <button class="category-tab" data-category="reseller"><i class="fas fa-users"></i> Penjualan Reseller</button>
+  <button class="category-tab" data-category="topup_tarik">Top Up & Tarik</button>
+  <button class="category-tab" data-category="operasional"><i class="fas fa-wallet"></i> Operasional (Kas & Beli)</button>
+  <button class="category-tab" data-category="all">Semua (Audit)</button>
+</div>
         </div>
 
         <!-- Search Toolbar -->
@@ -1054,6 +1061,18 @@ const TYPE_ICONS = {
         }
       }
 
+      function isResellerTransaction(t) {
+  if (!t) return false;
+  if (t.resellerMode === true || t.isReseller === true) return true;
+  if (t.priceMode === 'reseller' || t.tipe_penjualan === 'reseller' || t.tipe_transaksi === 'reseller') return true;
+  if (t.kategori === 'reseller' || t.type === 'reseller') return true;
+  if (t.customerType === 'reseller') return true;
+  if (Array.isArray(t.items) && t.items.some(i => i && (i.priceType === 'reseller' || i.isReseller === true))) return true;
+  const note = (t.catatan || t.note || '').toLowerCase();
+  if (note.includes('[reseller]') || note.includes('reseller')) return true;
+  return false;
+}
+
       function filterAndRender() {
         let filtered = allTransactions;
 
@@ -1270,6 +1289,24 @@ if (cat === 'pembelian') totalBeli += nominal;
           card3Value = totalItemsBeli + ' pcs';
           card3Sub = 'stok produk masuk';
           card3Icon = 'fa-boxes';
+
+        } else if (currentFilter === 'reseller') {
+  let totalReseller = 0;
+  let totalLabaReseller = 0;
+  transactions.forEach(t => {
+    totalReseller += KasCore.getNominal(t);
+    totalLabaReseller += KasCore.calculateTransactionProfit(t);
+  });
+
+  card1Title = 'OMSET RESELLER';
+  card1Value = Utils.formatRupiah(totalReseller);
+  card1Sub = 'total penjualan reseller';
+  card1Icon = 'fa-users';
+  card2Sub = 'transaksi reseller';
+  card3Title = 'LABA RESELLER';
+  card3Value = Utils.formatRupiah(totalLabaReseller);
+  card3Sub = 'keuntungan bersih reseller';
+  card3Icon = 'fa-chart-line';
 
         } else if (currentFilter === 'penjualan') {
           let totalPenjualan = 0;
