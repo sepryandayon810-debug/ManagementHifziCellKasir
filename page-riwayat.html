@@ -610,7 +610,8 @@
               <h3 class="card-title"><i class="fas fa-list" style="color:var(--primary);"></i> Daftar Transaksi</h3>
               <span id="trxCount" style="font-size:.78rem; color:var(--text-muted); font-weight:700;"></span>
             </div>
-            <div style="display:flex; gap:0.35rem; align-items:center;">
+            <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-outline btn-sm" onclick="forceRefreshRiwayat()" title="Tarik ulang penuh dari server Firebase"><i class="fas fa-sync-alt" style="color:var(--primary);"></i> Sync</button>
               <button class="btn btn-outline btn-sm" onclick="downloadTemplateRiwayat()" title="Download Template Excel"><i class="fas fa-file-excel" style="color:var(--success);"></i> Template</button>
               <button class="btn btn-outline btn-sm" id="btnOpenImportModal"><i class="fas fa-file-import"></i> Import</button>
               <button class="btn btn-outline btn-sm" id="btnExport"><i class="fas fa-file-export"></i> Export</button>
@@ -955,8 +956,125 @@ const TYPE_ICONS = {
         }
       }
 
+      function toLocalYMD(d) {
+        const dt = d instanceof Date ? d : new Date(d);
+        return dt.getFullYear() + '-' +
+          String(dt.getMonth() + 1).padStart(2, '0') + '-' +
+          String(dt.getDate()).padStart(2, '0');
+      }
+
+      // ================= SMART CACHE INDEXEDDB (HEMAT KUOTA READ 90%+) =================
+      const RIWAYAT_DB_NAME = 'webpos_riwayat_cache_v1';
+      const RIWAYAT_STORE_NAME = 'range_cache';
+
+      function openRiwayatCacheDB() {
+        return new Promise((resolve) => {
+          if (!window.indexedDB) return resolve(null);
+          const req = indexedDB.open(RIWAYAT_DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const idb = e.target.result;
+            if (!idb.objectStoreNames.contains(RIWAYAT_STORE_NAME)) {
+              idb.createObjectStore(RIWAYAT_STORE_NAME, { keyPath: 'rangeKey' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+      }
+
+      function sanitizeForCache(val) {
+        if (val === null || val === undefined) return val;
+        if (typeof val === 'object') {
+          if (typeof val.toMillis === 'function') return val.toMillis();
+          if (typeof val.toDate === 'function') return val.toDate().getTime();
+          if (Array.isArray(val)) return val.map(sanitizeForCache);
+          const out = {};
+          Object.keys(val).forEach(k => {
+            if (typeof val[k] !== 'function') out[k] = sanitizeForCache(val[k]);
+          });
+          return out;
+        }
+        return val;
+      }
+
+      async function readRiwayatCache(rangeKey) {
+        try {
+          const idb = await openRiwayatCacheDB();
+          if (!idb) return null;
+          return await new Promise(resolve => {
+            const tx = idb.transaction(RIWAYAT_STORE_NAME, 'readonly');
+            const req = tx.objectStore(RIWAYAT_STORE_NAME).get(rangeKey);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) { return null; }
+      }
+
+      async function writeRiwayatCache(rangeKey, items, maxWaktu) {
+        try {
+          const idb = await openRiwayatCacheDB();
+          if (!idb) return;
+          const cleanItems = sanitizeForCache(items);
+          await new Promise(resolve => {
+            const tx = idb.transaction(RIWAYAT_STORE_NAME, 'readwrite');
+            tx.objectStore(RIWAYAT_STORE_NAME).put({
+              rangeKey,
+              items: cleanItems,
+              maxWaktu: maxWaktu || Date.now(),
+              savedAt: Date.now()
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+        } catch (e) {}
+      }
+
+      async function syncLocalCacheMutation(mutatorFn) {
+        try {
+          const idb = await openRiwayatCacheDB();
+          if (!idb) return;
+          const allEntries = await new Promise(resolve => {
+            const tx = idb.transaction(RIWAYAT_STORE_NAME, 'readonly');
+            const req = tx.objectStore(RIWAYAT_STORE_NAME).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          });
+          if (!allEntries.length) return;
+          await new Promise(resolve => {
+            const tx = idb.transaction(RIWAYAT_STORE_NAME, 'readwrite');
+            const store = tx.objectStore(RIWAYAT_STORE_NAME);
+            allEntries.forEach(entry => {
+              if (Array.isArray(entry.items)) {
+                entry.items = mutatorFn(entry.items);
+                store.put(entry);
+              }
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+        } catch (e) {}
+      }
+
+      async function clearAllRiwayatCache() {
+        try {
+          const idb = await openRiwayatCacheDB();
+          if (!idb) return;
+          await new Promise(resolve => {
+            const tx = idb.transaction(RIWAYAT_STORE_NAME, 'readwrite');
+            tx.objectStore(RIWAYAT_STORE_NAME).clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+        } catch (e) {}
+      }
+
+      window.forceRefreshRiwayat = async function() {
+        await loadTransactions(true);
+        Utils.showToast('Data riwayat berhasil disinkronkan dari server', 'success');
+      };
+
       function initRiwayat() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = toLocalYMD(new Date());
         document.getElementById('startDate').value = today;
         document.getElementById('endDate').value = today;
 
@@ -970,7 +1088,7 @@ const TYPE_ICONS = {
             } else {
               document.getElementById('customDateFilter').style.display = 'none';
               setDateRange(currentPeriod);
-              loadTransactions();
+              loadTransactions(false);
             }
           };
         });
@@ -989,7 +1107,7 @@ const TYPE_ICONS = {
           filterAndRender();
         };
 
-        document.getElementById('btnFilter').onclick = loadTransactions;
+        document.getElementById('btnFilter').onclick = () => loadTransactions(false);
         document.getElementById('btnExport').onclick = exportData;
 
         document.getElementById('btnOpenImportModal').onclick = () => {
@@ -998,7 +1116,7 @@ const TYPE_ICONS = {
         document.getElementById('btnConfirmImport').onclick = processImport;
 
         setDateRange('today');
-        loadTransactions();
+        loadTransactions(false);
       }
 
       window.closeImportModal = function() {
@@ -1017,13 +1135,14 @@ const TYPE_ICONS = {
         } else if (period === 'month') {
           start = new Date(today.getFullYear(), today.getMonth(), 1);
         }
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        document.getElementById('endDate').value = end.toISOString().split('T')[0];
+        document.getElementById('startDate').value = toLocalYMD(start);
+        document.getElementById('endDate').value = toLocalYMD(end);
       }
 
       function getTimestampMillis(transaction) {
         const value = transaction && (transaction.waktu ?? transaction.timestamp ?? transaction.createdAt ?? transaction.updatedAt);
         if (value && typeof value.toDate === 'function') return value.toDate().getTime();
+        if (value && typeof value === 'object' && typeof value.seconds === 'number') return value.seconds * 1000;
         if (typeof value === 'number') return value < 100000000000 ? value * 1000 : value;
         if (value) {
           const parsed = new Date(value).getTime();
@@ -1034,44 +1153,111 @@ const TYPE_ICONS = {
           if (!Number.isNaN(parsedDate)) return parsedDate;
         }
         if (transaction && transaction.date_key) {
-  const parsedKey = new Date(transaction.date_key + 'T00:00:00').getTime();
-  if (!Number.isNaN(parsedKey)) return parsedKey;
-}
+          const parsedKey = new Date(transaction.date_key + 'T00:00:00').getTime();
+          if (!Number.isNaN(parsedKey)) return parsedKey;
+        }
         return 0;
       }
 
       function formatDateTime(ts) {
         if (!ts) return '-';
-        const d = typeof ts === 'object' && ts.toDate ? ts.toDate() : new Date(ts);
+        const d = typeof ts === 'object' && ts.toDate ? ts.toDate() : (typeof ts === 'object' && typeof ts.seconds === 'number' ? new Date(ts.seconds * 1000) : new Date(ts));
         return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + ' ' +
                d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
       }
 
-      async function loadTransactions() {
+      function getTxDateStr(t) {
+        if (t && typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date)) return t.date;
+        if (t && typeof t.date_key === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date_key)) return t.date_key;
+        const ms = getTimestampMillis(t);
+        return ms > 0 ? toLocalYMD(new Date(ms)) : '';
+      }
+
+      async function loadTransactions(forceServer = false) {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         if (!startDate || !endDate) return;
 
+        const rangeKey = startDate + '_' + endDate;
+        const todayStr = toLocalYMD(new Date());
+        const includesToday = startDate <= todayStr && endDate >= todayStr;
+
+        if (!forceServer) {
+          const cached = await readRiwayatCache(rangeKey);
+          if (cached && Array.isArray(cached.items)) {
+            const cacheAgeMs = Date.now() - (cached.savedAt || 0);
+            if (!includesToday && cacheAgeMs < 6 * 60 * 60 * 1000) {
+              allTransactions = cached.items.filter(t => KasCore.isValidTransaction(t));
+              filterAndRender();
+              return;
+            }
+            if (includesToday && cacheAgeMs < 2 * 60 * 60 * 1000) {
+              const mergedMap = new Map();
+              cached.items.forEach(t => { if (t && t.id) mergedMap.set(String(t.id), t); });
+              let nextMaxWaktu = cached.maxWaktu || 0;
+
+              try {
+                const sinceMs = Math.max(0, nextMaxWaktu - 5000);
+                const deltaSnap = await db.collection('transactions').where('waktu', '>=', sinceMs).get();
+                deltaSnap.forEach(doc => {
+                  const data = { id: doc.id, ...doc.data() };
+                  const dStr = getTxDateStr(data);
+                  if (dStr >= startDate && dStr <= endDate && KasCore.isValidTransaction(data)) {
+                    mergedMap.set(String(doc.id), data);
+                    const w = getTimestampMillis(data);
+                    if (w > nextMaxWaktu) nextMaxWaktu = w;
+                  }
+                });
+                const mergedList = [...mergedMap.values()];
+                allTransactions = mergedList;
+                filterAndRender();
+                await writeRiwayatCache(rangeKey, mergedList, nextMaxWaktu || Date.now());
+                return;
+              } catch (eDelta) {
+                allTransactions = [...mergedMap.values()];
+                filterAndRender();
+                return;
+              }
+            }
+          }
+        }
+
         Utils.showLoading('Memuat riwayat transaksi...');
         try {
-          const startStr = startDate;
-          const endStr = endDate;
-
           const txs = await KasCore.getTransactionsByDateRange({
-            startDate: startStr,
-            endDate: endStr
+            startDate: startDate,
+            endDate: endDate
           });
           allTransactions = txs.filter(t => KasCore.isValidTransaction(t));
+
+          let maxW = 0;
+          allTransactions.forEach(t => {
+            const w = getTimestampMillis(t);
+            if (w > maxW) maxW = w;
+          });
+          await writeRiwayatCache(rangeKey, allTransactions, maxW || Date.now());
 
           filterAndRender();
           Utils.hideLoading();
         } catch (error) {
           console.error("Error loading history:", error);
           Utils.hideLoading();
-          Utils.showToast('Gagal memuat riwayat transaksi', 'error');
+          const fallbackCache = await readRiwayatCache(rangeKey);
+          if (fallbackCache && Array.isArray(fallbackCache.items)) {
+            allTransactions = fallbackCache.items.filter(t => KasCore.isValidTransaction(t));
+            filterAndRender();
+            Utils.showToast('Menampilkan data tersimpan (kuota/koneksi terbatas)', 'warning');
+            return;
+          }
+          const errMsg = String((error && (error.message || error.code)) || '');
+          if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
+            Utils.showToast('Kuota baca harian Firebase penuh (reset otomatis jam 14:00-15:00 WIB)', 'error');
+          } else {
+            Utils.showToast('Gagal memuat riwayat transaksi', 'error');
+          }
         }
       }
-
+      
      function isResellerTransaction(t) {
   if (!t) return false;
   if (t.resellerMode === true || t.isReseller === true) return true;
@@ -1754,6 +1940,7 @@ itemsText + '\n' +
           );
 
           allTransactions = allTransactions.filter(item => item.id !== id);
+          await syncLocalCacheMutation(items => items.filter(item => item.id !== id));
           filterAndRender();
         } catch(e) {
           Utils.hideLoading();
@@ -1844,6 +2031,7 @@ if (window.AuditLogger) {
 }
 
 Object.assign(transaction, updates, { updatedAt: Date.now() });
+await syncLocalCacheMutation(items => items.map(it => it.id === id ? sanitizeForCache(transaction) : it));
 closeTransactionEditModal();
 Utils.showToast('Transaksi berhasil diperbarui', 'success');
           filterAndRender();
@@ -2121,8 +2309,9 @@ loadingText.textContent =
   `Import selesai. Berhasil: ${successCount}, Dilewati: ${skippedCount}`,
   successCount > 0 ? 'success' : 'warning'
 );
-            closeImportModal();
-            loadTransactions();
+           closeImportModal();
+            await clearAllRiwayatCache();
+            loadTransactions(true);
           } catch(err) {
             overlay.classList.remove('active');
             console.error('Import error:', err);
