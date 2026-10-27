@@ -1636,8 +1636,20 @@ html,body{overflow-x:hidden;max-width:100vw}
 }
     
   .reseller-toolbar{display:flex;align-items:center;gap:.5rem;margin:.65rem 0 .85rem;padding:.6rem .75rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg)}
-  .reseller-toolbar{justify-content:flex-end;padding:.35rem;background:var(--bg-secondary);border:none;border-radius:var(--radius-lg)}
+  .reseller-toolbar{justify-content:flex-end;padding:.35rem;background:var(--bg-secondary);border:none;border-radius:var(--radius-lg);position:relative;z-index:45;flex-wrap:wrap}
   .reseller-mode-btn{border:1px solid transparent;background:transparent;color:var(--text-muted);border-radius:var(--radius-md);padding:.5rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;transition:all .15s}
+  .reseller-counter-wrap{position:relative;display:none;align-items:center}
+  .reseller-counter-input{padding:.42rem 1.8rem .42rem .65rem;font-size:.76rem;font-weight:600;border:1.5px solid var(--primary);border-radius:var(--radius-md);background:var(--bg-card);color:var(--text-primary);outline:none;width:185px;font-family:inherit}
+  .reseller-counter-clear{position:absolute;right:5px;width:20px;height:20px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:none;align-items:center;justify-content:center;border-radius:50%;font-size:.7rem}
+  .reseller-counter-clear:hover{background:var(--bg-secondary);color:var(--danger)}
+  .reseller-dd-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;max-width:270px;max-height:220px;overflow-y:auto;background:var(--bg-card);border:1.5px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:999;display:none;padding:.35rem}
+  .reseller-dd-menu.open{display:block}
+  .reseller-dd-header{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);padding:.25rem .5rem;display:flex;justify-content:space-between;align-items:center}
+  .reseller-dd-item{display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.42rem .55rem;border-radius:var(--radius-md);cursor:pointer;font-size:.78rem;font-weight:600;color:var(--text-primary);transition:background .12s}
+  .reseller-dd-item:hover{background:var(--primary-light);color:var(--primary)}
+  .reseller-dd-del{width:22px;height:22px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:var(--danger);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;flex-shrink:0}
+  .reseller-dd-del:hover{background:var(--danger);color:#fff}
+  .reseller-dd-empty{padding:.55rem;font-size:.73rem;color:var(--text-muted);text-align:center}
   .reseller-mode-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
   .reseller-price-note{font-size:.62rem;color:var(--success);font-weight:700;display:block;line-height:1.1}
   [data-theme-color="indigo"] .product-card:hover{border-color:var(--primary);box-shadow:0 12px 24px rgba(79,70,229,.12)}
@@ -3864,10 +3876,13 @@ html,body{overflow-x:hidden;max-width:100vw}
    <div class="reseller-toolbar" aria-label="Mode harga">
       <button type="button" class="reseller-mode-btn active" id="btnNormalMode" aria-pressed="true"><i class="fas fa-store"></i>Normal</button>
       <button type="button" class="reseller-mode-btn" id="btnResellerMode" aria-pressed="false"><i class="fas fa-users"></i>Reseller</button>
-      <input type="text" id="resellerCounterInput" list="resellerCounterDatalist" placeholder="Nama Konter / Mitra..." autocomplete="off"
-        oninput="handleResellerCounterInput(this.value)"
-        style="display:none; padding:0.35rem 0.65rem; font-size:0.75rem; border:1.5px solid var(--primary); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-primary); outline:none; max-width:190px;">
-      <datalist id="resellerCounterDatalist"></datalist>
+      <div class="reseller-counter-wrap" id="resellerCounterWrap">
+        <input type="text" id="resellerCounterInput" class="reseller-counter-input" placeholder="Nama Konter / Mitra..." autocomplete="off"
+          onfocus="openResellerDropdown()"
+          oninput="handleResellerCounterInput(this.value)">
+        <button type="button" class="reseller-counter-clear" id="btnClearResellerInput" onclick="clearActiveResellerInput(true)" title="Kosongkan ketikan"><i class="fas fa-times"></i></button>
+        <div class="reseller-dd-menu" id="resellerCounterDropdown"></div>
+      </div>
     </div>
 
     <div class="products-container">
@@ -4552,36 +4567,129 @@ async function loadHeaderStats() {
       return String(raw || '').trim().replace(/\s+/g, ' ');
     }
 
-    function renderResellerCounterDatalist() {
-      const dl = document.getElementById('resellerCounterDatalist');
-      if (!dl) return;
-      let saved = [];
-      try { saved = JSON.parse(localStorage.getItem('webpos_reseller_counters') || '[]'); } catch (e) {}
-      const custNames = Object.values(customers || {}).map(c => c && c.name).filter(Boolean);
-      const unique = [...new Set([...saved, ...custNames].map(normalizeCounterName).filter(Boolean))];
-      dl.innerHTML = unique.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '"></option>').join('');
+    function getSavedResellerCounters() {
+      try {
+        const list = JSON.parse(localStorage.getItem('webpos_reseller_counters') || '[]');
+        return Array.isArray(list) ? list.map(normalizeCounterName).filter(Boolean) : [];
+      } catch (e) { return []; }
     }
+
+    function syncClearBtnVisibility() {
+      const btn = document.getElementById('btnClearResellerInput');
+      const inp = document.getElementById('resellerCounterInput');
+      if (btn && inp) btn.style.display = inp.value.trim() ? 'inline-flex' : 'none';
+    }
+
+    function renderResellerCounterDatalist(filterText = '') {
+      const menu = document.getElementById('resellerCounterDropdown');
+      if (!menu) return;
+      const saved = getSavedResellerCounters();
+      const q = normalizeCounterName(filterText).toLowerCase();
+      const filtered = q ? saved.filter(n => n.toLowerCase().includes(q)) : saved;
+      const exactExists = q && saved.some(n => n.toLowerCase() === q);
+
+      let html = '<div class="reseller-dd-header"><span>Daftar Konter Tersimpan</span><span>' + saved.length + '</span></div>';
+
+      if (q && !exactExists) {
+        const safeTyped = normalizeCounterName(filterText).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        html += '<div class="reseller-dd-item" style="color:var(--primary);" onclick="saveAndSelectResellerCounter(\'' + safeTyped + '\')">' +
+          '<span><i class="fas fa-plus-circle" style="margin-right:5px;"></i>Simpan "' + normalizeCounterName(filterText) + '"</span>' +
+          '</div>';
+      }
+
+      if (filtered.length === 0) {
+        if (!q) {
+          html += '<div class="reseller-dd-empty">Ketik nama konter baru (otomatis tersimpan saat bayar)</div>';
+        }
+      } else {
+        html += filtered.map(name => {
+          const safeJs = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return '<div class="reseller-dd-item" onclick="selectResellerCounterName(\'' + safeJs + '\')">' +
+            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-store" style="margin-right:6px;opacity:.65;font-size:.7rem;"></i>' + name + '</span>' +
+            '<button type="button" class="reseller-dd-del" onclick="deleteResellerCounterName(event, \'' + safeJs + '\')" title="Hapus nama konter ini"><i class="fas fa-trash-alt"></i></button>' +
+          '</div>';
+        }).join('');
+      }
+      menu.innerHTML = html;
+    }
+
+    window.openResellerDropdown = function() {
+      const inp = document.getElementById('resellerCounterInput');
+      const menu = document.getElementById('resellerCounterDropdown');
+      if (!menu) return;
+      renderResellerCounterDatalist(inp ? inp.value : '');
+      menu.classList.add('open');
+    };
+
+    window.closeResellerDropdown = function() {
+      const menu = document.getElementById('resellerCounterDropdown');
+      if (menu) menu.classList.remove('open');
+    };
+
+    window.selectResellerCounterName = function(name) {
+      const clean = normalizeCounterName(name);
+      selectedResellerName = clean;
+      const inp = document.getElementById('resellerCounterInput');
+      if (inp) inp.value = clean;
+      try { localStorage.setItem('kasir_reseller_name', clean); } catch (e) {}
+      syncClearBtnVisibility();
+      closeResellerDropdown();
+    };
+
+    window.saveAndSelectResellerCounter = function(name) {
+      rememberResellerCounterName(name);
+      window.selectResellerCounterName(name);
+      showToast('Konter "' + normalizeCounterName(name) + '" disimpan', 'success');
+    };
+
+    window.deleteResellerCounterName = function(e, name) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      const targetLower = normalizeCounterName(name).toLowerCase();
+      const next = getSavedResellerCounters().filter(x => x.toLowerCase() !== targetLower);
+      try { localStorage.setItem('webpos_reseller_counters', JSON.stringify(next)); } catch (err) {}
+      if (selectedResellerName.toLowerCase() === targetLower) {
+        clearActiveResellerInput(false);
+      }
+      const inp = document.getElementById('resellerCounterInput');
+      renderResellerCounterDatalist(inp ? inp.value : '');
+      showToast('Nama konter "' + name + '" dihapus', 'info');
+    };
+
+    document.addEventListener('click', function(ev) {
+      const wrap = document.getElementById('resellerCounterWrap');
+      if (wrap && !wrap.contains(ev.target)) closeResellerDropdown();
+    });
 
     function rememberResellerCounterName(name) {
       const clean = normalizeCounterName(name);
       if (!clean || clean.toLowerCase() === 'reseller umum') return;
-      let saved = [];
-      try { saved = JSON.parse(localStorage.getItem('webpos_reseller_counters') || '[]'); } catch (e) {}
-      const next = [clean, ...saved.filter(x => normalizeCounterName(x).toLowerCase() !== clean.toLowerCase())].slice(0, 50);
+      const saved = getSavedResellerCounters();
+      const next = [clean, ...saved.filter(x => x.toLowerCase() !== clean.toLowerCase())].slice(0, 50);
       try { localStorage.setItem('webpos_reseller_counters', JSON.stringify(next)); } catch (e) {}
       renderResellerCounterDatalist();
     }
 
-    function clearActiveResellerInput() {
+    window.clearActiveResellerInput = function(keepFocus = false) {
       selectedResellerName = '';
       const inp = document.getElementById('resellerCounterInput');
-      if (inp) inp.value = '';
+      if (inp) {
+        inp.value = '';
+        if (keepFocus) {
+          renderResellerCounterDatalist('');
+          inp.focus();
+        }
+      }
+      syncClearBtnVisibility();
       try { localStorage.removeItem('kasir_reseller_name'); } catch (e) {}
-    }
+    };
 
     window.handleResellerCounterInput = function(val) {
       selectedResellerName = normalizeCounterName(val);
       try { localStorage.setItem('kasir_reseller_name', selectedResellerName); } catch (e) {}
+      syncClearBtnVisibility();
+      renderResellerCounterDatalist(val);
+      const menu = document.getElementById('resellerCounterDropdown');
+      if (menu) menu.classList.add('open');
     };
 
     function getActiveResellerInfo() {
@@ -4606,26 +4714,28 @@ async function loadHeaderStats() {
       }
       resellerMode = !!nextMode;
 
+      const wrap = document.getElementById('resellerCounterWrap');
       const counterInput = document.getElementById('resellerCounterInput');
+      if (wrap) wrap.style.display = resellerMode ? 'inline-flex' : 'none';
       if (counterInput) {
-        counterInput.style.display = resellerMode ? 'inline-block' : 'none';
         if (resellerMode) {
-          renderResellerCounterDatalist();
           const lastSaved = localStorage.getItem('kasir_reseller_name') || '';
           if (!counterInput.value && lastSaved) {
             counterInput.value = lastSaved;
             selectedResellerName = lastSaved;
           }
+          syncClearBtnVisibility();
+          renderResellerCounterDatalist(counterInput.value);
           setTimeout(() => counterInput.focus(), 50);
         } else {
-          clearActiveResellerInput();
+          closeResellerDropdown();
+          clearActiveResellerInput(false);
         }
       }
 
       updateResellerModeUI();
       renderProducts();
-    }
-  
+    }  
     function toggleResellerMode(){setResellerMode(!resellerMode);}
   async function syncStoreBrandName() {
   const logoEl = document.querySelector(".logo-text");
