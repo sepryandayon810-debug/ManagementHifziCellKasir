@@ -5292,12 +5292,15 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
             date_key: todayStr,
             cashierName: document.getElementById('userName').textContent,
             status: 'pending_sync',
-            priceMode: resellerMode ? 'reseller' : 'regular',
-            resellerMode: resellerMode,
-            resellerName: selectedResellerName || null
+            priceMode: getActiveResellerInfo().isReseller ? 'reseller' : 'regular',
+            resellerMode: getActiveResellerInfo().isReseller,
+            resellerName: getActiveResellerInfo().isReseller ? getActiveResellerInfo().counterName : null
           };
+          if (transactionData.resellerMode) {
+            rememberResellerCounterName(transactionData.resellerName);
+            clearActiveResellerInput();
+          }
           await saveOfflineTransaction(transactionData);
-
           // Kurangi stok lokal
           for (const item of cart) {
             const prod = products.find(p => p.id === item.productId);
@@ -5417,6 +5420,8 @@ await firebase.firestore().collection('transactions').doc(result.id).update({
     cost: toMoney(i.cost || 0),
     regularPrice: toMoney(i.regularPrice || i.price),
     priceType: i.priceType || (hutangReseller.isReseller ? 'reseller' : 'regular'),
+    isUnlimited: !!i.isUnlimited,
+    isManual: !!i.isManual,
     quantity: i.quantity,
     total: i.total
   })),
@@ -5439,6 +5444,9 @@ const transaction = {
   paymentAmount: piutangPayment,
   remainingPiutang: remainingDebt > 0 ? remainingDebt : 0,
   customerName: piutangName,
+  priceMode: hutangReseller.isReseller ? 'reseller' : 'regular',
+  resellerMode: hutangReseller.isReseller,
+  resellerName: finalHutangKonter,
   cashierName: document.getElementById('userName').textContent,
   timestamp: Date.now()
 };
@@ -5545,6 +5553,8 @@ await firebase.firestore().collection('transactions').doc(result.id).update({
     cost: toMoney(i.cost || 0),
     regularPrice: toMoney(i.regularPrice || i.price),
     priceType: i.priceType || (saleReseller.isReseller ? 'reseller' : 'regular'),
+    isUnlimited: !!i.isUnlimited,
+    isManual: !!i.isManual,
     quantity: i.quantity,
     total: i.total
   })),
@@ -5566,6 +5576,10 @@ const transaction = {
   paymentMethod,
   paymentAmount,
   change: paymentAmount - total,
+  customerName: saleReseller.isReseller ? saleReseller.counterName : '',
+  priceMode: saleReseller.isReseller ? 'reseller' : 'regular',
+  resellerMode: saleReseller.isReseller,
+  resellerName: saleReseller.isReseller ? saleReseller.counterName : null,
   cashierName: document.getElementById('userName').textContent,
   timestamp: Date.now()
 };
@@ -6174,10 +6188,18 @@ document.addEventListener('keydown', (e) => {
       if (address) c += CENTER + address + FEED;
       if (phone) c += CENTER + 'HP: ' + phone + FEED;
       c += CENTER + '------------------------------' + FEED;
+      const isResellerTx = Boolean(tx.resellerMode || tx.priceMode === 'reseller' || tx.resellerName || (Array.isArray(tx.items) && tx.items.some(i => i && i.priceType === 'reseller')));
+      const konterName = isResellerTx ? (tx.resellerName || tx.customerName || 'Reseller Umum') : '';
       c += LEFT;
-      c += 'No   : ' + tx.id + FEED;
-      c += 'Tgl  : ' + date + ' ' + time + FEED;
-      c += 'Kasir: ' + (tx.cashierName || '-') + FEED;
+      c += 'No    : ' + tx.id + FEED;
+      c += 'Tgl   : ' + date + ' ' + time + FEED;
+      c += 'Kasir : ' + (tx.cashierName || '-') + FEED;
+      if (isResellerTx) {
+        c += BOLD_ON + 'Konter: ' + konterName + BOLD_OFF + FEED;
+        c += 'Tipe  : RESELLER' + FEED;
+      } else if (tx.customerName) {
+        c += 'Plgn  : ' + tx.customerName + FEED;
+      }
       c += '------------------------------' + FEED;
 
       tx.items.forEach(item => {
@@ -6216,10 +6238,17 @@ document.addEventListener('keydown', (e) => {
       if (address) lines.push(address);
       if (phone) lines.push('HP: ' + phone);
       lines.push('================================');
-      lines.push('BUKTI PENJUALAN');
-      lines.push('No   : ' + tx.id);
-      lines.push('Tgl  : ' + date + ' ' + time);
-      lines.push('Kasir: ' + (tx.cashierName || '-'));
+      const isResellerTx = Boolean(tx.resellerMode || tx.priceMode === 'reseller' || tx.resellerName || (Array.isArray(tx.items) && tx.items.some(i => i && i.priceType === 'reseller')));
+      const konterName = isResellerTx ? (tx.resellerName || tx.customerName || 'Reseller Umum') : '';
+      lines.push(isResellerTx ? 'BUKTI PENJUALAN RESELLER' : 'BUKTI PENJUALAN');
+      lines.push('No    : ' + tx.id);
+      lines.push('Tgl   : ' + date + ' ' + time);
+      lines.push('Kasir : ' + (tx.cashierName || '-'));
+      if (isResellerTx) {
+        lines.push('Konter: ' + konterName);
+      } else if (tx.customerName) {
+        lines.push('Plgn  : ' + tx.customerName);
+      }
       lines.push('--------------------------------');
 
       tx.items.forEach(item => {
