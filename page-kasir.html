@@ -2477,35 +2477,48 @@ html,body{overflow-x:hidden;max-width:100vw}
   .main-header {
     height: auto !important;
     min-height: 0 !important;
-
     display: grid !important;
-
     grid-template-columns: 1fr auto !important;
-    grid-template-rows:
-      auto
-      auto
-      auto !important;
-
+    grid-template-rows: auto auto auto !important;
     align-items: center !important;
-
     gap: .35rem .5rem !important;
-
     padding: .5rem 1rem !important;
-
     overflow: visible !important;
   }
 
-  /* Kasir */
+  /* Baris 1 Kiri: Judul Kasir */
   .main-header .header-left {
     grid-column: 1 !important;
     grid-row: 1 !important;
-
     width: auto !important;
-
     display: flex !important;
     align-items: center !important;
-
     gap: .65rem !important;
+  }
+
+  /* Baris 1 Kanan: Tombol Dark Mode & Logout (Terkunci di Atas) */
+  .main-header .header-actions {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: .35rem !important;
+    margin-left: auto !important;
+  }
+
+  /* Baris 2: 3 Statistik */
+  .main-header .header-stats {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+  }
+
+  /* Baris 3: Uang Global */
+  .main-header .header-stats-global {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
   }
 
   .main-header .header-actions {
@@ -7552,15 +7565,38 @@ async function saveKasirSisa() {
   }
 }
 
-async function promptEditKasirStatic(toolName) {
+let currentEditingKasirStaticTool = null;
+
+function openKasirStaticEditBox(toolName) {
+  currentEditingKasirStaticTool = toolName;
   const currentText = toolName === 'UANG KASIR' 
     ? document.getElementById('kasirStatUangKasir').textContent 
     : document.getElementById('kasirStatUangTas').textContent;
   const currentVal = parseInt(currentText.replace(/\D/g, '')) || 0;
 
-  const inputVal = prompt(`Ubah ${toolName}:`, currentVal);
-  if (inputVal === null) return;
-  const nominal = parseInt(inputVal) || 0;
+  const box = document.getElementById('kasirStaticEditBox');
+  const title = document.getElementById('kasirStaticEditTitle');
+  const input = document.getElementById('inputKasirStaticNominal');
+  
+  if (box && title && input) {
+    title.textContent = 'Ubah ' + toolName;
+    input.value = currentVal;
+    box.style.display = 'block';
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  }
+}
+
+function closeKasirStaticEditBox() {
+  const box = document.getElementById('kasirStaticEditBox');
+  if (box) box.style.display = 'none';
+  currentEditingKasirStaticTool = null;
+}
+
+async function confirmSaveKasirStatic() {
+  if (!currentEditingKasirStaticTool) return;
+  const input = document.getElementById('inputKasirStaticNominal');
+  const nominal = parseInt(input.value) || 0;
+  const toolName = currentEditingKasirStaticTool;
 
   const now = new Date();
   try {
@@ -7573,6 +7609,7 @@ async function promptEditKasirStatic(toolName) {
     });
 
     showToast(`${toolName} berhasil diperbarui jadi ${formatRupiah(nominal)}`, 'success');
+    closeKasirStaticEditBox();
     await loadKasirSaldoModalData();
   } catch(err) {
     showToast('Gagal update: ' + err.message, 'error');
@@ -8569,15 +8606,24 @@ function renderRekapFromCurrentState() {
           <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.65rem; padding:0.55rem 0.65rem;">
             <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">UANG KASIR</div>
             <div style="font-size:0.95rem; font-weight:800; color:var(--success); margin:0.15rem 0;" id="kasirStatUangKasir">Rp 0</div>
-            <button type="button" class="btn btn-sm btn-outline" onclick="promptEditKasirStatic('UANG KASIR')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="openKasirStaticEditBox('UANG KASIR')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
           </div>
           <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.65rem; padding:0.55rem 0.65rem;">
             <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">UANG TAS</div>
             <div style="font-size:0.95rem; font-weight:800; color:var(--warning); margin:0.15rem 0;" id="kasirStatUangTas">Rp 0</div>
-            <button type="button" class="btn btn-sm btn-outline" onclick="promptEditKasirStatic('UANG TAS')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="openKasirStaticEditBox('UANG TAS')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
           </div>
         </div>
 
+        <!-- Form Edit Uang Kasir / Tas (Pengganti Window Prompt Bawaan) -->
+        <div id="kasirStaticEditBox" style="display:none; background:var(--bg-card); border:1.5px solid var(--primary); border-radius:0.65rem; padding:0.65rem; margin-bottom:0.75rem;">
+          <div style="font-size:0.75rem; font-weight:800; color:var(--primary); margin-bottom:0.35rem;" id="kasirStaticEditTitle">Ubah Saldo</div>
+          <div style="display:flex; gap:0.4rem;">
+            <input type="number" id="inputKasirStaticNominal" class="form-input" placeholder="0" min="0" style="padding:0.4rem 0.6rem; font-size:0.85rem; font-weight:700; flex:1;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="confirmSaveKasirStatic()" style="font-size:0.75rem; padding:0.4rem 0.75rem;">Simpan</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeKasirStaticEditBox()" style="font-size:0.75rem; padding:0.4rem 0.6rem;">Batal</button>
+          </div>
+        </div>
         <!-- Pilih Tools Sisa Saldo -->
         <label class="form-label" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem; display:block;">
           Catat Sisa Saldo Akun:
