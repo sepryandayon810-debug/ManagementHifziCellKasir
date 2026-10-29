@@ -5341,6 +5341,9 @@ function renderCart() {
       showCustomConfirm('Yakin ingin mengosongkan keranjang?', () => {
         cart = [];
         discount = 0;
+        discountType = 'nominal';
+        discountPercent = 0;
+        discountNote = '';
         saveCart();
         renderCart();
         updateSummary();
@@ -5814,7 +5817,7 @@ const transaction = {
       }
       /* ============ END TAMBAHAN MODE PIUTANG ============ */
 
-      if (paymentAmount < total) {
+      if (paymentAmount < total && total > 0) {
         showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
         return;
       }
@@ -5875,11 +5878,17 @@ await firebase.firestore().collection('transactions').doc(result.id).update({
     total: i.total
   })),
   userName: document.getElementById('userName').textContent,
-  customerName: saleReseller.isReseller ? saleReseller.counterName : '',
+  customerName: saleReseller.isReseller ? saleReseller.counterName : ((discountNote && discountNote.toLowerCase().includes('owner')) ? 'Owner' : ''),
   priceMode: saleReseller.isReseller ? 'reseller' : 'regular',
   resellerMode: saleReseller.isReseller,
-  resellerName: saleReseller.isReseller ? saleReseller.counterName : null
+  resellerName: saleReseller.isReseller ? saleReseller.counterName : null,
+  subtotal: subtotal,
+  diskon: discount,
+  discount: discount,
+  discountNote: discountNote || null,
+  isOwnerTake: Boolean(discountNote && discountNote.toLowerCase().includes('owner'))
 });
+        
 if (saleReseller.isReseller) clearActiveResellerInput();
         
 // data tambahan untuk struk (KasCore tidak simpan items)
@@ -5915,6 +5924,9 @@ const transaction = {
 
         cart = [];
         discount = 0;
+        discountType = 'nominal';
+        discountPercent = 0;
+        discountNote = '';
         localStorage.removeItem('kasir_note');
         saveCart();
         renderCart();
