@@ -3933,6 +3933,19 @@ html,body{overflow-x:hidden;max-width:100vw}
       <span>Subtotal</span>
       <span id="subtotal">Rp 0</span>
     </div>
+
+    <!-- ⬇️ SISIPKAN BLOK INI ⬇️ -->
+<div class="summary-row discount" id="cartDiscountRow" style="display:none;color:var(--success);cursor:pointer;font-weight:600;" onclick="openDiscountModal()">
+  <span><i class="fas fa-tag"></i> Diskon <span id="cartDiscountLabel" style="font-size:0.75rem;opacity:0.85;"></span></span>
+  <span id="cartDiscountValue">-Rp 0</span>
+</div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:0.35rem;">
+  <button type="button" class="btn-discount-trigger" id="btnOpenDiscount" onclick="openDiscountModal()" style="background:none;border:none;color:var(--primary);font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:0.3rem;">
+    <i class="fas fa-percent"></i> <span id="btnDiscountText">+ Diskon / Ambil Owner</span>
+  </button>
+</div>
+<!-- ⬆️ BATAS SISIPAN ⬆️ -->
+    
         <div class="summary-row total">
       <span>Total</span>
       <span id="total">Rp 0</span>
@@ -4536,7 +4549,10 @@ async function loadHeaderStats() {
     let products = [];
     let categories = [];
     let cart = [];
-    let discount = 0;
+let discount = 0;
+let discountType = 'nominal'; // 'nominal' atau 'percent'
+let discountPercent = 0;
+let discountNote = '';
     let currentCategory = 'all';
     let currentSort = 'az'; // 'default', 'az', 'za'
     let currentView = localStorage.getItem('webpos_kasir_view') || 'list'
@@ -4550,8 +4566,8 @@ async function loadHeaderStats() {
     // ===== ANGKA, HARGA, DAN SETTING TERPUSAT =====
     function toMoney(value) { const n=Number(String(value==null?0:value).replace(/[^0-9-]/g,'')); return Number.isFinite(n)?Math.round(n):0; }
     function getCartSubtotal() { return cart.reduce(function(s,i){return s+toMoney(i.price)*Math.max(0,toMoney(i.quantity));},0); }
-    function getCartProfit() { return cart.reduce(function(s,i){return s+(toMoney(i.price)-toMoney(i.cost))*Math.max(0,toMoney(i.quantity));},0); }
-    function getCartModal(){ return cart.reduce(function(s,i){ return s + toMoney(i.cost) * Math.max(0,toMoney(i.quantity)); },0); }
+function getCartProfit() { return Math.round(cart.reduce(function(s,i){return s+(toMoney(i.price)-toMoney(i.cost))*Math.max(0,toMoney(i.quantity));},0) - toMoney(discount)); }
+  function getCartModal(){ return cart.reduce(function(s,i){ return s + toMoney(i.cost) * Math.max(0,toMoney(i.quantity)); },0); }
     function normalizeCart() { cart=Array.isArray(cart)?cart.map(function(i){var price=toMoney(i.price),cost=toMoney(i.cost),quantity=Math.max(1,toMoney(i.quantity)||1);return Object.assign({},i,{price:price,cost:cost,quantity:quantity,total:price*quantity});}):[]; }
     function getResellerPrice(product) {
       if(!product) return null;
@@ -5152,14 +5168,36 @@ function renderCart() {
     // ===== UPDATE SUMMARY =====
     function updateSummary() {
   const subtotal = getCartSubtotal();
-  document.getElementById('subtotal').textContent = formatRupiah(subtotal);
-  document.getElementById('total').textContent = formatRupiah(subtotal);
+  const total = calculateTotal();
+  const subtotalEl = document.getElementById('subtotal');
+  if (subtotalEl) subtotalEl.textContent = formatRupiah(subtotal);
+
+  const discountRow = document.getElementById('cartDiscountRow');
+  const discountVal = document.getElementById('cartDiscountValue');
+  const discountLabel = document.getElementById('cartDiscountLabel');
+  const btnDiscText = document.getElementById('btnDiscountText');
+
+  if (discount > 0) {
+    if (discountRow) discountRow.style.display = 'flex';
+    if (discountVal) discountVal.textContent = '-' + formatRupiah(discount);
+    if (discountLabel) {
+      discountLabel.textContent = discountNote ? `(${discountNote})` : (discountType === 'percent' ? `(${discountPercent}%)` : '');
+    }
+    if (btnDiscText) btnDiscText.textContent = discountNote ? `Diskon: ${discountNote}` : 'Ubah Diskon';
+  } else {
+    if (discountRow) discountRow.style.display = 'none';
+    if (btnDiscText) btnDiscText.textContent = '+ Diskon / Ambil Owner';
+  }
+
+  const totalEl = document.getElementById('total');
+  if (totalEl) totalEl.textContent = formatRupiah(total);
 }
 
     function calculateTotal() {
-  return getCartSubtotal();
+  const subtotal = getCartSubtotal();
+  return Math.max(0, subtotal - toMoney(discount));
 }
-    
+  
     // ===== SAVE / LOAD CART =====
     function saveCart() {
       try {
