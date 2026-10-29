@@ -3600,11 +3600,10 @@ html,body{overflow-x:hidden;max-width:100vw}
       <span class="stat-value" id="headerUangGlobal">Rp 0</span>
     </div>
 
-    <!-- Tombol Kanan: Direct ke Halaman Saldo Telegram -->
-    <button type="button" class="btn-stat-shortcut" onclick="goToSaldoTelegramPage()" title="Buka Halaman Saldo Telegram">
+   <!-- Tombol Kanan: Buka Pop-up Saldo Tools & Sisa (Tanpa Direct) -->
+    <button type="button" class="btn-stat-shortcut" onclick="openModalSaldoKasir()" title="Saldo Tools & Sisa Saldo">
       <i class="fab fa-telegram-plane" style="color: #1C93D2;"></i>
     </button>
-  </div>
        
   <div class="header-actions">
     <button class="btn-icon-box" id="btnTheme" title="Toggle Dark Mode">
@@ -7359,31 +7358,225 @@ function getSortedCategories() {
       }, { passive: true });
     })();
 
-// Direct ke halaman Saldo Telegram dengan tanda kembali dari kasir
-function goToSaldoTelegramPage() {
-  localStorage.setItem('fromKasir', 'true');
-  window.location.href = 'page-saldo-telegram.html';
+// ===== LOGIKA MODAL SALDO TELEGRAM (2 TAB TANPA DIRECT) =====
+let kasirActiveTools = ["DANA", "DIGIPOS", "MASTERLOAD"];
+let kasirSelectedTopupTool = "";
+let kasirSelectedSisaTool = "";
+
+async function openModalSaldoKasir() {
+  const modal = document.getElementById('modalSaldoKasir');
+  if (modal) modal.classList.add('active');
+  switchKasirSaldoTab('topup');
+  document.getElementById('inputKasirTopupDate').valueAsDate = new Date();
+  document.getElementById('inputKasirSisaDate').valueAsDate = new Date();
+  await loadKasirSaldoModalData();
 }
 
-// ============================================================
-// PINTASAN PELANGGAN KASIR: CARI, SALIN, TAMBAH, EDIT, HAPUS
-// ============================================================
-let kasirCustomerData = [];
+function closeModalSaldoKasir() {
+  const modal = document.getElementById('modalSaldoKasir');
+  if (modal) modal.classList.remove('active');
+}
 
-async function openModalPelangganKasir() {
-  document.getElementById('modalPelangganKasir').classList.add('active');
-  closeFormCustomerKasir();
-  const searchInput = document.getElementById('kasirSearchCustomer');
-  if (searchInput) {
-    searchInput.value = '';
-    setTimeout(() => searchInput.focus(), 100);
+function switchKasirSaldoTab(tab) {
+  const btnTopup = document.getElementById('btnKasirTabTopup');
+  const btnSisa = document.getElementById('btnKasirTabSisa');
+  const paneTopup = document.getElementById('paneKasirTopup');
+  const paneSisa = document.getElementById('paneKasirSisa');
+
+  if (tab === 'topup') {
+    btnTopup.className = 'btn btn-sm btn-primary';
+    btnSisa.className = 'btn btn-sm btn-outline';
+    paneTopup.style.display = 'block';
+    paneSisa.style.display = 'none';
+  } else {
+    btnTopup.className = 'btn btn-sm btn-outline';
+    btnSisa.className = 'btn btn-sm btn-primary';
+    paneTopup.style.display = 'none';
+    paneSisa.style.display = 'block';
   }
-  await loadCustomerKasirData();
 }
 
-function closeModalPelangganKasir() {
-  document.getElementById('modalPelangganKasir').classList.remove('active');
-  closeFormCustomerKasir();
+async function loadKasirSaldoModalData() {
+  const db = firebase.firestore();
+  try {
+    // 1. Ambil daftar tools
+    const toolDoc = await db.collection("saldo_tools_config").doc("list").get();
+    if (toolDoc.exists && toolDoc.data().tools) {
+      kasirActiveTools = toolDoc.data().tools.filter(t => t !== "UANG KASIR" && t !== "UANG TAS");
+    }
+
+    // Render Grid Tombol Tools
+    renderKasirToolsGrid();
+
+    // 2. Ambil 3 Riwayat Top Up Terakhir
+    const topupSnap = await db.collection("saldo_topup_history").orderBy("timestamp", "desc").limit(3).get();
+    const topupListEl = document.getElementById('kasirTopupRecentList');
+    if (!topupSnap.empty) {
+      topupListEl.innerHTML = topupSnap.docs.map(doc => {
+        const d = doc.data();
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0.6rem; background:var(--bg-secondary); border-radius:0.5rem; font-size:0.75rem;">
+            <div><b>${d.toolName}</b> <span style="color:var(--text-muted); font-size:0.7rem;">(${d.date || '-'})</span></div>
+            <div style="color:var(--success); font-weight:800;">+${formatRupiah(d.nominal)}</div>
+          </div>`;
+      }).join('');
+    } else {
+      topupListEl.innerHTML = '<small style="color:var(--text-muted);font-size:0.72rem;">Belum ada riwayat top up.</small>';
+    }
+
+    // 3. Ambil Nilai Uang Kasir & Uang Tas Terakhir
+    const sisaSnap = await db.collection("saldo_sisa_history").orderBy("timestamp", "desc").limit(10).get();
+    let uangKasir = 0, uangTas = 0;
+    const sisaDocs = [];
+    sisaSnap.forEach(doc => {
+      const d = doc.data();
+      sisaDocs.push(d);
+      if (d.toolName === "UANG KASIR" && !uangKasir) uangKasir = d.nominal;
+      if (d.toolName === "UANG TAS" && !uangTas) uangTas = d.nominal;
+    });
+
+    document.getElementById('kasirStatUangKasir').textContent = formatRupiah(uangKasir);
+    document.getElementById('kasirStatUangTas').textContent = formatRupiah(uangTas);
+
+    // 4. Riwayat Sisa Saldo Terakhir
+    const sisaListEl = document.getElementById('kasirSisaRecentList');
+    const filteredRecentSisa = sisaDocs.filter(d => d.toolName !== "UANG KASIR" && d.toolName !== "UANG TAS").slice(0, 3);
+    if (filteredRecentSisa.length) {
+      sisaListEl.innerHTML = filteredRecentSisa.map(d => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0.6rem; background:var(--bg-secondary); border-radius:0.5rem; font-size:0.75rem;">
+          <div><b>${d.toolName}</b> <span style="color:var(--text-muted); font-size:0.7rem;">(${d.date || '-'})</span></div>
+          <div style="color:var(--warning); font-weight:800;">${formatRupiah(d.nominal)}</div>
+        </div>
+      `).join('');
+    } else {
+      sisaListEl.innerHTML = '<small style="color:var(--text-muted);font-size:0.72rem;">Belum ada riwayat sisa saldo.</small>';
+    }
+
+  } catch (err) {
+    console.error("Gagal load modal saldo kasir:", err);
+  }
+}
+
+function renderKasirToolsGrid() {
+  const topupContainer = document.getElementById('kasirTopupToolsGrid');
+  const sisaContainer = document.getElementById('kasirSisaToolsGrid');
+
+  topupContainer.innerHTML = kasirActiveTools.map(t => `
+    <button type="button" class="btn btn-sm ${kasirSelectedTopupTool === t ? 'btn-primary' : 'btn-outline'}" 
+      onclick="selectKasirTopupTool('${t}')" style="font-size:0.72rem; padding:0.35rem 0.2rem; font-weight:700;">
+      ${t}
+    </button>
+  `).join('');
+
+  sisaContainer.innerHTML = kasirActiveTools.map(t => `
+    <button type="button" class="btn btn-sm ${kasirSelectedSisaTool === t ? 'btn-primary' : 'btn-outline'}" 
+      onclick="selectKasirSisaTool('${t}')" style="font-size:0.72rem; padding:0.35rem 0.2rem; font-weight:700;">
+      ${t}
+    </button>
+  `).join('');
+}
+
+function selectKasirTopupTool(toolName) {
+  kasirSelectedTopupTool = toolName;
+  renderKasirToolsGrid();
+  document.getElementById('kasirTopupForm').style.display = 'block';
+  document.getElementById('kasirSelectedToolLabel').textContent = 'Top Up: ' + toolName;
+  document.getElementById('inputKasirTopupNominal').focus();
+}
+
+async function saveKasirTopup() {
+  const nominal = parseInt(document.getElementById('inputKasirTopupNominal').value) || 0;
+  const dateVal = document.getElementById('inputKasirTopupDate').value;
+  if (!kasirSelectedTopupTool || nominal <= 0 || !dateVal) {
+    showToast('Lengkapi nama tools, nominal, dan tanggal', 'warning');
+    return;
+  }
+
+  const timestamp = new Date(dateVal).getTime();
+  const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  try {
+    await firebase.firestore().collection("saldo_topup_history").add({
+      toolName: kasirSelectedTopupTool,
+      nominal: nominal,
+      date: formattedDate,
+      timestamp: timestamp,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showToast(`Top Up ${kasirSelectedTopupTool} (${formatRupiah(nominal)}) berhasil dicatat!`, 'success');
+    document.getElementById('inputKasirTopupNominal').value = '';
+    document.getElementById('kasirTopupForm').style.display = 'none';
+    kasirSelectedTopupTool = "";
+    await loadKasirSaldoModalData();
+  } catch (err) {
+    showToast('Gagal simpan top up: ' + err.message, 'error');
+  }
+}
+
+function selectKasirSisaTool(toolName) {
+  kasirSelectedSisaTool = toolName;
+  renderKasirToolsGrid();
+  document.getElementById('kasirSisaForm').style.display = 'block';
+  document.getElementById('kasirSelectedSisaToolLabel').textContent = 'Sisa Saldo: ' + toolName;
+  document.getElementById('inputKasirSisaNominal').focus();
+}
+
+async function saveKasirSisa() {
+  const nominal = parseInt(document.getElementById('inputKasirSisaNominal').value) || 0;
+  const dateVal = document.getElementById('inputKasirSisaDate').value;
+  if (!kasirSelectedSisaTool || nominal < 0 || !dateVal) {
+    showToast('Lengkapi nama tools, nominal sisa, dan tanggal', 'warning');
+    return;
+  }
+
+  const timestamp = new Date(dateVal).getTime();
+  const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  try {
+    await firebase.firestore().collection("saldo_sisa_history").add({
+      toolName: kasirSelectedSisaTool,
+      nominal: nominal,
+      date: formattedDate,
+      timestamp: timestamp,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showToast(`Sisa saldo ${kasirSelectedSisaTool} (${formatRupiah(nominal)}) tersimpan!`, 'success');
+    document.getElementById('inputKasirSisaNominal').value = '';
+    document.getElementById('kasirSisaForm').style.display = 'none';
+    kasirSelectedSisaTool = "";
+    await loadKasirSaldoModalData();
+  } catch (err) {
+    showToast('Gagal simpan sisa saldo: ' + err.message, 'error');
+  }
+}
+
+async function promptEditKasirStatic(toolName) {
+  const currentText = toolName === 'UANG KASIR' 
+    ? document.getElementById('kasirStatUangKasir').textContent 
+    : document.getElementById('kasirStatUangTas').textContent;
+  const currentVal = parseInt(currentText.replace(/\D/g, '')) || 0;
+
+  const inputVal = prompt(`Ubah ${toolName}:`, currentVal);
+  if (inputVal === null) return;
+  const nominal = parseInt(inputVal) || 0;
+
+  const now = new Date();
+  try {
+    await firebase.firestore().collection("saldo_sisa_history").add({
+      toolName: toolName,
+      nominal: nominal,
+      date: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      timestamp: now.getTime(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showToast(`${toolName} berhasil diperbarui jadi ${formatRupiah(nominal)}`, 'success');
+    await loadKasirSaldoModalData();
+  } catch(err) {
+    showToast('Gagal update: ' + err.message, 'error');
+  }
 }
 
 async function loadCustomerKasirData() {
@@ -8303,26 +8496,133 @@ function renderRekapFromCurrentState() {
   </div>
 </div>
   
-<!-- MODAL POPUP SALDO TOOLS & SISA -->
+<!-- MODAL POPUP SALDO TOOLS & SISA (2 TAB INTERAKTIF) -->
 <div class="modal-overlay" id="modalSaldoKasir" style="z-index: 9999;" onclick="if(event.target===this)closeModalSaldoKasir()">
-  <div class="modal" style="max-width: 440px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
-    <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);">
-      <h3 class="modal-title" style="font-size: 1rem; font-weight: 700;">
-        <i class="fab fa-telegram-plane" style="color: #1C93D2; margin-right: 0.5rem;"></i>
-        Ringkasan Saldo Tools & Laci
+  <div class="modal" style="max-width: 440px; width: 92%; max-height: 88vh; display: flex; flex-direction: column;">
+    
+    <!-- Header Modal -->
+    <div class="modal-header" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+      <h3 class="modal-title" style="font-size: 1rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
+        <i class="fab fa-telegram-plane" style="color: #1C93D2;"></i>
+        Saldo Tools & Sisa (Telegram)
       </h3>
       <button class="modal-close" onclick="closeModalSaldoKasir()" style="cursor: pointer;">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <div class="modal-body" style="padding: 1rem; flex: 1; overflow-y: auto;">
-      <div id="kasirSaldoGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
-        <!-- Kartu Saldo Terakhir diisi oleh JS -->
-      </div>
+
+    <!-- 2 Tab Bar -->
+    <div style="display:flex; gap:0.35rem; padding:0.5rem 1rem 0; background:var(--bg-card); border-bottom:1px solid var(--border-color);">
+      <button type="button" class="btn btn-sm btn-primary" id="btnKasirTabTopup" onclick="switchKasirSaldoTab('topup')" style="flex:1; padding:0.45rem 0.5rem; font-size:0.78rem;">
+        <i class="fas fa-wallet"></i> 1. Catat Top Up
+      </button>
+      <button type="button" class="btn btn-sm btn-outline" id="btnKasirTabSisa" onclick="switchKasirSaldoTab('sisa')" style="flex:1; padding:0.45rem 0.5rem; font-size:0.78rem;">
+        <i class="fas fa-piggy-bank"></i> 2. Sisa Saldo
+      </button>
     </div>
-    <div class="modal-footer" style="padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-      <small style="color: var(--text-muted); font-size: 0.75rem;">Data realtime Firestore</small>
-      <button class="btn btn-secondary btn-sm" onclick="closeModalSaldoKasir()">✕ Kembali ke Kasir</button>
+
+    <!-- Body Modal -->
+    <div class="modal-body" style="padding: 1rem; flex: 1; overflow-y: auto;">
+      
+      <!-- PANE 1: CATAT TOP UP -->
+      <div id="paneKasirTopup">
+        <label class="form-label" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem; display:block;">
+          Pilih Tools / Aplikasi:
+        </label>
+        <div id="kasirTopupToolsGrid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.45rem; margin-bottom:0.75rem;">
+          <!-- Diisi via JS -->
+        </div>
+
+        <!-- Form Input Top Up -->
+        <div id="kasirTopupForm" style="display:none; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.75rem; padding:0.75rem; margin-bottom:0.75rem;">
+          <div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:0.45rem;" id="kasirSelectedToolLabel">
+            Top Up: -
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+            <div>
+              <label class="form-label" style="font-size:0.7rem; margin-bottom:0.2rem;">Tanggal</label>
+              <input type="date" class="form-input" id="inputKasirTopupDate" style="padding:0.4rem 0.5rem; font-size:0.8rem;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.7rem; margin-bottom:0.2rem;">Nominal (Rp)</label>
+              <input type="number" class="form-input" id="inputKasirTopupNominal" placeholder="Contoh: 500000" min="100" style="padding:0.4rem 0.5rem; font-size:0.8rem;">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveKasirTopup()" style="width:100%; font-size:0.8rem; padding:0.5rem;">
+            <i class="fas fa-save"></i> Simpan Top Up
+          </button>
+        </div>
+
+        <!-- Log 3 Top Up Terakhir -->
+        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:0.35rem;">
+          Riwayat Top Up Terakhir:
+        </div>
+        <div id="kasirTopupRecentList" style="display:flex; flex-direction:column; gap:0.35rem;">
+          <!-- Diisi via JS -->
+        </div>
+      </div>
+
+      <!-- PANE 2: SISA SALDO -->
+      <div id="paneKasirSisa" style="display:none;">
+        <!-- Kartu Uang Kasir & Uang Tas -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.65rem; padding:0.55rem 0.65rem;">
+            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">UANG KASIR</div>
+            <div style="font-size:0.95rem; font-weight:800; color:var(--success); margin:0.15rem 0;" id="kasirStatUangKasir">Rp 0</div>
+            <button type="button" class="btn btn-sm btn-outline" onclick="promptEditKasirStatic('UANG KASIR')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
+          </div>
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.65rem; padding:0.55rem 0.65rem;">
+            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">UANG TAS</div>
+            <div style="font-size:0.95rem; font-weight:800; color:var(--warning); margin:0.15rem 0;" id="kasirStatUangTas">Rp 0</div>
+            <button type="button" class="btn btn-sm btn-outline" onclick="promptEditKasirStatic('UANG TAS')" style="font-size:0.68rem; padding:0.2rem 0.45rem;">Ubah</button>
+          </div>
+        </div>
+
+        <!-- Pilih Tools Sisa Saldo -->
+        <label class="form-label" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem; display:block;">
+          Catat Sisa Saldo Akun:
+        </label>
+        <div id="kasirSisaToolsGrid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.45rem; margin-bottom:0.75rem;">
+          <!-- Diisi via JS -->
+        </div>
+
+        <!-- Form Input Sisa Saldo -->
+        <div id="kasirSisaForm" style="display:none; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:0.75rem; padding:0.75rem; margin-bottom:0.75rem;">
+          <div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:0.45rem;" id="kasirSelectedSisaToolLabel">
+            Sisa Saldo: -
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+            <div>
+              <label class="form-label" style="font-size:0.7rem; margin-bottom:0.2rem;">Tanggal</label>
+              <input type="date" class="form-input" id="inputKasirSisaDate" style="padding:0.4rem 0.5rem; font-size:0.8rem;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.7rem; margin-bottom:0.2rem;">Sisa Saldo (Rp)</label>
+              <input type="number" class="form-input" id="inputKasirSisaNominal" placeholder="Contoh: 250000" min="0" style="padding:0.4rem 0.5rem; font-size:0.8rem;">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveKasirSisa()" style="width:100%; font-size:0.8rem; padding:0.5rem;">
+            <i class="fas fa-save"></i> Simpan Sisa Saldo
+          </button>
+        </div>
+
+        <!-- Log 3 Sisa Saldo Terakhir -->
+        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:0.35rem;">
+          Riwayat Sisa Saldo Terakhir:
+        </div>
+        <div id="kasirSisaRecentList" style="display:flex; flex-direction:column; gap:0.35rem;">
+          <!-- Diisi via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Modal -->
+    <div class="modal-footer" style="padding: 0.65rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <a href="page-saldo-telegram.html" onclick="localStorage.setItem('fromKasir','true');" style="font-size:0.75rem; color:var(--primary); font-weight:700; text-decoration:none; display:flex; align-items:center; gap:0.3rem;">
+        <i class="fas fa-external-link-alt"></i> Buka Halaman Penuh
+      </a>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModalSaldoKasir()">✕ Tutup</button>
     </div>
   </div>
 </div>
