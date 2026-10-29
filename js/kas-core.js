@@ -1592,11 +1592,14 @@ if (typeof window.KasCore === 'undefined') {
       var mutation = mapTransactionMutation(payload);
 
       var doc = {};
-      ['kategori', 'metode_pembayaran', 'nominal', 'admin', 'modal_produk',
-       'shiftId', 'customerName', 'catatan', 'status', 'pengaruhi_kas_global'
-      ].forEach(function (field) {
-        if (payload[field] !== undefined) doc[field] = payload[field];
-      });
+['kategori', 'metode_pembayaran', 'nominal', 'admin', 'modal_produk',
+ 'shiftId', 'customerName', 'catatan', 'status', 'pengaruhi_kas_global',
+ 'resellerMode', 'isReseller', 'priceMode', 'tipe_penjualan', 'nama_konter', 'resellerName',
+ 'items', 'userName', 'note', 'diskon', 'discount', 'subtotal'
+].forEach(function (field) {
+  if (payload[field] !== undefined) doc[field] = payload[field];
+});
+      
       Object.assign(doc, mutation);
       doc.userId = userId;
       doc.date_key = dateKey;
