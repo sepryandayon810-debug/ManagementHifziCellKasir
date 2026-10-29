@@ -1495,6 +1495,8 @@ const TYPE_ICONS = {
             <div class="detail-panel-item"><div class="detail-panel-label">Petugas / Kasir</div><div class="detail-panel-value">${t.userName || '-'}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Metode Bayar</div><div class="detail-panel-value">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</div></div>
             <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
+            ${(t.discount > 0 || t.diskon > 0) ? `<div class="detail-panel-item"><div class="detail-panel-label">Potongan Diskon</div><div class="detail-panel-value" style="color:#dc2626;font-weight:700;">- ${Utils.formatRupiah(t.discount || t.diskon)}</div></div>` : ''}
+            ${isOwnerTake ? `<div class="detail-panel-item"><div class="detail-panel-label">Status Ambil</div><div class="detail-panel-value" style="color:#b45309;font-weight:700;">Pengambilan Barang oleh Owner (Gratis / 100%)</div></div>` : ''}
             <div class="detail-panel-item"><div class="detail-panel-label">${KasCore.getCategory(t) === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${KasCore.getCategory(t) === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(KasCore.calculateTransactionProfit(t))}</div></div>
           </div>
         `;
