@@ -5193,11 +5193,130 @@ function renderCart() {
   if (totalEl) totalEl.textContent = formatRupiah(total);
 }
 
-    function calculateTotal() {
-  const subtotal = getCartSubtotal();
-  return Math.max(0, subtotal - toMoney(discount));
-}
-  
+   function calculateTotal() {
+      const subtotal = getCartSubtotal();
+      return Math.max(0, subtotal - toMoney(discount));
+    }
+
+    // ===== FUNGSI POP-UP DISKON & AMBIL OWNER =====
+    window.openDiscountModal = function() {
+      if (cart.length === 0) {
+        showToast('Keranjang masih kosong', 'warning');
+        return;
+      }
+      const modal = document.getElementById('modalDiskonKasir');
+      if (!modal) return;
+      const subtotal = getCartSubtotal();
+      const prevSubEl = document.getElementById('previewSubtotal');
+      if (prevSubEl) prevSubEl.textContent = formatRupiah(subtotal);
+
+      const inputVal = document.getElementById('inputDiscountVal');
+      const inputNote = document.getElementById('inputDiscountNote');
+      if (inputVal) {
+        inputVal.value = discountType === 'percent' ? (discountPercent || '') : (discount || '');
+      }
+      if (inputNote) {
+        inputNote.value = discountNote || '';
+      }
+      setDiscountMode(discountType || 'nominal');
+      previewDiscountCalculation();
+      modal.classList.add('active');
+      setTimeout(() => inputVal?.focus(), 80);
+    };
+
+    window.closeDiscountModal = function() {
+      const modal = document.getElementById('modalDiskonKasir');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.setDiscountMode = function(mode) {
+      discountType = mode;
+      const btnNominal = document.getElementById('btnDiscountModeNominal');
+      const btnPercent = document.getElementById('btnDiscountModePercent');
+      const label = document.getElementById('labelDiscountVal');
+      const presetBox = document.getElementById('discountPresetBox');
+
+      if (btnNominal) btnNominal.className = mode === 'nominal' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
+      if (btnPercent) btnPercent.className = mode === 'percent' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
+      if (label) label.textContent = mode === 'nominal' ? 'Nominal Potongan (Rp)' : 'Persentase Potongan (%)';
+      if (presetBox) presetBox.style.display = mode === 'percent' ? 'flex' : 'none';
+      previewDiscountCalculation();
+    };
+
+    window.setDiscountPercent = function(pct) {
+      const input = document.getElementById('inputDiscountVal');
+      if (input) input.value = pct;
+      previewDiscountCalculation();
+    };
+
+    window.previewDiscountCalculation = function() {
+      const subtotal = getCartSubtotal();
+      const inputVal = parseFloat(document.getElementById('inputDiscountVal')?.value) || 0;
+      let discAmount = 0;
+
+      if (discountType === 'percent') {
+        const pct = Math.min(100, Math.max(0, inputVal));
+        discAmount = Math.round((subtotal * pct) / 100);
+      } else {
+        discAmount = Math.min(subtotal, Math.max(0, inputVal));
+      }
+
+      const finalTotal = Math.max(0, subtotal - discAmount);
+      const subEl = document.getElementById('previewSubtotal');
+      const discEl = document.getElementById('previewDiscountAmount');
+      const finEl = document.getElementById('previewFinalTotal');
+      if (subEl) subEl.textContent = formatRupiah(subtotal);
+      if (discEl) discEl.textContent = '-' + formatRupiah(discAmount);
+      if (finEl) finEl.textContent = formatRupiah(finalTotal);
+    };
+
+    window.confirmApplyDiscount = function() {
+      const subtotal = getCartSubtotal();
+      const inputVal = parseFloat(document.getElementById('inputDiscountVal')?.value) || 0;
+      const noteVal = (document.getElementById('inputDiscountNote')?.value || '').trim();
+
+      if (inputVal <= 0) {
+        removeDiscount();
+        return;
+      }
+
+      if (discountType === 'percent') {
+        discountPercent = Math.min(100, Math.max(0, inputVal));
+        discount = Math.round((subtotal * discountPercent) / 100);
+        discountNote = noteVal || `${discountPercent}%`;
+      } else {
+        discount = Math.min(subtotal, Math.max(0, inputVal));
+        discountPercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
+        discountNote = noteVal || 'Potongan Harga';
+      }
+
+      closeDiscountModal();
+      updateSummary();
+      showToast(`Diskon diterapkan: -${formatRupiah(discount)}`, 'success');
+    };
+
+    window.applyOwnerTakeDiscount = function() {
+      const subtotal = getCartSubtotal();
+      discountType = 'percent';
+      discountPercent = 100;
+      discount = subtotal;
+      discountNote = 'Ambil Owner';
+
+      closeDiscountModal();
+      updateSummary();
+      showToast('👑 Ambil Owner diterapkan! Total bayar: Rp 0', 'success');
+    };
+
+    window.removeDiscount = function() {
+      discount = 0;
+      discountPercent = 0;
+      discountType = 'nominal';
+      discountNote = '';
+      closeDiscountModal();
+      updateSummary();
+      showToast('Diskon dihapus', 'info');
+    };
+
     // ===== SAVE / LOAD CART =====
     function saveCart() {
       try {
@@ -5437,10 +5556,10 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
           showToast('Piutang tidak bisa saat offline. Gunakan Tunai/Transfer.', 'error');
           return;
         }
-        if (paymentAmount < total) {
-          showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Masukkan nominal penuh sebelum menyimpan offline.`, 'error');
-          return;
-        }
+        if (paymentAmount < total && total > 0) {
+        showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
+        return;
+      }
         try {
           const today = new Date();
           const todayStr = today.getFullYear() + '-' +
@@ -5719,22 +5838,28 @@ const transaction = {
 const saleReseller = getActiveResellerInfo();
 if (saleReseller.isReseller) rememberResellerCounterName(saleReseller.counterName);
 const baseNote = localStorage.getItem('kasir_note') || '';
-const finalSaleNote = saleReseller.isReseller
-  ? ('Reseller: ' + saleReseller.counterName + (baseNote ? ' • ' + baseNote : ''))
-  : baseNote;
+        let notePrefix = '';
+        if (discount > 0) {
+          notePrefix = (discountNote && discountNote.toLowerCase().includes('owner')) ? '[AMBIL OWNER] ' : `[DISKON: ${discountNote || ''}] `;
+        }
+        const finalSaleNote = (notePrefix + (saleReseller.isReseller
+          ? ('Reseller: ' + saleReseller.counterName + (baseNote ? ' • ' + baseNote : ''))
+          : baseNote)).trim();
 
-const result = await KasCore.saveTransaction({
-  kategori: 'jual',
-  metode_pembayaran: metodeKasCore,
-  nominal: total,
-  modal_produk: getCartModal(),
-  userId: user ? user.uid : 'unknown',
-  shiftId: localStorage.getItem('active_shift_id') || null,
-  customerName: saleReseller.isReseller ? saleReseller.counterName : '',
-  catatan: finalSaleNote,
-  waktu: Date.now()
-});
-
+        const result = await KasCore.saveTransaction({
+          kategori: 'jual',
+          metode_pembayaran: metodeKasCore,
+          nominal: total,
+          subtotal: subtotal,
+          diskon: discount,
+          discount: discount,
+          modal_produk: getCartModal(),
+          userId: user ? user.uid : 'unknown',
+          shiftId: localStorage.getItem('active_shift_id') || null,
+          customerName: saleReseller.isReseller ? saleReseller.counterName : ((discountNote && discountNote.toLowerCase().includes('owner')) ? 'Owner' : ''),
+          catatan: finalSaleNote,
+          waktu: Date.now()
+        });
         // ⬇️ TAMBAH: tempel rincian produk + penanda Reseller & Nama Konter untuk Riwayat
 await firebase.firestore().collection('transactions').doc(result.id).update({
   items: cart.map(i => ({
@@ -8389,5 +8514,100 @@ function renderRekapFromCurrentState() {
   </div>
 </div>
   
+<!-- MODAL DISKON & AMBIL OWNER -->
+<div class="modal-overlay" id="modalDiskonKasir" style="z-index: 10005;" onclick="if(event.target===this)closeDiscountModal()">
+  <div class="modal" style="max-width: 390px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-header" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="modal-title" style="font-size: 0.95rem; font-weight: 700;">
+        <i class="fas fa-tags" style="color: var(--primary); margin-right: 0.4rem;"></i>
+        Diskon / Ambil Owner
+      </h3>
+      <button class="modal-close" onclick="closeDiscountModal()" style="cursor: pointer;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 1rem; flex: 1; overflow-y: auto;">
+      <!-- Tombol Pintas Ambil Owner -->
+      <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">
+          Pintas Khusus Owner:
+        </div>
+        <button type="button" class="btn btn-block" onclick="applyOwnerTakeDiscount()" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; font-size: 0.84rem; font-weight: 700; padding: 0.75rem; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(139,92,246,0.25); border: none; cursor: pointer;">
+          <i class="fas fa-crown" style="color: #fde047;"></i> Ambil Barang Owner (Gratis / 100%)
+        </button>
+        <small style="display: block; font-size: 0.68rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.3;">
+          Total bayar jadi Rp 0, kas laci tidak bertambah, stok produk tetap berkurang 1, dan otomatis tercatat "[AMBIL OWNER]".
+        </small>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+        <hr style="flex: 1; border: none; border-top: 1px dashed var(--border-color);">
+        <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted);">ATAU DISKON REGULER</span>
+        <hr style="flex: 1; border: none; border-top: 1px dashed var(--border-color);">
+      </div>
+
+      <!-- Pilihan Tipe: Nominal Rp vs Persen % -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.75rem;">
+        <button type="button" class="btn btn-sm btn-primary" id="btnDiscountModeNominal" onclick="setDiscountMode('nominal')">
+          Potongan Rp
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" id="btnDiscountModePercent" onclick="setDiscountMode('percent')">
+          Potongan %
+        </button>
+      </div>
+
+      <!-- Input Nilai Diskon -->
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        <label class="form-label" style="font-size: 0.8rem;" id="labelDiscountVal">Nominal Potongan (Rp)</label>
+        <div style="position: relative;">
+          <input type="number" class="form-input" id="inputDiscountVal" placeholder="0" min="0" step="1" oninput="previewDiscountCalculation()" style="font-size: 0.95rem; padding: 0.55rem 0.75rem;">
+        </div>
+      </div>
+
+      <!-- Preset Persen Cepat -->
+      <div id="discountPresetBox" style="display: none; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="setDiscountPercent(5)" style="padding:0.25rem 0.55rem;font-size:0.75rem;">5%</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="setDiscountPercent(10)" style="padding:0.25rem 0.55rem;font-size:0.75rem;">10%</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="setDiscountPercent(20)" style="padding:0.25rem 0.55rem;font-size:0.75rem;">20%</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="setDiscountPercent(50)" style="padding:0.25rem 0.55rem;font-size:0.75rem;">50%</button>
+      </div>
+
+      <!-- Alasan / Catatan Diskon -->
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        <label class="form-label" style="font-size: 0.8rem;">Keterangan Diskon (Opsional)</label>
+        <input type="text" class="form-input" id="inputDiscountNote" placeholder="Cth: Promo Pelanggan, Ambil Owner, Diskon Teman..." style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+      </div>
+
+      <!-- Preview Box -->
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 0.65rem 0.85rem; font-size: 0.8rem;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 0.25rem; color:var(--text-muted);">
+          <span>Subtotal:</span>
+          <span id="previewSubtotal">Rp 0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 0.25rem; color:var(--success); font-weight:700;">
+          <span>Potongan:</span>
+          <span id="previewDiscountAmount">-Rp 0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top: 1px dashed var(--border-color); padding-top: 0.35rem; font-weight:800; color:var(--primary); font-size: 0.95rem;">
+          <span>Total Akhir:</span>
+          <span id="previewFinalTotal">Rp 0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; gap: 0.5rem;">
+      <button type="button" class="btn btn-sm btn-outline" onclick="removeDiscount()" style="color:var(--danger); border-color:rgba(239,68,68,0.3);">
+        <i class="fas fa-trash"></i> Hapus
+      </button>
+      <div style="display:flex; gap:0.4rem;">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="closeDiscountModal()">Batal</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="confirmApplyDiscount()">
+          <i class="fas fa-check"></i> Terapkan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
