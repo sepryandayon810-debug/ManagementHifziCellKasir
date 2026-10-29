@@ -320,17 +320,56 @@
     }
 
     .date-range-info { padding: 0.65rem 1.25rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-    .report-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
-.report-tab {
-  flex: 1; padding: 0.75rem 1rem; border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border); background: var(--bg-surface);
-  color: var(--text-sub); font-size: 0.85rem; font-weight: 700;
-  cursor: pointer; font-family: inherit; display: flex; align-items: center;
-  justify-content: center; gap: 0.5rem; transition: all 0.15s;
-}
-.report-tab:hover { border-color: var(--primary); color: var(--primary); }
-.report-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    /* TAB BAR BERWARNA & ELEGAN */
+    .report-tabs { display: flex; gap: 0.65rem; margin-bottom: 1.25rem; }
+    .report-tab {
+      flex: 1; padding: 0.75rem 1rem; border-radius: var(--radius-lg);
+      border: 1.5px solid transparent; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; display: flex; align-items: center;
+      justify-content: center; gap: 0.5rem; transition: all 0.2s ease;
+    }
 
+    /* Tab 1: Kas & Shift (Nuansa Biru / Indigo) */
+    .report-tab[data-tab="shift"] {
+      background: var(--primary-light);
+      border-color: color-mix(in srgb, var(--primary) 25%, transparent);
+      color: var(--primary);
+    }
+    .report-tab[data-tab="shift"]:hover {
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+    .report-tab[data-tab="shift"].active {
+      background: linear-gradient(135deg, var(--primary), #4338ca) !important;
+      color: #ffffff !important;
+      border-color: transparent !important;
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent);
+    }
+    .report-tab[data-tab="shift"].active i { color: #ffffff !important; }
+
+    /* Tab 2: Arsip Closing (Nuansa Merah PDF) */
+    .report-tab[data-tab="arsip"] {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #dc2626;
+    }
+    .report-tab[data-tab="arsip"]:hover {
+      background: #fecaca;
+    }
+    .report-tab[data-tab="arsip"].active {
+      background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+      color: #ffffff !important;
+      border-color: transparent !important;
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+    }
+    .report-tab[data-tab="arsip"].active i { color: #ffffff !important; }
+
+    /* Dark Mode untuk Tab Berwarna */
+    [data-theme="dark"] .report-tab[data-tab="shift"]:not(.active) {
+      background: rgba(79, 70, 229, 0.15); border-color: rgba(79, 70, 229, 0.3); color: #a5b4fc;
+    }
+    [data-theme="dark"] .report-tab[data-tab="arsip"]:not(.active) {
+      background: rgba(220, 38, 38, 0.15); border-color: rgba(220, 38, 38, 0.3); color: #fca5a5;
+    }
 .arsip-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
 .arsip-item:hover { background: var(--bg-subtle); }
 .arsip-item:last-child { border-bottom: none; }
@@ -1732,142 +1771,100 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         document.getElementById('arsipStrukModal').classList.add('active');
       };
 
-      // Deteksi lingkungan mobile / WebView
-      function isMobileEnv() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-          || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
-      }
-
-      // Buat elemen sementara berisi konten struk untuk html2pdf
-      function buildStrukElement() {
-  const paper = document.getElementById('arsipStrukPaper');
-  if (!paper) throw new Error('Konten arsip tidak ditemukan');
-
-  const el = document.createElement('div');
-  el.textContent = paper.textContent;
-  el.style.cssText =
-    'position:fixed;left:0;top:0;z-index:9997;' +
-    'width:72mm;box-sizing:border-box;padding:4mm;' +
-    'background:#fff;color:#000;font-family:monospace;' +
-    'font-size:11px;line-height:1.5;white-space:pre-wrap;' +
-    'overflow-wrap:anywhere;';
-
-  document.body.appendChild(el);
-
-  const hMm = Math.max(
-    60,
-    Math.ceil((el.scrollHeight * 25.4 / 96) + 3)
-  );
-
-  return { el, hMm };
-}
-
-      // Konfigurasi html2pdf yang dipakai bersama
-      function pdfConfig(filename, hMm) {
-        return {
-          margin: 2,
-          filename: filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: [80, hMm + 4], orientation: 'portrait' }
-        };
-      }
-
-      // Bagikan / simpan file PDF (Web Share API untuk mobile, anchor untuk desktop)
-     async function shareOrDownloadBlob(blob, filename) {
-       if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error || new Error('PDF gagal dibaca'));
-    reader.readAsDataURL(blob);
-  });
-
-  const result = window.AndroidBT.savePdf(dataUrl.split(',')[1], filename);
-
-  if (result !== 'OK') {
-    throw new Error(String(result).replace(/^ERROR:/, ''));
-  }
-
-  Utils.showToast('PDF tersimpan di folder Downloads', 'success');
-  return true;
-}
-  try {
-    if (navigator.share && navigator.canShare && window.File) {
-      const file = new File([blob], filename, {
-        type: 'application/pdf'
-      });
-
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: filename,
-          text: 'Berita Acara Closing'
-        });
-        return true;
-      }
-    }
-  } catch (err) {
-    if (err && err.name === 'AbortError') return true;
-    console.warn('Share PDF tidak tersedia:', err);
-  }
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-  return true;
-}
-
+      // ==========================================================
+      // DOWNLOAD PDF ANTI-BLANK (LANGSUNG KE FOLDER DOWNLOADS)
+      // ==========================================================
       window.downloadArsipPDF = async function() {
-  const c = currentArsipData;
+        const c = currentArsipData;
+        if (!c) {
+          Utils.showToast('Data arsip tidak ditemukan', 'error');
+          return;
+        }
 
-  if (!c) {
-    Utils.showToast('Data arsip tidak ditemukan', 'error');
-    return;
-  }
+        const paper = document.getElementById('arsipStrukPaper');
+        const text = paper ? paper.textContent : '';
+        if (!text) {
+          Utils.showToast('Konten arsip kosong', 'error');
+          return;
+        }
 
-  if (typeof html2pdf !== 'function') {
-    Utils.showToast('Library PDF belum termuat. Periksa koneksi internet.', 'error');
-    return;
-  }
+        const filename = 'Berita-Acara-Closing-' + (c.date || 'arsip') + '.pdf';
+        Utils.showLoading('Menyiapkan file PDF...');
 
-  let el;
+        try {
+          const JsPdfClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
 
-  try {
-    Utils.showLoading('Menyiapkan PDF...');
+          if (typeof JsPdfClass === 'function') {
+            // METODE 1: Direct jsPDF Vector (Anti-Blank, Tajam & Sesuai Ukuran Struk)
+            const lines = text.split('\n');
+            const lineHeight = 3.8;
+            const topMargin = 6;
+            const bottomMargin = 6;
+            const pageHeight = Math.max(70, Math.ceil(topMargin + bottomMargin + (lines.length * lineHeight)));
 
-    const filename =
-      'Berita-Acara-Closing-' + (c.date || 'arsip') + '.pdf';
+            const doc = new JsPdfClass({
+              unit: 'mm',
+              format: [80, pageHeight],
+              orientation: 'portrait'
+            });
 
-    const built = buildStrukElement();
-    el = built.el;
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(0, 0, 0);
 
-    const blob = await html2pdf()
-      .set(pdfConfig(filename, built.hMm))
-      .from(el)
-      .toPdf()
-      .outputPdf('blob');
+            lines.forEach((line, idx) => {
+              doc.text(line, 4, topMargin + (idx * lineHeight));
+            });
 
-    if (!blob || !blob.size) {
-      throw new Error('File PDF kosong');
-    }
+            // Jika di APK Android
+            if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
+              const dataUri = doc.output('datauristring');
+              const base64 = dataUri.split(',')[1];
+              const result = window.AndroidBT.savePdf(base64, filename);
+              if (result === 'OK') {
+                Utils.hideLoading();
+                Utils.showToast('PDF tersimpan di folder Downloads HP!', 'success');
+                return;
+              }
+            }
 
-    await shareOrDownloadBlob(blob, filename);
-  } catch (err) {
-    console.error('PDF error:', err);
-    Utils.showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
-  } finally {
-    if (el) el.remove();
-    Utils.hideLoading();
-  }
-};
+            // Langsung simpan ke folder Downloads (Laptop & Browser HP)
+            doc.save(filename);
+            Utils.hideLoading();
+            Utils.showToast('PDF berhasil didownload ke folder Downloads!', 'success');
+            return;
+          }
 
+          // METODE 2: Fallback html2pdf (dengan scrollY: 0 agar tidak terpotong blank)
+          if (typeof html2pdf === 'function') {
+            const tempDiv = document.createElement('div');
+            tempDiv.textContent = text;
+            tempDiv.style.cssText = 'width:72mm;padding:5mm;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.45;white-space:pre-wrap;';
+            document.body.appendChild(tempDiv);
+
+            const opt = {
+              margin: 2,
+              filename: filename,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+              jsPDF: { unit: 'mm', format: [80, Math.ceil(tempDiv.scrollHeight * 25.4 / 96) + 10], orientation: 'portrait' }
+            };
+
+            await html2pdf().set(opt).from(tempDiv).save();
+            tempDiv.remove();
+            Utils.hideLoading();
+            Utils.showToast('PDF berhasil didownload!', 'success');
+            return;
+          }
+
+          throw new Error('Library PDF tidak tersedia');
+        } catch (err) {
+          console.error('PDF error:', err);
+          Utils.hideLoading();
+          Utils.showToast('Gagal download PDF: ' + (err.message || err), 'error');
+        }
+      };
+      
       window.printArsip = async function() {
         const paper = document.getElementById('arsipStrukPaper');
         if (!paper) return;
