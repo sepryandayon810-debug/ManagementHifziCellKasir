@@ -589,11 +589,22 @@
           </div>
         </div>
 
-        <!-- Search Toolbar -->
-        <div class="riwayat-search-toolbar">
-          <div class="riwayat-search-box">
+        <!-- Search & Filter Toolbar -->
+        <div class="riwayat-search-toolbar" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <div class="riwayat-search-box" style="flex:1;min-width:220px;">
             <i class="fas fa-search"></i>
             <input type="text" id="searchRiwayat" placeholder="Cari keterangan, nama konter, kasir...">
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">
+            <label for="filterRole" style="font-size:0.75rem;font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;white-space:nowrap;">
+              <i class="fas fa-user-shield" style="color:var(--primary);"></i> Role:
+            </label>
+            <select id="filterRole" class="form-select" style="padding:0.45rem 0.75rem;font-size:0.8rem;border-radius:var(--radius-md);background:var(--bg-surface);color:var(--text-main);border:1.5px solid var(--border);cursor:pointer;outline:none;font-weight:700;min-width:130px;">
+              <option value="all">Semua Role</option>
+              <option value="kasir">Kasir</option>
+              <option value="admin">Admin</option>
+              <option value="owner">Owner</option>
+            </select>
           </div>
         </div>
 
@@ -806,6 +817,8 @@
 
       let allTransactions = [];
       let currentFilter = 'buku_kasir';
+      let currentRole = 'all';
+      let usersRoleMap = {};
       let currentPeriod = 'today';
       let currentSearch = '';
       let lastTransactionData = null;
@@ -825,6 +838,36 @@ const TYPE_ICONS = {
   modal_awal: 'fa-wallet', bayar_hutang: 'fa-hand-holding-usd',
   pinjaman_tunai: 'fa-hand-holding', pengembalian_pinjaman: 'fa-undo'
 };
+
+      async function loadUsersRoleMap() {
+        try {
+          const snap = await db.collection("users").get();
+          usersRoleMap = {};
+          snap.forEach(doc => {
+            const u = doc.data() || {};
+            const r = String(u.role || 'kasir').toLowerCase().trim();
+            usersRoleMap[doc.id] = r;
+            const nm = String(u.name || u.username || '').toLowerCase().trim();
+            if (nm) usersRoleMap[nm] = r;
+          });
+        } catch(e) {}
+      }
+
+      function getTransactionRole(t) {
+        if (!t) return 'kasir';
+        if (t.userRole) return String(t.userRole).toLowerCase().trim();
+        if (t.role) return String(t.role).toLowerCase().trim();
+        const uid = t.userId || t.uid || t.cashierId;
+        if (uid && usersRoleMap[uid]) return usersRoleMap[uid];
+        const name = String(t.userName || t.cashierName || '').toLowerCase().trim();
+        if (name && usersRoleMap[name]) return usersRoleMap[name];
+        if (name.includes('owner')) return 'owner';
+        if (name.includes('admin')) return 'admin';
+        if (t.isOwnerTake || (t.catatan && t.catatan.includes('[AMBIL OWNER]')) || (t.note && t.note.includes('[AMBIL OWNER]'))) {
+          return 'owner';
+        }
+        return 'kasir';
+      }
 
       async function syncStoreBrandName() {
         const logoEl = document.querySelector(".logo-text");
@@ -1106,6 +1149,12 @@ const TYPE_ICONS = {
           currentSearch = this.value.toLowerCase().trim();
           filterAndRender();
         };
+
+        document.getElementById('filterRole').onchange = function() {
+          currentRole = this.value;
+          filterAndRender();
+        };
+        loadUsersRoleMap().then(() => filterAndRender());
 
         document.getElementById('btnFilter').onclick = () => loadTransactions(false);
         document.getElementById('btnExport').onclick = exportData;
@@ -1390,6 +1439,10 @@ const TYPE_ICONS = {
           });
         }
 
+        if (currentRole !== 'all') {
+          filtered = filtered.filter(t => getTransactionRole(t) === currentRole);
+        }
+        
         renderResellerGroupPanel(filtered);
 
         let tableList = filtered;
@@ -1467,7 +1520,10 @@ const TYPE_ICONS = {
               <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.waktu || t.timestamp)}</td>
               <td>${typeBadgeHtml}</td>
               <td class="hide-on-mobile">${(KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()}</td>
-              <td class="hide-on-mobile">${t.userName || '-'}</td>
+              <td class="hide-on-mobile">
+                <div style="font-weight:600;">${t.userName || '-'}</div>
+                <span style="font-size:0.62rem;font-weight:800;padding:0.1rem 0.35rem;border-radius:4px;background:var(--bg-subtle);color:var(--text-muted);text-transform:uppercase;">${getTransactionRole(t)}</span>
+              </td>
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
               <td style="text-align:center; white-space:nowrap;">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk" style="padding:0.25rem 0.45rem;"><i class="fas fa-print"></i></button>
