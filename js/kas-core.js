@@ -467,7 +467,7 @@ if (typeof window.KasCore === 'undefined') {
           }
           result.masuk_transaksi = true;
           result.masuk_penjualan = true;
-          result.laba = nominal - modalProduk;
+          result.laba = (payload.isOwnerTake || (payload.catatan && payload.catatan.includes('AMBIL OWNER'))) ? 0 : (nominal - modalProduk);
           break;
 
         /* TOP UP — tunai masuk laci nominal+admin, hutang belum ada uang */
