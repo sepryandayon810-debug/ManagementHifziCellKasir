@@ -7618,7 +7618,23 @@ async function confirmSaveKasirStatic() {
     showToast('Gagal update: ' + err.message, 'error');
   }
 }
+  
+// ===== KONTROL MODAL PELANGGAN KASIR =====
+let kasirCustomerData = [];
 
+async function openModalPelangganKasir() {
+  const modal = document.getElementById('modalPelangganKasir');
+  if (modal) modal.classList.add('active');
+  const searchInput = document.getElementById('kasirSearchCustomer');
+  if (searchInput) searchInput.value = '';
+  closeFormCustomerKasir();
+  await loadCustomerKasirData();
+}
+
+function closeModalPelangganKasir() {
+  const modal = document.getElementById('modalPelangganKasir');
+  if (modal) modal.classList.remove('active');
+}
 async function loadCustomerKasirData() {
   const container = document.getElementById('kasirCustomerList');
   container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Memuat data pelanggan...</div>';
