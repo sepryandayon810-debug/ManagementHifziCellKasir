@@ -365,6 +365,10 @@ if (typeof window.KasCore === 'undefined') {
     function calculateTransactionProfit(transaction) {
       if (!transaction) return 0;
 
+      if (transaction.isOwnerTake || (transaction.catatan && String(transaction.catatan).includes('AMBIL OWNER'))) {
+        return 0;
+      }
+
       var category = getCategory(transaction);
 
       // Jika page sudah menyimpan laba final, gunakan itu (kompatibilitas data lama)
