@@ -1341,6 +1341,48 @@
     });
   });
 
+  // 🩺 AUTO-HEAL: KLAIM & PERBAIKI TRANSAKSI KEMARIN KE DEVELOPER SECARA PERMANEN
+async function healLocalUserTransactions(user, displayName, roleName) {
+  if (!user || !user.uid) return;
+  const isBoss = roleName === "developer" || roleName === "owner";
+  if (!isBoss) return;
+
+  try {
+    // 1. Target spesifik ID kemarin (Rp 20.000)
+    const targetDoc = await db.collection("transactions").doc("BKnKsy5sYd5d2wf5Zyeo").get();
+    if (targetDoc.exists) {
+      const d = targetDoc.data();
+      if (d.userId === "local_user" || d.userId === "unknown" || !d.userId || d.userName === "User" || (d.userRole || "").toLowerCase() === "kasir") {
+        await db.collection("transactions").doc("BKnKsy5sYd5d2wf5Zyeo").update({
+          userId: user.uid,
+          userName: displayName,
+          userRole: roleName.toUpperCase(),
+          cashierName: displayName,
+          healedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    // 2. Scan sisa transaksi bertanda 'local_user' jika ada
+    const snapLocal = await db.collection("transactions").where("userId", "==", "local_user").limit(25).get();
+    if (!snapLocal.empty) {
+      const batch = db.batch();
+      snapLocal.forEach(doc => {
+        batch.update(doc.ref, {
+          userId: user.uid,
+          userName: displayName,
+          userRole: roleName.toUpperCase(),
+          cashierName: displayName,
+          healedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn("Auto-heal transaksi error:", err);
+  }
+}
+  
   async function initDashboard(user) {
     syncStoreBrandName();
     setupSidebarEvents();
@@ -2065,9 +2107,17 @@
       staffMap[uId].modal += KasCore.normalizeNumber(m.amount);
     });
 
-    (transactions || []).forEach(tx => {
-      if (!KasCore.isValidTransaction(tx)) return;
-      const uId = KasCore.getUserId(tx) || 'unknown';
+    // ⭐ KUNCI: Transaksi BKnKsy5sYd5d2wf5Zyeo atau transaksi tanpa UID / local_user yang dibuat oleh developer
+  // HARUS langsung digabungkan ke Sepryanda Yon (DEVELOPER)!
+  const isTargetHealedTx = (tx.id === 'BKnKsy5sYd5d2wf5Zyeo' || String(tx.id).includes('BKnKsy5s'));
+  const isLocalUserTx = (uId === 'local_user' || uId === 'unknown' || !(usersMap && usersMap[uId]) || (tx.userName && tx.userName.toLowerCase() === 'user'));
+
+  if ((isTargetHealedTx || isLocalUserTx) && activeUid && isDeveloperBoss) {
+    uId = activeUid;
+    tx.userId = activeUid;
+    tx.userName = activeName;
+    tx.userRole = activeRole.toUpperCase();
+  }
 
       if (!staffMap[uId]) {
         const u = usersMap[uId] || {};
