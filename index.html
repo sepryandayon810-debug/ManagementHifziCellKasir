@@ -1885,12 +1885,15 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       if (bIn <= 0 && bOut <= 0) return;
 
-      let title = "Penjualan Non-Tunai (QRIS/TF)";
-      if (isTopUp) title = "Top Up / Isi Saldo (Bank Keluar)";
-      else if (isTarik) title = "Tarik Tunai (Bank Masuk)";
-      else if (bOut > 0 && bIn === 0) title = "Mutasi Keluar Bank";
-      else if (/kas_masuk/.test(typeFields)) title = "Mutasi Masuk Bank";
+      const isSetorBank = /setor_bank|setor_tunai/.test(typeFields) || tx.kategori === 'setor_bank' || tx.category === 'setor_bank';
 
+let title = "Penjualan Non-Tunai (QRIS/TF)";
+if (isSetorBank) title = "Setor Tunai ke Bank";
+else if (isTopUp) title = "Top Up / Isi Saldo (Bank Keluar)";
+else if (isTarik) title = "Tarik Tunai (Bank Masuk)";
+else if (bOut > 0 && bIn === 0) title = "Mutasi Keluar Bank";
+else if (/kas_masuk/.test(typeFields)) title = "Mutasi Masuk Bank";
+      
       const descParts = [
         tx.provider || tx.layanan || tx.namaBank || tx.bank || "",
         tx.tujuan || tx.nomorTujuan || tx.noTujuan || tx.pelanggan || tx.customerName || "",
