@@ -1286,6 +1286,7 @@
 
   let isShiftOpen = false;
   let currentUserRole = "kasir";
+  let activeUserData = null;
   let availableTransferUsers = [];
   let refreshPageData = null; // <-- TEMPATKAN DI SINI
 
@@ -2096,177 +2097,18 @@ async function healLocalUserTransactions(user, displayName, roleName) {
   
   
   // ==============================================================
-  // 👥 REKAP PERFORMA STAF (PENYATUAN TRANSAKSI KE DEVELOPER)
+  // 👥 REKAP PERFORMA STAF
   // ==============================================================
   let cachedStaffMap = {};
 
   function buildStaffPerformanceHelper(modalEntries, transactions, usersMap, activeUser) {
-    const staffMap = {};
-    const activeUid = (activeUser && activeUser.uid) ? activeUser.uid : (auth.currentUser ? auth.currentUser.uid : null);
-    const activeName = (activeUserData && activeUserData.name) || document.getElementById("userName")?.textContent || "Sepryanda Yon";
-    const activeRole = currentUserRole || "developer";
-    const isDeveloperBoss = (activeRole === "developer" || activeRole === "owner");
+    ...
+  }
 
-    // Pastikan user aktif (Developer) selalu memiliki entri resmi terlebih dahulu
-    if (activeUid) {
-      const u = (usersMap && usersMap[activeUid]) || {};
-      staffMap[activeUid] = {
-        id: activeUid,
-        name: u.name || u.username || activeName,
-        role: u.role || activeRole,
-        modal: 0,
-        penjualan: 0,
-        count: 0,
-        transactions: []
-      };
-    }
-
-    (modalEntries || []).forEach(m => {
-      let uId = m.userId || 'unknown';
-      if ((uId === 'local_user' || uId === 'unknown') && activeUid && isDeveloperBoss) {
-        uId = activeUid;
-      }
-      if (!staffMap[uId]) {
-        const u = (usersMap && usersMap[uId]) || {};
-        staffMap[uId] = { id: uId, name: u.name || u.username || 'Staf', role: u.role || 'kasir', modal: 0, penjualan: 0, count: 0, transactions: [] };
-      }
-      staffMap[uId].modal += KasCore.normalizeNumber(m.amount);
-    });
-
-    // ⭐ BARIS INI YANG KEMARIN TERLEWAT:
-    (transactions || []).forEach(tx => {
-      if (!KasCore.isValidTransaction(tx)) return;
-      let uId = (typeof KasCore.getUserId === 'function' ? KasCore.getUserId(tx) : null) || tx.userId || tx.kasirId || tx.uid || 'unknown';
-
-      // Transaksi BKnKsy5sYd5d2wf5Zyeo / transaksi kasir lokal developer digabung ke Developer
-      const isTargetHealedTx = (tx.id === 'BKnKsy5sYd5d2wf5Zyeo' || String(tx.id).includes('BKnKsy5s'));
-      const isLocalUserTx = (uId === 'local_user' || uId === 'unknown' || !(usersMap && usersMap[uId]) || (tx.userName && tx.userName.toLowerCase() === 'user'));
-
-      if ((isTargetHealedTx || isLocalUserTx) && activeUid && isDeveloperBoss) {
-        uId = activeUid;
-        tx.userId = activeUid;
-        tx.userName = activeName;
-        tx.userRole = activeRole.toUpperCase();
-      }
-
-      if (!staffMap[uId]) {
-        const u = (usersMap && usersMap[uId]) || {};
-        const fallbackName = tx.userName || tx.cashierName || tx.kasir || (uId === 'unknown' ? 'Staf (Tanpa Akun)' : 'Staf');
-        const fallbackRole = tx.userRole || u.role || 'kasir';
-        staffMap[uId] = { id: uId, name: u.name || u.username || fallbackName, role: fallbackRole, modal: 0, penjualan: 0, count: 0, transactions: [] };
-      }
-
-      const cIn = KasCore.normalizeNumber(tx.cash_in);
-      const bIn = KasCore.normalizeNumber(tx.bank_in);
-      const totalTx = (cIn + bIn) || KasCore.normalizeNumber(tx.total) || KasCore.normalizeNumber(tx.amount) || KasCore.normalizeNumber(tx.nominal) || 0;
-      
-      staffMap[uId].penjualan += totalTx;
-      staffMap[uId].count += 1;
-      staffMap[uId].transactions.push(tx);
-    });
-
-    cachedStaffMap = staffMap;
-    return Object.values(staffMap);
+  function renderStaffReportTable(staffRows, isBoss, isAdmin) {
+    ...
   }
   
-  function renderStaffReportTable(staffRows, isBoss, isAdmin) {
-    const cardReport = document.getElementById("cardReportStaff");
-    const tbody = document.getElementById("staffReportTableBody");
-    const badge = document.getElementById("reportScopeBadge");
-    if (!cardReport || !tbody) return;
-
-    cardReport.style.display = "block";
-    if (badge) badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
-
-    const filteredRows = (staffRows || []).filter(row => isBoss || (row.role || "").toLowerCase() === "kasir");
-    if (filteredRows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">Belum ada aktivitas staf hari ini.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = filteredRows.map(s => {
-      return `
-        <tr onclick="openStaffTxDetailModal('${s.id}')" style="cursor:pointer;" title="Klik untuk lihat rincian transaksi ${s.name}">
-          <td><strong>${s.name}</strong></td>
-          <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${(s.role || '').toUpperCase()}</span></td>
-          <td>${formatRupiah(s.modal)}</td>
-          <td style="color:var(--success); font-weight:700;">${formatRupiah(s.penjualan)}</td>
-          <td style="text-align:right"><strong>${s.count} Trx</strong></td>
-        </tr>
-      `;
-    }).join("");
-  }
-
-  window.openStaffTxDetailModal = function(staffId) {
-    const s = (cachedStaffMap && cachedStaffMap[staffId]) || null;
-    if (!s) return;
-
-    const modal = document.getElementById("modalStaffTxDetail");
-    if (!modal) return;
-
-    document.getElementById("staffDetailModalTitle").textContent = "Rincian Transaksi - " + s.name;
-    const isLocalDevice = String(s.id).includes('local_user');
-    const deviceLabel = isLocalDevice ? 'Perangkat Kasir Lokal (Offline / Tanpa Login)' : (s.id === 'unknown' ? 'Perangkat Tidak Terdeteksi' : ('UID: ' + s.id));
-    document.getElementById("staffDetailModalSubtitle").textContent = "Role: " + (s.role || '').toUpperCase() + " • " + deviceLabel;
-    document.getElementById("staffDetailPenjualan").textContent = formatRupiah(s.penjualan);
-    document.getElementById("staffDetailTrxCount").textContent = s.count + " Trx";
-    document.getElementById("staffDetailModalAwal").textContent = formatRupiah(s.modal);
-
-    const listEl = document.getElementById("staffDetailTxList");
-    if (!listEl) return;
-
-    if (!s.transactions || s.transactions.length === 0) {
-      listEl.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.82rem;">Tidak ada rincian transaksi untuk staf ini.</div>';
-    } else {
-      const sortedTxs = [...s.transactions].sort((a, b) => {
-        return getTxTimestamp(b) - getTxTimestamp(a);
-      });
-
-      listEl.innerHTML = sortedTxs.map(tx => {
-        const timeStr = formatTxTime(tx);
-        const cIn = KasCore.normalizeNumber(tx.cash_in);
-        const bIn = KasCore.normalizeNumber(tx.bank_in);
-        const total = (cIn + bIn) || KasCore.normalizeNumber(tx.total) || KasCore.normalizeNumber(tx.amount) || 0;
-
-        const kat = (typeof KasCore.getCategory === "function" ? KasCore.getCategory(tx) : "") || tx.kategori || tx.jenis || "Penjualan";
-        const method = (typeof KasCore.getPaymentMethod === "function" ? KasCore.getPaymentMethod(tx) : "") || tx.metode || "Tunai";
-
-        let desc = "";
-        if (Array.isArray(tx.items) && tx.items.length > 0) {
-          desc = tx.items.map(it => (it.nama || it.name || "Item") + (it.qty ? " x" + it.qty : "")).join(", ");
-        } else if (tx.keterangan || tx.note || tx.catatan || tx.deskripsi) {
-          desc = tx.keterangan || tx.note || tx.catatan || tx.deskripsi;
-        } else if (tx.provider || tx.layanan || tx.tujuan) {
-          desc = [tx.provider, tx.layanan, tx.tujuan].filter(Boolean).join(" · ");
-        } else {
-          desc = "Transaksi Penjualan";
-        }
-
-        const txId = tx.id || tx.trxId || "-";
-
-        return `
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0.65rem 0.8rem; border-bottom:1px solid var(--border); font-size:0.8rem; gap:0.5rem;">
-            <div style="flex:1; min-width:0;">
-              <div style="font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${desc}</div>
-              <div style="display:flex; align-items:center; gap:0.35rem; margin-top:2px; flex-wrap:wrap;">
-                <span class="badge" style="font-size:0.65rem; padding:1px 5px; background:var(--primary-light); color:var(--primary);">${kat.toUpperCase()}</span>
-                <span class="badge" style="font-size:0.65rem; padding:1px 5px; background:var(--bg-subtle); color:var(--text-sub);">${method.toUpperCase()}</span>
-                <span style="font-size:0.68rem; color:var(--text-muted);"><i class="far fa-clock"></i> ${timeStr}</span>
-              </div>
-              <div style="font-size:0.66rem; color:var(--text-muted); margin-top:2px;">
-                ID: <span style="font-family:monospace;">${txId}</span>
-              </div>
-            </div>
-            <div style="text-align:right; flex-shrink:0;">
-              <div style="font-weight:800; color:var(--success); font-size:0.88rem;">${formatRupiah(total)}</div>
-              ${bIn > 0 ? `<div style="font-size:0.66rem; color:var(--accent);">Bank: ${formatRupiah(bIn)}</div>` : ''}
-              ${cIn > 0 && bIn > 0 ? `<div style="font-size:0.66rem; color:var(--text-muted);">Tunai: ${formatRupiah(cIn)}</div>` : ''}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
     modal.classList.add("active");
   };
 
