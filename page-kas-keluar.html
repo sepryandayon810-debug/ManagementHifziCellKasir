@@ -860,41 +860,45 @@ if (saveBtn) {
     }
 
     // ----------------------------------------------------------
-    // KATEGORI
+    // KATEGORI & SETOR BANK LOGIC
     // ----------------------------------------------------------
     const category = document.getElementById('keluarCategory')?.value || 'operasional';
-const isSetorBank = category === 'setor_bank';
+    const isSetorBank = category === 'setor_bank';
 
-Utils.showLoading(isSetorBank ? 'Menyimpan setor tunai ke bank...' : 'Menyimpan kas keluar...');
+    try {
+      Utils.showLoading(isSetorBank ? 'Menyimpan setor tunai ke bank...' : 'Menyimpan kas keluar...');
+      saveBtn.disabled = true;
 
-const saved = await KasCore.saveTransaction({
-  kategori: isSetorBank ? 'setor_bank' : 'kas_keluar',
-  sub_kategori: category,
-  kategori_keluar: category,
-  metode_pembayaran: 'tunai',
-  nominal: amount,
-  admin: 0,
-  modal_produk: 0,
-  userId: user.uid,
-  catatan: note,
-  status: 'completed',
-  pengaruhi_kas_global: true
-});
+      const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
-await db.collection('transactions').doc(saved.id).update({
-  type: isSetorBank ? 'setor_bank' : 'kas_keluar',
-  source: isSetorBank ? 'setor_bank' : 'kasir_keluar',
-  amount: amount,
-  total: amount,
-  note: note,
-  description: note,
-  category: isSetorBank ? 'setor_bank' : category,
-  sub_kategori: category,
-  cashDirection: 'out',
-  flowType: isSetorBank ? 'setor_bank' : 'operasional_keluar',
-  userName: userName,
-  date: today
-});
+      const saved = await KasCore.saveTransaction({
+        kategori: isSetorBank ? 'setor_bank' : 'kas_keluar',
+        sub_kategori: category,
+        kategori_keluar: category,
+        metode_pembayaran: 'tunai',
+        nominal: amount,
+        admin: 0,
+        modal_produk: 0,
+        userId: user.uid,
+        catatan: note,
+        status: 'completed',
+        pengaruhi_kas_global: true
+      });
+
+      await db.collection('transactions').doc(saved.id).update({
+        type: isSetorBank ? 'setor_bank' : 'kas_keluar',
+        source: isSetorBank ? 'setor_bank' : 'kasir_keluar',
+        amount: amount,
+        total: amount,
+        note: note,
+        description: note,
+        category: isSetorBank ? 'setor_bank' : category,
+        sub_kategori: category,
+        cashDirection: 'out',
+        flowType: isSetorBank ? 'setor_bank' : 'operasional_keluar',
+        userName: userName,
+        date: today
+      });
     
       // ========================================================
       // BERHASIL
