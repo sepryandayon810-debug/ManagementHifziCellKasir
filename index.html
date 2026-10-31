@@ -2085,7 +2085,8 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       if (isBoss || isAdmin) {
         try {
           const modalSummary = await KasCore.getModalSummary({ date: targetDate });
-          const staffData = buildStaffPerformanceHelper(modalSummary.entries, allTransactions, cachedUsersMap);
+          const modalEntries = (modalSummary && modalSummary.entries) ? modalSummary.entries : [];
+          const staffData = buildStaffPerformanceHelper(modalEntries, allTransactions, cachedUsersMap, user);
           renderStaffReportTable(staffData, isBoss, isAdmin);
         } catch (eStaff) {}
       }
