@@ -165,12 +165,19 @@ if (typeof window.KasCore === 'undefined') {
      * ========================================================== */
 
     function getCategory(transaction) {
-      if (!transaction) return '';
-      var raw = transaction.kategori || transaction.category || transaction.type || transaction.jenis || '';
-      var category = String(raw).trim().toLowerCase();
+  if (!transaction) return '';
+  var raw = transaction.kategori || transaction.category || transaction.type || transaction.jenis || '';
+  var category = String(raw).trim().toLowerCase();
+  var sub = transaction.sub_kategori || transaction.kategori_keluar || transaction.subKategori || '';
+  var subCategory = String(sub).trim().toLowerCase();
 
-      // Alias lama
-      if (category === 'topup') return 'top_up';
+  // Setor Tunai ke Bank
+  if (category === 'setor_bank' || category === 'setor_tunai' || subCategory === 'setor_bank' || subCategory === 'setor_tunai') {
+    return 'setor_bank';
+  }
+
+  // Alias lama
+  if (category === 'topup') return 'top_up';
       if (category === 'tarik') return 'tarik_tunai';
       if (category === 'penjualan') return 'jual';
       if (category === 'kas masuk') return 'kas_masuk';
@@ -253,6 +260,7 @@ if (typeof window.KasCore === 'undefined') {
         case 'modal_awal': return true;
         case 'kas_masuk': return true;
         case 'kas_keluar': return true;
+        case 'setor_bank': return true;
         case 'jual': return method === 'tunai';      // tunai masuk laci, QRIS/transfer ke bank, hutang belum ada uang
         case 'top_up': return method === 'tunai';
         case 'tarik_tunai': return method === 'tunai';
@@ -298,6 +306,7 @@ if (typeof window.KasCore === 'undefined') {
         case 'modal_awal':
         case 'kas_masuk':
         case 'kas_keluar':
+        case 'setor_bank':
         case 'bayar_hutang':
         case 'pinjaman_tunai':
         case 'pengembalian_pinjaman':
@@ -448,6 +457,35 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = 0;
           break;
 
+        /* SETOR TUNAI KE BANK (Pindah Saldo dari Kas Fisik Laci ke Saldo Bank) */
+case 'setor_bank':
+  result.cash_out = nominal;          // Uang fisik laci berkurang
+  result.bank_in = nominal;           // Saldo bank bertambah
+  result.masuk_transaksi = false;     // Bukan penjualan
+  result.masuk_penjualan = false;
+  result.laba = 0;                    // Bukan keuntungan/kerugian operasional
+  result.pengaruhi_kas_global = true;
+  break;
+
+/* KAS KELUAR */
+case 'kas_keluar':
+  var isSetorKeluar = payload.sub_kategori === 'setor_bank' || payload.kategori_keluar === 'setor_bank';
+  if (isSetorKeluar) {
+    result.kategori = 'setor_bank';
+    result.cash_out = nominal;
+    result.bank_in = nominal;
+    result.masuk_transaksi = false;
+    result.masuk_penjualan = false;
+    result.laba = 0;
+    result.pengaruhi_kas_global = true;
+  } else {
+    result.cash_out = nominal;
+    result.masuk_transaksi = false;
+    result.masuk_penjualan = false;
+    result.laba = 0;
+  }
+  break;
+
         /* JUAL — tunai ke laci, QRIS/transfer ke bank, hutang belum ada uang */
         case 'jual':
           if (modalProduk > 0) {
@@ -596,6 +634,7 @@ if (typeof window.KasCore === 'undefined') {
         case 'kas_masuk': classification.isCashFlow = true; break;
         case 'kas_keluar':
           classification.isCashFlow = true;
+          classification.isOperational = false;
           classification.isOperational = true;
           break;
         case 'jual':
@@ -833,10 +872,12 @@ if (typeof window.KasCore === 'undefined') {
         if (category === 'kas_masuk' || category === 'modal_awal' || category === 'pengembalian_pinjaman') {
           summary.cashFlowIn += cashIn;
         }
-        if (category === 'kas_keluar' || category === 'pinjaman_tunai') {
-          summary.cashFlowOut += cashOut;
-        }
-        if (category === 'kas_keluar') {
+        if (category === 'kas_keluar' || category === 'pinjaman_tunai' || category === 'setor_bank') {
+  summary.cashFlowOut += cashOut;
+}
+if (category === 'kas_keluar') {
+  summary.operationalCashOut += cashOut;
+}
           summary.operationalCashOut += cashOut;
         }
 
