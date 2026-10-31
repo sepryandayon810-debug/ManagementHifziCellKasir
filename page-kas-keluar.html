@@ -862,27 +862,15 @@ if (saveBtn) {
     // ----------------------------------------------------------
     // KATEGORI
     // ----------------------------------------------------------
-    const category =
-      document.getElementById('keluarCategory')?.value || 'operasional';
+    const category = document.getElementById('keluarCategory')?.value || 'operasional';
+const isSetorBank = category === 'setor_bank';
 
-    try {
+Utils.showLoading(isSetorBank ? 'Menyimpan setor tunai ke bank...' : 'Menyimpan kas keluar...');
 
-      Utils.showLoading('Menyimpan kas keluar...');
-      saveBtn.disabled = true;
-
-      const today =
-        Utils.getTodayString
-          ? Utils.getTodayString()
-          : new Date().toISOString().split('T')[0];
-
-      /*
- * SATU PINTU TULIS KASCORE
- * KasCore menentukan dan menyimpan:
- * cash_in, cash_out, bank/digital,
- * laba, serta flag transaksi.
- */
 const saved = await KasCore.saveTransaction({
-  kategori: 'kas_keluar',
+  kategori: isSetorBank ? 'setor_bank' : 'kas_keluar',
+  sub_kategori: category,
+  kategori_keluar: category,
   metode_pembayaran: 'tunai',
   nominal: amount,
   admin: 0,
@@ -892,23 +880,22 @@ const saved = await KasCore.saveTransaction({
   status: 'completed',
   pengaruhi_kas_global: true
 });
-// Field tambahan hanya untuk tampilan/riwayat.
-// Mutasi keuangan tetap berasal dari KasCore.
-await db.collection('transactions')
-  .doc(saved.id)
-  .update({
-    type: 'kas_keluar',
-    source: 'kasir_keluar',
-    amount: amount,
-    total: amount,
-    note: note,
-    description: note,
-    category: category,
-    cashDirection: 'out',
-    flowType: 'operasional_keluar',
-    userName: userName,
-    date: today
-  });
+
+await db.collection('transactions').doc(saved.id).update({
+  type: isSetorBank ? 'setor_bank' : 'kas_keluar',
+  source: isSetorBank ? 'setor_bank' : 'kasir_keluar',
+  amount: amount,
+  total: amount,
+  note: note,
+  description: note,
+  category: isSetorBank ? 'setor_bank' : category,
+  sub_kategori: category,
+  cashDirection: 'out',
+  flowType: isSetorBank ? 'setor_bank' : 'operasional_keluar',
+  userName: userName,
+  date: today
+});
+    
       // ========================================================
       // BERHASIL
       // ========================================================
