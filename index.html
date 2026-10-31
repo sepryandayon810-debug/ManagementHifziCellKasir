@@ -2107,50 +2107,27 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     const activeName = (typeof activeUserData !== "undefined" && activeUserData && activeUserData.name) || document.getElementById("userName")?.textContent || "Sepryanda Yon";
     const activeRole = (typeof currentUserRole !== "undefined" && currentUserRole) || "developer";
 
-    // 1. Baris Developer Aktif (Sepryanda Yon) - SELALU TERSEDIA
-    const uDev = (usersMap && usersMap[activeUid]) || {};
-    staffMap[activeUid] = {
-      id: activeUid,
-      name: uDev.name || uDev.username || activeName || "Sepryanda Yon",
-      role: (uDev.role || activeRole || "DEVELOPER").toUpperCase(),
-      modal: 0,
-      penjualan: 0,
-      count: 0,
-      transactions: []
-    };
-
-    // 2. Baris Kasir / Staf Toko - SELALU TERSEDIA
-    const defaultKasirKey = "local_user";
-    staffMap[defaultKasirKey] = {
-      id: defaultKasirKey,
-      name: "Kasir / Staf Toko",
-      role: "KASIR",
-      modal: 0,
-      penjualan: 0,
-      count: 0,
-      transactions: []
-    };
-
-    // 3. Rekap Modal Awal
+    // 1. Rekap Modal Awal (HANYA staf yang membuka modal shift > 0 hari ini)
     (modalEntries || []).forEach(m => {
+      const amount = KasCore.normalizeNumber(m.amount);
+      if (amount <= 0) return;
       let uId = m.userId || 'local_user';
       if (!staffMap[uId]) {
         const u = (usersMap && usersMap[uId]) || {};
-        const roleLabel = (u.role || (uId === 'local_user' ? 'kasir' : 'staf')).toUpperCase();
-        const nameLabel = u.name || u.username || (uId === 'local_user' ? 'Kasir / Staf Toko' : 'Staf');
+        const isSelf = (uId === activeUid);
+        const roleLabel = (u.role || (isSelf ? activeRole : (uId === 'local_user' ? 'kasir' : 'staf'))).toUpperCase();
+        const nameLabel = u.name || u.username || m.userName || (isSelf ? activeName : (uId === 'local_user' ? 'Kasir / Staf Toko' : 'Staf'));
         staffMap[uId] = { id: uId, name: nameLabel, role: roleLabel, modal: 0, penjualan: 0, count: 0, transactions: [] };
       }
-      staffMap[uId].modal += KasCore.normalizeNumber(m.amount);
+      staffMap[uId].modal += amount;
     });
 
-    // 4. Rekap Transaksi
+    // 2. Rekap Transaksi
     (transactions || []).forEach(tx => {
       if (!KasCore.isValidTransaction(tx)) return;
       let uId = (typeof KasCore.getUserId === 'function' ? KasCore.getUserId(tx) : null) || tx.userId || tx.kasirId || tx.uid || 'local_user';
 
-      // ⭐ HANYA transaksi pembayaran hutang kemarin (ID: BKnKsy5sYd5d2wf5Zyeo)
-      // yang disesuaikan ke Sepryanda Yon (DEVELOPER).
-      // Transaksi penjualan kasir lainnya TETAP masuk ke Kasir / Staf Toko!
+      // Transaksi pembayaran hutang kemarin disesuaikan ke Sepryanda Yon (DEVELOPER)
       const isTargetHealedTx = (tx.id === 'BKnKsy5sYd5d2wf5Zyeo' || String(tx.id).includes('BKnKsy5s'));
       if (isTargetHealedTx && activeUid) {
         uId = activeUid;
@@ -2161,8 +2138,9 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       if (!staffMap[uId]) {
         const u = (usersMap && usersMap[uId]) || {};
-        const fallbackName = tx.userName || tx.cashierName || tx.kasir || (uId === 'local_user' ? 'Kasir / Staf Toko' : 'Staf');
-        const fallbackRole = (tx.userRole || u.role || (uId === 'local_user' ? 'kasir' : 'staf')).toUpperCase();
+        const isSelf = (uId === activeUid);
+        const fallbackName = tx.userName || tx.cashierName || tx.kasir || (isSelf ? activeName : (uId === 'local_user' ? 'Kasir / Staf Toko' : 'Staf'));
+        const fallbackRole = (tx.userRole || u.role || (isSelf ? activeRole : (uId === 'local_user' ? 'kasir' : 'staf'))).toUpperCase();
         staffMap[uId] = { id: uId, name: u.name || u.username || fallbackName, role: fallbackRole, modal: 0, penjualan: 0, count: 0, transactions: [] };
       }
 
@@ -2188,19 +2166,18 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     cardReport.style.display = "block";
     if (badge) badge.textContent = isBoss ? "Semua Staf" : "Tim Kasir";
 
-    // Filter baris: Developer dan Kasir Toko KEDUANYA selalu tampil
-    const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+    // Filter baris: HANYA staf yang sudah buka shift (modal > 0) ATAU punya transaksi (count > 0)
     const filteredRows = (staffRows || []).filter(row => {
+      const hasActivity = (row.modal > 0 || row.count > 0);
+      if (!hasActivity) return false;
+
       const rRole = (row.role || "").toUpperCase();
       if (!isBoss && rRole !== "KASIR") return false;
-      if (row.id === "local_user" || row.id === currentUid || rRole === "DEVELOPER" || rRole === "OWNER" || rRole === "KASIR") {
-        return true;
-      }
-      return (row.count > 0 || row.modal > 0);
+      return true;
     });
 
     if (filteredRows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">Belum ada aktivitas staf hari ini.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1.25rem;">Belum ada aktivitas staf hari ini.</td></tr>`;
       return;
     }
 
