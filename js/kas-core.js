@@ -458,33 +458,35 @@ if (typeof window.KasCore === 'undefined') {
           break;
 
         /* SETOR TUNAI KE BANK (Pindah Saldo dari Kas Fisik Laci ke Saldo Bank) */
-case 'setor_bank':
-  result.cash_out = nominal;          // Uang fisik laci berkurang
-  result.bank_in = nominal;           // Saldo bank bertambah
-  result.masuk_transaksi = false;     // Bukan penjualan
-  result.masuk_penjualan = false;
-  result.laba = 0;                    // Bukan keuntungan/kerugian operasional
-  result.pengaruhi_kas_global = true;
-  break;
+        case 'setor_bank':
+          result.cash_out = nominal;
+          result.bank_in = nominal;
+          result.masuk_transaksi = false;
+          result.masuk_penjualan = false;
+          result.laba = 0;
+          result.pengaruhi_kas_global = true;
+          break;
 
-/* KAS KELUAR OPERASIONAL */
-case 'kas_keluar':
-  var isSetorKeluar = payload.sub_kategori === 'setor_bank' || payload.kategori_keluar === 'setor_bank' || (payload.catatan && /setor.*bank/i.test(payload.catatan));
-  if (isSetorKeluar) {
-    result.kategori = 'setor_bank';
-    result.cash_out = nominal;
-    result.bank_in = nominal;
-    result.masuk_transaksi = false;
-    result.masuk_penjualan = false;
-    result.laba = 0;
-    result.pengaruhi_kas_global = true;
-  } else {
-    result.cash_out = nominal;
-    result.masuk_transaksi = false;
-    result.masuk_penjualan = false;
-    result.laba = 0;
-  }
-  break;
+        /* KAS KELUAR BIASA & FALLBACK SETOR KELUAR */
+        case 'kas_keluar':
+          var isSetorKeluar = payload.sub_kategori === 'setor_bank' || 
+                              payload.kategori_keluar === 'setor_bank' || 
+                              (payload.catatan && /setor.*bank/i.test(payload.catatan));
+          if (isSetorKeluar) {
+            result.kategori = 'setor_bank';
+            result.cash_out = nominal;
+            result.bank_in = nominal;
+            result.masuk_transaksi = false;
+            result.masuk_penjualan = false;
+            result.laba = 0;
+            result.pengaruhi_kas_global = true;
+          } else {
+            result.cash_out = nominal;
+            result.masuk_transaksi = false;
+            result.masuk_penjualan = false;
+            result.laba = 0;
+          }
+          break;
 
         /* JUAL — tunai ke laci, QRIS/transfer ke bank, hutang belum ada uang */
         case 'jual':
