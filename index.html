@@ -1193,7 +1193,36 @@
         </div>
       </div>
 
-      <!-- MODAL DETAIL TRANSAKSI STAF -->
+      <div style="margin-bottom:0.65rem;">
+        <button type="button" onclick="toggleNonTunaiLogic()" style="width:100%; text-align:left; background:none; border:none; color:var(--primary); font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:0.2rem 0; font-family:inherit;">
+          <span><i class="fas fa-circle-question"></i> Bagaimana cara hitung Top Up & Tarik Tunai di Bank?</span>
+          <i class="fas fa-chevron-down" id="ntLogicChevron"></i>
+        </button>
+      </div>
+      <div class="nt-logic-card" id="ntLogicBox" style="display:none;">
+        <div style="margin-bottom:0.4rem;"><strong>Patokan mudah:</strong> Lihat dari sudut pandang <strong>Rekening / Saldo Aplikasi Toko</strong>:</div>
+        <div style="margin-bottom:0.3rem;">1. <strong>Belanja QRIS / Transfer:</strong> Pembeli bayar ke rekening toko &rarr; <strong style="color:var(--success);">Bank Masuk (+)</strong>, Laci tetap.</div>
+        <div style="margin-bottom:0.3rem;">2. <strong>Pelanggan Tarik Tunai:</strong> Pelanggan transfer ke rekening toko (<strong style="color:var(--success);">Bank Masuk +</strong>), kasir serahkan uang fisik dari laci (<strong style="color:var(--danger);">Laci Keluar -</strong>).</div>
+        <div>3. <strong>Pelanggan Top Up / Isi Saldo:</strong> Kasir terima uang fisik di laci (<strong style="color:var(--success);">Laci Masuk +</strong>), saldo bank/aplikasi toko terkirim ke HP pelanggan (<strong style="color:var(--danger);">Bank Keluar -</strong>).</div>
+      </div>
+
+      <div class="nt-filter-bar">
+        <button type="button" class="nt-filter-btn active" id="ntTabAll" onclick="filterNonTunaiList('all')">Semua</button>
+        <button type="button" class="nt-filter-btn" id="ntTabIn" onclick="filterNonTunaiList('in')">Bank Masuk (+)</button>
+        <button type="button" class="nt-filter-btn" id="ntTabOut" onclick="filterNonTunaiList('out')">Bank Keluar (-)</button>
+      </div>
+
+      <div class="nt-tx-list" id="ntTransactionList">
+        <div style="text-align:center; padding:1.25rem; color:var(--text-muted); font-size:0.8rem;">Memuat rincian transaksi...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeNonTunaiModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL TRANSAKSI STAF (PINDAH KE SINI) -->
 <div class="modal-overlay" id="modalStaffTxDetail" onclick="if(event.target===this) closeStaffTxDetailModal()">
   <div class="modal-content" style="max-width: 550px;">
     <div class="modal-header">
@@ -1234,38 +1263,9 @@
   </div>
 </div>
 
-      <div style="margin-bottom:0.65rem;">
-        <button type="button" onclick="toggleNonTunaiLogic()" style="width:100%; text-align:left; background:none; border:none; color:var(--primary); font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:0.2rem 0; font-family:inherit;">
-          <span><i class="fas fa-circle-question"></i> Bagaimana cara hitung Top Up & Tarik Tunai di Bank?</span>
-          <i class="fas fa-chevron-down" id="ntLogicChevron"></i>
-        </button>
-      </div>
-      <div class="nt-logic-card" id="ntLogicBox" style="display:none;">
-        <div style="margin-bottom:0.4rem;"><strong>Patokan mudah:</strong> Lihat dari sudut pandang <strong>Rekening / Saldo Aplikasi Toko</strong>:</div>
-        <div style="margin-bottom:0.3rem;">1. <strong>Belanja QRIS / Transfer:</strong> Pembeli bayar ke rekening toko &rarr; <strong style="color:var(--success);">Bank Masuk (+)</strong>, Laci tetap.</div>
-        <div style="margin-bottom:0.3rem;">2. <strong>Pelanggan Tarik Tunai:</strong> Pelanggan transfer ke rekening toko (<strong style="color:var(--success);">Bank Masuk +</strong>), kasir serahkan uang fisik dari laci (<strong style="color:var(--danger);">Laci Keluar -</strong>).</div>
-        <div>3. <strong>Pelanggan Top Up / Isi Saldo:</strong> Kasir terima uang fisik di laci (<strong style="color:var(--success);">Laci Masuk +</strong>), saldo bank/aplikasi toko terkirim ke HP pelanggan (<strong style="color:var(--danger);">Bank Keluar -</strong>).</div>
-      </div>
-
-      <div class="nt-filter-bar">
-        <button type="button" class="nt-filter-btn active" id="ntTabAll" onclick="filterNonTunaiList('all')">Semua</button>
-        <button type="button" class="nt-filter-btn" id="ntTabIn" onclick="filterNonTunaiList('in')">Bank Masuk (+)</button>
-        <button type="button" class="nt-filter-btn" id="ntTabOut" onclick="filterNonTunaiList('out')">Bank Keluar (-)</button>
-      </div>
-
-      <div class="nt-tx-list" id="ntTransactionList">
-        <div style="text-align:center; padding:1.25rem; color:var(--text-muted); font-size:0.8rem;">Memuat rincian transaksi...</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closeNonTunaiModal()">Tutup</button>
-    </div>
-  </div>
-</div>
-
 <!-- TEMPATKAN DI SINI: -->
 <div class="toast-box" id="toastContainer"></div>
-
+  
 <script>
 (function() {
   "use strict";
@@ -2071,20 +2071,11 @@
     tbody.innerHTML = filteredRows.map(s => {
       return `
         <tr onclick="openStaffTxDetailModal('${s.id}')" style="cursor:pointer;" title="Klik untuk lihat rincian transaksi ${s.name}">
-          <td>
-            <div style="display:flex; align-items:center; gap:0.4rem;">
-              <strong>${s.name}</strong>
-              <i class="fas fa-arrow-up-right-from-square" style="font-size:0.7rem; color:var(--primary); opacity:0.8;"></i>
-            </div>
-            ${s.id === 'unknown' ? '<div style="font-size:0.68rem; color:var(--danger); font-weight:600;">UID: Tidak Terdeteksi</div>' : (s.id ? `<div style="font-size:0.66rem; color:var(--text-muted);">UID: ${s.id.slice(0, 10)}...</div>` : '')}
-          </td>
+          <td><strong>${s.name}</strong></td>
           <td><span class="badge" style="background:var(--primary-light); color:var(--primary)">${(s.role || '').toUpperCase()}</span></td>
           <td>${formatRupiah(s.modal)}</td>
           <td style="color:var(--success); font-weight:700;">${formatRupiah(s.penjualan)}</td>
-          <td style="text-align:right">
-            <div style="font-weight:700;">${s.count} Trx</div>
-            <span style="font-size:0.68rem; color:var(--primary); font-weight:600;">Lihat Rincian &rarr;</span>
-          </td>
+          <td style="text-align:right"><strong>${s.count} Trx</strong></td>
         </tr>
       `;
     }).join("");
@@ -2098,7 +2089,9 @@
     if (!modal) return;
 
     document.getElementById("staffDetailModalTitle").textContent = "Rincian Transaksi - " + s.name;
-    document.getElementById("staffDetailModalSubtitle").textContent = "Role: " + (s.role || '').toUpperCase() + " | UID: " + s.id;
+    const isLocalDevice = String(s.id).includes('local_user');
+    const deviceLabel = isLocalDevice ? 'Perangkat Kasir Lokal (Offline / Tanpa Login)' : (s.id === 'unknown' ? 'Perangkat Tidak Terdeteksi' : ('UID: ' + s.id));
+    document.getElementById("staffDetailModalSubtitle").textContent = "Role: " + (s.role || '').toUpperCase() + " • " + deviceLabel;
     document.getElementById("staffDetailPenjualan").textContent = formatRupiah(s.penjualan);
     document.getElementById("staffDetailTrxCount").textContent = s.count + " Trx";
     document.getElementById("staffDetailModalAwal").textContent = formatRupiah(s.modal);
