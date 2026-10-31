@@ -1418,6 +1418,9 @@ async function healLocalUserTransactions(user, displayName, roleName) {
         document.getElementById("labelRincianModal").textContent = "Total Modal Tim Kasir";
       }
 
+    // ⭐ Pastikan baris ini ada:
+      healLocalUserTransactions(user, displayName, currentUserRole);
+
     } catch (err) {
       console.error(err);
     }
@@ -2092,35 +2095,62 @@ async function healLocalUserTransactions(user, displayName, roleName) {
   }
   
   
-  // Helper lokal penyeragaman Performa Staf jika KasCore.buildStaffPerformance belum didefinisikan
+  // ==============================================================
+  // 👥 REKAP PERFORMA STAF (PENYATUAN TRANSAKSI KE DEVELOPER)
+  // ==============================================================
   let cachedStaffMap = {};
 
-  function buildStaffPerformanceHelper(modalEntries, transactions, usersMap) {
+  function buildStaffPerformanceHelper(modalEntries, transactions, usersMap, activeUser) {
     const staffMap = {};
+    const activeUid = (activeUser && activeUser.uid) ? activeUser.uid : (auth.currentUser ? auth.currentUser.uid : null);
+    const activeName = (activeUserData && activeUserData.name) || document.getElementById("userName")?.textContent || "Sepryanda Yon";
+    const activeRole = currentUserRole || "developer";
+    const isDeveloperBoss = (activeRole === "developer" || activeRole === "owner");
+
+    // Pastikan user aktif (Developer) selalu memiliki entri resmi terlebih dahulu
+    if (activeUid) {
+      const u = (usersMap && usersMap[activeUid]) || {};
+      staffMap[activeUid] = {
+        id: activeUid,
+        name: u.name || u.username || activeName,
+        role: u.role || activeRole,
+        modal: 0,
+        penjualan: 0,
+        count: 0,
+        transactions: []
+      };
+    }
 
     (modalEntries || []).forEach(m => {
-      const uId = m.userId || 'unknown';
+      let uId = m.userId || 'unknown';
+      if ((uId === 'local_user' || uId === 'unknown') && activeUid && isDeveloperBoss) {
+        uId = activeUid;
+      }
       if (!staffMap[uId]) {
-        const u = usersMap[uId] || {};
+        const u = (usersMap && usersMap[uId]) || {};
         staffMap[uId] = { id: uId, name: u.name || u.username || 'Staf', role: u.role || 'kasir', modal: 0, penjualan: 0, count: 0, transactions: [] };
       }
       staffMap[uId].modal += KasCore.normalizeNumber(m.amount);
     });
 
-    // ⭐ KUNCI: Transaksi BKnKsy5sYd5d2wf5Zyeo atau transaksi tanpa UID / local_user yang dibuat oleh developer
-  // HARUS langsung digabungkan ke Sepryanda Yon (DEVELOPER)!
-  const isTargetHealedTx = (tx.id === 'BKnKsy5sYd5d2wf5Zyeo' || String(tx.id).includes('BKnKsy5s'));
-  const isLocalUserTx = (uId === 'local_user' || uId === 'unknown' || !(usersMap && usersMap[uId]) || (tx.userName && tx.userName.toLowerCase() === 'user'));
+    // ⭐ BARIS INI YANG KEMARIN TERLEWAT:
+    (transactions || []).forEach(tx => {
+      if (!KasCore.isValidTransaction(tx)) return;
+      let uId = (typeof KasCore.getUserId === 'function' ? KasCore.getUserId(tx) : null) || tx.userId || tx.kasirId || tx.uid || 'unknown';
 
-  if ((isTargetHealedTx || isLocalUserTx) && activeUid && isDeveloperBoss) {
-    uId = activeUid;
-    tx.userId = activeUid;
-    tx.userName = activeName;
-    tx.userRole = activeRole.toUpperCase();
-  }
+      // Transaksi BKnKsy5sYd5d2wf5Zyeo / transaksi kasir lokal developer digabung ke Developer
+      const isTargetHealedTx = (tx.id === 'BKnKsy5sYd5d2wf5Zyeo' || String(tx.id).includes('BKnKsy5s'));
+      const isLocalUserTx = (uId === 'local_user' || uId === 'unknown' || !(usersMap && usersMap[uId]) || (tx.userName && tx.userName.toLowerCase() === 'user'));
+
+      if ((isTargetHealedTx || isLocalUserTx) && activeUid && isDeveloperBoss) {
+        uId = activeUid;
+        tx.userId = activeUid;
+        tx.userName = activeName;
+        tx.userRole = activeRole.toUpperCase();
+      }
 
       if (!staffMap[uId]) {
-        const u = usersMap[uId] || {};
+        const u = (usersMap && usersMap[uId]) || {};
         const fallbackName = tx.userName || tx.cashierName || tx.kasir || (uId === 'unknown' ? 'Staf (Tanpa Akun)' : 'Staf');
         const fallbackRole = tx.userRole || u.role || 'kasir';
         staffMap[uId] = { id: uId, name: u.name || u.username || fallbackName, role: fallbackRole, modal: 0, penjualan: 0, count: 0, transactions: [] };
@@ -2128,16 +2158,17 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       const cIn = KasCore.normalizeNumber(tx.cash_in);
       const bIn = KasCore.normalizeNumber(tx.bank_in);
+      const totalTx = (cIn + bIn) || KasCore.normalizeNumber(tx.total) || KasCore.normalizeNumber(tx.amount) || KasCore.normalizeNumber(tx.nominal) || 0;
       
-      staffMap[uId].penjualan += (cIn + bIn);
+      staffMap[uId].penjualan += totalTx;
       staffMap[uId].count += 1;
-      staffMap[uId].transactions.push(tx); // Simpan transaksi untuk dilihat di modal
+      staffMap[uId].transactions.push(tx);
     });
 
     cachedStaffMap = staffMap;
     return Object.values(staffMap);
   }
-
+  
   function renderStaffReportTable(staffRows, isBoss, isAdmin) {
     const cardReport = document.getElementById("cardReportStaff");
     const tbody = document.getElementById("staffReportTableBody");
