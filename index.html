@@ -1897,6 +1897,59 @@ if (isSetorBank) {
   if (bIn === 0) bIn = rawNominal || totalTx || cOut;
   if (cOut === 0) cOut = bIn;
   inferredBankIn += bIn;
+if (isTopUp) {
+        matchedTopUpCount++;
+        if (cIn === 0 && bIn === 0) cIn = totalTx || ((explicitPokok || rawNominal) + admin);
+        if (bOut === 0) {
+          let calcOut = 0;
+          if (explicitPokok > 0) calcOut = explicitPokok + adminBank;
+          else if (rawNominal > 0 && cIn > 0 && rawNominal < cIn) calcOut = rawNominal + adminBank;
+          else if (cIn > 0 && admin > 0 && cIn > admin) calcOut = (cIn - admin) + adminBank;
+          else calcOut = (rawNominal || cIn || totalTx) + adminBank;
+          bOut = calcOut;
+          inferredBankOut += calcOut;
+        }
+      } else if (isTarik) {
+        matchedTarikCount++;
+        if (cOut === 0 && bOut === 0) cOut = totalTx || Math.max(0, (explicitPokok || rawNominal) - admin);
+        if (bIn === 0) {
+          let calcIn = 0;
+          if (explicitTf > 0) calcIn = explicitTf;
+          else if (explicitPokok > 0) calcIn = explicitPokok;
+          else if (rawNominal > cOut && cOut > 0) calcIn = rawNominal;
+          else if (cOut > 0 && admin > 0 && cIn === 0) calcIn = cOut + admin;
+          else calcIn = rawNominal || cOut || totalTx;
+          bIn = calcIn;
+          inferredBankIn += calcIn;
+        }
+      } else if (bIn === 0 && bOut === 0 && /(qris|transfer|bank|non_tunai|nontunai|debit|dana|ovo|gopay|shopeepay|linkaja)/.test(methodStr)) {
+        if (cOut > 0 || /keluar|expense|out/.test(typeFields)) {
+          bOut = totalTx || rawNominal || cOut;
+          if (safeNum(kas.tarikNonTunai) === 0) inferredBankOut += bOut;
+        } else {
+          bIn = totalTx || rawNominal || cIn;
+          if (!/kas_masuk|masuk/.test(typeFields) && safeNum(kas.penjualanNonTunai) === 0) {
+            inferredSalesNT += bIn;
+          } else if (/kas_masuk|masuk/.test(typeFields) && safeNum(kas.topupNonTunai) === 0) {
+            inferredBankIn += bIn;
+          }
+        }
+      }
+
+      if (bIn <= 0 && bOut <= 0) return;
+
+      const isSetorBank = /setor_bank|setor_tunai/.test(typeFields) || 
+                    tx.kategori === 'setor_bank' || 
+                    tx.category === 'setor_bank' || 
+                    (tx.catatan && /setor.*bank|setor.*tunai/i.test(tx.catatan)) ||
+                    (tx.keterangan && /setor.*bank|setor.*tunai/i.test(tx.keterangan)) ||
+                    (tx.note && /setor.*bank|setor.*tunai/i.test(tx.note));
+
+let title = "Penjualan Non-Tunai (QRIS/TF)";
+if (isSetorBank) {
+  if (bIn === 0) bIn = rawNominal || totalTx || cOut;
+  if (cOut === 0) cOut = bIn;
+  inferredBankIn += bIn;
 else if (isTopUp) title = "Top Up / Isi Saldo (Bank Keluar)";
 else if (isTarik) title = "Tarik Tunai (Bank Masuk)";
 else if (bOut > 0 && bIn === 0) title = "Mutasi Keluar Bank";
