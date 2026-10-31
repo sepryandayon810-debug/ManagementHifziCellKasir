@@ -449,14 +449,6 @@ if (typeof window.KasCore === 'undefined') {
           result.laba = 0;
           break;
 
-        /* KAS KELUAR */
-        case 'kas_keluar':
-          result.cash_out = nominal;
-          result.masuk_transaksi = false;
-          result.masuk_penjualan = false;
-          result.laba = 0;
-          break;
-
         /* SETOR TUNAI KE BANK (Pindah Saldo dari Kas Fisik Laci ke Saldo Bank) */
         case 'setor_bank':
           result.cash_out = nominal;
