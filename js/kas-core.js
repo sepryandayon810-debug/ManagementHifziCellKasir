@@ -467,9 +467,9 @@ case 'setor_bank':
   result.pengaruhi_kas_global = true;
   break;
 
-/* KAS KELUAR */
+/* KAS KELUAR OPERASIONAL */
 case 'kas_keluar':
-  var isSetorKeluar = payload.sub_kategori === 'setor_bank' || payload.kategori_keluar === 'setor_bank';
+  var isSetorKeluar = payload.sub_kategori === 'setor_bank' || payload.kategori_keluar === 'setor_bank' || (payload.catatan && /setor.*bank/i.test(payload.catatan));
   if (isSetorKeluar) {
     result.kategori = 'setor_bank';
     result.cash_out = nominal;
@@ -633,10 +633,13 @@ case 'kas_keluar':
         case 'modal_awal': classification.isCashFlow = true; break;
         case 'kas_masuk': classification.isCashFlow = true; break;
         case 'kas_keluar':
-          classification.isCashFlow = true;
-          classification.isOperational = false;
-          classification.isOperational = true;
-          break;
+  classification.isCashFlow = true;
+  classification.isOperational = true;
+  break;
+case 'setor_bank':
+  classification.isCashFlow = true;
+  classification.isOperational = false; // Setor bank bukan beban operasional
+  break;
         case 'jual':
           classification.affectsProfit = true;
           classification.affectsDebt = method === 'utang';
@@ -878,8 +881,6 @@ case 'kas_keluar':
 if (category === 'kas_keluar') {
   summary.operationalCashOut += cashOut;
 }
-          summary.operationalCashOut += cashOut;
-        }
 
         // PEMBELIAN
         if (category === 'pembelian') {
