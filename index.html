@@ -1694,7 +1694,47 @@
       return true;
     });
 
-    return [...mergedById.values(), ...uniqueNoId];
+   return [...mergedById.values(), ...uniqueNoId];
+  }
+
+  function parseTxDateTime(tx) {
+    if (!tx) return null;
+    const raw = tx.waktu || tx.created_at || tx.createdAt || tx.timestamp || tx.paid_at || tx.paidAt || tx.updated_at || tx.updatedAt;
+    let d = null;
+    if (typeof KasCore !== 'undefined' && typeof KasCore.parseDateValue === 'function') {
+      d = KasCore.parseDateValue(raw);
+    }
+    if (!d) {
+      if (raw instanceof Date && !isNaN(raw.getTime())) d = raw;
+      else if (typeof raw === 'number' && !isNaN(raw)) d = new Date(raw);
+      else if (raw && typeof raw.toDate === 'function') {
+        try { d = raw.toDate(); } catch(e) {}
+      } else if (raw && typeof raw.seconds === 'number') {
+        d = new Date(raw.seconds * 1000);
+      } else if (typeof raw === 'string') {
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) d = parsed;
+      }
+    }
+    return d && !isNaN(d.getTime()) ? d : null;
+  }
+
+  function formatTxTime(tx) {
+    if (!tx) return "--:--";
+    const explicit = tx.jam || tx.time || tx.waktuTransaksi;
+    if (typeof explicit === 'string' && /^\d{1,2}:\d{2}/.test(explicit.trim())) {
+      return explicit.trim().slice(0, 5);
+    }
+    const d = parseTxDateTime(tx);
+    if (d) {
+      return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(".", ":");
+    }
+    return "--:--";
+  }
+
+  function getTxTimestamp(tx) {
+    const d = parseTxDateTime(tx);
+    return d ? d.getTime() : 0;
   }
 
   function buildNonTunaiReport(kas, allRecords, user) {
@@ -1813,13 +1853,8 @@
       ].filter(Boolean);
       const desc = descParts.join(" · ") || (methodStr ? methodStr.toUpperCase() : "Transaksi Non-Tunai");
 
-      let timeStr = "--:--";
-      let ts = 0;
-      const rawDate = tx.createdAt?.toDate ? tx.createdAt.toDate() : (tx.timestamp ? new Date(tx.timestamp) : (typeof tx.createdAt === "string" ? new Date(tx.createdAt) : null));
-      if (rawDate && !isNaN(rawDate.getTime())) {
-        ts = rawDate.getTime();
-        timeStr = rawDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-      }
+      const timeStr = formatTxTime(tx);
+      const ts = getTxTimestamp(tx);
 
       const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || tx.kasir || "";
       let laciNote = "Tanpa mutasi laci fisik";
@@ -2103,18 +2138,11 @@
       listEl.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.82rem;">Tidak ada rincian transaksi untuk staf ini.</div>';
     } else {
       const sortedTxs = [...s.transactions].sort((a, b) => {
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.timestamp ? new Date(b.timestamp).getTime() : 0);
-        return timeB - timeA;
+        return getTxTimestamp(b) - getTxTimestamp(a);
       });
 
       listEl.innerHTML = sortedTxs.map(tx => {
-        let timeStr = "--:--";
-        const rawDate = tx.createdAt?.toDate ? tx.createdAt.toDate() : (tx.timestamp ? new Date(tx.timestamp) : (typeof tx.createdAt === "string" ? new Date(tx.createdAt) : null));
-        if (rawDate && !isNaN(rawDate.getTime())) {
-          timeStr = rawDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-        }
-
+        const timeStr = formatTxTime(tx);
         const cIn = KasCore.normalizeNumber(tx.cash_in);
         const bIn = KasCore.normalizeNumber(tx.bank_in);
         const total = (cIn + bIn) || KasCore.normalizeNumber(tx.total) || KasCore.normalizeNumber(tx.amount) || 0;
