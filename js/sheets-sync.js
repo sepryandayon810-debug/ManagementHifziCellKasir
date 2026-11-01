@@ -196,6 +196,36 @@
     if (m) m.classList.remove('active');
   };
 
+  function parseDateToReadable(rawDate) {
+  if (!rawDate) return "-";
+  if (typeof rawDate === "number") {
+    var ms = rawDate < 1e11 ? rawDate * 1000 : rawDate;
+    var d = new Date(ms);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  } else if (typeof rawDate === "string") {
+    if (/^\d{10,13}$/.test(rawDate)) {
+      var num = Number(rawDate);
+      var ms = num < 1e11 ? num * 1000 : num;
+      var d = new Date(ms);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+    }
+    return rawDate;
+  } else if (typeof rawDate === "object") {
+    if (rawDate.seconds !== undefined) {
+      var d = new Date(rawDate.seconds * 1000);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    if (rawDate instanceof Date) {
+      return rawDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + rawDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  }
+  return String(rawDate);
+}
+
   // Query dan Normalisasi 8 Koleksi
   async function fetchAllDatabaseCollections() {
     updateSyncProgress(15, '<i class="fas fa-spinner fa-spin"></i> Membaca Transaksi &amp; Produk dari Firestore...');
