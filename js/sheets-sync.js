@@ -880,24 +880,20 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
           ];
         });
     } else if (activeTabKey === 'pelanggan') {
-      cols = ['ID Pelanggan', 'Nama Pelanggan', 'No HP / WA', 'ID PLN / No Meter', 'Total Belanja', 'Total Piutang'];
-      rows = (c.customers || [])
-        .filter(function (cu) { return !q || JSON.stringify(cu).toLowerCase().includes(q); })
-        .map(function (cu) {
-          var nama = cu.nama || cu.name || cu.namaPelanggan || cu.customerName || '-';
-          var hp = cu.noHp || cu.phone || cu.no_hp || cu.whatsapp || cu.telepon || '-';
-          var pln = cu.idPln || cu.id_pln || cu.plnId || cu.noMeter || cu.no_meter || cu.meteran || cu.customerNumber || '-';
-          var spent = cleanNumber(cu.totalBelanja != null ? cu.totalBelanja : cu.totalSpent);
-          var piutang = cleanNumber(cu.totalPiutang != null ? cu.totalPiutang : cu.piutang);
-          return [
-            cu.id || '-',
-            nama,
-            hp,
-            pln,
-            formatRupiah(spent),
-            formatRupiah(piutang)
-          ];
-        });
+      cols = ['ID Pelanggan', 'Nama Pelanggan', 'No HP / WA', 'ID PLN / No Meter'];
+rows = (c.customers || [])
+  .filter(function (cu) { return !q || JSON.stringify(cu).toLowerCase().includes(q); })
+  .map(function (cu) {
+    var nama = cu.nama || cu.name || cu.namaPelanggan || cu.customerName || '-';
+    var hp = cu.noHp || cu.phone || cu.no_hp || cu.whatsapp || cu.telepon || '-';
+    var pln = cu.idPln || cu.id_pln || cu.plnId || cu.noMeter || cu.no_meter || cu.meteran || cu.customerNumber || '-';
+    return [
+      cu.id || '-',
+      nama,
+      hp,
+      pln
+    ];
+  });
       
     } else if (activeTabKey === 'gaji') {
       cols = ['ID Payroll', 'Periode', 'Nama Staf', 'Gaji Pokok', 'THP Bersih', 'Status'];
