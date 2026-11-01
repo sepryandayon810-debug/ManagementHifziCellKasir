@@ -119,7 +119,8 @@
     if (!container) return;
     var toast = document.createElement('div');
     toast.className = 'toast ' + (type || 'success');
-    toast.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i><span>${msg}</span>`;
+    var iconClass = type === 'error' ? 'exclamation-circle' : 'check-circle';
+toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</span>';
     container.appendChild(toast);
     setTimeout(function () { toast.remove(); }, 3500);
   }
@@ -153,17 +154,19 @@
   }
 
   window.saveSheetSettings = function () {
-    var scriptUrl = (document.getElementById('scriptUrlInput')?.value || '').trim();
-    var sheetUrl = (document.getElementById('sheetUrlInput')?.value || '').trim();
-    var btnOpen = document.getElementById('btnOpenSheetTab');
-    if (scriptUrl) localStorage.setItem('webpos_gas_webhook_url', scriptUrl);
-    if (sheetUrl) {
-      localStorage.setItem('webpos_spreadsheet_url', sheetUrl);
-      if (btnOpen) btnOpen.style.display = 'inline-flex';
-    }
-    notifyToast('Pengaturan URL Google Sheets berhasil disimpan!', 'success');
-  };
-
+  var scriptInput = document.getElementById('scriptUrlInput');
+  var sheetInput = document.getElementById('sheetUrlInput');
+  var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
+  var sheetUrl = sheetInput && sheetInput.value ? sheetInput.value.trim() : '';
+  var btnOpen = document.getElementById('btnOpenSheetTab');
+  if (scriptUrl) localStorage.setItem('webpos_gas_webhook_url', scriptUrl);
+  if (sheetUrl) {
+    localStorage.setItem('webpos_spreadsheet_url', sheetUrl);
+    if (btnOpen) btnOpen.style.display = 'inline-flex';
+  }
+  notifyToast('Pengaturan URL Google Sheets berhasil disimpan!', 'success');
+};
+  
   window.openGoogleSheetDirect = function () {
     var sheetUrl = (document.getElementById('sheetUrlInput')?.value || localStorage.getItem('webpos_spreadsheet_url') || '').trim();
     if (!sheetUrl) {
@@ -514,19 +517,21 @@ var payrolls = rawPayrolls.map(function(g) {
   var per = g.periodName || g.period || g.periode || "-";
 
   return Object.assign({}, g, {
-    period: per,
-    periode: per,
-    staffName: staf,
-    employeeName: staf,
-    basicSalary: gapok,
-    gajiPokok: gapok,
-    deductions: potongan,
-    potongan: potongan,
-    bonus: bonus,
-    netSalary: thp,
-    thp: thp,
-    status: g.status === 'unpaid' ? 'Belum Lunas' : 'Lunas'
-  });
+  period: per,
+  periode: per,
+  staffName: staf,
+  employeeName: staf,
+  basicSalary: gapok,
+  gajiPokok: gapok,
+  deductions: potongan,
+  potongan: potongan,
+  totalDebtDeduction: potongan,
+  bonus: bonus,
+  prevUnpaidSalary: bonus,
+  netSalary: thp,
+  thp: thp,
+  status: (g.status === 'unpaid' || g.status === 'Belum Lunas') ? 'Belum Lunas' : 'Lunas'
+});
 });
 
     // 8. Tab Rekap Saldo Tools (Memisahkan Pengisian vs Sisa Saldo)
@@ -630,13 +635,14 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
 
   // Kirim Semua Data ke Google Sheets
   window.syncAllToGoogleSheets = async function () {
-    var scriptUrl = (document.getElementById('scriptUrlInput')?.value || '').trim();
-    if (!scriptUrl) {
-      notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
-      document.getElementById('scriptUrlInput')?.focus();
-      return;
-    }
-
+  var scriptInput = document.getElementById('scriptUrlInput');
+  var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
+  if (!scriptUrl) {
+    notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
+    if (scriptInput) scriptInput.focus();
+    return;
+  }
+    
     var btn = document.getElementById('btnSyncToSheets');
     if (btn) {
       btn.disabled = true;
@@ -732,7 +738,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
     var dRows = c.debts.map(function (d) {
       return {
         'ID': d.id || '-', 'Nama': d.contactName || d.customerName || '-', 'Jenis': d.type === 'payable' ? 'Hutang Toko' : 'Piutang',
-        'Nominal Awal': d.initialAmount || d.amount || 0, 'Sisa': d.remainingAmount !== undefined ? d.remainingAmount : (d.balance || 0),
+        'Nominal Awal': d.initialAmount || d.amount || 0, 'Sisa Tagihan': d.remainingAmount !== undefined ? d.remainingAmount : (d.remaining !== undefined ? d.remaining : (d.balance || 0)),
         'Status': d.status === 'paid' ? 'Lunas' : 'Belum Lunas'
       };
     });
@@ -749,7 +755,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
     var bRows = c.purchases.map(function (b) {
       return {
         'ID': b.id || b.invoiceNo || '-', 'Tanggal': b.date || '-', 'Supplier': b.supplierName || b.supplier || '-',
-        'Total Biaya': b.totalCost || b.total || 0, 'Metode': b.paymentMethod || 'Tunai'
+        'Total Biaya': b.totalCost || b.grandTotal || b.total || 0, 'Metode': b.paymentMethod || 'Tunai'
       };
     });
     window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(bRows), '5_Pembelian');
@@ -792,7 +798,8 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
   };
 
   window.filterViewerTable = function () {
-    var q = (document.getElementById('tableSearchInput')?.value || '').toLowerCase();
+  var searchInput = document.getElementById('tableSearchInput');
+  var q = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
     var thead = document.getElementById('viewerTableHead');
     var tbody = document.getElementById('viewerTableBody');
     if (!thead || !tbody) return;
