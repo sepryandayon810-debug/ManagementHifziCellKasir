@@ -423,6 +423,11 @@
 
     try {
       var payload = await fetchAllDatabaseCollections();
+      // Simpan di cache sesi browser agar Live View langsung lancar tanpa read Firestore lagi
+      try {
+        sessionStorage.setItem('webpos_backup_cache', JSON.stringify(payload));
+      } catch(e) {}
+      
       updateSyncProgress(90, '<i class="fas fa-paper-plane fa-spin"></i> Mengirim paket 8 tab ke Google Sheets...');
 
       await fetch(scriptUrl, {
@@ -711,14 +716,28 @@
       return '<tr>' + r.map(function (td) { return `<td>${td}</td>`; }).join('') + '</tr>';
     }).join('');
   };
+  // Hanya inisialisasi form saat halaman dibuka (HEMAT KUOTA FIRESTORE 100%)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       initForm();
-      fetchAllDatabaseCollections().then(function () { window.filterViewerTable(); });
+      // Muat dari cache browser jika ada, tidak membebani Firestore
+      var cached = sessionStorage.getItem('webpos_backup_cache');
+      if (cached) {
+        try {
+          collectionsCache = JSON.parse(cached);
+          window.filterViewerTable();
+        } catch(e) {}
+      }
     });
   } else {
     initForm();
-    fetchAllDatabaseCollections().then(function () { window.filterViewerTable(); });
+    var cached = sessionStorage.getItem('webpos_backup_cache');
+    if (cached) {
+      try {
+        collectionsCache = JSON.parse(cached);
+        window.filterViewerTable();
+      } catch(e) {}
+    }
   }
 
 })();
