@@ -914,7 +914,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
           ];
         });
     } else if (activeTabKey === 'saldo') {
-      cols = ['ID Riwayat', 'Waktu', 'Aplikasi', 'Pengisian', 'Sisa Saldo', 'Admin'];
+      cols = ['ID Riwayat', 'Waktu', 'Aplikasi', 'Pengisian', 'Sisa Saldo', 'Role'];
       rows = (c.saldoHistory || [])
         .filter(function (sl) { return !q || JSON.stringify(sl).toLowerCase().includes(q); })
         .map(function (sl) {
@@ -924,7 +924,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
             sl.provider || sl.appName || sl.aplikasi || '-',
             formatRupiah(sl.nominal || sl.amount || sl.pengisian || 0),
             formatRupiah(sl.remainingBalance || sl.sisaSaldo || sl.saldo || 0),
-            sl.recordedBy || sl.admin || '-'
+            sl.role || sl.userRole || sl.petugas || sl.recordedBy || '-'
           ];
         });
     }
