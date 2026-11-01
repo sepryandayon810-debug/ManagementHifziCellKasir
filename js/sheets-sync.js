@@ -390,10 +390,11 @@ var sisa = isPaid ? 0 : cleanNumber(d.remaining != null ? d.remaining : (d.remai
   )
 );
       return Object.assign({}, b, {
-        totalCost: tot,
-        total: tot,
-        biaya: tot
-      });
+  totalCost: tot,
+  grandTotal: tot,
+  total: tot,
+  biaya: tot
+});
     });
 
     // 6. Tab Data Pelanggan (MENGGABUNGKAN SEMUA KOLEKSI & AUTO-CALCULATE BELANJA + PIUTANG)
@@ -503,17 +504,30 @@ var customers = Object.values(customerMergedMap).map(function (c) {
     
     updateSyncProgress(85, '<i class="fas fa-spinner fa-spin"></i> Membaca Penggajian &amp; Saldo Tools...');
     // 7. Normalisasi Penggajian
-    var rawPayrolls = await getDocs('payrolls');
-    var payrolls = rawPayrolls.map(function(g) {
-      var gapok = cleanNumber(g.basicSalary != null ? g.basicSalary : (g.gajiPokok != null ? g.gajiPokok : (g.gapok != null ? g.gapok : 0)));
-      var thp = cleanNumber(g.netSalary != null ? g.netSalary : (g.thp != null ? g.thp : (g.thpBersih != null ? g.thpBersih : gapok)));
-      return Object.assign({}, g, {
-        basicSalary: gapok,
-        gajiPokok: gapok,
-        netSalary: thp,
-        thp: thp
-      });
-    });
+var rawPayrolls = await getDocs('payrolls');
+var payrolls = rawPayrolls.map(function(g) {
+  var gapok = cleanNumber(g.basicSalary != null ? g.basicSalary : (g.gajiPokok != null ? g.gajiPokok : (g.gapok != null ? g.gapok : 0)));
+  var potongan = cleanNumber(g.totalDebtDeduction != null ? g.totalDebtDeduction : (g.deductions != null ? g.deductions : (g.potongan != null ? g.potongan : 0)));
+  var bonus = cleanNumber(g.prevUnpaidSalary != null ? g.prevUnpaidSalary : (g.bonus != null ? g.bonus : 0));
+  var thp = cleanNumber(g.netSalary != null ? g.netSalary : (g.thp != null ? g.thp : (g.thpBersih != null ? g.thpBersih : Math.max(0, gapok + bonus - potongan))));
+  var staf = g.staffName || g.employeeName || g.nama || "-";
+  var per = g.periodName || g.period || g.periode || "-";
+
+  return Object.assign({}, g, {
+    period: per,
+    periode: per,
+    staffName: staf,
+    employeeName: staf,
+    basicSalary: gapok,
+    gajiPokok: gapok,
+    deductions: potongan,
+    potongan: potongan,
+    bonus: bonus,
+    netSalary: thp,
+    thp: thp,
+    status: g.status === 'unpaid' ? 'Belum Lunas' : 'Lunas'
+  });
+});
 
     // 8. Tab Rekap Saldo Tools (Memisahkan Pengisian vs Sisa Saldo)
 var rawTopup = await getDocs('saldo_topup_history');
