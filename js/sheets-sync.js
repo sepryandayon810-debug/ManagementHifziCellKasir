@@ -716,6 +716,28 @@
       return '<tr>' + r.map(function (td) { return `<td>${td}</td>`; }).join('') + '</tr>';
     }).join('');
   };
+
+  // Fungsi Download CSV untuk tab yang sedang aktif di Live View
+  window.exportCurrentViewerTabCSV = function () {
+    var thead = document.getElementById('viewerTableHead');
+    var tbody = document.getElementById('viewerTableBody');
+    if (!thead || !tbody) return;
+    var headers = Array.from(thead.querySelectorAll('th')).map(function(th){ return th.textContent.trim(); });
+    var trs = Array.from(tbody.querySelectorAll('tr'));
+    if (trs.length === 0 || tbody.textContent.includes('Tidak ada data')) {
+      notifyToast('Tidak ada data untuk diexport', 'warning');
+      return;
+    }
+    var rows = [headers];
+    trs.forEach(function (tr) {
+      var cells = Array.from(tr.querySelectorAll('td')).map(function(td){ return td.textContent.trim(); });
+      if (cells.length === headers.length) rows.push(cells);
+    });
+    if (typeof window.downloadCSV === 'function') {
+      window.downloadCSV('LiveView_' + activeTabKey, rows);
+    }
+  };
+  
   // Hanya inisialisasi form saat halaman dibuka (HEMAT KUOTA FIRESTORE 100%)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
