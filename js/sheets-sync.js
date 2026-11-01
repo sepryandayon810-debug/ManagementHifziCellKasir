@@ -341,12 +341,33 @@
       });
     });
 
-    // 6. Normalisasi Pelanggan
-    var rawCustomers = await getDocs('customers');
+    // 6. Normalisasi Pelanggan (Membaca koleksi master pelanggan & detail ID PLN, No HP asli)
+    var rawCustomers = await getDocs('pelanggan');
+    if (rawCustomers.length === 0) rawCustomers = await getDocs('data_pelanggan');
+    if (rawCustomers.length === 0) rawCustomers = await getDocs('customers');
     if (rawCustomers.length === 0) rawCustomers = await getDocs('customer_directory_v2');
+
     var customers = rawCustomers.map(function(cu) {
+      var nama = cu.name || cu.nama || cu.namaPelanggan || cu.nama_pelanggan || cu.customerName || "-";
+      var hp = cu.phone || cu.no_hp || cu.noHp || cu.whatsapp || cu.wa || cu.telepon || cu.no_telp || cu.noTelp || cu.telp || cu.kontak || "-";
+      var pln = cu.id_pln || cu.idPln || cu.plnId || cu.pln || cu.no_meter || cu.noMeter || cu.nomorMeter || cu.nomor_meter || cu.customerNumber || cu.meteran || cu.idPelanggan || cu.noPelanggan || "-";
+      var alamat = cu.alamat || cu.address || "-";
+      var piutang = cleanNumber(cu.totalPiutang != null ? cu.totalPiutang : (cu.piutang != null ? cu.piutang : (cu.sisaHutang != null ? cu.sisaHutang : 0)));
       var spent = cleanNumber(cu.totalSpent != null ? cu.totalSpent : (cu.totalBelanja != null ? cu.totalBelanja : (cu.belanja != null ? cu.belanja : 0)));
+
       return Object.assign({}, cu, {
+        name: nama,
+        nama: nama,
+        phone: hp,
+        whatsapp: hp,
+        noHp: hp,
+        plnId: pln,
+        idPln: pln,
+        customerNumber: pln,
+        noMeter: pln,
+        alamat: alamat,
+        totalPiutang: piutang,
+        piutang: piutang,
         totalSpent: spent,
         totalBelanja: spent
       });
@@ -366,19 +387,62 @@
       });
     });
 
-    // 8. Normalisasi Saldo Tools
+    // 8. Normalisasi Saldo Tools (Mendukung nominal, amount, pengisian, saldo)
     var topup = await getDocs('saldo_topup_history');
     var sisaSnap = await getDocs('saldo_sisa_history');
-    var saldoHistory = topup.concat(sisaSnap).map(function(sl) {
-      var isi = cleanNumber(sl.amount != null ? sl.amount : (sl.pengisian != null ? sl.pengisian : (sl.topup != null ? sl.topup : 0)));
-      var saldo = cleanNumber(sl.remainingBalance != null ? sl.remainingBalance : (sl.sisaSaldo != null ? sl.sisaSaldo : (sl.sisa != null ? sl.sisa : 0)));
+    var saldoSnap = await getDocs('saldo');
+    var telegramSaldo = await getDocs('saldo_telegram');
+    var combinedSaldo = topup.concat(sisaSnap, saldoSnap, telegramSaldo);
+
+    var saldoHistory = combinedSaldo.map(function(sl) {
+      var isi = cleanNumber(
+        sl.nominal != null ? sl.nominal : (
+          sl.amount != null ? sl.amount : (
+            sl.pengisian != null ? sl.pengisian : (
+              sl.topup != null ? sl.topup : (
+                sl.nilai != null ? sl.nilai : (
+                  sl.total != null ? sl.total : 0
+                )
+              )
+            )
+          )
+        )
+      );
+
+      var saldo = cleanNumber(
+        sl.remainingBalance != null ? sl.remainingBalance : (
+          sl.sisaSaldo != null ? sl.sisaSaldo : (
+            sl.saldoAkhir != null ? sl.saldoAkhir : (
+              sl.saldo != null ? sl.saldo : (
+                sl.sisa != null ? sl.sisa : (
+                  sl.balance != null ? sl.balance : 0
+                )
+              )
+            )
+          )
+        )
+      );
+
+      var prov = sl.provider || sl.appName || sl.aplikasi || sl.nama || sl.namaAplikasi || sl.akun || "-";
+      var adm = sl.recordedBy || sl.admin || sl.userName || sl.kasir || "-";
+      var waktu = sl.datetime || sl.date || sl.waktu || sl.timestamp || sl.createdAt || "-";
+
       return Object.assign({}, sl, {
+        provider: prov,
+        appName: prov,
+        aplikasi: prov,
         amount: isi,
+        nominal: isi,
         pengisian: isi,
         remainingBalance: saldo,
-        sisaSaldo: saldo
+        sisaSaldo: saldo,
+        saldo: saldo,
+        recordedBy: adm,
+        admin: adm,
+        datetime: waktu
       });
     });
+    
     collectionsCache = {
       transactions: transactions,
       products: products,
