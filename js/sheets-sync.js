@@ -713,34 +713,25 @@
           ];
         });
     } else if (activeTabKey === 'pelanggan') {
-      cols = ['ID Pelanggan', 'Nama Pelanggan', 'WhatsApp', 'Total Belanja', 'Kunjungan', 'Membership'];
-      // Auto-hitung total belanja & kunjungan dari riwayat transaksi
-      var cSpending = {};
-      var cVisits = {};
-      (c.transactions || []).forEach(function(t) {
-        var cn = (t.customerName || t.pelanggan || t.customer || '').trim().toLowerCase();
-        if (cn && cn !== '-' && cn !== 'umum' && cn !== 'pelanggan umum') {
-          cSpending[cn] = (cSpending[cn] || 0) + (t.total || 0);
-          cVisits[cn] = (cVisits[cn] || 0) + 1;
-        }
-      });
-
+      cols = ['ID Pelanggan', 'Nama Pelanggan', 'No HP / WA', 'ID PLN / No Meter', 'Total Belanja', 'Total Piutang'];
       rows = (c.customers || [])
         .filter(function (cu) { return !q || JSON.stringify(cu).toLowerCase().includes(q); })
         .map(function (cu) {
-          var nama = cu.name || cu.nama || cu.namaPelanggan || cu.customerName || '-';
-          var kNama = nama.trim().toLowerCase();
-          var spent = (cu.totalSpent || cu.totalBelanja || 0) || (cSpending[kNama] || 0);
-          var visits = (cu.visitCount || cu.totalVisits || cu.kunjungan || 0) || (cVisits[kNama] || 0);
+          var nama = cu.nama || cu.name || cu.namaPelanggan || cu.customerName || '-';
+          var hp = cu.noHp || cu.phone || cu.no_hp || cu.whatsapp || cu.telepon || '-';
+          var pln = cu.idPln || cu.id_pln || cu.plnId || cu.noMeter || cu.no_meter || cu.meteran || cu.customerNumber || '-';
+          var spent = cleanNumber(cu.totalBelanja != null ? cu.totalBelanja : cu.totalSpent);
+          var piutang = cleanNumber(cu.totalPiutang != null ? cu.totalPiutang : cu.piutang);
           return [
             cu.id || '-',
             nama,
-            cu.phone || cu.whatsapp || cu.noHp || cu.noTelp || '-',
+            hp,
+            pln,
             formatRupiah(spent),
-            visits,
-            `<span class="badge badge-success">${cu.membership || 'Regular'}</span>`
+            formatRupiah(piutang)
           ];
         });
+      
     } else if (activeTabKey === 'gaji') {
       cols = ['ID Payroll', 'Periode', 'Nama Staf', 'Gaji Pokok', 'THP Bersih', 'Status'];
       rows = (c.payrolls || [])
