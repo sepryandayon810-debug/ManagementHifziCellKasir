@@ -42,16 +42,39 @@
     return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
   }
 
-  // Hitung Nominal Transaksi (Termasuk fallback hitung dari items jika 0)
+  // Fungsi pembersih angka (aman dari string "Rp", titik ribuan, spasi, dsb)
+  function cleanNumber(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (typeof val === 'string') {
+      var s = val.replace(/[^0-9.,-]/g, '').trim();
+      if (!s) return 0;
+      if (s.includes('.') && s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes('.') && !s.includes(',')) {
+        var parts = s.split('.');
+        if (parts.length > 1 && parts[parts.length - 1].length === 3) {
+          s = s.replace(/\./g, '');
+        }
+      } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+      }
+      var num = parseFloat(s);
+      return isNaN(num) ? 0 : num;
+    }
+    return 0;
+  }
+
+  // Hitung Nominal Transaksi
   function getTransactionNominal(t) {
     if (!t) return 0;
-    var tot = Number(t.nominal != null ? t.nominal : (t.total != null ? t.total : (t.amount != null ? t.amount : (t.grandTotal != null ? t.grandTotal : (t.cash_in != null ? t.cash_in : (t.harga_jual != null ? t.harga_jual : (t.nilai != null ? t.nilai : 0)))))));
+    var tot = cleanNumber(t.total != null ? t.total : (t.nominal != null ? t.nominal : (t.amount != null ? t.amount : (t.grandTotal != null ? t.grandTotal : (t.totalAmount != null ? t.totalAmount : (t.subtotal != null ? t.subtotal : (t.cash_in != null ? t.cash_in : (t.harga_jual != null ? t.harga_jual : 0))))))));
     if ((!tot || tot === 0) && t.items && Array.isArray(t.items) && t.items.length > 0) {
       tot = t.items.reduce(function (sum, it) {
         if (!it) return sum;
-        var p = Number(it.price || it.harga || it.sellingPrice || 0);
-        var q = Number(it.qty || it.quantity || it.jumlah || 1);
-        var sub = Number(it.total || it.subtotal || (p * q));
+        var p = cleanNumber(it.price || it.harga || it.sellingPrice || it.hargaJual || 0);
+        var q = cleanNumber(it.qty || it.quantity || it.jumlah || 1);
+        var sub = cleanNumber(it.total || it.subtotal || (p * q));
         return sum + (sub > 0 ? sub : (p * q));
       }, 0);
     }
@@ -61,19 +84,18 @@
   // Hitung Laba Transaksi
   function getTransactionProfit(t) {
     if (!t) return 0;
-    var prof = Number(t.laba != null ? t.laba : (t.profit != null ? t.profit : (t.admin != null ? t.admin : (t.fee != null ? t.fee : 0))));
+    var prof = cleanNumber(t.profit != null ? t.profit : (t.laba != null ? t.laba : (t.margin != null ? t.margin : (t.admin != null ? t.admin : (t.fee != null ? t.fee : 0)))));
     if ((!prof || prof === 0) && t.items && Array.isArray(t.items) && t.items.length > 0) {
       prof = t.items.reduce(function (sum, it) {
         if (!it) return sum;
-        var p = Number(it.price || it.harga || it.sellingPrice || 0);
-        var m = Number(it.buyPrice || it.modal || it.costPrice || it.hargaBeli || 0);
-        var q = Number(it.qty || it.quantity || it.jumlah || 1);
+        var p = cleanNumber(it.price || it.harga || it.sellingPrice || it.hargaJual || 0);
+        var m = cleanNumber(it.buyPrice || it.modal || it.costPrice || it.hargaBeli || it.harga_beli || 0);
+        var q = cleanNumber(it.qty || it.quantity || it.jumlah || 1);
         return sum + (m > 0 && p > m ? ((p - m) * q) : 0);
       }, 0);
     }
     return prof || 0;
   }
-
   function notifyToast(msg, type) {
     if (typeof window.showToast === 'function') {
       window.showToast(msg, type || 'success');
@@ -250,37 +272,113 @@
       });
     });
 
+    // 2. Normalisasi Produk (Harga Beli, Jual, Stok selalu berupa Angka)
     var products = rawProducts.map(function(p) {
-      var beli = Number(p.buyPrice != null ? p.buyPrice : (p.harga_beli != null ? p.harga_beli : (p.costPrice != null ? p.costPrice : (p.modal != null ? p.modal : 0))));
-      var jual = Number(p.sellingPrice != null ? p.sellingPrice : (p.harga_jual != null ? p.harga_jual : (p.price != null ? p.price : (p.harga != null ? p.harga : 0))));
-      var stok = Number(p.stock != null ? p.stock : (p.stok != null ? p.stok : (p.qty != null ? p.qty : 0)));
+      var beli = cleanNumber(p.buyPrice != null ? p.buyPrice : (p.harga_beli != null ? p.harga_beli : (p.hargaBeli != null ? p.hargaBeli : (p.costPrice != null ? p.costPrice : (p.modal != null ? p.modal : 0)))));
+      var jual = cleanNumber(p.sellingPrice != null ? p.sellingPrice : (p.harga_jual != null ? p.harga_jual : (p.hargaJual != null ? p.hargaJual : (p.price != null ? p.price : (p.harga != null ? p.harga : 0)))));
+      var stok = cleanNumber(p.stock != null ? p.stock : (p.stok != null ? p.stok : (p.qty != null ? p.qty : (p.stokAkhir != null ? p.stokAkhir : 0))));
       return Object.assign({}, p, {
         name: p.name || p.nama || p.productName || p.namaProduk || "-",
+        nama: p.name || p.nama || p.productName || p.namaProduk || "-",
         barcode: p.barcode || p.sku || p.kode || "-",
+        category: p.category || p.kategori || "-",
+        kategori: p.category || p.kategori || "-",
         buyPrice: beli,
+        hargaBeli: beli,
+        harga_beli: beli,
         sellingPrice: jual,
-        stock: stok
+        hargaJual: jual,
+        harga_jual: jual,
+        stock: stok,
+        stok: stok
       });
     });
 
     updateSyncProgress(40, '<i class="fas fa-spinner fa-spin"></i> Membaca Hutang, Kas &amp; Shift...');
-    var debts = await getDocs('debts');
+    // 3. Normalisasi Hutang/Piutang
+    var rawDebts = await getDocs('debts');
+    var debts = rawDebts.map(function(d) {
+      var awal = cleanNumber(d.initialAmount != null ? d.initialAmount : (d.amount != null ? d.amount : (d.nominal != null ? d.nominal : (d.total != null ? d.total : 0))));
+      var sisa = cleanNumber(d.remainingAmount != null ? d.remainingAmount : (d.balance != null ? d.balance : (d.sisa != null ? d.sisa : awal)));
+      return Object.assign({}, d, {
+        contactName: d.contactName || d.customerName || d.nama || "-",
+        initialAmount: awal,
+        nominalAwal: awal,
+        amount: awal,
+        remainingAmount: sisa,
+        sisa: sisa,
+        balance: sisa
+      });
+    });
+
+    // 4. Normalisasi Kas & Shift
     var kas = await getDocs('kas');
     var shifts = await getDocs('shifts');
     var closing = await getDocs('closing');
-    var combinedShifts = kas.concat(shifts, closing);
+    var combinedShifts = kas.concat(shifts, closing).map(function(s) {
+      var modal = cleanNumber(s.startingCash != null ? s.startingCash : (s.modalAwal != null ? s.modalAwal : (s.modal != null ? s.modal : 0)));
+      var akhir = cleanNumber(s.systemCash != null ? s.systemCash : (s.kasAkhir != null ? s.kasAkhir : (s.actualCash != null ? s.actualCash : (s.totalKas != null ? s.totalKas : 0))));
+      var selisih = cleanNumber(s.difference != null ? s.difference : (s.selisih != null ? s.selisih : 0));
+      return Object.assign({}, s, {
+        startingCash: modal,
+        modalAwal: modal,
+        systemCash: akhir,
+        kasAkhir: akhir,
+        difference: selisih,
+        selisih: selisih
+      });
+    });
 
     updateSyncProgress(65, '<i class="fas fa-spinner fa-spin"></i> Membaca Pembelian &amp; Pelanggan...');
-    var purchases = await getDocs('purchases');
-    var customers = await getDocs('customers');
-    if (customers.length === 0) customers = await getDocs('customer_directory_v2');
+    // 5. Normalisasi Pembelian
+    var rawPurchases = await getDocs('purchases');
+    var purchases = rawPurchases.map(function(b) {
+      var tot = cleanNumber(b.totalCost != null ? b.totalCost : (b.total != null ? b.total : (b.biaya != null ? b.biaya : (b.nominal != null ? b.nominal : 0))));
+      return Object.assign({}, b, {
+        totalCost: tot,
+        total: tot,
+        biaya: tot
+      });
+    });
+
+    // 6. Normalisasi Pelanggan
+    var rawCustomers = await getDocs('customers');
+    if (rawCustomers.length === 0) rawCustomers = await getDocs('customer_directory_v2');
+    var customers = rawCustomers.map(function(cu) {
+      var spent = cleanNumber(cu.totalSpent != null ? cu.totalSpent : (cu.totalBelanja != null ? cu.totalBelanja : (cu.belanja != null ? cu.belanja : 0)));
+      return Object.assign({}, cu, {
+        totalSpent: spent,
+        totalBelanja: spent
+      });
+    });
 
     updateSyncProgress(85, '<i class="fas fa-spinner fa-spin"></i> Membaca Penggajian &amp; Saldo Tools...');
-    var payrolls = await getDocs('payrolls');
-    var topup = await getDocs('saldo_topup_history');
-    var sisa = await getDocs('saldo_sisa_history');
-    var saldoHistory = topup.concat(sisa);
+    // 7. Normalisasi Penggajian
+    var rawPayrolls = await getDocs('payrolls');
+    var payrolls = rawPayrolls.map(function(g) {
+      var gapok = cleanNumber(g.basicSalary != null ? g.basicSalary : (g.gajiPokok != null ? g.gajiPokok : (g.gapok != null ? g.gapok : 0)));
+      var thp = cleanNumber(g.netSalary != null ? g.netSalary : (g.thp != null ? g.thp : (g.thpBersih != null ? g.thpBersih : gapok)));
+      return Object.assign({}, g, {
+        basicSalary: gapok,
+        gajiPokok: gapok,
+        netSalary: thp,
+        thp: thp
+      });
+    });
 
+    // 8. Normalisasi Saldo Tools
+    var topup = await getDocs('saldo_topup_history');
+    var sisaSnap = await getDocs('saldo_sisa_history');
+    var saldoHistory = topup.concat(sisaSnap).map(function(sl) {
+      var isi = cleanNumber(sl.amount != null ? sl.amount : (sl.pengisian != null ? sl.pengisian : (sl.topup != null ? sl.topup : 0)));
+      var saldo = cleanNumber(sl.remainingBalance != null ? sl.remainingBalance : (sl.sisaSaldo != null ? sl.sisaSaldo : (sl.sisa != null ? sl.sisa : 0)));
+      return Object.assign({}, sl, {
+        amount: isi,
+        pengisian: isi,
+        remainingBalance: saldo,
+        sisaSaldo: saldo
+      });
+    });
     collectionsCache = {
       transactions: transactions,
       products: products,
@@ -337,6 +435,21 @@
 
       var nowTs = Date.now();
       localStorage.setItem('last_backup', nowTs.toString());
+
+      // Catat ke Firestore agar kartu statistik langsung terupdate
+      if (typeof window.db !== 'undefined') {
+        var syncLogData = {
+          timestamp: nowTs,
+          type: 'auto',
+          status: 'success',
+          productCount: collectionsCache.products ? collectionsCache.products.length : 0,
+          transactionCount: collectionsCache.transactions ? collectionsCache.transactions.length : 0,
+          note: 'Sinkronisasi 8 Tab Google Sheets Berhasil'
+        };
+        await window.db.collection('backup').doc('lastLog').set(syncLogData, { merge: true }).catch(function(){});
+        await window.db.collection('backup_logs').add(syncLogData).catch(function(){});
+      }
+
       notifyToast('Semua database (8 Tab) sukses disinkronkan ke Google Sheets!', 'success');
       if (typeof window.loadStats === 'function') window.loadStats();
       window.filterViewerTable();
