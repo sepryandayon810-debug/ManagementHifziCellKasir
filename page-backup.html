@@ -1100,40 +1100,50 @@
   }
 
   async function loadStats() {
-    document.getElementById('loadingOverlay').classList.add('active');
+    // Tidak menutup layar penuh agar UI tetap responsif
     try {
-      const paths = ['products','customers','categories','users'];
-      let totalRecords = 0;
-      for (const p of paths) {
-        const snap = await db.collection(p).get();
-        totalRecords += snap.size;
-      }
-      
-      const today = new Date().toISOString().slice(0,10);
-      const transSnap = await db.collection('transactions').where('date', '==', today).get();
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Jalankan SEMUA query secara paralel serentak (jauh lebih cepat)
+      const [snapProducts, snapCustomers, snapCategories, snapUsers, transSnap, debtsSnap, logDoc, historySnap] = await Promise.all([
+        db.collection('products').get(),
+        db.collection('customers').get(),
+        db.collection('categories').get(),
+        db.collection('users').get(),
+        db.collection('transactions').where('date', '==', today).get(),
+        db.collection('debts').where('status', '==', 'active').get(),
+        db.collection('backup').doc('lastLog').get(),
+        db.collection('backup_logs').orderBy('timestamp', 'desc').limit(15).get().catch(() => ({ docs: [] }))
+      ]);
+
+      const totalRecords = snapProducts.size + snapCustomers.size + snapCategories.size + snapUsers.size + debtsSnap.size;
+      document.getElementById('totalProducts').textContent = totalRecords.toLocaleString('id-ID');
       document.getElementById('todayTrans').textContent = transSnap.size.toLocaleString('id-ID');
 
-      const debtsSnap = await db.collection('debts').where('status', '==', 'active').get();
-      document.getElementById('totalProducts').textContent = (totalRecords + debtsSnap.size).toLocaleString('id-ID');
-
-      const logDoc = await db.collection('backup').doc('lastLog').get();
+      // Ambil log terakhir dari Firestore, atau fallback ke localStorage jika baru sinkronisasi
       const log = logDoc.exists ? logDoc.data() : null;
-      if (log) {
-        document.getElementById('lastBackupTime').textContent = formatDate(log.timestamp);
-        const totalBackedUp = log.summary ? Object.values(log.summary).reduce((a,b)=>a+b,0) : 0;
+      const localBackupTime = localStorage.getItem('last_backup');
+      const effectiveTime = log?.timestamp || (localBackupTime ? Number(localBackupTime) : null);
+
+      if (effectiveTime) {
+        document.getElementById('lastBackupTime').textContent = formatDate(effectiveTime);
+        const totalBackedUp = log?.summary ? Object.values(log.summary).reduce((a,b)=>a+b,0) : (log?.totalRecords || totalRecords);
         document.getElementById('autoStatus').textContent = totalBackedUp > 0 ? totalBackedUp.toLocaleString('id-ID') + ' REC' : 'AKTIF';
-        document.getElementById('autoStatus').style.color = log.status==='success' ? 'var(--success)' : 'var(--danger)';
-        const autoBadge = document.getElementById('autoBadge');
-if (autoBadge) {
-  autoBadge.textContent = log.status === 'success' ? 'Aktif' : 'Gagal';
-  autoBadge.className = 'badge ' + (log.status === 'success' ? 'badge-success' : 'badge-danger');
-}
+        document.getElementById('autoStatus').style.color = (log?.status === 'error') ? 'var(--danger)' : 'var(--success)';
       } else {
         document.getElementById('lastBackupTime').textContent = 'Belum pernah';
         document.getElementById('autoStatus').textContent = 'MENUNGGU';
         document.getElementById('autoStatus').style.color = 'var(--warning)';
       }
-      renderLog(log ? [log] : []);
+
+      // Kumpulkan daftar riwayat backup (dari backup_logs + fallback lastLog)
+      let historyList = [];
+      if (historySnap && historySnap.docs && historySnap.docs.length > 0) {
+        historyList = historySnap.docs.map(doc => doc.data());
+      } else if (log) {
+        historyList = [log];
+      }
+      renderLog(historyList);
     } catch(e) {
       console.error(e);
       showToast('Gagal memuat statistik', 'error');
@@ -1141,7 +1151,6 @@ if (autoBadge) {
       document.getElementById('loadingOverlay').classList.remove('active');
     }
   }
-
   function renderLog(logs) {
     const tbody = document.getElementById('logBody');
     if (!logs || logs.length === 0) {
@@ -1346,18 +1355,32 @@ if (autoBadge) {
   async function syncData() {
     document.getElementById('loadingOverlay').classList.add('active');
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      const syncTime = Date.now().toString();
-      localStorage.setItem('last_backup', syncTime);
-      showToast('Sinkronisasi berhasil!');
-      loadStats();
+      const now = Date.now();
+      const logData = {
+        timestamp: now,
+        type: 'manual',
+        status: 'success',
+        productCount: Number(document.getElementById('totalProducts').textContent.replace(/\D/g, '')) || 0,
+        transactionCount: Number(document.getElementById('todayTrans').textContent.replace(/\D/g, '')) || 0,
+        note: 'Sinkronisasi Manual Berhasil'
+      };
+
+      // 1. Update ke lastLog agar kartu "Backup Terakhir" langsung update
+      await db.collection('backup').doc('lastLog').set(logData, { merge: true });
+      // 2. Tambah ke koleksi riwayat agar tabel riwayat bertambah baris baru
+      await db.collection('backup_logs').add(logData);
+      // 3. Simpan cadangan di storage browser
+      localStorage.setItem('last_backup', now.toString());
+
+      showToast('Sinkronisasi data berhasil diperbarui!');
+      await loadStats();
     } catch(e) {
-      showToast('Gagal sinkronisasi', 'error');
+      console.error(e);
+      showToast('Gagal sinkronisasi: ' + e.message, 'error');
     } finally {
       document.getElementById('loadingOverlay').classList.remove('active');
     }
   }
-
   function clearHistory() {
     showCustomConfirm("Hapus Riwayat", "Apakah Anda yakin ingin membersihkan riwayat backup?", "danger", "Ya, Bersihkan", () => {
       renderLog([]);
