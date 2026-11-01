@@ -436,24 +436,24 @@
       var nowTs = Date.now();
       localStorage.setItem('last_backup', nowTs.toString());
 
-      // Catat ke Firestore agar kartu statistik langsung terupdate
+      // WAJIB: Simpan ke Firestore agar kartu "Backup Terakhir" dan riwayat berubah ke waktu sekarang!
       if (typeof window.db !== 'undefined') {
         var syncLogData = {
           timestamp: nowTs,
           type: 'auto',
           status: 'success',
-          productCount: collectionsCache.products ? collectionsCache.products.length : 0,
-          transactionCount: collectionsCache.transactions ? collectionsCache.transactions.length : 0,
+          productCount: (collectionsCache.products || []).length,
+          transactionCount: (collectionsCache.transactions || []).length,
           note: 'Sinkronisasi 8 Tab Google Sheets Berhasil'
         };
-        await window.db.collection('backup').doc('lastLog').set(syncLogData, { merge: true }).catch(function(){});
-        await window.db.collection('backup_logs').add(syncLogData).catch(function(){});
+        await window.db.collection('backup').doc('lastLog').set(syncLogData, { merge: true }).catch(function(e){ console.warn(e); });
+        await window.db.collection('backup_logs').add(syncLogData).catch(function(e){ console.warn(e); });
       }
 
       notifyToast('Semua database (8 Tab) sukses disinkronkan ke Google Sheets!', 'success');
-      if (typeof window.loadStats === 'function') window.loadStats();
+      if (typeof window.loadStats === 'function') await window.loadStats();
       window.filterViewerTable();
-
+      
     } catch (err) {
       console.error(err);
       notifyToast('Gagal sinkronisasi: ' + err.message, 'error');
