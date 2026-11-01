@@ -168,7 +168,8 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
 };
   
   window.openGoogleSheetDirect = function () {
-    var sheetUrl = (document.getElementById('sheetUrlInput')?.value || localStorage.getItem('webpos_spreadsheet_url') || '').trim();
+    var sheetInput = document.getElementById('sheetUrlInput');
+var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage.getItem('webpos_spreadsheet_url') || '').trim();
     if (!sheetUrl) {
       notifyToast('Masukkan tautan Google Spreadsheet terlebih dahulu', 'warning');
       return;
