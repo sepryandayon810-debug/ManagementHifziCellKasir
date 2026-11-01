@@ -810,7 +810,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
     var rows = [];
 
     if (activeTabKey === 'transaksi') {
-      cols = ['ID Nota', 'Tanggal', 'Kasir', 'Pelanggan', 'Metode', 'Total', 'Status'];
+  cols = ['ID Nota', 'Tanggal', 'Kasir', 'Pelanggan', 'Metode', 'Total', 'Laba', 'Status'];
       rows = (c.transactions || [])
         .filter(function (t) { return !q || JSON.stringify(t).toLowerCase().includes(q); })
         .map(function (t) {
@@ -821,7 +821,8 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
             t.customerName || '-',
             t.paymentMethod || 'TUNAI',
             formatRupiah(t.total),
-            `<span class="badge ${t.status === 'failed' ? 'badge-danger' : 'badge-success'}">${t.status || 'completed'}</span>`
+          '<span style="color:#10b981;font-weight:600">' + formatRupiah(t.profit || t.laba || 0) + '</span>',
+          '<span class="badge ' + (t.status === 'failed' ? 'badge-danger' : 'badge-success') + '">' + (t.status || 'completed') + '</span>'
           ];
         });
     } else if (activeTabKey === 'produk') {
@@ -861,7 +862,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
             formatRupiah(s.startingCash || s.modalAwal || 0),
             formatRupiah(s.systemCash || s.kasAkhir || s.actualCash || 0),
             formatRupiah(s.difference || s.selisih || 0),
-            `<span class="badge ${s.status === 'closed' ? 'badge-success' : 'badge-warning'}">${s.status || 'closed'}</span>`
+            '<span class="badge ' + (s.status === 'closed' ? 'badge-success' : 'badge-warning') + '">' + (s.status || 'closed') + '</span>'
           ];
         });
     } else if (activeTabKey === 'pembelian') {
@@ -875,7 +876,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
             b.supplierName || b.supplier || '-',
             formatRupiah(b.totalCost || b.total || b.biaya || 0),
             b.paymentMethod || 'Tunai',
-            `<span class="badge ${b.paymentStatus === 'Lunas' || b.status === 'completed' ? 'badge-success' : 'badge-warning'}">${b.paymentStatus || b.status || 'Lunas'}</span>`
+            '<span class="badge ' + (b.paymentStatus === 'Lunas' || b.status === 'completed' ? 'badge-success' : 'badge-warning') + '">' + (b.paymentStatus || b.status || 'Lunas') + '</span>'
           ];
         });
     } else if (activeTabKey === 'pelanggan') {
@@ -909,7 +910,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
             g.staffName || g.employeeName || g.nama || '-',
             formatRupiah(g.basicSalary || g.gajiPokok || 0),
             formatRupiah(g.netSalary || g.thp || 0),
-            `<span class="badge ${g.status === 'Lunas' || g.status === 'paid' ? 'badge-success' : 'badge-warning'}">${g.status || 'Lunas'}</span>`
+            '<span class="badge ' + (g.status === 'Lunas' || g.status === 'paid' ? 'badge-success' : 'badge-warning') + '">' + (g.status || 'Lunas') + '</span>'
           ];
         });
     } else if (activeTabKey === 'saldo') {
@@ -928,14 +929,14 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
         });
     }
 
-    thead.innerHTML = '<tr>' + cols.map(function (col) { return `<th>${col}</th>`; }).join('') + '</tr>';
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:2rem;color:var(--text-muted)">Tidak ada data</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = rows.map(function (r) {
-      return '<tr>' + r.map(function (td) { return `<td>${td}</td>`; }).join('') + '</tr>';
-    }).join('');
+   thead.innerHTML = '<tr>' + cols.map(function (col) { return '<th>' + col + '</th>'; }).join('') + '</tr>';
+if (rows.length === 0) {
+  tbody.innerHTML = '<tr><td colspan="' + cols.length + '" style="text-align:center;padding:2rem;color:var(--text-muted)">Tidak ada data</td></tr>';
+  return;
+}
+tbody.innerHTML = rows.map(function (r) {
+  return '<tr>' + r.map(function (td) { return '<td>' + td + '</td>'; }).join('') + '</tr>';
+}).join('');
   };
 
   // Fungsi Download CSV untuk tab yang sedang aktif di Live View
