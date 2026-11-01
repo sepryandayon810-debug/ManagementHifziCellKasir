@@ -1120,10 +1120,11 @@
       document.getElementById('totalProducts').textContent = totalRecords.toLocaleString('id-ID');
       document.getElementById('todayTrans').textContent = transSnap.size.toLocaleString('id-ID');
 
-      // Ambil log terakhir dari Firestore, atau fallback ke localStorage jika baru sinkronisasi
+     // Ambil log terakhir dari Firestore atau localStorage (ambil yang paling baru)
       const log = logDoc.exists ? logDoc.data() : null;
-      const localBackupTime = localStorage.getItem('last_backup');
-      const effectiveTime = log?.timestamp || (localBackupTime ? Number(localBackupTime) : null);
+      const localBackupTime = Number(localStorage.getItem('last_backup')) || 0;
+      const firestoreBackupTime = Number(log?.timestamp) || 0;
+      const effectiveTime = Math.max(firestoreBackupTime, localBackupTime) || null;
 
       if (effectiveTime) {
         document.getElementById('lastBackupTime').textContent = formatDate(effectiveTime);
