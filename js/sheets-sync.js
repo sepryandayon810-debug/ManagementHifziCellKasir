@@ -84,12 +84,26 @@
   // Hitung Laba Transaksi
   function getTransactionProfit(t) {
     if (!t) return 0;
-    var prof = cleanNumber(t.profit != null ? t.profit : (t.laba != null ? t.laba : (t.margin != null ? t.margin : (t.admin != null ? t.admin : (t.fee != null ? t.fee : 0)))));
+    var prof = cleanNumber(
+  t.laba != null ? t.laba : (
+    t.profit != null ? t.profit : (
+      t.margin != null ? t.margin : (
+        t.admin != null ? t.admin : (
+          t.adminFee != null ? t.adminFee : (
+            t.biayaAdmin != null ? t.biayaAdmin : (
+              t.fee != null ? t.fee : 0
+            )
+          )
+        )
+      )
+    )
+  )
+);
     if ((!prof || prof === 0) && t.items && Array.isArray(t.items) && t.items.length > 0) {
       prof = t.items.reduce(function (sum, it) {
         if (!it) return sum;
         var p = cleanNumber(it.price || it.harga || it.sellingPrice || it.hargaJual || 0);
-        var m = cleanNumber(it.buyPrice || it.modal || it.costPrice || it.hargaBeli || it.harga_beli || 0);
+        var m = cleanNumber(it.cost != null ? it.cost : (it.buyPrice != null ? it.buyPrice : (it.costPrice != null ? it.costPrice : (it.modal != null ? it.modal : (it.hargaBeli != null ? it.hargaBeli : (it.harga_beli != null ? it.harga_beli : 0))))));
         var q = cleanNumber(it.qty || it.quantity || it.jumlah || 1);
         return sum + (m > 0 && p > m ? ((p - m) * q) : 0);
       }, 0);
@@ -299,7 +313,8 @@
     var rawDebts = await getDocs('debts');
     var debts = rawDebts.map(function(d) {
       var awal = cleanNumber(d.initialAmount != null ? d.initialAmount : (d.amount != null ? d.amount : (d.nominal != null ? d.nominal : (d.total != null ? d.total : 0))));
-      var sisa = cleanNumber(d.remainingAmount != null ? d.remainingAmount : (d.balance != null ? d.balance : (d.sisa != null ? d.sisa : awal)));
+      var isPaid = d.status === 'paid' || d.status === 'lunas';
+var sisa = isPaid ? 0 : cleanNumber(d.remaining != null ? d.remaining : (d.remainingAmount != null ? d.remainingAmount : (d.balance != null ? d.balance : (d.sisa != null ? d.sisa : awal))));
       return Object.assign({}, d, {
         contactName: d.contactName || d.customerName || d.nama || "-",
         initialAmount: awal,
@@ -333,7 +348,17 @@
     // 5. Normalisasi Pembelian
     var rawPurchases = await getDocs('purchases');
     var purchases = rawPurchases.map(function(b) {
-      var tot = cleanNumber(b.totalCost != null ? b.totalCost : (b.total != null ? b.total : (b.biaya != null ? b.biaya : (b.nominal != null ? b.nominal : 0))));
+     var tot = cleanNumber(
+  b.grandTotal != null ? b.grandTotal : (
+    b.totalCost != null ? b.totalCost : (
+      b.total != null ? b.total : (
+        b.biaya != null ? b.biaya : (
+          b.nominal != null ? b.nominal : 0
+        )
+      )
+    )
+  )
+);
       return Object.assign({}, b, {
         totalCost: tot,
         total: tot,
@@ -341,38 +366,111 @@
       });
     });
 
-    // 6. Normalisasi Pelanggan (Membaca koleksi master pelanggan & detail ID PLN, No HP asli)
-    var rawCustomers = await getDocs('pelanggan');
-    if (rawCustomers.length === 0) rawCustomers = await getDocs('data_pelanggan');
-    if (rawCustomers.length === 0) rawCustomers = await getDocs('customers');
-    if (rawCustomers.length === 0) rawCustomers = await getDocs('customer_directory_v2');
+    // 6. Tab Data Pelanggan (MENGGABUNGKAN SEMUA KOLEKSI & AUTO-CALCULATE BELANJA + PIUTANG)
+var custDir = await getDocs('customer_directory_v2');
+var custApp = await getDocs('customers');
+var custPel = await getDocs('pelanggan');
+var custData = await getDocs('data_pelanggan');
 
-    var customers = rawCustomers.map(function(cu) {
-      var nama = cu.name || cu.nama || cu.namaPelanggan || cu.nama_pelanggan || cu.customerName || "-";
-      var hp = cu.phone || cu.no_hp || cu.noHp || cu.whatsapp || cu.wa || cu.telepon || cu.no_telp || cu.noTelp || cu.telp || cu.kontak || "-";
-      var pln = cu.id_pln || cu.idPln || cu.plnId || cu.pln || cu.no_meter || cu.noMeter || cu.nomorMeter || cu.nomor_meter || cu.customerNumber || cu.meteran || cu.idPelanggan || cu.noPelanggan || "-";
-      var alamat = cu.alamat || cu.address || "-";
-      var piutang = cleanNumber(cu.totalPiutang != null ? cu.totalPiutang : (cu.piutang != null ? cu.piutang : (cu.sisaHutang != null ? cu.sisaHutang : 0)));
-      var spent = cleanNumber(cu.totalSpent != null ? cu.totalSpent : (cu.totalBelanja != null ? cu.totalBelanja : (cu.belanja != null ? cu.belanja : 0)));
+var allCustomersRaw = custDir.concat(custApp, custPel, custData);
 
-      return Object.assign({}, cu, {
-        name: nama,
-        nama: nama,
-        phone: hp,
-        whatsapp: hp,
-        noHp: hp,
-        plnId: pln,
-        idPln: pln,
-        customerNumber: pln,
-        noMeter: pln,
-        alamat: alamat,
-        totalPiutang: piutang,
-        piutang: piutang,
-        totalSpent: spent,
-        totalBelanja: spent
-      });
-    });
+// Kalkulasi akumulasi belanja dari transaksi penjualan
+var customerSpentMap = {};
+transactions.forEach(function (t) {
+  var cName = (t.customerName || t.pelanggan || "").trim().toLowerCase();
+  if (cName && cName !== "-" && cName !== "pelanggan umum" && cName !== "user") {
+    customerSpentMap[cName] = (customerSpentMap[cName] || 0) + (t.total || 0);
+  }
+});
 
+// Kalkulasi akumulasi piutang aktif dari data debts
+var customerDebtMap = {};
+debts.forEach(function (d) {
+  if (d.status === 'active' || d.status === 'Belum Lunas') {
+    var cName = (d.contactName || d.name || "").trim().toLowerCase();
+    if (cName && cName !== "-") {
+      customerDebtMap[cName] = (customerDebtMap[cName] || 0) + (d.remainingAmount || 0);
+    }
+  }
+});
+
+var customerMergedMap = {};
+
+allCustomersRaw.forEach(function (cu) {
+  var rawName = cu.name || cu.nama || cu.namaPelanggan || cu.nama_pelanggan || cu.customerName || "";
+  var cleanName = rawName.trim();
+  if (!cleanName || cleanName === "-") return;
+  var nameKey = cleanName.toLowerCase();
+
+  var hp = cu.phone || cu.no_hp || cu.noHp || cu.whatsapp || cu.wa || cu.telepon || cu.no_telp || cu.noTelp || cu.telp || cu.kontak || "";
+  var pln = cu.id_pln || cu.idPln || cu.plnId || cu.pln || cu.no_meter || cu.noMeter || cu.nomorMeter || cu.nomor_meter || cu.customerNumber || cu.meteran || cu.idPelanggan || cu.noPelanggan || "";
+  var alamat = cu.alamat || cu.address || "-";
+
+  if (hp && !pln) {
+    var lowerName = cleanName.toLowerCase();
+    if (lowerName.includes('token') || lowerName.includes('pln') || lowerName.includes('meter')) {
+      pln = hp;
+      hp = "-";
+    }
+  }
+
+  if (!customerMergedMap[nameKey]) {
+    customerMergedMap[nameKey] = {
+      id: cu.id || ('CUS_' + Date.now()),
+      name: cleanName,
+      nama: cleanName,
+      phone: hp || "-",
+      whatsapp: hp || "-",
+      noHp: hp || "-",
+      idPln: pln || "-",
+      plnId: pln || "-",
+      noMeter: pln || "-",
+      alamat: alamat || "-",
+      totalSpent: cleanNumber(cu.totalSpent || cu.totalBelanja || cu.belanja || 0),
+      totalPiutang: cleanNumber(cu.totalPiutang || cu.piutang || cu.sisaHutang || 0),
+      membership: cu.membership || cu.tipe || "Regular"
+    };
+  } else {
+    var existing = customerMergedMap[nameKey];
+    if ((!existing.phone || existing.phone === "-") && hp) existing.phone = hp;
+    if ((!existing.idPln || existing.idPln === "-") && pln) existing.idPln = pln;
+    if ((!existing.alamat || existing.alamat === "-") && alamat && alamat !== "-") existing.alamat = alamat;
+  }
+});
+
+// Masukkan juga pelanggan dari transaksi jika belum terdaftar di kontak
+for (var spentNameKey in customerSpentMap) {
+  if (!customerMergedMap[spentNameKey]) {
+    customerMergedMap[spentNameKey] = {
+      id: 'CUS_' + Math.abs(spentNameKey.split('').reduce(function(a,b){ a=((a<<5)-a)+b.charCodeAt(0); return a&a; }, 0)),
+      name: spentNameKey.toUpperCase(),
+      nama: spentNameKey.toUpperCase(),
+      phone: "-",
+      idPln: "-",
+      alamat: "-",
+      totalSpent: 0,
+      totalPiutang: 0,
+      membership: "Regular"
+    };
+  }
+}
+
+var customers = Object.values(customerMergedMap).map(function (c) {
+  var nKey = c.name.trim().toLowerCase();
+  var autoSpent = customerSpentMap[nKey] || 0;
+  var autoDebt = customerDebtMap[nKey] || 0;
+
+  var finalSpent = Math.max(c.totalSpent || 0, autoSpent);
+  var finalDebt = Math.max(c.totalPiutang || 0, autoDebt);
+
+  return Object.assign({}, c, {
+    totalSpent: finalSpent,
+    totalBelanja: finalSpent,
+    totalPiutang: finalDebt,
+    piutang: finalDebt
+  });
+});
+    
     updateSyncProgress(85, '<i class="fas fa-spinner fa-spin"></i> Membaca Penggajian &amp; Saldo Tools...');
     // 7. Normalisasi Penggajian
     var rawPayrolls = await getDocs('payrolls');
@@ -387,61 +485,77 @@
       });
     });
 
-    // 8. Normalisasi Saldo Tools (Mendukung nominal, amount, pengisian, saldo)
-    var topup = await getDocs('saldo_topup_history');
-    var sisaSnap = await getDocs('saldo_sisa_history');
-    var saldoSnap = await getDocs('saldo');
-    var telegramSaldo = await getDocs('saldo_telegram');
-    var combinedSaldo = topup.concat(sisaSnap, saldoSnap, telegramSaldo);
+    // 8. Tab Rekap Saldo Tools (Memisahkan Pengisian vs Sisa Saldo)
+var rawTopup = await getDocs('saldo_topup_history');
+var rawSisa = await getDocs('saldo_sisa_history');
+var rawSaldo = await getDocs('saldo');
+var rawTele = await getDocs('saldo_telegram');
 
-    var saldoHistory = combinedSaldo.map(function(sl) {
-      var isi = cleanNumber(
-        sl.nominal != null ? sl.nominal : (
-          sl.amount != null ? sl.amount : (
-            sl.pengisian != null ? sl.pengisian : (
-              sl.topup != null ? sl.topup : (
-                sl.nilai != null ? sl.nilai : (
-                  sl.total != null ? sl.total : 0
-                )
-              )
-            )
-          )
-        )
-      );
+var saldoHistory = [];
 
-      var saldo = cleanNumber(
-        sl.remainingBalance != null ? sl.remainingBalance : (
-          sl.sisaSaldo != null ? sl.sisaSaldo : (
-            sl.saldoAkhir != null ? sl.saldoAkhir : (
-              sl.saldo != null ? sl.saldo : (
-                sl.sisa != null ? sl.sisa : (
-                  sl.balance != null ? sl.balance : 0
-                )
-              )
-            )
-          )
-        )
-      );
+// Dari koleksi topup: nominal adalah Pengisian
+rawTopup.forEach(function (sl) {
+  var isi = cleanNumber(sl.nominal != null ? sl.nominal : (sl.amount != null ? sl.amount : (sl.pengisian != null ? sl.pengisian : 0)));
+  var prov = sl.toolName || sl.provider || sl.appName || sl.aplikasi || sl.nama || "Tools";
+  var tgl = parseDateToReadable(sl.date || sl.datetime || sl.timestamp || sl.createdAt);
+  saldoHistory.push({
+    id: sl.id,
+    datetime: tgl,
+    date: tgl,
+    provider: prov,
+    appName: prov,
+    aplikasi: prov,
+    amount: isi,
+    nominal: isi,
+    pengisian: isi,
+    remainingBalance: 0,
+    sisaSaldo: 0,
+    recordedBy: sl.recordedBy || sl.admin || sl.userName || "Admin"
+  });
+});
 
-      var prov = sl.provider || sl.appName || sl.aplikasi || sl.nama || sl.namaAplikasi || sl.akun || "-";
-      var adm = sl.recordedBy || sl.admin || sl.userName || sl.kasir || "-";
-      var waktu = sl.datetime || sl.date || sl.waktu || sl.timestamp || sl.createdAt || "-";
+// Dari koleksi sisa saldo: nominal adalah Sisa Saldo
+rawSisa.forEach(function (sl) {
+  var sisa = cleanNumber(sl.nominal != null ? sl.nominal : (sl.remainingBalance != null ? sl.remainingBalance : (sl.sisaSaldo != null ? sl.sisaSaldo : (sl.saldo != null ? sl.saldo : 0))));
+  var prov = sl.toolName || sl.provider || sl.appName || sl.aplikasi || sl.nama || "Tools";
+  var tgl = parseDateToReadable(sl.date || sl.datetime || sl.timestamp || sl.createdAt);
+  saldoHistory.push({
+    id: sl.id,
+    datetime: tgl,
+    date: tgl,
+    provider: prov,
+    appName: prov,
+    aplikasi: prov,
+    amount: 0,
+    nominal: 0,
+    pengisian: 0,
+    remainingBalance: sisa,
+    sisaSaldo: sisa,
+    recordedBy: sl.recordedBy || sl.admin || sl.userName || "Admin"
+  });
+});
 
-      return Object.assign({}, sl, {
-        provider: prov,
-        appName: prov,
-        aplikasi: prov,
-        amount: isi,
-        nominal: isi,
-        pengisian: isi,
-        remainingBalance: saldo,
-        sisaSaldo: saldo,
-        saldo: saldo,
-        recordedBy: adm,
-        admin: adm,
-        datetime: waktu
-      });
-    });
+// Dari saldo umum / telegram
+rawSaldo.concat(rawTele).forEach(function (sl) {
+  var isi = cleanNumber(sl.pengisian != null ? sl.pengisian : (sl.topup != null ? sl.topup : (sl.amount != null ? sl.amount : 0)));
+  var sisa = cleanNumber(sl.sisaSaldo != null ? sl.sisaSaldo : (sl.remainingBalance != null ? sl.remainingBalance : (sl.saldo != null ? sl.saldo : (sl.nominal != null ? sl.nominal : 0))));
+  var prov = sl.provider || sl.appName || sl.aplikasi || sl.nama || "Tools";
+  var tgl = parseDateToReadable(sl.datetime || sl.date || sl.waktu || sl.timestamp || sl.createdAt);
+  saldoHistory.push({
+    id: sl.id,
+    datetime: tgl,
+    date: tgl,
+    provider: prov,
+    appName: prov,
+    aplikasi: prov,
+    amount: isi,
+    nominal: isi,
+    pengisian: isi,
+    remainingBalance: sisa,
+    sisaSaldo: sisa,
+    recordedBy: sl.recordedBy || sl.admin || sl.userName || "Admin"
+  });
+});
     
     collectionsCache = {
       transactions: transactions,
@@ -755,8 +869,8 @@
             sl.id || '-',
             sl.datetime || sl.date || sl.waktu || '-',
             sl.provider || sl.appName || sl.aplikasi || '-',
-            formatRupiah(sl.amount || sl.pengisian || 0),
-            formatRupiah(sl.remainingBalance || sl.sisaSaldo || 0),
+            formatRupiah(sl.nominal || sl.amount || sl.pengisian || 0),
+            formatRupiah(sl.remainingBalance || sl.sisaSaldo || sl.saldo || 0),
             sl.recordedBy || sl.admin || '-'
           ];
         });
