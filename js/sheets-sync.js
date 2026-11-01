@@ -600,6 +600,106 @@
             `<span class="badge ${Number(p.stock || 0) <= 5 ? 'badge-danger' : 'badge-success'}">${p.stock || 0}</span>`
           ];
         });
+    } else if (activeTabKey === 'hutang') {
+      cols = ['ID Hutang', 'Nama Kontak', 'Jenis', 'Nominal Awal', 'Sisa Tagihan', 'Status'];
+      rows = (c.debts || [])
+        .filter(function (d) { return !q || JSON.stringify(d).toLowerCase().includes(q); })
+        .map(function (d) {
+          return [
+            d.id || '-',
+            d.contactName || d.customerName || d.nama || '-',
+            (d.type === 'payable' || d.type === 'hutang') ? 'Hutang Toko' : 'Piutang Pelanggan',
+            formatRupiah(d.initialAmount || d.amount || d.nominal || 0),
+            formatRupiah(d.remainingAmount !== undefined ? d.remainingAmount : (d.balance || d.sisa || 0)),
+            `<span class="badge ${d.status === 'paid' ? 'badge-success' : 'badge-danger'}">${d.status === 'paid' ? 'Lunas' : 'Belum Lunas'}</span>`
+          ];
+        });
+    } else if (activeTabKey === 'kas') {
+      cols = ['ID Shift', 'Tanggal', 'Kasir', 'Modal Awal', 'Kas Akhir', 'Selisih', 'Status'];
+      rows = (c.shifts || [])
+        .filter(function (s) { return !q || JSON.stringify(s).toLowerCase().includes(q); })
+        .map(function (s) {
+          return [
+            s.id || '-',
+            s.date || s.tanggal || '-',
+            s.cashier || s.userName || s.kasir || '-',
+            formatRupiah(s.startingCash || s.modalAwal || 0),
+            formatRupiah(s.systemCash || s.kasAkhir || s.actualCash || 0),
+            formatRupiah(s.difference || s.selisih || 0),
+            `<span class="badge ${s.status === 'closed' ? 'badge-success' : 'badge-warning'}">${s.status || 'closed'}</span>`
+          ];
+        });
+    } else if (activeTabKey === 'pembelian') {
+      cols = ['ID Faktur', 'Tanggal', 'Supplier', 'Total Biaya', 'Metode', 'Status'];
+      rows = (c.purchases || [])
+        .filter(function (b) { return !q || JSON.stringify(b).toLowerCase().includes(q); })
+        .map(function (b) {
+          return [
+            b.id || b.invoiceNo || '-',
+            b.date || b.tanggal || '-',
+            b.supplierName || b.supplier || '-',
+            formatRupiah(b.totalCost || b.total || b.biaya || 0),
+            b.paymentMethod || 'Tunai',
+            `<span class="badge ${b.paymentStatus === 'Lunas' || b.status === 'completed' ? 'badge-success' : 'badge-warning'}">${b.paymentStatus || b.status || 'Lunas'}</span>`
+          ];
+        });
+    } else if (activeTabKey === 'pelanggan') {
+      cols = ['ID Pelanggan', 'Nama Pelanggan', 'WhatsApp', 'Total Belanja', 'Kunjungan', 'Membership'];
+      // Auto-hitung total belanja & kunjungan dari riwayat transaksi
+      var cSpending = {};
+      var cVisits = {};
+      (c.transactions || []).forEach(function(t) {
+        var cn = (t.customerName || t.pelanggan || t.customer || '').trim().toLowerCase();
+        if (cn && cn !== '-' && cn !== 'umum' && cn !== 'pelanggan umum') {
+          cSpending[cn] = (cSpending[cn] || 0) + (t.total || 0);
+          cVisits[cn] = (cVisits[cn] || 0) + 1;
+        }
+      });
+
+      rows = (c.customers || [])
+        .filter(function (cu) { return !q || JSON.stringify(cu).toLowerCase().includes(q); })
+        .map(function (cu) {
+          var nama = cu.name || cu.nama || cu.namaPelanggan || cu.customerName || '-';
+          var kNama = nama.trim().toLowerCase();
+          var spent = (cu.totalSpent || cu.totalBelanja || 0) || (cSpending[kNama] || 0);
+          var visits = (cu.visitCount || cu.totalVisits || cu.kunjungan || 0) || (cVisits[kNama] || 0);
+          return [
+            cu.id || '-',
+            nama,
+            cu.phone || cu.whatsapp || cu.noHp || cu.noTelp || '-',
+            formatRupiah(spent),
+            visits,
+            `<span class="badge badge-success">${cu.membership || 'Regular'}</span>`
+          ];
+        });
+    } else if (activeTabKey === 'gaji') {
+      cols = ['ID Payroll', 'Periode', 'Nama Staf', 'Gaji Pokok', 'THP Bersih', 'Status'];
+      rows = (c.payrolls || [])
+        .filter(function (g) { return !q || JSON.stringify(g).toLowerCase().includes(q); })
+        .map(function (g) {
+          return [
+            g.id || '-',
+            g.period || g.periode || '-',
+            g.staffName || g.employeeName || g.nama || '-',
+            formatRupiah(g.basicSalary || g.gajiPokok || 0),
+            formatRupiah(g.netSalary || g.thp || 0),
+            `<span class="badge ${g.status === 'Lunas' || g.status === 'paid' ? 'badge-success' : 'badge-warning'}">${g.status || 'Lunas'}</span>`
+          ];
+        });
+    } else if (activeTabKey === 'saldo') {
+      cols = ['ID Riwayat', 'Waktu', 'Aplikasi', 'Pengisian', 'Sisa Saldo', 'Admin'];
+      rows = (c.saldoHistory || [])
+        .filter(function (sl) { return !q || JSON.stringify(sl).toLowerCase().includes(q); })
+        .map(function (sl) {
+          return [
+            sl.id || '-',
+            sl.datetime || sl.date || sl.waktu || '-',
+            sl.provider || sl.appName || sl.aplikasi || '-',
+            formatRupiah(sl.amount || sl.pengisian || 0),
+            formatRupiah(sl.remainingBalance || sl.sisaSaldo || 0),
+            sl.recordedBy || sl.admin || '-'
+          ];
+        });
     }
 
     thead.innerHTML = '<tr>' + cols.map(function (col) { return `<th>${col}</th>`; }).join('') + '</tr>';
@@ -611,7 +711,6 @@
       return '<tr>' + r.map(function (td) { return `<td>${td}</td>`; }).join('') + '</tr>';
     }).join('');
   };
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       initForm();
