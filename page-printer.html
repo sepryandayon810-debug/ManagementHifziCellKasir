@@ -1148,11 +1148,16 @@ function isValidPersonName(str) {
 }
 
   function displayOcrResult(data) {
+    if (!data) return;
     document.getElementById('ocrParsedData').innerHTML = `
-      <div><strong>Tanggal:</strong> ${data.date} ${data.time}</div>
+      <div><strong>Bank:</strong> ${data.bankAsal || '-'} &rarr; ${data.bankTujuan || '-'}</div>
+      <div><strong>Pengirim:</strong> ${data.pengirim} (${data.norekPengirim})</div>
+      <div><strong>Penerima:</strong> <span style="color:var(--primary); font-weight:700;">${data.penerima}</span></div>
+      <div><strong>No. Rek:</strong> ${data.rekening}</div>
       <div><strong>Nominal:</strong> Rp ${formatNumber(data.nominal)}</div>
       <div><strong>Admin:</strong> Rp ${formatNumber(data.admin)}</div>
-      <div style="color:var(--success); font-weight:700; margin-top:4px;">Status: Berhasil dibaca</div>
+      <div><strong>Total:</strong> <strong style="color:var(--success);">Rp ${formatNumber(data.total)}</strong></div>
+      <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Waktu: ${data.tanggal} ${data.jam} | Ref: ${data.ref}</div>
     `;
   }
 
@@ -1166,8 +1171,12 @@ function isValidPersonName(str) {
   const receiverVal = scannedData.penerima || 'Pelanggan';
   const rekVal = scannedData.rekening || '-';
 
-  if (document.getElementById('manualDate')) document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
-  if (document.getElementById('manualTime')) document.getElementById('manualTime').value = new Date().toTimeString().slice(0, 5);
+  if (document.getElementById('manualDate') && scannedData.tanggal) {
+    document.getElementById('manualDate').value = scannedData.tanggal;
+  }
+  if (document.getElementById('manualTime') && scannedData.jam) {
+    document.getElementById('manualTime').value = scannedData.jam;
+  }
   
   if (document.getElementById('manualSender')) document.getElementById('manualSender').value = senderVal;
   if (document.getElementById('manualSenderAccount')) document.getElementById('manualSenderAccount').value = scannedData.norekPengirim || '****';
