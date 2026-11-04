@@ -938,29 +938,6 @@
     });
   }
   
-  // Helper agar scan gambar super cepat & ringan
-  function resizeImageForFastOcr(base64Str, maxWidth = 1000) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = base64Str;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.onerror = () => resolve(base64Str);
-    });
-  }
-  
 // === PARSER SUPER SMART: BRI (BRIMO), DANA, BNI, BCA, MANDIRI & SEMUA E-WALLET ===
 function parseReceiptText(rawText) {
   if (!rawText) return null;
@@ -1254,12 +1231,12 @@ function parseReceiptText(rawText) {
   return data;
 }
 
-// Helper pembersih awalan nama seperti "Nama: ", "A.N ", "Sdri ", "Kirim ke ", dll
+// Helper pembersih awalan nama & hanya menghapus akhiran nama bank (bukan nama orang)
 function cleanPersonName(str) {
   if (!str) return '';
   return str.trim()
     .replace(/^(nama\s*[:=-]?\s*|penerima\s*[:=-]?\s*|pengirim\s*[:=-]?\s*|tujuan\s*[:=-]?\s*|sumber\s+dana\s*[:=-]?\s*|dari\s*[:=-]?\s*|ke\s*[:=-]?\s*|kirim\s+ke\s+rekening\s+bank\s*[:=-]?\s*|kirim\s+ke\s*[:=-]?\s*|a\.?n\.?\s*[:=-]?\s*|a\/n\s*[:=-]?\s*|sdri?\.?\s*|bapa?k\.?\s*|ibu\.?\s*)/i, '')
-    .replace(/[\s-]+(bank\s+[a-z]+|[a-z]{3,5})$/i, '')
+    .replace(/[\s-]+(bank\s+[a-z]+|bri|bca|bni|mandiri|bsi|dana|gopay|ovo|cimb|btn|permata|seabank|jago)$/i, '')
     .trim();
 }
 
@@ -1396,60 +1373,119 @@ function isValidPersonName(str) {
     }
   }
 
+  function applyOcrToForm() {
+    if (!scannedData) {
+      showToast('Belum ada data OCR yang dipindai', 'warning');
+      return;
+    }
+
+    const senderVal = scannedData.pengirim || scannedData.bankAsal || 'Kasir Konter';
+    const receiverVal = scannedData.penerima || 'Pelanggan';
+    const rekVal = scannedData.rekening || '-';
+
+    if (document.getElementById('manualDate') && scannedData.tanggal) {
+      document.getElementById('manualDate').value = scannedData.tanggal;
+    }
+    if (document.getElementById('manualTime') && scannedData.jam) {
+      document.getElementById('manualTime').value = scannedData.jam;
+    }
+    
+    if (document.getElementById('manualSender')) document.getElementById('manualSender').value = senderVal;
+    if (document.getElementById('manualSenderAccount')) document.getElementById('manualSenderAccount').value = scannedData.norekPengirim || '****';
+    if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = receiverVal;
+    if (document.getElementById('manualReceiverAccount')) document.getElementById('manualReceiverAccount').value = rekVal;
+    
+    if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = scannedData.nominal;
+    if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = scannedData.admin;
+
+    // Sinkronkan Bank Pengirim
+    const selBankFrom = document.getElementById('manualBankFrom');
+    if (selBankFrom && scannedData.bankAsal) {
+      for (let opt of selBankFrom.options) {
+        if (scannedData.bankAsal.toUpperCase().includes(opt.value.toUpperCase())) {
+          selBankFrom.value = opt.value;
+          break;
+        }
+      }
+    }
+
+    // Sinkronkan Bank Tujuan
+    const selBankTo = document.getElementById('manualBankTo');
+    if (selBankTo && scannedData.bankTujuan) {
+      for (let opt of selBankTo.options) {
+        if (opt.value.toUpperCase() === scannedData.bankTujuan.toUpperCase()) {
+          selBankTo.value = opt.value;
+          break;
+        }
+      }
+    }
+
+    updatePreview(scannedData);
+    showToast('Data OCR berhasil diterapkan ke struk!', 'success');
+  }
+
   function updatePreview(extraData) {
-  const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
-  const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
-  const phone = document.getElementById('receiptPhone')?.value || '';
-  const note = document.getElementById('receiptNote')?.value || 'Terima kasih atas kepercayaan Anda';
+    const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
+    const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
+    const phone = document.getElementById('receiptPhone')?.value || '';
+    const note = document.getElementById('receiptNote')?.value || 'Terima kasih atas kepercayaan Anda';
 
-  document.getElementById('previewStoreName').textContent = storeName;
-  document.getElementById('previewAddress').textContent = address;
-  document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
-  document.getElementById('previewFooter').textContent = note;
+    document.getElementById('previewStoreName').textContent = storeName;
+    document.getElementById('previewAddress').textContent = address;
+    document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
+    document.getElementById('previewFooter').textContent = note;
 
-  const tgl = document.getElementById('manualDate')?.value || new Date().toISOString().split('T')[0];
-  const jam = document.getElementById('manualTime')?.value || new Date().toTimeString().slice(0, 5);
-  document.getElementById('previewDate').textContent = tgl + ' ' + jam;
-  document.getElementById('previewType').textContent = (currentReceiptType || 'TRANSFER').toUpperCase();
+    const tgl = document.getElementById('manualDate')?.value || new Date().toISOString().split('T')[0];
+    const jam = document.getElementById('manualTime')?.value || new Date().toTimeString().slice(0, 5);
+    document.getElementById('previewDate').textContent = tgl + ' ' + jam;
+    document.getElementById('previewType').textContent = (currentReceiptType || 'TRANSFER').toUpperCase();
 
-  // Sanitasi filter agar TIDAK AKAN PERNAH bernilai "undefined"
-  let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || extraData?.bankAsal || 'Kasir Konter';
-  if (sender === 'undefined' || !sender.trim()) sender = extraData?.bankAsal || 'Kasir Konter';
+    // Sanitasi filter agar TIDAK AKAN PERNAH bernilai "undefined"
+    let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || extraData?.bankAsal || 'Kasir Konter';
+    if (sender === 'undefined' || !sender.trim()) sender = extraData?.bankAsal || 'Kasir Konter';
 
-  let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || 'Pelanggan';
-  if (receiver === 'undefined' || !receiver.trim()) receiver = 'Pelanggan';
+    let senderRek = document.getElementById('manualSenderAccount')?.value || extraData?.norekPengirim || '****';
+    if (senderRek === 'undefined' || !senderRek.trim()) senderRek = '****';
 
-  let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || '-';
-  if (receiverRek === 'undefined' || !receiverRek.trim()) receiverRek = '-';
+    let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || 'Pelanggan';
+    if (receiver === 'undefined' || !receiver.trim()) receiver = 'Pelanggan';
 
-  let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || 'BANK TUJUAN';
+    let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || '-';
+    if (receiverRek === 'undefined' || !receiverRek.trim()) receiverRek = '-';
 
-  const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
-  const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
-  const refNo = extraData?.ref || ('TRX-' + Date.now().toString().slice(-8));
+    let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || 'BANK TUJUAN';
 
-  // Tampilkan Rincian Struk Bersih & Rapi
-  document.getElementById('previewItems').innerHTML = `
-    <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
-      <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${sender}</span></div>
-      <div style="display:flex; justify-content:space-between;"><span>Bank Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
-      <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
-      <div style="display:flex; justify-content:space-between;"><span>No. Rek/HP:</span><span style="font-weight:bold;">${receiverRek}</span></div>
-    </div>
-    <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
-    <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
-  `;
+    const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
+    const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
+    const refNo = extraData?.ref || ('TRX-' + Date.now().toString().slice(-8));
 
-  document.getElementById('previewTotal').innerHTML = `
-    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-top:4px;">
-      <span>TOTAL BAYAR</span>
-      <span>Rp ${formatNumber(nom + adm)}</span>
-    </div>
-    <div style="text-align:center; margin-top:6px; font-size:9px; color:#666;">
-      [ REFF: ${refNo} ]
-    </div>
-  `;
-}
+    // Menampilkan pengirim lengkap dengan 4 digit akhir di struk
+    const senderDisplay = senderRek && senderRek !== '-' && senderRek !== '****' 
+      ? `${sender} (${senderRek})` 
+      : sender;
+
+    // Tampilkan Rincian Struk Bersih & Rapi
+    document.getElementById('previewItems').innerHTML = `
+      <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
+        <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${senderDisplay}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Bank Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>No. Rek/HP:</span><span style="font-weight:bold;">${receiverRek}</span></div>
+      </div>
+      <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
+      <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
+    `;
+
+    document.getElementById('previewTotal').innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-top:4px;">
+        <span>TOTAL BAYAR</span>
+        <span>Rp ${formatNumber(nom + adm)}</span>
+      </div>
+      <div style="text-align:center; margin-top:6px; font-size:9px; color:#666;">
+        [ REFF: ${refNo} ]
+      </div>
+    `;
+  }
 
   function loadHeaderSettings() {
     const saved = localStorage.getItem('webpos_receipt_header');
