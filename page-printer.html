@@ -1175,34 +1175,6 @@ function cleanPersonName(str) {
     .trim();
 }
 
-// Helper validasi apakah string benar-benar nama orang (bebas duplikat)
-function isValidPersonName(str) {
-  if (!str || typeof str !== 'string') return false;
-  const s = cleanPersonName(str).toUpperCase();
-  if (s.length < 3 || s.length > 45) return false;
-  if (/^[\d\s.,\-+*/:()]+$/.test(s)) return false;
-  const kataDilarang = [
-    'BERHASIL', 'SUKSES', 'TRANSAKSI', 'TRANSFER', 'TOTAL', 'BIAYA', 'ADMIN',
-    'REFERENSI', 'TANGGAL', 'SUMBER', 'DANA', 'REKENING', 'BANK', 'NOMINAL',
-    'WIB', 'WITA', 'WIT', 'CATATAN', 'RINCIAN', 'METODE', 'PEMBAYARAN',
-    'KIRIM', 'UANG', 'DETAIL', 'STATUS', 'ID TRANSAKSI', 'NO REF', 'SALDO',
-    'QRIS', 'TAGIHAN', 'KONFIRMASI', 'SELESAI', 'BAGIKAN', 'DOWNLOAD', 'UNDUH'
-  ];
-  for (let k of kataDilarang) {
-    if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k) || s.includes(' ' + k + ' ') || s.includes('TRANSAKSI') || s.includes('PEMBAYARAN')) return false;
-  }
-  return /[A-Z]/.test(s);
-}
-
-// Helper pembersih awalan nama seperti "Nama: ", "A.N ", "Sdri ", dll
-function cleanPersonName(str) {
-  if (!str) return '';
-  return str.trim()
-    .replace(/^(nama\s*[:=-]?\s*|penerima\s*[:=-]?\s*|pengirim\s*[:=-]?\s*|tujuan\s*[:=-]?\s*|sumber\s+dana\s*[:=-]?\s*|dari\s*[:=-]?\s*|ke\s*[:=-]?\s*|kirim\s+ke\s*[:=-]?\s*|a\.?n\.?\s*[:=-]?\s*|a\/n\s*[:=-]?\s*|sdri?\.?\s*|bapa?k\.?\s*|ibu\.?\s*)/i, '')
-    .replace(/[\s-]+(bank\s+[a-z]+|[a-z]{3,5})$/i, '')
-    .trim();
-}
-
 // Helper validasi apakah string benar-benar nama orang
 function isValidPersonName(str) {
   if (!str || typeof str !== 'string') return false;
