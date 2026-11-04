@@ -830,114 +830,195 @@
     }
   }
 
-  // --- PROSES OCR TESSERACT ---
+  // --- PROSES OCR TESSERACT DENGAN PROGRESS REAL-TIME ---
   async function processImageFile(file) {
     if (typeof Tesseract === 'undefined') {
       showToast('Library OCR Tesseract belum dimuat', 'error');
       return;
     }
 
-    document.getElementById('ocrUploadArea').style.display = 'none';
-    document.getElementById('ocrLoading').style.display = 'block';
-    document.getElementById('ocrResultSection').style.display = 'none';
+    const uploadArea = document.getElementById('ocrUploadArea');
+    const loadingArea = document.getElementById('ocrLoading');
+    const resultArea = document.getElementById('ocrResultSection');
+    const pBar = document.getElementById('ocrProgressBar');
+    const pText = document.getElementById('ocrProgressPercent');
+    const statusText = document.getElementById('ocrProgressText');
+
+    if (uploadArea) uploadArea.style.display = 'none';
+    if (loadingArea) loadingArea.style.display = 'block';
+    if (resultArea) resultArea.style.display = 'none';
+
+    // Set progress awal
+    if (pBar) pBar.style.width = '15%';
+    if (pText) pText.textContent = '15%';
+    if (statusText) statusText.textContent = 'Membaca file gambar bukti transfer...';
 
     try {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const imgData = e.target.result;
         document.getElementById('ocrPreviewImage').src = imgData;
-        
-        const result = await Tesseract.recognize(imgData, 'ind');
+
+        // Pindai dengan pemantauan progress real-time
+        const result = await Tesseract.recognize(imgData, 'ind', {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.max(20, Math.round(m.progress * 100));
+              if (pBar) pBar.style.width = pct + '%';
+              if (pText) pText.textContent = pct + '%';
+              if (statusText) statusText.textContent = `Memindai teks bukti transfer (${pct}%)...`;
+            }
+          }
+        });
+
         const text = result.data.text;
         
+        if (pBar) pBar.style.width = '95%';
+        if (pText) pText.textContent = '95%';
+        if (statusText) statusText.textContent = 'Mengekstrak bank, pengirim, penerima & rekening...';
+
         scannedData = parseReceiptText(text);
         displayOcrResult(scannedData);
 
-        document.getElementById('ocrLoading').style.display = 'none';
-        document.getElementById('ocrResultSection').style.display = 'block';
-        showToast('Bukti transfer berhasil dibaca!', 'success');
+        setTimeout(() => {
+          if (loadingArea) loadingArea.style.display = 'none';
+          if (resultArea) resultArea.style.display = 'block';
+          showToast('Bukti transfer berhasil dibaca!', 'success');
+        }, 300);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      document.getElementById('ocrLoading').style.display = 'none';
-      document.getElementById('ocrUploadArea').style.display = 'block';
+      if (loadingArea) loadingArea.style.display = 'none';
+      if (uploadArea) uploadArea.style.display = 'block';
       showToast('Gagal memproses gambar: ' + err.message, 'error');
     }
   }
 
-  function parseReceiptText(rawText) {
+  // === PARSER PINTAR SEMUA PERBANKAN & E-WALLET INDONESIA ===
+function parseReceiptText(rawText) {
   if (!rawText) return null;
   const textUpper = rawText.toUpperCase();
-  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+  const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   let data = {
     bankAsal: 'TRANSFER BANK',
-    bankTujuan: 'BANK TUJUAN',
+    bankTujuan: 'BANK LAIN',
     pengirim: 'Kasir / Konter',
     norekPengirim: '****',
     penerima: '',
     rekening: '',
     nominal: 0,
-    admin: parseInt(document.getElementById('manualAdmin')?.value) || 2500, // Ambil dari input admin form
+    admin: parseInt(document.getElementById('manualAdmin')?.value) || 5000,
     total: 0,
-    ref: 'TRX-' + Date.now().toString().slice(-8),
+    ref: 'TRX-' + Math.floor(10000000 + Math.random() * 90000000),
     tanggal: new Date().toLocaleDateString('id-ID'),
     jam: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
     status: 'BERHASIL'
   };
 
-  // 1. Deteksi Semua Bank & E-Wallet
-  if (textUpper.includes('M-TRANSFER') || textUpper.includes('BCA')) data.bankAsal = 'BCA (m-BCA)';
-  else if (textUpper.includes('BRIMO') || textUpper.includes('BANK RAKYAT INDONESIA')) data.bankAsal = 'BRI (BRImo)';
-  else if (textUpper.includes('LIVIN') || textUpper.includes('MANDIRI') || textUpper.includes('RESI: 261')) data.bankAsal = "Mandiri (Livin')";
-  else if (textUpper.includes('WONDR') || textUpper.includes('BNI')) data.bankAsal = 'BNI (Mobile)';
-  else if (textUpper.includes('BSI') || textUpper.includes('BANK SYARIAH INDONESIA')) data.bankAsal = 'BSI Mobile';
-  else if (textUpper.includes('DANA') || textUpper.includes('KIRIM UANG BERHASIL')) data.bankAsal = 'DANA E-Wallet';
-  else if (textUpper.includes('OVO')) data.bankAsal = 'OVO';
-  else if (textUpper.includes('GOPAY') || textUpper.includes('GOJEK')) data.bankAsal = 'GoPay';
-  else if (textUpper.includes('SHOPEEPAY') || textUpper.includes('SEABANK')) data.bankAsal = 'ShopeePay';
+  // 1. DETEKSI BANK ASAL / APLIKASI PENGIRIM
+  if (textUpper.includes('WONDR') || textUpper.includes('BNI MOBILE') || (textUpper.includes('BNI') && !textUpper.includes('KE BNI'))) {
+    data.bankAsal = 'BNI (Mobile)';
+  } else if (textUpper.includes('BRIMO') || textUpper.includes('BANK RAKYAT INDONESIA')) {
+    data.bankAsal = 'BRI (BRImo)';
+  } else if (textUpper.includes('M-TRANSFER') || textUpper.includes('BCA') || textUpper.includes('MYBCA')) {
+    data.bankAsal = 'BCA (m-BCA)';
+  } else if (textUpper.includes('LIVIN') || textUpper.includes('MANDIRI') || textUpper.includes('RESI: 261')) {
+    data.bankAsal = "Mandiri (Livin')";
+  } else if (textUpper.includes('BSI') || textUpper.includes('BANK SYARIAH INDONESIA')) {
+    data.bankAsal = 'BSI Mobile';
+  } else if (textUpper.includes('DANA') || textUpper.includes('KIRIM UANG BERHASIL')) {
+    data.bankAsal = 'DANA E-Wallet';
+  } else if (textUpper.includes('GOPAY') || textUpper.includes('GOJEK')) {
+    data.bankAsal = 'GoPay';
+  } else if (textUpper.includes('OVO')) {
+    data.bankAsal = 'OVO';
+  } else if (textUpper.includes('SHOPEEPAY') || textUpper.includes('SEABANK')) {
+    data.bankAsal = 'ShopeePay';
+  } else if (textUpper.includes('JAGO')) {
+    data.bankAsal = 'Bank Jago';
+  }
 
-  // 2. Deteksi No. Referensi / No. Resi
-  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Ref|Kode Transaksi)\s*[:=]?\s*([A-Za-z0-9_-]+)/i);
-  if (refMatch && refMatch[1]) data.ref = refMatch[1].trim();
-
-  // 3. Deteksi Tanggal & Jam
-  const dateMatch = rawText.match(/(\d{1,2}\s*(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Ags|Sep|Okt|Nov|Des)[a-z]*\s*\d{2,4}|\d{1,2}[-/.](?:\d{1,2}|(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des))[-/.]\d{2,4})/i);
-  if (dateMatch) data.tanggal = dateMatch[1].trim();
-
-  const timeMatch = rawText.match(/(\b[0-2]?\d[:.][0-5]\d(?:[:.][0-5]\d)?\b(?:\s*WIB)?)/i);
-  if (timeMatch) data.jam = timeMatch[1].trim();
-
-  // 4. Deteksi Baris Penerima, Rekening & Nominal
-  for (let line of lines) {
-    const lUpper = line.toUpperCase();
-    if ((lUpper.includes('PENERIMA') || lUpper.includes('NAMA:') || lUpper.includes('DIKIRIM KE') || lUpper.includes('A.N')) && !data.penerima) {
-      let parts = line.split(/[:=]/);
-      if (parts.length > 1) {
-        let val = parts.slice(1).join(':').trim();
-        if (val.includes('-')) val = val.split('-').pop().trim();
-        if (val && !val.match(/^\d+$/)) data.penerima = val;
-      }
+  // 2. DETEKSI BANK TUJUAN
+  const daftarBank = ['BRI', 'BCA', 'MANDIRI', 'BNI', 'BSI', 'DANA', 'GOPAY', 'OVO', 'SHOPEEPAY', 'SEABANK', 'JAGO', 'CIMB', 'PERMATA', 'BTN'];
+  for (let b of daftarBank) {
+    if (textUpper.includes('KE ' + b) || textUpper.includes('BANK TUJUAN: ' + b) || textUpper.includes('TUJUAN ' + b) || textUpper.includes('TRANSFER KE ' + b)) {
+      data.bankTujuan = b;
+      break;
     }
-    if ((lUpper.includes('REKENING') || lUpper.includes('NO REK') || lUpper.includes('NO. TUJUAN') || lUpper.includes('NOMOR:')) && !data.rekening) {
-      let numMatch = line.match(/\b(\d{8,18}|08\d{8,11})\b/);
-      if (numMatch) data.rekening = numMatch[1];
-    }
-    if (lUpper.includes('BANK TUJUAN') || lUpper.includes('TUJUAN TRANSFER') || lUpper.includes('KE:')) {
-      let parts = line.split(/[:=]/);
-      if (parts.length > 1) data.bankTujuan = parts[1].trim();
-    }
-    if ((lUpper.includes('JUMLAH:') || lUpper.includes('NOMINAL') || lUpper.includes('JUMLAH TERKIRIM') || lUpper.includes('JUMLAH TRANSFER')) && data.nominal === 0) {
-      let nomMatch = line.match(/(?:Rp\.?|\b)\s*([\d.,]+)/i);
-      if (nomMatch) {
-        let clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
-        let num = parseInt(clean, 10);
-        if (!isNaN(num)) data.nominal = num;
+  }
+  if (data.bankTujuan === 'BANK LAIN') {
+    for (let b of daftarBank) {
+      if (b !== data.bankAsal && textUpper.includes(b)) {
+        data.bankTujuan = b;
+        break;
       }
     }
   }
 
-  // Fallback nominal jika belum ketemu
+  // 3. DETEKSI NO. REFERENSI / RESI / ID TRANSAKSI
+  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Ref|Kode Transaksi)\s*[:=]?\s*([A-Za-z0-9_-]{6,30})/i);
+  if (refMatch && refMatch[1]) data.ref = refMatch[1].trim();
+
+  // 4. DETEKSI PENERIMA & REKENING (Bisa sebaris atau baris berikutnya)
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const upper = line.toUpperCase();
+
+    // Deteksi Penerima
+    if (!data.penerima && (upper.includes('PENERIMA') || upper.includes('DIKIRIM KE') || upper.includes('TUJUAN:') || upper.includes('A.N') || upper.includes('NAMA PENERIMA'))) {
+      if (line.includes(':')) {
+        let val = line.split(':')[1].trim();
+        if (val && !val.match(/^\d+$/) && val.length > 2) data.penerima = val;
+      }
+      // Jika nama berada di baris tepat di bawahnya (seperti format BNI / BRImo)
+      if (!data.penerima && rawLines[i + 1]) {
+        let nextLine = rawLines[i + 1].trim();
+        if (!nextLine.includes(':') && !nextLine.match(/^\d+$/) && !nextLine.toUpperCase().includes('BANK') && !nextLine.toUpperCase().includes('RP')) {
+          data.penerima = nextLine;
+        }
+      }
+    }
+
+    // Deteksi Pengirim
+    if (!data.pengirim || data.pengirim === 'Kasir / Konter') {
+      if (upper.includes('PENGIRIM') || upper.includes('SUMBER DANA') || upper.includes('DARI REKENING')) {
+        if (line.includes(':')) {
+          let val = line.split(':')[1].trim();
+          if (val && !val.match(/^\d+$/)) data.pengirim = val;
+        } else if (rawLines[i + 1] && !rawLines[i + 1].includes(':')) {
+          let nextLine = rawLines[i + 1].trim();
+          if (!nextLine.match(/^\d+$/) && !nextLine.toUpperCase().includes('RP')) data.pengirim = nextLine;
+        }
+      }
+    }
+
+    // Deteksi Nomor Rekening
+    if (!data.rekening) {
+      if (upper.includes('REKENING') || upper.includes('NO REK') || upper.includes('NO. TUJUAN') || upper.includes('NOMOR')) {
+        let numMatch = line.match(/\b(\d{8,18}|08\d{8,11})\b/);
+        if (numMatch) data.rekening = numMatch[1];
+        else if (rawLines[i + 1]) {
+          let nextNum = rawLines[i + 1].match(/\b(\d{8,18}|08\d{8,11})\b/);
+          if (nextNum) data.rekening = nextNum[1];
+        }
+      }
+    }
+  }
+
+  // Fallback rekening jika belum ditemukan
+  if (!data.rekening) {
+    let anyNum = rawText.match(/\b(08\d{8,11}|\d{10,16})\b/);
+    if (anyNum) data.rekening = anyNum[1];
+  }
+
+  // 5. DETEKSI NOMINAL TRANSAKSI
+  let nomMatch = rawText.match(/(?:JUMLAH|NOMINAL|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
+  if (nomMatch) {
+    let clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
+    let num = parseInt(clean, 10);
+    if (!isNaN(num) && num > 0) data.nominal = num;
+  }
   if (data.nominal === 0) {
     let allAmounts = [];
     let regex = /(?:Rp\.?\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/g;
@@ -949,22 +1030,39 @@
     if (allAmounts.length > 0) data.nominal = allAmounts[0];
   }
 
-  if (!data.rekening) {
-    let rawNum = rawText.match(/\b(08\d{8,11}|\d{10,16})\b/);
-    if (rawNum) data.rekening = rawNum[1];
-  }
+  // JAMINAN ANTI-UNDEFINED
+  if (!data.pengirim || data.pengirim === 'undefined') data.pengirim = data.bankAsal || 'Kasir Konter';
+  if (!data.penerima || data.penerima === 'undefined') data.penerima = 'Pelanggan';
+  if (!data.rekening || data.rekening === 'undefined') data.rekening = '-';
 
-  // Hitung Total Bayar
+  // Aliaskan semua nama properti agar kompatibel ke semua fungsi pemanggil
+  data.sender = data.pengirim;
+  data.receiver = data.penerima;
+  data.date = data.tanggal;
+  data.time = data.jam;
+
   data.total = data.nominal + data.admin;
 
-  // Masukkan otomatis ke form input struk WebPOS Anda
+  // Masukkan otomatis ke form manual
   if (document.getElementById('manualDate')) document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
   if (document.getElementById('manualTime')) document.getElementById('manualTime').value = new Date().toTimeString().slice(0, 5);
-  if (document.getElementById('manualSender')) document.getElementById('manualSender').value = data.bankAsal;
+  if (document.getElementById('manualSender')) document.getElementById('manualSender').value = data.pengirim;
   if (document.getElementById('manualSenderAccount')) document.getElementById('manualSenderAccount').value = data.norekPengirim;
-  if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = data.penerima || 'Pelanggan';
-  if (document.getElementById('manualReceiverAccount')) document.getElementById('manualReceiverAccount').value = data.rekening || '-';
+  if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = data.penerima;
+  if (document.getElementById('manualReceiverAccount')) document.getElementById('manualReceiverAccount').value = data.rekening;
   if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = data.nominal;
+  if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = data.admin;
+
+  // Perbarui Bank Tujuan di select form
+  const selBank = document.getElementById('manualBankTo');
+  if (selBank && data.bankTujuan) {
+    for (let opt of selBank.options) {
+      if (opt.value.toUpperCase() === data.bankTujuan.toUpperCase()) {
+        selBank.value = opt.value;
+        break;
+      }
+    }
+  }
 
   // Update preview struk
   if (typeof updatePreview === 'function') {
@@ -984,26 +1082,39 @@
   }
 
   function applyOcrToForm() {
-    if (!scannedData) {
-      showToast('Belum ada data OCR yang dipindai', 'warning');
-      return;
-    }
-
-    if (document.getElementById('manualDate')) document.getElementById('manualDate').value = scannedData.date;
-    if (document.getElementById('manualTime')) document.getElementById('manualTime').value = scannedData.time;
-    if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = scannedData.nominal;
-    if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = scannedData.admin;
-
-    if (currentReceiptType === 'transfer') {
-      if (document.getElementById('manualSender')) document.getElementById('manualSender').value = scannedData.sender;
-      if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = scannedData.receiver;
-    } else {
-      if (document.getElementById('manualCustomer')) document.getElementById('manualCustomer').value = scannedData.sender;
-    }
-
-    updatePreview();
-    showToast('Data OCR berhasil diterapkan ke form!', 'success');
+  if (!scannedData) {
+    showToast('Belum ada data OCR yang dipindai', 'warning');
+    return;
   }
+
+  const senderVal = scannedData.pengirim || scannedData.bankAsal || 'Kasir Konter';
+  const receiverVal = scannedData.penerima || 'Pelanggan';
+  const rekVal = scannedData.rekening || '-';
+
+  if (document.getElementById('manualDate')) document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+  if (document.getElementById('manualTime')) document.getElementById('manualTime').value = new Date().toTimeString().slice(0, 5);
+  
+  if (document.getElementById('manualSender')) document.getElementById('manualSender').value = senderVal;
+  if (document.getElementById('manualSenderAccount')) document.getElementById('manualSenderAccount').value = scannedData.norekPengirim || '****';
+  if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = receiverVal;
+  if (document.getElementById('manualReceiverAccount')) document.getElementById('manualReceiverAccount').value = rekVal;
+  
+  if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = scannedData.nominal;
+  if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = scannedData.admin;
+
+  const selBank = document.getElementById('manualBankTo');
+  if (selBank && scannedData.bankTujuan) {
+    for (let opt of selBank.options) {
+      if (opt.value.toUpperCase() === scannedData.bankTujuan.toUpperCase()) {
+        selBank.value = opt.value;
+        break;
+      }
+    }
+  }
+
+  updatePreview(scannedData);
+  showToast('Data OCR berhasil diterapkan ke struk!', 'success');
+}
 
   function resetOcr() {
     scannedData = null;
@@ -1069,7 +1180,7 @@
   const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
   const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
   const phone = document.getElementById('receiptPhone')?.value || '';
-  const note = document.getElementById('receiptNote')?.value || 'Terima kasih';
+  const note = document.getElementById('receiptNote')?.value || 'Terima kasih atas kepercayaan Anda';
 
   document.getElementById('previewStoreName').textContent = storeName;
   document.getElementById('previewAddress').textContent = address;
@@ -1081,16 +1192,23 @@
   document.getElementById('previewDate').textContent = tgl + ' ' + jam;
   document.getElementById('previewType').textContent = (currentReceiptType || 'TRANSFER').toUpperCase();
 
-  const sender = document.getElementById('manualSender')?.value || extraData?.bankAsal || 'Kasir Konter';
-  const receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || '-';
-  const receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || '-';
-  const bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || '-';
+  // Sanitasi filter agar TIDAK AKAN PERNAH bernilai "undefined"
+  let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || extraData?.bankAsal || 'Kasir Konter';
+  if (sender === 'undefined' || !sender.trim()) sender = extraData?.bankAsal || 'Kasir Konter';
+
+  let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || 'Pelanggan';
+  if (receiver === 'undefined' || !receiver.trim()) receiver = 'Pelanggan';
+
+  let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || '-';
+  if (receiverRek === 'undefined' || !receiverRek.trim()) receiverRek = '-';
+
+  let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || 'BANK TUJUAN';
 
   const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
   const adm = parseInt(document.getElementById('manualAdmin')?.value) || 0;
   const refNo = extraData?.ref || ('TRX-' + Date.now().toString().slice(-8));
 
-  // Rincian Struk Lengkap
+  // Tampilkan Rincian Struk Bersih & Rapi
   document.getElementById('previewItems').innerHTML = `
     <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
       <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${sender}</span></div>
