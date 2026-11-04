@@ -957,7 +957,7 @@
     });
   }
   
-// === ENGINE CERDAS MULTI-BANK: DANA, BRIMO, BNI, BCA, MANDIRI & E-WALLET ===
+// === ENGINE CERDAS MULTI-BANK: DANA, BRIMO, BNI, LINKAJA, BCA, MANDIRI & E-WALLET ===
 function parseReceiptText(rawText) {
   if (!rawText) return null;
   const textUpper = rawText.toUpperCase();
@@ -979,51 +979,7 @@ function parseReceiptText(rawText) {
     status: 'BERHASIL'
   };
 
-  // 1. DETEKSI BANK ASAL
-  if (textUpper.includes('BRIMO') || textUpper.includes('BANK RAKYAT INDONESIA') || (textUpper.includes('BRI') && !textUpper.includes('KE BRI') && !textUpper.includes('TUJUAN: BRI') && !textUpper.includes('AKUN BANK BRI'))) {
-    data.bankAsal = 'BRI (BRImo)';
-  } else if (textUpper.includes('WONDR') || textUpper.includes('BNI MOBILE') || (textUpper.includes('BNI') && !textUpper.includes('BANK BNI') && !textUpper.includes('KE BNI'))) {
-    data.bankAsal = 'BNI (wondr)';
-  } else if (textUpper.includes('M-TRANSFER') || textUpper.includes('BCA') || textUpper.includes('MYBCA')) {
-    data.bankAsal = 'BCA (m-BCA)';
-  } else if (textUpper.includes('LIVIN') || (textUpper.includes('MANDIRI') && !textUpper.includes('BANK MANDIRI')) || textUpper.includes('RESI: 261')) {
-    data.bankAsal = "Mandiri (Livin')";
-  } else if (textUpper.includes('BSI') || textUpper.includes('BANK SYARIAH INDONESIA')) {
-    data.bankAsal = 'BSI Mobile';
-  } else if (textUpper.includes('LINKAJA')) {
-    data.bankAsal = 'LinkAja';
-  } else if (textUpper.includes('DANA') || textUpper.includes('KIRIM UANG') || textUpper.includes('SALDO DANA')) {
-    data.bankAsal = 'DANA (E-Wallet)';
-  } else if (textUpper.includes('GOPAY') || textUpper.includes('GOJEK')) {
-    data.bankAsal = 'GoPay';
-  } else if (textUpper.includes('OVO')) {
-    data.bankAsal = 'OVO';
-  } else if (textUpper.includes('SHOPEEPAY') || textUpper.includes('SEABANK')) {
-    data.bankAsal = 'ShopeePay';
-  }
-
-  // 2. DETEKSI BANK TUJUAN
-  const daftarBank = ['BRI', 'BCA', 'MANDIRI', 'BNI', 'BSI', 'DANA', 'GOPAY', 'OVO', 'SHOPEEPAY', 'SEABANK', 'JAGO', 'CIMB', 'PERMATA', 'BTN'];
-  for (let b of daftarBank) {
-    if (
-      textUpper.includes('KE ' + b) ||
-      textUpper.includes('BANK TUJUAN: ' + b) ||
-      textUpper.includes('TUJUAN ' + b) ||
-      textUpper.includes('TRANSFER KE ' + b) ||
-      textUpper.includes('BANK ' + b) ||
-      textUpper.includes('AKUN BANK ' + b) ||
-      textUpper.includes(b + ' •') ||
-      textUpper.includes(b + ' -') ||
-      textUpper.includes('- ' + b) ||
-      (textUpper.includes('BANK RAKYAT INDONESIA') && b === 'BRI') ||
-      (textUpper.includes('BANK CENTRAL ASIA') && b === 'BCA')
-    ) {
-      data.bankTujuan = b;
-      break;
-    }
-  }
-
-  // 3. DETEKSI TANGGAL & JAM ASLI
+  // 1. DETEKSI TANGGAL & JAM ASLI
   const bulanMap = {
     'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MEI': '05', 'MAY': '05',
     'JUN': '06', 'JUL': '07', 'AGU': '08', 'AUG': '08', 'SEP': '09', 'OKT': '10', 'OCT': '10', 'NOV': '11', 'DES': '12', 'DEC': '12'
@@ -1034,137 +990,59 @@ function parseReceiptText(rawText) {
     const d = tglMatchText[1].padStart(2, '0');
     const bKey = tglMatchText[2].substring(0, 3).toUpperCase();
     const m = bulanMap[bKey] || '01';
-    const y = tglMatchText[3];
-    data.tanggal = `${y}-${m}-${d}`;
+    data.tanggal = `${tglMatchText[3]}-${m}-${d}`;
   } else if (tglMatchDigit) {
-    const d = tglMatchDigit[1].padStart(2, '0');
-    const m = tglMatchDigit[2].padStart(2, '0');
-    const y = tglMatchDigit[3];
-    data.tanggal = `${y}-${m}-${d}`;
+    data.tanggal = `${tglMatchDigit[3]}-${tglMatchDigit[2].padStart(2, '0')}-${tglMatchDigit[1].padStart(2, '0')}`;
   } else {
     data.tanggal = new Date().toISOString().split('T')[0];
   }
 
   const timeMatch = rawText.match(/(\b[0-2]?\d[:.][0-5]\d(?::[0-5]\d)?)\b/);
-  data.jam = timeMatch ? timeMatch[1].replace('.', ':') : new Date().toTimeString().slice(0, 5);
+  data.jam = timeMatch ? (timeMatch[1].replace('.', ':') + (rawText.toUpperCase().includes('WIB') ? ' WIB' : '')) : (new Date().toTimeString().slice(0, 5) + ' WIB');
 
-  // 4. DETEKSI NO REFERENSI / ID TRANSAKSI
-  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*ID|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Order ID|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_-]{6,40})/i);
+  // 2. DETEKSI NO REFERENSI / ID TRANSAKSI
+  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*[I1lD]|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Order ID|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_-]{6,40})/i);
   if (refMatch && refMatch[1]) {
-    data.ref = refMatch[1].trim();
+    data.ref = refMatch[1].trim().replace(/[\)\]]$/, 'J');
   } else {
-    const longDigits = rawText.match(/\b(202[4-9]\d{10,30})\b/);
+    const longDigits = rawText.match(/\b(202[4-9]\d{10,32})\b/);
     if (longDigits) data.ref = longDigits[1];
   }
 
-  // 5. PARSER KHUSUS PER FORMAT BANK & E-WALLET
+  // Deteksi aplikasi DANA sebenarnya (Bukan frase 'Sumber Dana' pada bukti BRImo / BNI)
+  const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION') || textUpper.includes('DIAMANKAN OLEH') || /\b(DANA)\b/.test(textUpper.replace(/SUMBER\s+DANA/g, '')));
 
-  // --- FORMAT A: DANA E-WALLET ---
-  if (textUpper.includes('DANA') || textUpper.includes('KIRIM UANG') || textUpper.includes('SALDO DANA')) {
-    data.bankAsal = 'DANA (E-Wallet)';
-    
-    // Tangkap nomor akun DANA pengirim jika ada (ID DANA 0811•••9491)
-    const idDanaMatch = rawText.match(/ID\s*DANA\s*([0-9•.*xX\-]{8,15})/i);
-    if (idDanaMatch) {
-      data.norekPengirim = idDanaMatch[1].trim();
-    }
+  // 3. PARSER PRIORITAS TINGGI BERDASARKAN FORMAT BANK & E-WALLET
 
-    // Tangkap dari banner judul: Kirim Uang Rp500.000 ke SEPRYANDA YON - BRI
-    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KIRIM\s+KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)|\s*$)/im);
-    if (bannerMatch) {
-      const nama = cleanPersonName(bannerMatch[1]);
-      if (isValidPersonName(nama)) data.penerima = nama;
-      if (bannerMatch[2]) data.bankTujuan = bannerMatch[2].toUpperCase();
-    }
-
-    // Tangkap dari bagian Detail Penerima
-    for (let i = 0; i < rawLines.length; i++) {
-      const up = rawLines[i].toUpperCase();
-      if (up.includes('DETAIL PENERIMA') || up.includes('NAMA PENERIMA') || up === 'NAMA' || up.startsWith('NAMA ')) {
-        for (let j = 0; j <= 3; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && !data.penerima) {
-            data.penerima = clean;
-          }
-        }
-      }
-      if (up.includes('AKUN BANK') || up.includes('NOMOR TELEPON') || up.includes('KIRIM KE')) {
-        for (let j = 0; j <= 2; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const maskMatch = l.match(/([•.*xX\-]{2,}\s*\d{3,5}|\d{8,18})/);
-          if (maskMatch && !data.rekening) {
-            data.rekening = maskMatch[1].replace(/\s/g, '');
-          }
-        }
-      }
-    }
-
-    // Tentukan peran Pengirim vs Penerima di DANA
-    if (data.penerima && data.penerima.toUpperCase().includes('SEPRYANDA')) {
-      // Pelanggan transfer masuk ke Toko SEPRYANDA YON
-      data.pengirim = data.norekPengirim && data.norekPengirim !== '****' ? `ID DANA ${data.norekPengirim}` : 'Pelanggan (DANA)';
-    } else {
-      data.pengirim = 'SEPRYANDA YON';
-    }
-  }
-
-  // --- FORMAT B: LINKAJA ---
-  else if (textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'))) {
+  // --- FORMAT A: LINKAJA ---
+  if (textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'))) {
     data.bankAsal = 'LinkAja';
-    const linkMatch = rawText.match(/(\d{8,18})\s+(?:SDR|SDRI|BPK|IBU)?\s*([A-Za-z\s.'`-]+)/i);
-    if (linkMatch) {
-      data.rekening = linkMatch[1].trim();
-      const nama = cleanPersonName(linkMatch[2]);
-      if (isValidPersonName(nama)) data.penerima = nama;
+    data.bankTujuan = 'BNI';
+
+    // Baris rekening dan nama terpisah: 1815110375 Sdr \n SEPRYANDA YON
+    for (let i = 0; i < rawLines.length; i++) {
+      const l = rawLines[i];
+      const accMatch = l.match(/^(\d{8,18})(?:\s+(?:Sdr|Sdri|Bpk|Ibu))?$/i);
+      if (accMatch) {
+        data.rekening = accMatch[1];
+        if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
+          data.penerima = cleanPersonName(rawLines[i + 1]);
+        }
+      }
+      const inlineMatch = l.match(/^(\d{8,18})\s+(?:Sdr|Sdri|Bpk|Ibu)?\s*([A-Za-z\s.'`-]+)$/i);
+      if (inlineMatch && !data.penerima) {
+        data.rekening = inlineMatch[1];
+        if (isValidPersonName(inlineMatch[2])) data.penerima = cleanPersonName(inlineMatch[2]);
+      }
     }
     data.pengirim = 'Pelanggan (LinkAja)';
   }
 
-  // --- FORMAT C: BRIMO (SUMBER DANA & TUJUAN) ---
-  else if (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN')) {
-    data.bankAsal = 'BRI (BRImo)';
-    for (let i = 0; i < rawLines.length; i++) {
-      const up = rawLines[i].toUpperCase();
-
-      // Sumber Dana -> Pengirim
-      if (up === 'SUMBER DANA' || up.startsWith('SUMBER DANA')) {
-        for (let j = 1; j <= 3; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && (data.pengirim === 'Kasir / Konter' || !data.pengirim || data.pengirim === 'SEPRYANDA YON')) {
-            data.pengirim = clean;
-          }
-          const mask = l.match(/(?:[•.*xX\-]{2,}|\b)\s*(\d{3,4})$/);
-          if (mask) data.norekPengirim = '****' + mask[1];
-        }
-      }
-
-      // Tujuan -> Penerima & Rekening Utuh
-      if (up === 'TUJUAN' || up.startsWith('TUJUAN')) {
-        for (let j = 1; j <= 4; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && !data.penerima) {
-            data.penerima = clean;
-          }
-          // Format 15 digit BRI berjarak (0181 0107 6416 508)
-          const cleanAcc = l.replace(/[\s\-\.]/g, '');
-          if (/^\d{8,18}$/.test(cleanAcc) && !cleanAcc.startsWith('202') && !data.rekening) {
-            data.rekening = cleanAcc;
-          }
-        }
-      }
-    }
-  }
-
-  // --- FORMAT D: WONDR BY BNI ---
-  else if (textUpper.includes('WONDR') || (textUpper.includes('PENERIMA') && textUpper.includes('SUMBER DANA') && textUpper.includes('BNI'))) {
+  // --- FORMAT B: WONDR BY BNI ---
+  else if (textUpper.includes('WONDR') || textUpper.includes('BY BNI') || (textUpper.includes('PENERIMA') && textUpper.includes('SUMBER DANA') && textUpper.includes('BNI'))) {
     data.bankAsal = 'BNI (wondr)';
+    data.bankTujuan = 'BNI';
+
     for (let i = 0; i < rawLines.length; i++) {
       const up = rawLines[i].toUpperCase();
       if (up === 'PENERIMA' || up.startsWith('PENERIMA')) {
@@ -1173,7 +1051,7 @@ function parseReceiptText(rawText) {
           if (!l) continue;
           const clean = cleanPersonName(l);
           if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
-          const rekMatch = l.match(/(?:BNI\s*•?\s*)?(\d{8,16})/i);
+          const rekMatch = l.match(/(?:BNI\s*[-•]?\s*)?(\d{8,16})/i);
           if (rekMatch && !data.rekening) data.rekening = rekMatch[1];
         }
       }
@@ -1183,15 +1061,106 @@ function parseReceiptText(rawText) {
           if (!l) continue;
           const clean = cleanPersonName(l);
           if (isValidPersonName(clean)) data.pengirim = clean;
-          const maskMatch = l.match(/([•.*xX\-]{2,}\s*\d{3,4})/);
-          if (maskMatch) data.norekPengirim = '****' + maskMatch[1].replace(/[^0-9]/g, '');
         }
       }
     }
   }
 
-  // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, DLL) ---
-  if (!data.penerima) {
+  // --- FORMAT C: BRIMO (SUMBER DANA + TUJUAN) ---
+  else if (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN')) {
+    data.bankAsal = 'BRI (BRImo)';
+    data.bankTujuan = 'BRI';
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const up = rawLines[i].toUpperCase();
+      if (up === 'SUMBER DANA' || up.startsWith('SUMBER DANA')) {
+        for (let j = 1; j <= 3; j++) {
+          const l = rawLines[i + j];
+          if (!l) continue;
+          const clean = cleanPersonName(l);
+          if (isValidPersonName(clean) && (data.pengirim === 'Kasir / Konter' || !data.pengirim)) {
+            data.pengirim = clean;
+          }
+        }
+      }
+      if (up === 'TUJUAN' || up.startsWith('TUJUAN')) {
+        for (let j = 1; j <= 4; j++) {
+          const l = rawLines[i + j];
+          if (!l) continue;
+          const clean = cleanPersonName(l);
+          if (isValidPersonName(clean) && !data.penerima) {
+            data.penerima = clean;
+          }
+          const cleanAcc = l.replace(/[\s\-\.]/g, '');
+          if (/^\d{8,18}$/.test(cleanAcc) && !cleanAcc.startsWith('202') && !data.rekening) {
+            data.rekening = cleanAcc;
+          }
+        }
+      }
+    }
+  }
+
+  // --- FORMAT D: DANA E-WALLET ---
+  else if (isRealDanaApp) {
+    data.bankAsal = 'DANA (E-Wallet)';
+    const idDanaMatch = rawText.match(/ID\s*DANA\s*([0-9•.*xX:\-]{8,15})/i);
+    if (idDanaMatch) {
+      data.norekPengirim = idDanaMatch[1].trim().replace(/:+/g, '•••');
+    }
+
+    // Deteksi banner atas: Kirim Uang Rp500.000 ke SEPRYANDA YON - BRI
+    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KIRIM\s+KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)|\s*$)/im);
+    if (bannerMatch) {
+      const nama = cleanPersonName(bannerMatch[1]);
+      if (isValidPersonName(nama)) data.penerima = nama;
+      if (bannerMatch[2]) data.bankTujuan = bannerMatch[2].toUpperCase();
+    }
+
+    // Deteksi baris Detail Penerima & Akun Bank
+    for (let i = 0; i < rawLines.length; i++) {
+      const up = rawLines[i].toUpperCase();
+      if (up.includes('DETAIL') && rawLines[i + 1] && rawLines[i + 1].toUpperCase().includes('PENERIMA')) {
+        for (let j = 2; j <= 4; j++) {
+          const l = rawLines[i + j];
+          if (!l) continue;
+          const clean = cleanPersonName(l);
+          if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
+        }
+      }
+      if (up.startsWith('NAMA ') || up === 'NAMA') {
+        const clean = cleanPersonName(rawLines[i]);
+        if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
+      }
+      if (up.includes('AKUN BANK')) {
+        const lastDigits = rawLines[i].match(/(\d{3,5})\s*$/);
+        if (lastDigits) {
+          data.rekening = '••••' + lastDigits[1];
+        }
+      }
+    }
+
+    if (!data.rekening) {
+      const lastDigits = rawText.match(/(\d{4})\s*(?:Total\s*Bayar|Detail\s*Penerima)/i);
+      if (lastDigits) data.rekening = '••••' + lastDigits[1];
+    }
+
+    // Toko konter pemilik: Jika transfer masuk ke SEPRYANDA YON, pengirim adalah pelanggan DANA
+    if (data.penerima && data.penerima.toUpperCase().includes('SEPRYANDA')) {
+      data.pengirim = data.norekPengirim && data.norekPengirim !== '****' ? `ID DANA ${data.norekPengirim}` : 'Pelanggan (DANA)';
+    } else {
+      data.pengirim = 'SEPRYANDA YON';
+    }
+  }
+
+  // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, SEABANK, OVO, GOPAY) ---
+  else {
+    if (textUpper.includes('BCA') || textUpper.includes('M-BCA') || textUpper.includes('MYBCA')) data.bankAsal = 'BCA (m-BCA)';
+    else if (textUpper.includes('LIVIN') || textUpper.includes('MANDIRI')) data.bankAsal = "Mandiri (Livin')";
+    else if (textUpper.includes('BSI') || textUpper.includes('BANK SYARIAH INDONESIA')) data.bankAsal = 'BSI Mobile';
+    else if (textUpper.includes('SEABANK')) data.bankAsal = 'SeaBank';
+    else if (textUpper.includes('GOPAY')) data.bankAsal = 'GoPay';
+    else if (textUpper.includes('OVO')) data.bankAsal = 'OVO';
+
     for (let i = 0; i < rawLines.length; i++) {
       const up = rawLines[i].toUpperCase();
       if (up.includes('PENERIMA') || up.includes('TUJUAN') || up.includes('TRANSFER KE') || up.includes('KE REKENING')) {
@@ -1206,16 +1175,15 @@ function parseReceiptText(rawText) {
         }
       }
     }
-  }
-
-  if (!data.rekening) {
-    const genericRek = rawText.match(/\b(08\d{8,11}|\d{10,18})\b/);
-    if (genericRek && !genericRek[1].startsWith('202')) {
-      data.rekening = genericRek[1];
+    if (!data.rekening) {
+      const genericRek = rawText.match(/\b(08\d{8,11}|\d{10,18})\b/);
+      if (genericRek && !genericRek[1].startsWith('202')) {
+        data.rekening = genericRek[1];
+      }
     }
   }
 
-  // 6. DETEKSI NOMINAL (Presisi Tinggi)
+  // 4. DETEKSI NOMINAL (Presisi Tinggi)
   const nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSAKSI|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
   if (nomMatch) {
     const clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
@@ -1269,7 +1237,7 @@ function parseReceiptText(rawText) {
 
   return data;
 }
-
+  
 // Helper pembersih awalan nama & hanya menghapus akhiran nama bank (bukan nama orang)
 function cleanPersonName(str) {
   if (!str) return '';
