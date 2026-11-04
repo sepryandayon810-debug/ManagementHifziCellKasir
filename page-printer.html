@@ -922,7 +922,7 @@
     });
   }
   
- // === PARSER SUPER PINTAR: SEMUA BANK (BRI, BNI, BCA, MANDIRI) & E-WALLET (DANA, GOPAY, OVO) ===
+// === PARSER SUPER PINTAR: SEMUA BANK (BRI, BNI, BCA, MANDIRI) & E-WALLET (DANA, GOPAY, OVO) ===
 function parseReceiptText(rawText) {
   if (!rawText) return null;
   const textUpper = rawText.toUpperCase();
@@ -1090,19 +1090,40 @@ function parseReceiptText(rawText) {
     data.penerima = 'Pelanggan';
   }
 
-  // 6. DETEKSI NOMINAL (Termasuk "Total Bayar" DANA & "Nominal" BRImo)
-  let nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
-  if (nomMatch) {
-    let clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
-    let num = parseInt(clean, 10);
-    if (!isNaN(num) && num > 0) data.nominal = num;
+  // 6. DETEKSI NOMINAL (Mendukung pola DANA 2 arah: Baris Sebelum / Sesudah "Total Bayar")
+  for (let i = 0; i < rawLines.length; i++) {
+    const up = rawLines[i].toUpperCase();
+    if (up.includes('TOTAL BAYAR') || up.includes('TOTAL PEMBAYARAN') || up.includes('JUMLAH') || up.includes('NOMINAL') || up.includes('TOTAL TRANSFER') || up.includes('JUMLAH TERKIRIM')) {
+      // Cek di baris yang sama
+      let m = rawLines[i].match(/(?:Rp\.?\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/);
+      if (m) {
+        let num = parseInt(m[1].replace(/\./g, '').replace(/,\d{2}/, ''), 10);
+        if (num >= 1000) { data.nominal = num; break; }
+      }
+      // Cek 1 baris sebelum (khas DANA: Baris 1 = Rp 100.000, Baris 2 = Total Bayar)
+      if (rawLines[i - 1]) {
+        let prevM = rawLines[i - 1].match(/(?:Rp\.?\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/);
+        if (prevM) {
+          let num = parseInt(prevM[1].replace(/\./g, '').replace(/,\d{2}/, ''), 10);
+          if (num >= 1000) { data.nominal = num; break; }
+        }
+      }
+      // Cek 1 baris sesudah
+      if (rawLines[i + 1]) {
+        let nextM = rawLines[i + 1].match(/(?:Rp\.?\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/);
+        if (nextM) {
+          let num = parseInt(nextM[1].replace(/\./g, '').replace(/,\d{2}/, ''), 10);
+          if (num >= 1000) { data.nominal = num; break; }
+        }
+      }
+    }
   }
 
-  // Fallback nominal DANA: Cari nominal Rp pertama di bagian atas
+  // Fallback nominal jika belum ketemu
   if (data.nominal === 0) {
-    let danaMatch = rawText.match(/Rp\.?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/i);
-    if (danaMatch) {
-      let num = parseInt(danaMatch[1].replace(/\./g, '').replace(/,\d{2}/, ''), 10);
+    let anyRp = rawText.match(/Rp\.?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/i);
+    if (anyRp) {
+      let num = parseInt(anyRp[1].replace(/\./g, '').replace(/,\d{2}/, ''), 10);
       if (num >= 5000 && num <= 100000000) data.nominal = num;
     }
   }
@@ -1154,6 +1175,34 @@ function cleanPersonName(str) {
     .trim();
 }
 
+// Helper validasi apakah string benar-benar nama orang (bebas duplikat)
+function isValidPersonName(str) {
+  if (!str || typeof str !== 'string') return false;
+  const s = cleanPersonName(str).toUpperCase();
+  if (s.length < 3 || s.length > 45) return false;
+  if (/^[\d\s.,\-+*/:()]+$/.test(s)) return false;
+  const kataDilarang = [
+    'BERHASIL', 'SUKSES', 'TRANSAKSI', 'TRANSFER', 'TOTAL', 'BIAYA', 'ADMIN',
+    'REFERENSI', 'TANGGAL', 'SUMBER', 'DANA', 'REKENING', 'BANK', 'NOMINAL',
+    'WIB', 'WITA', 'WIT', 'CATATAN', 'RINCIAN', 'METODE', 'PEMBAYARAN',
+    'KIRIM', 'UANG', 'DETAIL', 'STATUS', 'ID TRANSAKSI', 'NO REF', 'SALDO',
+    'QRIS', 'TAGIHAN', 'KONFIRMASI', 'SELESAI', 'BAGIKAN', 'DOWNLOAD', 'UNDUH'
+  ];
+  for (let k of kataDilarang) {
+    if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k) || s.includes(' ' + k + ' ') || s.includes('TRANSAKSI') || s.includes('PEMBAYARAN')) return false;
+  }
+  return /[A-Z]/.test(s);
+}
+
+// Helper pembersih awalan nama seperti "Nama: ", "A.N ", "Sdri ", dll
+function cleanPersonName(str) {
+  if (!str) return '';
+  return str.trim()
+    .replace(/^(nama\s*[:=-]?\s*|penerima\s*[:=-]?\s*|pengirim\s*[:=-]?\s*|tujuan\s*[:=-]?\s*|sumber\s+dana\s*[:=-]?\s*|dari\s*[:=-]?\s*|ke\s*[:=-]?\s*|kirim\s+ke\s*[:=-]?\s*|a\.?n\.?\s*[:=-]?\s*|a\/n\s*[:=-]?\s*|sdri?\.?\s*|bapa?k\.?\s*|ibu\.?\s*)/i, '')
+    .replace(/[\s-]+(bank\s+[a-z]+|[a-z]{3,5})$/i, '')
+    .trim();
+}
+
 // Helper validasi apakah string benar-benar nama orang
 function isValidPersonName(str) {
   if (!str || typeof str !== 'string') return false;
@@ -1168,19 +1217,6 @@ function isValidPersonName(str) {
   ];
   for (let k of kataDilarang) {
     if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k)) return false;
-  }
-  return /[A-Z]/.test(s);
-}
-  
-// Helper validasi nama orang (bukan keyword perbankan / angka)
-function isValidPersonName(str) {
-  if (!str || typeof str !== 'string') return false;
-  const s = str.trim().toUpperCase();
-  if (s.length < 3 || s.length > 40) return false;
-  if (/^\d+$/.test(s)) return false;
-  const kataDilarang = ['BERHASIL', 'SUKSES', 'TRANSFER', 'TRANSAKSI', 'TOTAL', 'BIAYA', 'ADMIN', 'REFERENSI', 'TANGGAL', 'SUMBER', 'REKENING', 'BANK', 'NOMINAL', 'WIB', 'CATATAN'];
-  for (let k of kataDilarang) {
-    if (s === k || s.startsWith(k + ' ')) return false;
   }
   return /[A-Z]/.test(s);
 }
