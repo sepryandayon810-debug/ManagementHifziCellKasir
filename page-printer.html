@@ -1280,12 +1280,13 @@ function parseReceiptText(rawText) {
       }
     }
 
-    // Jika rekening sudah terbaca (termasuk bentuk sensor ••••9531), pertahankan apa adanya
+   // Jika rekening sudah terbaca (termasuk bentuk sensor ••••9531), pertahankan apa adanya
     if (!data.rekening || data.rekening === '-') {
       const rekCtx = rawText.match(/(?:AKUN\s*BANK|NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?)\s*[:.]?\s*([•·.*xX0-9\s]{4,24})/i);
       if (rekCtx) data.rekening = rekCtx[1].trim();
     }
-      
+  }
+
   // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, GOPAY, OVO, SHOPEEPAY, SEABANK) ---
   else {
     const isEwal = textUpper.includes('GOPAY') || textUpper.includes('OVO') || textUpper.includes('SHOPEEPAY');
@@ -1337,6 +1338,7 @@ function parseReceiptText(rawText) {
         }
       }
     }
+  }
 
   // 3. Deteksi Nominal
   const nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSAKSI|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
