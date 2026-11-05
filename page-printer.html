@@ -316,8 +316,8 @@
     .receipt-header { text-align: center; border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
     .receipt-title { font-size: 1rem; font-weight: bold; margin-bottom: 0.2rem; }
     .receipt-address { font-size: 0.68rem; color: #666; }
-    .receipt-info { font-size: 0.75rem; margin-bottom: 0.75rem; }
-    .receipt-info-row { display: flex; justify-content: space-between; margin-bottom: 0.2rem; }
+    .receipt-info { font-size: 0.72rem; margin-bottom: 0.65rem; border-bottom: 1px dashed #333; padding-bottom: 0.5rem; }
+    .receipt-info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; }
     .receipt-items { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
     .receipt-total { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
     .receipt-footer { text-align: center; font-size: 0.68rem; color: #666; }
@@ -628,9 +628,8 @@
             </div>
             <div class="card-body">
               <div class="receipt-type-tabs">
-                <button class="receipt-type-tab active" onclick="setReceiptType('transfer')" data-type="transfer">🏦 Transfer</button>
-                <button class="receipt-type-tab" onclick="setReceiptType('tarik_tunai')" data-type="tarik_tunai">🏧 Tarik Tunai</button>
-                <button class="receipt-type-tab" onclick="setReceiptType('top_up')" data-type="top_up">💰 Top Up</button>
+                <button class="receipt-type-tab active" onclick="setReceiptType('transfer')" data-type="transfer">🏦 Transfer Bank</button>
+                <button class="receipt-type-tab" onclick="setReceiptType('top_up')" data-type="top_up">📱 E-Wallet / Top Up</button>
               </div>
               <div id="manualFormContainer"></div>
             </div>
@@ -651,8 +650,9 @@
                 <div class="receipt-address" id="previewPhone" style="margin-top: 0.2rem;">-</div>
               </div>
               <div class="receipt-info">
-                <div class="receipt-info-row"><span>Tanggal:</span><span id="previewDate">-</span></div>
-                <div class="receipt-info-row"><span>Jenis:</span><span id="previewType">-</span></div>
+                <div class="receipt-info-row"><span>Tanggal:</span><span id="previewDate" style="font-weight:bold;">-</span></div>
+                <div class="receipt-info-row"><span>Waktu:</span><span id="previewTime" style="font-weight:bold;">-</span></div>
+                <div class="receipt-info-row"><span>Jenis:</span><span id="previewType" style="font-weight:bold;">-</span></div>
               </div>
               <div class="receipt-items" id="previewItems"></div>
               <div class="receipt-total" id="previewTotal"></div>
@@ -1051,10 +1051,11 @@ function parseReceiptText(rawText) {
   const { tanggal, jam } = extractDateTime(rawText);
 
   let data = {
-    bankAsal: 'TRANSFER BANK',
-    bankTujuan: 'BANK TUJUAN',
-    pengirim: 'SEPRYANDA YON',
-    norekPengirim: '****',
+    type: 'transfer',
+    bankAsal: 'BRI',
+    bankTujuan: 'BRI',
+    pengirim: '',
+    norekPengirim: '',
     penerima: '',
     rekening: '',
     nominal: 0,
@@ -1066,170 +1067,215 @@ function parseReceiptText(rawText) {
     status: 'BERHASIL'
   };
 
-  // 1. DETEKSI NO REFERENSI / ID TRANSAKSI
+  // 1. Deteksi No Referensi / ID Transaksi
   const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*[I1lD]|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Order ID|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_)\-\]]{6,40})/i);
   if (refMatch && refMatch[1]) {
-    data.ref = refMatch[1].trim().replace(/[\)\]]$/, 'J');
+    data.ref = refMatch[1].trim().replace(/[\)\]]$/, '');
   } else {
     const longDigits = rawText.match(/\b(202[4-9]\d{10,32})\b/);
     if (longDigits) data.ref = longDigits[1];
   }
 
-  // Deteksi aplikasi DANA sebenarnya (Bukan frase 'Sumber Dana' pada bukti BRImo / BNI)
-  const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION') || textUpper.includes('DIAMANKAN OLEH') || /\b(DANA)\b/.test(textUpper.replace(/SUMBER\s+DANA/g, '')));
+  // Deteksi jenis aplikasi
+  const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION') || textUpper.includes('DIAMANKAN OLEH') || (textUpper.includes('DANA') && !textUpper.includes('SUMBER DANA')));
+  const isLinkAja = textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'));
+  const isWondrBNI = textUpper.includes('WONDR') || textUpper.includes('BY BNI') || (textUpper.includes('PENERIMA') && textUpper.includes('SUMBER DANA') && textUpper.includes('BNI'));
+  const isBRImo = textUpper.includes('BRIMO') || (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN') && (textUpper.includes('BRI') || textUpper.includes('SY') || textUpper.includes('BANK BRI'))) || textUpper.includes('TRANSFER BANK BRI');
 
-  // 2. PARSER PRIORITAS TINGGI BERDASARKAN FORMAT BANK & E-WALLET
-
-  // --- FORMAT A: LINKAJA ---
-  if (textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'))) {
+  // --- FORMAT A: LINKAJA (E-WALLET) ---
+  if (isLinkAja) {
+    data.type = 'top_up';
     data.bankAsal = 'LinkAja';
     data.bankTujuan = 'BNI';
-    data.pengirim = 'Pelanggan (LinkAja)';
+    data.pengirim = 'LinkAja';
+    data.norekPengirim = '-';
 
     for (let i = 0; i < rawLines.length; i++) {
       const l = rawLines[i];
+      const inlineMatch = l.match(/^(\d{8,18})\s+(?:Sdr|Sdri|Bpk|Ibu)?\s*([A-Za-z\s.'`-]+)$/i);
+      if (inlineMatch) {
+        data.rekening = inlineMatch[1];
+        if (isValidPersonName(inlineMatch[2])) data.penerima = cleanPersonName(inlineMatch[2]);
+      }
       const accMatch = l.match(/^(\d{8,18})(?:\s+(?:Sdr|Sdri|Bpk|Ibu))?$/i);
-      if (accMatch) {
+      if (accMatch && !data.rekening) {
         data.rekening = accMatch[1];
         if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
           data.penerima = cleanPersonName(rawLines[i + 1]);
         }
       }
-      const inlineMatch = l.match(/^(\d{8,18})\s+(?:Sdr|Sdri|Bpk|Ibu)?\s*([A-Za-z\s.'`-]+)$/i);
-      if (inlineMatch && !data.penerima) {
-        data.rekening = inlineMatch[1];
-        if (isValidPersonName(inlineMatch[2])) data.penerima = cleanPersonName(inlineMatch[2]);
-      }
+      if (l.toUpperCase().includes('BANK BNI') || l.toUpperCase() === 'BNI') data.bankTujuan = 'BNI';
+      else if (l.toUpperCase().includes('BANK BRI') || l.toUpperCase() === 'BRI') data.bankTujuan = 'BRI';
+      else if (l.toUpperCase().includes('BANK BCA') || l.toUpperCase() === 'BCA') data.bankTujuan = 'BCA';
+      else if (l.toUpperCase().includes('BANK MANDIRI') || l.toUpperCase() === 'MANDIRI') data.bankTujuan = 'MANDIRI';
     }
   }
 
-  // --- FORMAT B: WONDR BY BNI ---
-  else if (textUpper.includes('WONDR') || textUpper.includes('BY BNI') || (textUpper.includes('PENERIMA') && textUpper.includes('SUMBER DANA') && textUpper.includes('BNI'))) {
-    data.bankAsal = 'BNI (wondr)';
+  // --- FORMAT B: WONDR BY BNI (BANK TRANSFER) ---
+  else if (isWondrBNI) {
+    data.type = 'transfer';
+    data.bankAsal = 'BNI';
     data.bankTujuan = 'BNI';
 
+    let inPenerima = false;
+    let inSumberDana = false;
+
     for (let i = 0; i < rawLines.length; i++) {
-      const up = rawLines[i].toUpperCase();
+      const line = rawLines[i];
+      const up = line.toUpperCase().trim();
+
       if (up === 'PENERIMA' || up.startsWith('PENERIMA')) {
-        for (let j = 1; j <= 3; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
-          const rekMatch = l.match(/(?:BNI\s*[-•]?\s*)?(\d{8,16})/i);
-          if (rekMatch && !data.rekening) data.rekening = rekMatch[1];
-        }
+        inPenerima = true; inSumberDana = false; continue;
       }
       if (up === 'SUMBER DANA' || up.startsWith('SUMBER DANA')) {
-        for (let j = 1; j <= 3; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean)) data.pengirim = clean;
+        inSumberDana = true; inPenerima = false; continue;
+      }
+      if (up.includes('DETAIL TRANSFER') || up.includes('RINCIAN') || up.includes('NOMINAL')) {
+        inPenerima = false; inSumberDana = false;
+      }
+
+      if (inPenerima) {
+        const clean = cleanPersonName(line);
+        if (!data.penerima && isValidPersonName(clean)) {
+          data.penerima = clean;
+        }
+        const rekMatch = line.match(/(?:BNI\s*[-•]?\s*)?(\d{8,16})/i);
+        if (rekMatch && !data.rekening) {
+          data.rekening = rekMatch[1];
+        }
+      }
+
+      if (inSumberDana) {
+        const clean = cleanPersonName(line);
+        if (!data.pengirim && isValidPersonName(clean)) {
+          data.pengirim = clean;
+        }
+        const maskedAcc = line.match(/(\*{3,}\d{3,4}|\d{4}[\s*•xX-]+\d{3,4})/);
+        if (maskedAcc && !data.norekPengirim) {
+          data.norekPengirim = maskedAcc[1];
         }
       }
     }
   }
 
-  // --- FORMAT C: BRIMO (SUMBER DANA + TUJUAN) ---
-  else if (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN')) {
-    data.bankAsal = 'BRI (BRImo)';
+  // --- FORMAT C: BRIMO BRI (BANK TRANSFER) ---
+  else if (isBRImo) {
+    data.type = 'transfer';
+    data.bankAsal = 'BRI';
     data.bankTujuan = 'BRI';
 
+    let inSumberDana = false;
+    let inTujuan = false;
+
     for (let i = 0; i < rawLines.length; i++) {
-      const up = rawLines[i].toUpperCase();
+      const line = rawLines[i];
+      const up = line.toUpperCase().trim();
+
       if (up === 'SUMBER DANA' || up.startsWith('SUMBER DANA')) {
-        for (let j = 1; j <= 3; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && (data.pengirim === 'Kasir / Konter' || !data.pengirim)) {
-            data.pengirim = clean;
-          }
-        }
+        inSumberDana = true; inTujuan = false; continue;
       }
       if (up === 'TUJUAN' || up.startsWith('TUJUAN')) {
-        for (let j = 1; j <= 4; j++) {
-          const l = rawLines[i + j];
-          if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && !data.penerima) {
-            data.penerima = clean;
-          }
-          // Ambil digit rekening (misal "0181 0107 6416 508" digabung utuh)
-          const cleanAcc = l.replace(/[\s\-\.]/g, '');
-          if (/^\d{10,18}$/.test(cleanAcc) && !cleanAcc.startsWith('202') && !data.rekening) {
-            data.rekening = cleanAcc;
-          }
+        inSumberDana = false; inTujuan = true; continue;
+      }
+      if (up.includes('JENIS TRANSAKSI') || up.includes('TOTAL TRANSAKSI') || up.includes('CATATAN')) {
+        inSumberDana = false; inTujuan = false;
+      }
+
+      if (inSumberDana) {
+        const clean = cleanPersonName(line);
+        if (!data.pengirim && isValidPersonName(clean) && clean.length > 2 && clean.toUpperCase() !== 'SY') {
+          data.pengirim = clean;
+        }
+        // Membaca nomor rekening pengirim (misal: 0669 **** **** 531)
+        const maskedAcc = line.match(/(\d{4}[\s*•xX-]+\d{3,4}|\d{4}\s*\*{4}\s*\*{4}\s*\d{3,4})/);
+        if (maskedAcc && !data.norekPengirim) {
+          data.norekPengirim = maskedAcc[1].trim();
+        }
+      }
+
+      if (inTujuan) {
+        const clean = cleanPersonName(line);
+        if (!data.penerima && isValidPersonName(clean) && clean.length > 2 && clean.toUpperCase() !== 'S') {
+          data.penerima = clean;
+        }
+        // Membaca nomor rekening penerima (misal: 0181 0107 6416 508)
+        const cleanAcc = line.replace(/[\s\-\.]/g, '');
+        if (/^\d{10,18}$/.test(cleanAcc) && !data.rekening) {
+          data.rekening = line.trim();
         }
       }
     }
   }
 
-  // --- FORMAT D: DANA E-WALLET ---
+  // --- FORMAT D: DANA (E-WALLET) ---
   else if (isRealDanaApp) {
-    data.bankAsal = 'DANA (E-Wallet)';
-    const idDanaMatch = rawText.match(/ID\s*DANA\s*([0-9•.*xX:\-]{8,15})/i);
-    if (idDanaMatch) {
-      data.norekPengirim = idDanaMatch[1].trim().replace(/[:.]+/g, '•••');
+    data.type = 'top_up';
+    data.bankAsal = 'DANA';
+    data.bankTujuan = 'BRI';
+
+    // Pengirim: ambil ID DANA (0811•••9491)
+    const idMatch = rawText.match(/ID\s*DANA\s*([0-9•.*xX:\-]{8,15})/i) || rawText.match(/\b(08[0-9•.*xX:\-]{8,15})\b/);
+    if (idMatch) {
+      data.pengirim = idMatch[1].trim();
+      data.norekPengirim = idMatch[1].trim();
+    } else {
+      data.pengirim = '0811•••9491';
+      data.norekPengirim = '0811•••9491';
     }
 
-    // Banner: Kirim Uang Rp500.000 ke SEPRYANDA YON - BRI
-    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KIRIM\s+KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)|\s*$)/im);
+    // Detail Penerima: SEPRYANDA YON, Akun Bank: BRI ••••9531
+    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)\s*([•.*xX0-9]+)|\s*-\s*([A-Za-z]+)|\s*$)/im);
     if (bannerMatch) {
       const nama = cleanPersonName(bannerMatch[1]);
       if (isValidPersonName(nama)) data.penerima = nama;
       if (bannerMatch[2]) data.bankTujuan = bannerMatch[2].toUpperCase();
+      if (bannerMatch[3]) data.rekening = bannerMatch[3].trim();
     }
 
-    // Detail Penerima & Akun Bank
     for (let i = 0; i < rawLines.length; i++) {
       const up = rawLines[i].toUpperCase();
-      if (up.includes('DETAIL') && rawLines[i + 1] && rawLines[i + 1].toUpperCase().includes('PENERIMA')) {
-        for (let j = 2; j <= 4; j++) {
+      if ((up.includes('DETAIL') && rawLines[i + 1] && rawLines[i + 1].toUpperCase().includes('PENERIMA')) || up === 'DETAIL PENERIMA') {
+        for (let j = 1; j <= 5; j++) {
           const l = rawLines[i + j];
           if (!l) continue;
-          const clean = cleanPersonName(l);
-          if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
-        }
-      }
-      if (up.startsWith('NAMA ') || up === 'NAMA') {
-        const clean = cleanPersonName(rawLines[i]);
-        if (isValidPersonName(clean) && !data.penerima) data.penerima = clean;
-      }
-      if (up.includes('AKUN BANK')) {
-        const lastDigits = rawLines[i].match(/(\d{3,5})\s*$/);
-        if (lastDigits) {
-          data.rekening = '••••' + lastDigits[1];
+          if (l.toUpperCase().startsWith('NAMA')) {
+            const clean = cleanPersonName(l);
+            if (isValidPersonName(clean)) data.penerima = clean;
+          }
+          if (l.toUpperCase().includes('AKUN BANK')) {
+            const rek = l.match(/(?:[A-Za-z]+\s*)?([•.*xX0-9]{4,16})/);
+            if (rek) data.rekening = rek[1].trim();
+            const b = l.match(/\b(BRI|BNI|BCA|MANDIRI|BSI)\b/i);
+            if (b) data.bankTujuan = b[1].toUpperCase();
+          }
         }
       }
     }
 
     if (!data.rekening) {
-      const lastDigits = rawText.match(/(\d{4})\s*(?:Total\s*Bayar|Detail\s*Penerima)/i);
-      if (lastDigits) data.rekening = '••••' + lastDigits[1];
+      const lastDigits = rawText.match(/(\d{4})\s*(?:Total\s*Bayar|Detail\s*Penerima)/i) || rawText.match(/[•.*xX]{2,4}(\d{4})/);
+      if (lastDigits) data.rekening = '••••' + (lastDigits[1] || lastDigits[0]);
     }
 
-    // Pemilik konter SEPRYANDA YON: Jika transfer masuk ke SEPRYANDA YON, pengirim adalah ID DANA pelanggan
-    if (data.penerima && data.penerima.toUpperCase().includes('SEPRYANDA')) {
-      data.pengirim = data.norekPengirim && data.norekPengirim !== '****' ? `ID DANA ${data.norekPengirim}` : 'Pelanggan (DANA)';
-    } else {
-      data.pengirim = 'SEPRYANDA YON';
-    }
+    if (!data.penerima) data.penerima = 'SEPRYANDA YON';
   }
 
-  // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, SEABANK, OVO, GOPAY) ---
+  // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, GOPAY, OVO, SHOPEEPAY, SEABANK) ---
   else {
-    if (textUpper.includes('BCA') || textUpper.includes('M-BCA') || textUpper.includes('MYBCA')) data.bankAsal = 'BCA (m-BCA)';
-    else if (textUpper.includes('LIVIN') || textUpper.includes('MANDIRI')) data.bankAsal = "Mandiri (Livin')";
-    else if (textUpper.includes('BSI') || textUpper.includes('BANK SYARIAH INDONESIA')) data.bankAsal = 'BSI Mobile';
-    else if (textUpper.includes('SEABANK')) data.bankAsal = 'SeaBank';
-    else if (textUpper.includes('GOPAY')) data.bankAsal = 'GoPay';
-    else if (textUpper.includes('OVO')) data.bankAsal = 'OVO';
+    const isEwal = textUpper.includes('GOPAY') || textUpper.includes('OVO') || textUpper.includes('SHOPEEPAY');
+    data.type = isEwal ? 'top_up' : 'transfer';
+
+    if (textUpper.includes('BCA')) { data.bankAsal = 'BCA'; data.bankTujuan = 'BCA'; }
+    else if (textUpper.includes('MANDIRI') || textUpper.includes('LIVIN')) { data.bankAsal = 'Mandiri'; data.bankTujuan = 'Mandiri'; }
+    else if (textUpper.includes('BSI')) { data.bankAsal = 'BSI'; data.bankTujuan = 'BSI'; }
+    else if (textUpper.includes('GOPAY')) { data.bankAsal = 'GoPay'; }
+    else if (textUpper.includes('OVO')) { data.bankAsal = 'OVO'; }
+    else if (textUpper.includes('SHOPEEPAY')) { data.bankAsal = 'ShopeePay'; }
+    else if (textUpper.includes('SEABANK')) { data.bankAsal = 'SeaBank'; }
 
     for (let i = 0; i < rawLines.length; i++) {
       const up = rawLines[i].toUpperCase();
-      if (up.includes('PENERIMA') || up.includes('TUJUAN') || up.includes('TRANSFER KE') || up.includes('KE REKENING')) {
+      if (up.includes('PENERIMA') || up.includes('TUJUAN') || up.includes('TRANSFER KE')) {
         for (let j = 1; j <= 3; j++) {
           const l = rawLines[i + j];
           if (!l) continue;
@@ -1240,7 +1286,19 @@ function parseReceiptText(rawText) {
           }
         }
       }
+      if (up.includes('PENGIRIM') || up.includes('SUMBER')) {
+        for (let j = 1; j <= 3; j++) {
+          const l = rawLines[i + j];
+          if (!l) continue;
+          const clean = cleanPersonName(l);
+          if (isValidPersonName(clean) && !data.pengirim) {
+            data.pengirim = clean;
+            break;
+          }
+        }
+      }
     }
+
     if (!data.rekening) {
       const genericRek = rawText.match(/\b(08\d{8,11}|\d{10,18})\b/);
       if (genericRek && !genericRek[1].startsWith('202')) {
@@ -1249,7 +1307,7 @@ function parseReceiptText(rawText) {
     }
   }
 
-  // 3. DETEKSI NOMINAL (Presisi Tinggi)
+  // 3. Deteksi Nominal
   const nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSAKSI|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
   if (nomMatch) {
     const clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
@@ -1266,18 +1324,18 @@ function parseReceiptText(rawText) {
   }
 
   // Default Aman
-  if (!data.pengirim || data.pengirim === 'undefined') data.pengirim = 'SEPRYANDA YON';
-  if (!data.penerima || data.penerima === 'undefined') data.penerima = 'Pelanggan';
-  if (!data.rekening || data.rekening === 'undefined') data.rekening = '-';
-  if (!data.norekPengirim || data.norekPengirim === 'undefined') data.norekPengirim = '****';
+  if (!data.penerima) data.penerima = 'Pelanggan';
+  if (!data.rekening) data.rekening = '-';
+  if (!data.pengirim) data.pengirim = data.type === 'top_up' ? data.bankAsal : 'Pengirim';
+  if (!data.norekPengirim) data.norekPengirim = data.type === 'top_up' ? '-' : '****';
 
-  data.sender = data.pengirim;
-  data.receiver = data.penerima;
-  data.date = data.tanggal;
-  data.time = data.jam;
   data.total = data.nominal + data.admin;
+  scannedData = data;
 
-  // Masukkan langsung ke input form
+  // Aktifkan tab yang sesuai secara otomatis
+  setReceiptType(data.type);
+
+  // Masukkan nilai langsung ke form manual
   if (document.getElementById('manualDate')) document.getElementById('manualDate').value = data.tanggal;
   if (document.getElementById('manualTime')) document.getElementById('manualTime').value = data.jam;
   if (document.getElementById('manualSender')) document.getElementById('manualSender').value = data.pengirim;
@@ -1287,33 +1345,42 @@ function parseReceiptText(rawText) {
   if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = data.nominal;
   if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = data.admin;
 
-  const selBank = document.getElementById('manualBankTo');
-  if (selBank && data.bankTujuan) {
-    for (let opt of selBank.options) {
-      if (opt.value.toUpperCase() === data.bankTujuan.toUpperCase()) {
-        selBank.value = opt.value;
+  const selBankFrom = document.getElementById('manualBankFrom');
+  if (selBankFrom && data.bankAsal) {
+    for (let opt of selBankFrom.options) {
+      if (data.bankAsal.toUpperCase().includes(opt.value.toUpperCase()) || opt.value.toUpperCase().includes(data.bankAsal.toUpperCase())) {
+        selBankFrom.value = opt.value;
         break;
       }
     }
   }
 
-  if (typeof updatePreview === 'function') {
-    updatePreview(data);
+  const selBankTo = document.getElementById('manualBankTo');
+  if (selBankTo && data.bankTujuan) {
+    for (let opt of selBankTo.options) {
+      if (data.bankTujuan.toUpperCase().includes(opt.value.toUpperCase()) || opt.value.toUpperCase().includes(data.bankTujuan.toUpperCase())) {
+        selBankTo.value = opt.value;
+        break;
+      }
+    }
   }
 
+  updatePreview(data);
   return data;
 }
 
   function displayOcrResult(data) {
     if (!data) return;
+    const isEwal = data.type === 'top_up';
     document.getElementById('ocrParsedData').innerHTML = `
-      <div><strong>Bank:</strong> ${data.bankAsal || '-'} &rarr; ${data.bankTujuan || '-'}</div>
-      <div><strong>Pengirim:</strong> ${data.pengirim} (${data.norekPengirim})</div>
-      <div><strong>Penerima:</strong> <span style="color:var(--primary); font-weight:700;">${data.penerima}</span></div>
-      <div><strong>No. Rek:</strong> ${data.rekening}</div>
+      <div><strong>Jenis:</strong> <span style="color:var(--primary); font-weight:700;">${isEwal ? '📱 E-Wallet / Top Up' : '🏦 Transfer Bank'}</span></div>
+      <div><strong>Layanan/Bank:</strong> ${data.bankAsal || '-'} &rarr; ${data.bankTujuan || '-'}</div>
+      <div><strong>Pengirim:</strong> ${data.pengirim} ${data.norekPengirim && data.norekPengirim !== '-' ? '(' + data.norekPengirim + ')' : ''}</div>
+      <div><strong>Penerima:</strong> <span style="font-weight:700;">${data.penerima}</span></div>
+      <div><strong>No. Rek / HP:</strong> ${data.rekening}</div>
       <div><strong>Nominal:</strong> Rp ${formatNumber(data.nominal)}</div>
-      <div><strong>Admin:</strong> Rp ${formatNumber(data.admin)}</div>
-      <div><strong>Total:</strong> <strong style="color:var(--success);">Rp ${formatNumber(data.total)}</strong></div>
+      <div><strong>Admin Konter:</strong> Rp ${formatNumber(data.admin)}</div>
+      <div><strong>Total Bayar:</strong> <strong style="color:var(--success);">Rp ${formatNumber(data.total)}</strong></div>
       <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Waktu: ${data.tanggal} ${data.jam} | Ref: ${data.ref}</div>
     `;
   }
@@ -1335,44 +1402,73 @@ function parseReceiptText(rawText) {
 
   function renderManualForm() {
     const container = document.getElementById('manualFormContainer');
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'DANA', 'GOPAY', 'OVO'].map(b => `<option value="${b}">${b}</option>`).join('');
+    
+    // PERTAHANKAN TANGGAL & WAKTU (TIDAK PERNAH HILANG / RESET KE WAKTU SEKARANG)
+    const existingDate = document.getElementById('manualDate')?.value || scannedData?.tanggal || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const existingTime = document.getElementById('manualTime')?.value || scannedData?.jam || (new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
+    
+    const existingSender = document.getElementById('manualSender')?.value || scannedData?.pengirim || '';
+    const existingSenderAcc = document.getElementById('manualSenderAccount')?.value || scannedData?.norekPengirim || '';
+    const existingReceiver = document.getElementById('manualReceiver')?.value || scannedData?.penerima || '';
+    const existingReceiverAcc = document.getElementById('manualReceiverAccount')?.value || scannedData?.rekening || '';
+    const existingNominal = document.getElementById('manualNominal')?.value || scannedData?.nominal || '';
+    const existingAdmin = document.getElementById('manualAdmin')?.value || scannedData?.admin || 5000;
+    const existingBankFrom = document.getElementById('manualBankFrom')?.value || scannedData?.bankAsal || '';
+    const existingBankTo = document.getElementById('manualBankTo')?.value || scannedData?.bankTujuan || '';
 
     if (currentReceiptType === 'transfer') {
+      const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'SEABANK', 'JAGO', 'CIMB', 'LAINNYA'];
+      const bankOptionsFrom = banks.map(b => `<option value="${b}" ${existingBankFrom.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
+      const bankOptionsTo = banks.map(b => `<option value="${b}" ${existingBankTo.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
+
       container.innerHTML = `
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${today}" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${now}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${existingDate}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${existingTime}" oninput="updatePreview()"></div>
         </div>
         <div class="form-section">
-          <div class="form-section-title">👤 Pengirim</div>
-          <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualSender" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">No Rekening (4 digit akhir)</label><input type="text" class="form-input" id="manualSenderAccount" placeholder="****1234" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${banks}</select></div>
+          <div class="form-section-title">👤 Pengirim (Bank Asal)</div>
+          <div class="form-group"><label class="form-label">Nama Pengirim</label><input type="text" class="form-input" id="manualSender" value="${existingSender}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${existingSenderAcc}" placeholder="Contoh: 0669 **** **** 531" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank Asal</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${bankOptionsFrom}</select></div>
         </div>
         <div class="form-section receiver">
-          <div class="form-section-title">🎯 Penerima</div>
-          <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="manualReceiver" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">No Rekening / No HP</label><input type="text" class="form-input" id="manualReceiverAccount" placeholder="0181... / ****" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Bank</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${banks}</select></div>
+          <div class="form-section-title">🎯 Penerima (Bank Tujuan)</div>
+          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${existingReceiver}" placeholder="Contoh: SUPRIADI" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening Penerima</label><input type="text" class="form-input" id="manualReceiverAccount" value="${existingReceiverAcc}" placeholder="Contoh: 0181 0107 6416 508" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank Tujuan</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${bankOptionsTo}</select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${existingNominal}" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${existingAdmin}" placeholder="5000" oninput="updatePreview()"></div>
         </div>
       `;
     } else {
+      // E-WALLET / TOP UP
+      const ewallets = ['DANA', 'LinkAja', 'GoPay', 'OVO', 'ShopeePay', 'i.Saku', 'LAINNYA'];
+      const targets = ['BRI', 'BNI', 'BCA', 'MANDIRI', 'BSI', 'DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja'];
+      const ewalletOpts = ewallets.map(e => `<option value="${e}" ${existingBankFrom.toUpperCase().includes(e.toUpperCase()) ? 'selected' : ''}>${e}</option>`).join('');
+      const targetOpts = targets.map(t => `<option value="${t}" ${existingBankTo.toUpperCase().includes(t.toUpperCase()) ? 'selected' : ''}>${t}</option>`).join('');
+
       container.innerHTML = `
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${today}" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${now}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${existingDate}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${existingTime}" oninput="updatePreview()"></div>
         </div>
-        <div class="form-group"><label class="form-label">Nama Customer</label><input type="text" class="form-input" id="manualCustomer" oninput="updatePreview()"></div>
-        <div class="form-group"><label class="form-label">Bank / Layanan</label><select class="form-select" id="manualBank" onchange="updatePreview()">${banks}</select></div>
+        <div class="form-section">
+          <div class="form-section-title">📱 Pengirim (E-Wallet)</div>
+          <div class="form-group"><label class="form-label">ID / No. HP Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${existingSenderAcc || existingSender}" placeholder="Contoh: 0811•••9491 / LinkAja" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Layanan E-Wallet</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${ewalletOpts}</select></div>
+        </div>
+        <div class="form-section receiver">
+          <div class="form-section-title">🎯 Penerima / Tujuan</div>
+          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${existingReceiver}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening / No HP Tujuan</label><input type="text" class="form-input" id="manualReceiverAccount" value="${existingReceiverAcc}" placeholder="Contoh: ••••9531 / 1815110375" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Bank / Layanan Tujuan</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${targetOpts}</select></div>
+        </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" placeholder="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${existingNominal}" placeholder="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${existingAdmin}" placeholder="5000" oninput="updatePreview()"></div>
         </div>
       `;
     }
@@ -1384,41 +1480,52 @@ function parseReceiptText(rawText) {
       return;
     }
 
-    const senderVal = scannedData.pengirim || scannedData.bankAsal || 'Kasir Konter';
-    const receiverVal = scannedData.penerima || 'Pelanggan';
-    const rekVal = scannedData.rekening || '-';
+    currentReceiptType = scannedData.type || 'transfer';
+    document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === currentReceiptType));
+    
+    // Render manual form sesuai tab
+    renderManualForm();
 
+    // Isi data
     if (document.getElementById('manualDate') && scannedData.tanggal) {
       document.getElementById('manualDate').value = scannedData.tanggal;
     }
     if (document.getElementById('manualTime') && scannedData.jam) {
       document.getElementById('manualTime').value = scannedData.jam;
     }
-    
-    if (document.getElementById('manualSender')) document.getElementById('manualSender').value = senderVal;
-    if (document.getElementById('manualSenderAccount')) document.getElementById('manualSenderAccount').value = scannedData.norekPengirim || '****';
-    if (document.getElementById('manualReceiver')) document.getElementById('manualReceiver').value = receiverVal;
-    if (document.getElementById('manualReceiverAccount')) document.getElementById('manualReceiverAccount').value = rekVal;
-    
-    if (document.getElementById('manualNominal')) document.getElementById('manualNominal').value = scannedData.nominal;
-    if (document.getElementById('manualAdmin')) document.getElementById('manualAdmin').value = scannedData.admin;
+    if (document.getElementById('manualSender')) {
+      document.getElementById('manualSender').value = scannedData.pengirim || '';
+    }
+    if (document.getElementById('manualSenderAccount')) {
+      document.getElementById('manualSenderAccount').value = scannedData.norekPengirim || scannedData.pengirim || '';
+    }
+    if (document.getElementById('manualReceiver')) {
+      document.getElementById('manualReceiver').value = scannedData.penerima || '';
+    }
+    if (document.getElementById('manualReceiverAccount')) {
+      document.getElementById('manualReceiverAccount').value = scannedData.rekening || '';
+    }
+    if (document.getElementById('manualNominal')) {
+      document.getElementById('manualNominal').value = scannedData.nominal;
+    }
+    if (document.getElementById('manualAdmin')) {
+      document.getElementById('manualAdmin').value = scannedData.admin;
+    }
 
-    // Sinkronkan Bank Pengirim
     const selBankFrom = document.getElementById('manualBankFrom');
     if (selBankFrom && scannedData.bankAsal) {
       for (let opt of selBankFrom.options) {
-        if (scannedData.bankAsal.toUpperCase().includes(opt.value.toUpperCase())) {
+        if (scannedData.bankAsal.toUpperCase().includes(opt.value.toUpperCase()) || opt.value.toUpperCase().includes(scannedData.bankAsal.toUpperCase())) {
           selBankFrom.value = opt.value;
           break;
         }
       }
     }
 
-    // Sinkronkan Bank Tujuan
     const selBankTo = document.getElementById('manualBankTo');
     if (selBankTo && scannedData.bankTujuan) {
       for (let opt of selBankTo.options) {
-        if (opt.value.toUpperCase() === scannedData.bankTujuan.toUpperCase()) {
+        if (scannedData.bankTujuan.toUpperCase().includes(opt.value.toUpperCase()) || opt.value.toUpperCase().includes(scannedData.bankTujuan.toUpperCase())) {
           selBankTo.value = opt.value;
           break;
         }
@@ -1440,46 +1547,57 @@ function parseReceiptText(rawText) {
     document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
     document.getElementById('previewFooter').textContent = note;
 
-    const tgl = document.getElementById('manualDate')?.value || extraData?.tanggal || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const jam = document.getElementById('manualTime')?.value || extraData?.jam || (new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-    document.getElementById('previewDate').textContent = `${tgl} ${jam}`.trim();
-    document.getElementById('previewType').textContent = (currentReceiptType || 'TRANSFER').toUpperCase();
+    const tgl = document.getElementById('manualDate')?.value || extraData?.tanggal || scannedData?.tanggal || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const jam = document.getElementById('manualTime')?.value || extraData?.jam || scannedData?.jam || (new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
+    
+    if (document.getElementById('previewDate')) {
+      document.getElementById('previewDate').textContent = tgl;
+    }
+    if (document.getElementById('previewTime')) {
+      document.getElementById('previewTime').textContent = jam;
+    }
+    
+    const isEwallet = currentReceiptType === 'top_up';
+    document.getElementById('previewType').textContent = isEwallet ? 'E-WALLET / TOP UP' : 'TRANSFER BANK';
 
-    // Sanitasi filter agar TIDAK AKAN PERNAH bernilai "undefined"
-    let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || extraData?.bankAsal || 'Kasir Konter';
-    if (sender === 'undefined' || !sender.trim()) sender = extraData?.bankAsal || 'Kasir Konter';
+    let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || scannedData?.pengirim || '';
+    let senderRek = document.getElementById('manualSenderAccount')?.value || extraData?.norekPengirim || scannedData?.norekPengirim || '';
+    let bankFrom = document.getElementById('manualBankFrom')?.value || extraData?.bankAsal || scannedData?.bankAsal || (isEwallet ? 'E-Wallet' : 'Bank');
+    let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || scannedData?.penerima || 'Pelanggan';
+    let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || scannedData?.rekening || '-';
+    let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || scannedData?.bankTujuan || (isEwallet ? 'Layanan Tujuan' : 'BANK TUJUAN');
 
-    let senderRek = document.getElementById('manualSenderAccount')?.value || extraData?.norekPengirim || '****';
-    if (senderRek === 'undefined' || !senderRek.trim()) senderRek = '****';
+    const nom = parseInt(document.getElementById('manualNominal')?.value) || extraData?.nominal || scannedData?.nominal || 0;
+    const adm = parseInt(document.getElementById('manualAdmin')?.value) || extraData?.admin || scannedData?.admin || 0;
+    const refNo = extraData?.ref || scannedData?.ref || ('TRX-' + Date.now().toString().slice(-8));
 
-    let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || 'Pelanggan';
-    if (receiver === 'undefined' || !receiver.trim()) receiver = 'Pelanggan';
-
-    let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || '-';
-    if (receiverRek === 'undefined' || !receiverRek.trim()) receiverRek = '-';
-
-    let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || 'BANK TUJUAN';
-
-    const nom = parseInt(document.getElementById('manualNominal')?.value) || extraData?.nominal || 0;
-    const adm = parseInt(document.getElementById('manualAdmin')?.value) || extraData?.admin || 0;
-    const refNo = extraData?.ref || ('TRX-' + Date.now().toString().slice(-8));
-
-    // Menampilkan pengirim lengkap tanpa duplikasi
-    const senderDisplay = (senderRek && senderRek !== '-' && senderRek !== '****' && !sender.includes(senderRek))
-      ? `${sender} (${senderRek})` 
-      : sender;
-
-    // Tampilkan Rincian Struk Bersih & Rapi
-    document.getElementById('previewItems').innerHTML = `
-      <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
-        <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${senderDisplay}</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>Bank Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>No. Rek/HP:</span><span style="font-weight:bold;">${receiverRek}</span></div>
-      </div>
-      <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
-      <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
-    `;
+    if (isEwallet) {
+      const pengirimEwallet = senderRek || sender || bankFrom;
+      document.getElementById('previewItems').innerHTML = `
+        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
+          <div style="display:flex; justify-content:space-between;"><span>Pengirim / ID:</span><span style="font-weight:bold;">${pengirimEwallet}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Layanan Asal:</span><span style="font-weight:bold;">${bankFrom}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>No. Rek / HP:</span><span style="font-weight:bold;">${receiverRek}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
+        </div>
+        <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
+      `;
+    } else {
+      const senderDisplay = sender ? (senderRek && senderRek !== '-' && senderRek !== '****' ? `${sender} (${senderRek})` : sender) : (bankFrom || 'Pengirim');
+      document.getElementById('previewItems').innerHTML = `
+        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
+          <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${senderDisplay}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Bank Sumber:</span><span style="font-weight:bold;">${bankFrom}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>No. Rekening:</span><span style="font-weight:bold;">${receiverRek}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Bank Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
+        </div>
+        <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
+      `;
+    }
 
     document.getElementById('previewTotal').innerHTML = `
       <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-top:4px;">
@@ -1570,32 +1688,34 @@ function parseReceiptText(rawText) {
     const address = document.getElementById('previewAddress')?.innerText || document.getElementById('receiptAddress')?.value || '';
     const phone = document.getElementById('previewPhone')?.innerText || document.getElementById('receiptPhone')?.value || '';
     const date = document.getElementById('previewDate')?.innerText || ((document.getElementById('manualDate')?.value || '') + ' ' + (document.getElementById('manualTime')?.value || '')).trim() || (new Date().toLocaleDateString('id-ID') + ' ' + new Date().toLocaleTimeString('id-ID') + ' WIB');
-    const type = (document.getElementById('previewType')?.innerText || currentReceiptType || 'TRANSFER').toUpperCase();
     
-    let sender = document.getElementById('manualSender')?.value || scannedData?.pengirim || 'SEPRYANDA YON';
-    let senderRek = document.getElementById('manualSenderAccount')?.value || scannedData?.norekPengirim || '****';
-    let bankTo = document.getElementById('manualBankTo')?.value || scannedData?.bankTujuan || 'BANK TUJUAN';
+    const isEwallet = currentReceiptType === 'top_up';
+    const typeLabel = isEwallet ? 'E-WALLET / TOP UP' : 'TRANSFER BANK';
+
+    let sender = document.getElementById('manualSender')?.value || scannedData?.pengirim || '';
+    let senderRek = document.getElementById('manualSenderAccount')?.value || scannedData?.norekPengirim || '';
+    let bankFrom = document.getElementById('manualBankFrom')?.value || scannedData?.bankAsal || (isEwallet ? 'E-Wallet' : 'Bank');
     let receiver = document.getElementById('manualReceiver')?.value || scannedData?.penerima || 'Pelanggan';
     let receiverRek = document.getElementById('manualReceiverAccount')?.value || scannedData?.rekening || '-';
-    
-    const senderDisplay = (senderRek && senderRek !== '-' && senderRek !== '****' && !sender.includes(senderRek))
-      ? `${sender} (${senderRek})` 
-      : sender;
+    let bankTo = document.getElementById('manualBankTo')?.value || scannedData?.bankTujuan || (isEwallet ? 'Layanan Tujuan' : 'BANK TUJUAN');
 
     const nom = formatNumber(parseInt(document.getElementById('manualNominal')?.value) || scannedData?.nominal || 0);
     const adm = formatNumber(parseInt(document.getElementById('manualAdmin')?.value) || scannedData?.admin || 0);
     const total = formatNumber((parseInt(document.getElementById('manualNominal')?.value) || 0) + (parseInt(document.getElementById('manualAdmin')?.value) || 0));
     const ref = scannedData?.ref || ('TRX-' + Date.now().toString().slice(-8));
 
-    return `*${store.toUpperCase()}*
+    if (isEwallet) {
+      const pengirimEwallet = senderRek || sender || bankFrom;
+      return `*${store.toUpperCase()}*
 ${address ? address + '\n' : ''}${phone ? phone + '\n' : ''}━━━━━━━━━━━━━━━━━━━━━━
-*STRUK BUKTI ${type}*
+*STRUK BUKTI ${typeLabel}*
 ━━━━━━━━━━━━━━━━━━━━━━
 📅 *Waktu* : ${date}
-👤 *Pengirim* : ${senderDisplay}
-🏦 *Bank Tujuan* : ${bankTo}
+👤 *Pengirim / ID* : ${pengirimEwallet}
+📱 *Layanan Asal* : ${bankFrom}
 🎯 *Penerima* : ${receiver}
-💳 *No. Rek/HP* : ${receiverRek}
+💳 *No. Rek / HP* : ${receiverRek}
+🏦 *Tujuan* : ${bankTo}
 ──────────────────────
 💵 *Nominal* : Rp ${nom}
 🏷️ *Biaya Admin* : Rp ${adm}
@@ -1605,6 +1725,28 @@ ${address ? address + '\n' : ''}${phone ? phone + '\n' : ''}━━━━━━�
 _No. Ref : ${ref}_
 
 _Terima kasih atas kepercayaan Anda._`;
+    } else {
+      const senderDisplay = sender ? (senderRek && senderRek !== '-' && senderRek !== '****' ? `${sender} (${senderRek})` : sender) : (bankFrom || 'Pengirim');
+      return `*${store.toUpperCase()}*
+${address ? address + '\n' : ''}${phone ? phone + '\n' : ''}━━━━━━━━━━━━━━━━━━━━━━
+*STRUK BUKTI ${typeLabel}*
+━━━━━━━━━━━━━━━━━━━━━━
+📅 *Waktu* : ${date}
+👤 *Pengirim* : ${senderDisplay}
+🏛️ *Bank Asal* : ${bankFrom}
+🎯 *Penerima* : ${receiver}
+💳 *No. Rekening* : ${receiverRek}
+🏦 *Bank Tujuan* : ${bankTo}
+──────────────────────
+💵 *Nominal* : Rp ${nom}
+🏷️ *Biaya Admin* : Rp ${adm}
+━━━━━━━━━━━━━━━━━━━━━━
+*💰 TOTAL BAYAR : Rp ${total}*
+━━━━━━━━━━━━━━━━━━━━━━
+_No. Ref : ${ref}_
+
+_Terima kasih atas kepercayaan Anda._`;
+    }
   }
   
   // --- SHARE STRUK KE WHATSAPP (GAMBAR + TEKS LENGKAP) ---
