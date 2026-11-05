@@ -990,46 +990,57 @@ function extractDateTime(rawText) {
   let tanggal = '';
   let jam = '';
 
-  // 1. Prioritas utama: Deteksi tanggal dan jam berdampingan (contoh: "26 Juli 2025, 20:57:58 WIB" atau "30 Nov 2025 : 17:01")
-  const combinedMatch = rawText.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})[,\s:•·\-]+([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?(?:\s*(?:WIB|WITA|WIT))?)/i);
-  if (combinedMatch) {
-    tanggal = combinedMatch[1].trim();
-    jam = combinedMatch[2].trim().replace('.', ':');
+  // 1. Ekstrak Waktu & Tanggal Bersama (LinkAja, BRImo, wondr, DANA)
+  // Contoh: "26 Juli 2025, 20:57:58 WIB", "18 Agu 2025 • 11:15:49 WIB", "24 Jul 2025, 13:17:31 WIB", "30 Nov 2025 • 17:01"
+  const combo = rawText.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})[^\w\r\n]{1,6}([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?(?:\s*(?:WIB|WITA|WIT))?)/i);
+  if (combo) {
+    tanggal = combo[1].trim();
+    jam = combo[2].trim().replace('.', ':');
     if (!jam.toUpperCase().includes('WIB') && !jam.toUpperCase().includes('WITA') && !jam.toUpperCase().includes('WIT')) {
       jam += ' WIB';
     }
-  } else {
-    // Tanggal terpisah
-    const tglMatchText = rawText.match(/(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/i);
-    const tglMatchDigit = rawText.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
-    if (tglMatchText) {
-      tanggal = `${tglMatchText[1]} ${tglMatchText[2]} ${tglMatchText[3]}`;
-    } else if (tglMatchDigit) {
-      tanggal = `${tglMatchDigit[1]}/${tglMatchDigit[2]}/${tglMatchDigit[3]}`;
-    } else {
-      const now = new Date();
-      tanggal = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    }
+    return { tanggal, jam };
+  }
 
-    // Jam terpisah (hindari status bar atas HP: cari yang ada WIB atau berada setelah baris 3)
-    const lines = rawText.split(/\r?\n/).filter(Boolean);
-    for (let i = 2; i < lines.length; i++) {
-      const tm = lines[i].match(/(\b[0-2]?\d[:.][0-5]\d(?::[0-5]\d)?\b(?:\s*WIB)?)/i);
-      if (tm) {
-        jam = tm[1].replace('.', ':');
-        if (!jam.toUpperCase().includes('WIB')) jam += ' WIB';
-        break;
+  // 2. Tanggal Standar Teks ("30 Nov 2025" atau "26 Juli 2025")
+  const tglTeks = rawText.match(/(\d{1,2})\s+(Jan(?:uari)?|Feb(?:ruari)?|Mar(?:et)?|Apr(?:il)?|Mei|Jun(?:i)?|Jul(?:i)?|Agu(?:stus)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Des(?:ember)?)\s+(\d{4})/i);
+  if (tglTeks) {
+    tanggal = `${tglTeks[1]} ${tglTeks[2]} ${tglTeks[3]}`;
+  } else {
+    const tglAngka = rawText.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (tglAngka) tanggal = `${tglAngka[1]}/${tglAngka[2]}/${tglAngka[3]}`;
+  }
+
+  // 3. Jam Transaksi (HINDARI jam status bar HP seperti 14.41 atau 21.12 di 3 baris teratas)
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  for (let i = 0; i < lines.length; i++) {
+    // Lewati baris paling atas jika hanya berisi status bar HP (sinyal/baterai/jam)
+    if (i < 2 && /^(?:[0-2]?\d[:.][0-5]\d|\d{1,2}\.\d{2}\b)/.test(lines[i]) && !lines[i].toUpperCase().includes('WIB')) {
+      continue;
+    }
+    const tm = lines[i].match(/([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?\s*(?:WIB|WITA|WIT))/i) || 
+               lines[i].match(/(?:pukul|jam|\b)([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?)\b/i);
+    if (tm) {
+      jam = tm[1].replace('.', ':');
+      if (!jam.toUpperCase().includes('WIB') && !jam.toUpperCase().includes('WITA') && !jam.toUpperCase().includes('WIT')) {
+        jam += ' WIB';
       }
+      break;
     }
-    if (!jam) {
-      jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    }
+  }
+
+  // Fallback hanya jika benar-benar tidak ditemukan di gambar
+  if (!tanggal) {
+    const now = new Date();
+    tanggal = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  if (!jam) {
+    jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
   }
 
   return { tanggal, jam };
 }
 
-// Helper pembersih awalan nama & hanya menghapus akhiran nama bank (bukan nama orang)
 function cleanPersonName(str) {
   if (!str) return '';
   return str.trim()
@@ -1040,22 +1051,14 @@ function cleanPersonName(str) {
     .trim();
 }
 
-// Helper validasi MUTLAK nama orang (Anti Teks Transaksi & Anti Angka)
 function isValidPersonName(str) {
   if (!str || typeof str !== 'string') return false;
   const s = cleanPersonName(str).toUpperCase();
   if (s.length < 3 || s.length > 38) return false;
-
-  // 1. ATURAN WAJIB: Nama orang TIDAK BOLEH mengandung angka sama sekali!
   if (/\d/.test(s)) return false;
-
-  // 2. Harus murni alfabet dan tanda baca nama
   if (!/^[A-Z\s.'`-]+$/.test(s)) return false;
-
-  // 3. Harus mengandung huruf vokal
   if (!/[AIUEO]/.test(s)) return false;
 
-  // 4. Daftar kata teknis & typo OCR yang dilarang
   const kataDilarang = [
     'BERHASIL', 'SUKSES', 'TRANSAKSI', 'TRANSFER', 'TOTAL', 'BIAYA', 'ADMIN',
     'REFERENSI', 'TANGGAL', 'SUMBER', 'DANA', 'REKENING', 'BANK', 'NOMINAL',
@@ -1067,7 +1070,7 @@ function isValidPersonName(str) {
     'JENIS TRANSAKSI', 'DETAIL TRANSFER', 'BIAYA TRANSAKSI', 'INFORMASI TAMBAHAN'
   ];
   for (let k of kataDilarang) {
-    if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k) || s.includes(' ' + k + ' ') || s.includes('TRANSAKSI') || s.includes('PEMBAYARAN') || s.includes('BANSAKSISI')) return false;
+    if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k) || s.includes(' ' + k + ' ')) return false;
   }
   return true;
 }
@@ -1095,22 +1098,21 @@ function parseReceiptText(rawText) {
     status: 'BERHASIL'
   };
 
-  // 1. Deteksi No Referensi / ID Transaksi
-  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*[I1lD]|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Order ID|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_)\-\]]{6,40})/i);
+  // 1. Deteksi No Referensi
+  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*ID|Ref\.?\s*[I1lD]|Ref\.?\s*No|ID\s*Transaksi|No\.?\s*Resi|No\.?\s*Transaksi|Order ID|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_)\-\]]{6,40})/i);
   if (refMatch && refMatch[1]) {
     data.ref = refMatch[1].trim().replace(/[\)\]]$/, '');
   } else {
-    const longDigits = rawText.match(/\b(202[4-9]\d{10,32})\b/);
+    const longDigits = rawText.match(/\b(202[4-9]\d{8,34})\b/);
     if (longDigits) data.ref = longDigits[1];
   }
 
-  // Deteksi jenis aplikasi
   const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION') || textUpper.includes('DIAMANKAN OLEH') || (textUpper.includes('DANA') && !textUpper.includes('SUMBER DANA')));
   const isLinkAja = textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'));
   const isWondrBNI = textUpper.includes('WONDR') || textUpper.includes('BY BNI') || (textUpper.includes('PENERIMA') && textUpper.includes('SUMBER DANA') && textUpper.includes('BNI'));
   const isBRImo = textUpper.includes('BRIMO') || (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN') && (textUpper.includes('BRI') || textUpper.includes('SY') || textUpper.includes('BANK BRI'))) || textUpper.includes('TRANSFER BANK BRI');
 
-  // --- FORMAT A: LINKAJA (E-WALLET) ---
+  // --- FORMAT 1: LINKAJA ---
   if (isLinkAja) {
     data.type = 'top_up';
     data.bankAsal = 'LinkAja';
@@ -1120,17 +1122,18 @@ function parseReceiptText(rawText) {
 
     for (let i = 0; i < rawLines.length; i++) {
       const l = rawLines[i];
+      // Kasus khusus: "1815110375 Sdr" di satu baris, nama di baris bawahnya
+      const rekSdr = l.match(/^(\d{8,18})\s*(?:Sdr|Sdri|Bpk|Ibu)?$/i);
+      if (rekSdr) {
+        data.rekening = rekSdr[1];
+        if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
+          data.penerima = cleanPersonName(rawLines[i + 1]);
+        }
+      }
       const inlineMatch = l.match(/^(\d{8,18})\s+(?:Sdr|Sdri|Bpk|Ibu)?\s*([A-Za-z\s.'`-]+)$/i);
       if (inlineMatch) {
         data.rekening = inlineMatch[1];
         if (isValidPersonName(inlineMatch[2])) data.penerima = cleanPersonName(inlineMatch[2]);
-      }
-      const accMatch = l.match(/^(\d{8,18})(?:\s+(?:Sdr|Sdri|Bpk|Ibu))?$/i);
-      if (accMatch && !data.rekening) {
-        data.rekening = accMatch[1];
-        if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
-          data.penerima = cleanPersonName(rawLines[i + 1]);
-        }
       }
       if (l.toUpperCase().includes('BANK BNI') || l.toUpperCase() === 'BNI') data.bankTujuan = 'BNI';
       else if (l.toUpperCase().includes('BANK BRI') || l.toUpperCase() === 'BRI') data.bankTujuan = 'BRI';
@@ -1139,7 +1142,7 @@ function parseReceiptText(rawText) {
     }
   }
 
-  // --- FORMAT B: WONDR BY BNI (BANK TRANSFER) ---
+  // --- FORMAT 2: WONDR BY BNI ---
   else if (isWondrBNI) {
     data.type = 'transfer';
     data.bankAsal = 'BNI';
@@ -1164,29 +1167,21 @@ function parseReceiptText(rawText) {
 
       if (inPenerima) {
         const clean = cleanPersonName(line);
-        if (!data.penerima && isValidPersonName(clean)) {
-          data.penerima = clean;
-        }
+        if (!data.penerima && isValidPersonName(clean)) data.penerima = clean;
         const rekMatch = line.match(/(?:BNI\s*[-•]?\s*)?(\d{8,16})/i);
-        if (rekMatch && !data.rekening) {
-          data.rekening = rekMatch[1];
-        }
+        if (rekMatch && !data.rekening) data.rekening = rekMatch[1];
       }
 
       if (inSumberDana) {
         const clean = cleanPersonName(line);
-        if (!data.pengirim && isValidPersonName(clean)) {
-          data.pengirim = clean;
-        }
-        const maskedAcc = line.match(/(\*{3,}\d{3,4}|\d{4}[\s*•xX-]+\d{3,4})/);
-        if (maskedAcc && !data.norekPengirim) {
-          data.norekPengirim = maskedAcc[1];
-        }
+        if (!data.pengirim && isValidPersonName(clean)) data.pengirim = clean;
+        const maskedAcc = line.match(/([•·*xX]{3,}\d{3,4}|\d{4}[\s*•xX-]+\d{3,4})/);
+        if (maskedAcc && !data.norekPengirim) data.norekPengirim = maskedAcc[1];
       }
     }
   }
 
-  // --- FORMAT C: BRIMO BRI (BANK TRANSFER) ---
+  // --- FORMAT 3: BRIMO BRI ---
   else if (isBRImo) {
     data.type = 'transfer';
     data.bankAsal = 'BRI';
@@ -1211,10 +1206,11 @@ function parseReceiptText(rawText) {
 
       if (inSumberDana) {
         const clean = cleanPersonName(line);
+        // Lewati inisial lingkaran (seperti 'SY')
         if (!data.pengirim && isValidPersonName(clean) && clean.length > 2 && clean.toUpperCase() !== 'SY') {
           data.pengirim = clean;
         }
-        // Membaca nomor rekening pengirim (misal: 0669 **** **** 531)
+        // Tangkap nomor pengirim bertopeng: 0669 **** **** 531
         const maskedAcc = line.match(/(\d{4}[\s*•xX-]+\d{3,4}|\d{4}\s*\*{4}\s*\*{4}\s*\d{3,4})/);
         if (maskedAcc && !data.norekPengirim) {
           data.norekPengirim = maskedAcc[1].trim();
@@ -1223,10 +1219,11 @@ function parseReceiptText(rawText) {
 
       if (inTujuan) {
         const clean = cleanPersonName(line);
+        // Lewati inisial lingkaran (seperti 'S')
         if (!data.penerima && isValidPersonName(clean) && clean.length > 2 && clean.toUpperCase() !== 'S') {
           data.penerima = clean;
         }
-        // Membaca nomor rekening penerima (misal: 0181 0107 6416 508)
+        // Tangkap nomor penerima lengkap: 0181 0107 6416 508
         const cleanAcc = line.replace(/[\s\-\.]/g, '');
         if (/^\d{10,18}$/.test(cleanAcc) && !data.rekening) {
           data.rekening = line.trim();
@@ -1235,24 +1232,21 @@ function parseReceiptText(rawText) {
     }
   }
 
-  // --- FORMAT D: DANA (E-WALLET) ---
+  // --- FORMAT 4: DANA ---
   else if (isRealDanaApp) {
     data.type = 'top_up';
     data.bankAsal = 'DANA';
     data.bankTujuan = 'BRI';
 
-    // Pengirim: ambil ID DANA (0811•••9491)
-    const idMatch = rawText.match(/ID\s*DANA\s*([0-9•.*xX:\-]{8,15})/i) || rawText.match(/\b(08[0-9•.*xX:\-]{8,15})\b/);
+    // Pengirim ID DANA: 0811•••9491
+    const idMatch = rawText.match(/ID\s*DANA\s*([0-9•·.*xX:\-]{8,18})/i) || rawText.match(/\b(08[0-9•·.*xX:\-]{8,18})\b/);
     if (idMatch) {
       data.pengirim = idMatch[1].trim();
       data.norekPengirim = idMatch[1].trim();
-    } else {
-      data.pengirim = '';
-      data.norekPengirim = '';
     }
 
-    // Detail Penerima: SEPRYANDA YON, Akun Bank: BRI ••••9531
-    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)\s*([•.*xX0-9]+)|\s*-\s*([A-Za-z]+)|\s*$)/im);
+    // Detail Penerima DANA: SEPRYANDA YON - BRI ••••9531
+    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)\s*([•·.*xX0-9]+)|\s*-\s*([A-Za-z]+)|\s*$)/im);
     if (bannerMatch) {
       const nama = cleanPersonName(bannerMatch[1]);
       if (isValidPersonName(nama)) data.penerima = nama;
@@ -1271,7 +1265,7 @@ function parseReceiptText(rawText) {
             if (isValidPersonName(clean)) data.penerima = clean;
           }
           if (l.toUpperCase().includes('AKUN BANK')) {
-            const rek = l.match(/(?:[A-Za-z]+\s*)?([•.*xX0-9]{4,16})/);
+            const rek = l.match(/(?:[A-Za-z]+\s*)?([•·.*xX0-9\s]{4,18})/);
             if (rek) data.rekening = rek[1].trim();
             const b = l.match(/\b(BRI|BNI|BCA|MANDIRI|BSI)\b/i);
             if (b) data.bankTujuan = b[1].toUpperCase();
@@ -1280,14 +1274,13 @@ function parseReceiptText(rawText) {
       }
     }
 
-   // Jika rekening sudah terbaca (termasuk bentuk sensor ••••9531), pertahankan apa adanya
     if (!data.rekening || data.rekening === '-') {
       const rekCtx = rawText.match(/(?:AKUN\s*BANK|NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?)\s*[:.]?\s*([•·.*xX0-9\s]{4,24})/i);
       if (rekCtx) data.rekening = rekCtx[1].trim();
     }
   }
 
-  // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, GOPAY, OVO, SHOPEEPAY, SEABANK) ---
+  // --- FORMAT 5: GENERIC FALLBACK ---
   else {
     const isEwal = textUpper.includes('GOPAY') || textUpper.includes('OVO') || textUpper.includes('SHOPEEPAY');
     data.type = isEwal ? 'top_up' : 'transfer';
@@ -1295,10 +1288,6 @@ function parseReceiptText(rawText) {
     if (textUpper.includes('BCA')) { data.bankAsal = 'BCA'; data.bankTujuan = 'BCA'; }
     else if (textUpper.includes('MANDIRI') || textUpper.includes('LIVIN')) { data.bankAsal = 'Mandiri'; data.bankTujuan = 'Mandiri'; }
     else if (textUpper.includes('BSI')) { data.bankAsal = 'BSI'; data.bankTujuan = 'BSI'; }
-    else if (textUpper.includes('GOPAY')) { data.bankAsal = 'GoPay'; }
-    else if (textUpper.includes('OVO')) { data.bankAsal = 'OVO'; }
-    else if (textUpper.includes('SHOPEEPAY')) { data.bankAsal = 'ShopeePay'; }
-    else if (textUpper.includes('SEABANK')) { data.bankAsal = 'SeaBank'; }
 
     for (let i = 0; i < rawLines.length; i++) {
       const up = rawLines[i].toUpperCase();
@@ -1327,7 +1316,6 @@ function parseReceiptText(rawText) {
     }
 
     if (!data.rekening || data.rekening === '-') {
-      // Prioritaskan nomor yang menempel pada label rekening (termasuk yang disensor titik/bintang)
       const rekCtx = rawText.match(/(?:NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?|AKUN\s*BANK|ID\s*DANA)\s*[:.]?\s*([•·.*xX0-9\s]{6,24})/i);
       if (rekCtx) {
         data.rekening = rekCtx[1].trim();
@@ -1340,7 +1328,7 @@ function parseReceiptText(rawText) {
     }
   }
 
-  // 3. Deteksi Nominal
+  // Deteksi Nominal
   const nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSAKSI|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
   if (nomMatch) {
     const clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
@@ -1365,10 +1353,8 @@ function parseReceiptText(rawText) {
   data.total = data.nominal + data.admin;
   scannedData = data;
 
-  // Aktifkan tab yang sesuai secara otomatis
   setReceiptType(data.type);
 
-  // Masukkan nilai langsung ke form manual
   if (document.getElementById('manualDate')) document.getElementById('manualDate').value = data.tanggal;
   if (document.getElementById('manualTime')) document.getElementById('manualTime').value = data.jam;
   if (document.getElementById('manualSender')) document.getElementById('manualSender').value = data.pengirim;
@@ -1401,7 +1387,7 @@ function parseReceiptText(rawText) {
   updatePreview(data);
   return data;
 }
-
+  
   function displayOcrResult(data) {
     if (!data) return;
     const isEwal = data.type === 'top_up';
