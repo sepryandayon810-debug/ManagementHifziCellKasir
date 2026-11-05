@@ -862,7 +862,14 @@
     const statusText = document.getElementById('ocrProgressText');
 
     const useAi = document.getElementById('useAiScan')?.checked;
-    const apiKey = "AQ.Ab8RN6IdhPdvKkWEFd9eyuhPekLNJ_gV3MAvDTy2bLgUds3Btw";
+    // Baca kunci langsung dari kotak input di layar atau dari memori HP (localStorage)
+    const apiKey = document.getElementById('geminiApiKey')?.value?.trim() || localStorage.getItem('webpos_gemini_key')?.trim();
+
+    if (useAi && !apiKey) {
+      showToast('Masukkan Google Gemini API Key di kotak atas terlebih dahulu!', 'warning');
+      document.getElementById('geminiApiKey')?.focus();
+      return;
+    }
 
     if (uploadArea) uploadArea.style.display = 'none';
     if (loadingArea) loadingArea.style.display = 'block';
