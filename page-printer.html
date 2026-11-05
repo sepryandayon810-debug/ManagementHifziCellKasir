@@ -908,35 +908,45 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
   "status": "BERHASIL"
 }`;
 
-        // Menggunakan model gemini-3.8-flash dengan cadangan otomatis (anti-gagal)
-        const modelList = ['gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        // Menggunakan model resmi Google yang aktif saat ini
+        const modelList = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'];
         let response = null;
         let lastErrorMsg = '';
 
         for (const model of modelList) {
-          try {
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
-                  ]
-                }]
-              })
-            });
+          // Coba hingga 2 kali jika server Google sibuk sesaat (503)
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [
+                      { text: prompt },
+                      { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                    ]
+                  }]
+                })
+              });
 
-            if (response.ok) {
-              break; // Berhasil, keluar dari loop
-            } else {
+              if (response.ok) break;
+
+              // Jika terkena 503 (Service Unavailable), beri jeda 1.2 detik lalu coba ulang
+              if (response.status === 503) {
+                if (statusText) statusText.textContent = 'Server sibuk, mencoba ulang otomatis...';
+                await new Promise(r => setTimeout(r, 1200));
+                continue;
+              }
+
               const errData = await response.json().catch(() => ({}));
               lastErrorMsg = errData.error?.message || `HTTP ${response.status}`;
+              break;
+            } catch (e) {
+              lastErrorMsg = e.message;
             }
-          } catch (e) {
-            lastErrorMsg = e.message;
           }
+          if (response && response.ok) break;
         }
 
         if (!response || !response.ok) {
@@ -972,7 +982,7 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         return;
       } catch (aiErr) {
         console.warn('AI Scan gagal, beralih ke OCR Tesseract:', aiErr);
-        showToast('AI gagal (' + aiErr.message + '), mencoba Tesseract lokal...', 'warning');
+        showToast('AI gagal (' + aiErr.message + '), mencoba mode offline...', 'warning');
       }
     }
     
