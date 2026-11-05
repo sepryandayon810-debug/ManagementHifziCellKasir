@@ -879,9 +879,30 @@
         const compressedBase64 = await compressImageForAi(file, 900);
         const cleanBase64 = compressedBase64.split(',')[1];
 
+        // PROGRESS DINAMIS HIDUP (Tidak akan pernah terasa stuck lagi!)
+        let aiProgress = 70;
         if (pBar) pBar.style.width = '70%';
         if (pText) pText.textContent = '70%';
-        if (statusText) statusText.textContent = 'AI sedang membaca seluruh rincian struk...';
+        if (statusText) statusText.textContent = 'Menghubungkan ke Gemini AI...';
+
+        const aiStatusMessages = [
+          'AI sedang menganalisis gambar...',
+          'Membaca nama pengirim & penerima...',
+          'Mendeteksi nomor rekening & nominal...',
+          'Menyusun rincian struk digital...'
+        ];
+        let msgIdx = 0;
+
+        const aiTimer = setInterval(() => {
+          if (aiProgress < 94) {
+            aiProgress += 4;
+            if (pBar) pBar.style.width = aiProgress + '%';
+            if (pText) pText.textContent = aiProgress + '%';
+            if (statusText && msgIdx < aiStatusMessages.length) {
+              statusText.textContent = aiStatusMessages[msgIdx++];
+            }
+          }
+        }, 400);
 
         const prompt = `Anda adalah sistem OCR kasir profesional. Baca gambar bukti transfer bank/e-wallet ini (BRImo, DANA, LinkAja, BNI wondr, BCA, Mandiri, dll).
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis dengan format ini:
@@ -901,16 +922,14 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
   "status": "BERHASIL"
 }`;
 
-        // Menggunakan model resmi Google
         const modelList = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         let response = null;
         let lastErrorMsg = '';
 
         for (const model of modelList) {
           try {
-            // Batas waktu 10 detik agar tidak pernah stuck di 75%
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
             response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
               method: 'POST',
@@ -922,7 +941,12 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
                     { text: prompt },
                     { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
                   ]
-                }]
+                }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  temperature: 0.1,
+                  maxOutputTokens: 600
+                }
               })
             });
 
@@ -932,9 +956,11 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
             const errData = await response.json().catch(() => ({}));
             lastErrorMsg = errData.error?.message || `HTTP ${response.status}`;
           } catch (e) {
-            lastErrorMsg = e.name === 'AbortError' ? 'Koneksi ke AI timeout (lebih dari 10 detik)' : e.message;
+            lastErrorMsg = e.name === 'AbortError' ? 'Koneksi AI timeout' : e.message;
           }
         }
+
+        clearInterval(aiTimer);
 
         if (!response || !response.ok) {
           throw new Error(lastErrorMsg || 'Server AI sedang sibuk');
@@ -951,7 +977,6 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
 
         scannedData = parsedAiData;
         document.getElementById('ocrPreviewImage').src = compressedBase64;
-        displayOcrResult(scannedData);
         applyOcrToForm();
 
         if (pBar) pBar.style.width = '100%';
