@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Library Pendukung: Tesseract.js, html2canvas, jsPDF -->
-  <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -872,14 +872,14 @@
       reader.onload = async (e) => {
         const rawImgData = e.target.result;
         
-        // Kompresi optimal 850px agar OCR selesai dalam 1-2 detik
-        const optimizedImg = await resizeImageForFastOcr(rawImgData, 850);
+        // 850px membuat angka rekening putus, pakai 1600px
+        const optimizedImg = await resizeImageForFastOcr(rawImgData, 1600);
         document.getElementById('ocrPreviewImage').src = optimizedImg;
 
-        const result = await Tesseract.recognize(optimizedImg, 'ind', {
+        const worker = await Tesseract.createWorker('ind+eng', 1, {
           logger: (m) => {
             if (m.status === 'recognizing text' && m.progress) {
-              const calcPct = Math.min(95, Math.max(currentPct, Math.round(m.progress * 100)));
+              const calcPct = Math.min(90, Math.max(currentPct, Math.round(m.progress * 100)));
               currentPct = calcPct;
               if (pBar) pBar.style.width = calcPct + '%';
               if (pText) pText.textContent = calcPct + '%';
@@ -887,6 +887,9 @@
             }
           }
         });
+        await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
+        const result = await worker.recognize(optimizedImg);
+        await worker.terminate();
 
         clearInterval(progressTimer);
 
@@ -896,6 +899,25 @@
 
         const text = result.data.text;
         scannedData = parseReceiptText(text);
+
+        try {
+          const perlu = scannedData && (!scannedData.rekening || /[^0-9]/.test(scannedData.rekening) || scannedData.rekening.replace(/\D/g, '').length < 8);
+          if (perlu) {
+            const w2 = await Tesseract.createWorker('eng', 1);
+            await w2.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '6' });
+            const numRes = await w2.recognize(optimizedImg);
+            await w2.terminate();
+            const kandidat = (numRes.data.text || '').split(/\s+/)
+              .map(s => s.replace(/\D/g, ''))
+              .filter(s => /^\d{8,18}$/.test(s) && !s.startsWith('202') && !s.startsWith('20'));
+            if (kandidat.length) {
+              scannedData.rekening = kandidat.sort((a, b) => b.length - a.length)[0];
+              const elRek = document.getElementById('manualReceiverAccount');
+              if (elRek) elRek.value = scannedData.rekening;
+            }
+          }
+        } catch (e) {}
+
         displayOcrResult(scannedData);
 
         setTimeout(() => {
@@ -938,11 +960,15 @@
         try {
           const imgData = ctx.getImageData(0, 0, width, height);
           const d = imgData.data;
+          let sum = 0;
+          for (let i = 0; i < d.length; i += 4) sum += (d[i] + d[i + 1] + d[i + 2]) / 3;
+          const avg = sum / (d.length / 4);
+          const gelap = avg < 120;
+          const batas = Math.max(90, Math.min(190, avg * 0.92));
           for (let i = 0; i < d.length; i += 4) {
-            const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-            // Naikan kontras teks secara terukur
-            const c = (gray - 128) * 1.3 + 128;
-            const val = Math.max(0, Math.min(255, c));
+            let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            if (gelap) gray = 255 - gray;
+            const val = gray > batas ? 255 : 0;
             d[i] = val;
             d[i + 1] = val;
             d[i + 2] = val;
@@ -1219,8 +1245,8 @@ function parseReceiptText(rawText) {
       data.pengirim = idMatch[1].trim();
       data.norekPengirim = idMatch[1].trim();
     } else {
-      data.pengirim = '0811•••9491';
-      data.norekPengirim = '0811•••9491';
+      data.pengirim = '';
+      data.norekPengirim = '';
     }
 
     // Detail Penerima: SEPRYANDA YON, Akun Bank: BRI ••••9531
@@ -1252,12 +1278,10 @@ function parseReceiptText(rawText) {
       }
     }
 
-    if (!data.rekening) {
-      const lastDigits = rawText.match(/(\d{4})\s*(?:Total\s*Bayar|Detail\s*Penerima)/i) || rawText.match(/[•.*xX]{2,4}(\d{4})/);
-      if (lastDigits) data.rekening = '••••' + (lastDigits[1] || lastDigits[0]);
+    if (!data.rekening || /[^0-9]/.test(data.rekening)) {
+      const rekCtx = rawText.match(/(?:AKUN\s*BANK|NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?)\D{0,15}(\d[\d\s\-]{5,20}\d)/i);
+      if (rekCtx) data.rekening = rekCtx[1].replace(/[\s\-]/g, '');
     }
-
-    if (!data.penerima) data.penerima = 'SEPRYANDA YON';
   }
 
   // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, GOPAY, OVO, SHOPEEPAY, SEABANK) ---
