@@ -922,6 +922,8 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         const resJson = await response.json();
         let rawAiText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
         rawAiText = rawAiText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const jsonMatch = rawAiText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) rawAiText = jsonMatch[0];
 
         const parsedAiData = JSON.parse(rawAiText);
         parsedAiData.admin = parseInt(document.getElementById('manualAdmin')?.value) || parsedAiData.admin || 5000;
