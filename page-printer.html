@@ -886,46 +886,64 @@
         const prompt = `Anda adalah sistem OCR kasir profesional. Baca gambar bukti transfer bank/e-wallet ini (BRImo, DANA, LinkAja, BNI wondr, BCA, Mandiri, dll).
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis dengan format ini:
 {
-  "type": "transfer" atau "top_up",
+  "type": "transfer atau top_up (jika DANA/LinkAja/GoPay gunakan top_up, jika bank gunakan transfer)",
   "bankAsal": "nama bank/ewallet pengirim (misal: BRI, BNI, DANA, LinkAja)",
   "bankTujuan": "nama bank/ewallet penerima (misal: BRI, BNI, BCA, Mandiri)",
-  "pengirim": "nama orang atau ID akun pengirim (misal: SEPRYANDA YON atau 0811•••9491)",
-  "norekPengirim": "nomor rekening/ID pengirim, pertahankan format sensor jika ada titik/bintang (misal: 0669 **** **** 531, *******375, atau 0811•••9491)",
-  "penerima": "nama orang penerima (misal: SUPRIADI atau SEPRYANDA YON atau ASHA SEPTIANI IRSAT, tanpa gelar Sdr/Sdri)",
-  "rekening": "nomor rekening atau ID penerima, jika ada sensor titik/bintang jangan dibuang (misal: ••••9531 atau 0181 0107 6416 508 atau 0324562281 atau 1815110375)",
+  "pengirim": "nama orang pengirim (misal: SEPRYANDA YON)",
+  "norekPengirim": "nomor rekening atau ID pengirim LENGKAP dengan sensor bintang atau titik (misal: 0669 **** **** 531, *******375, atau 0811•••9491). JANGAN UBAH JADI STRIP MINUS DAN JANGAN DIKOSONGKAN",
+  "penerima": "nama orang penerima (misal: SUPRIADI atau SEPRYANDA YON atau ASHA SEPTIANI IRSAT, hapus gelar Sdr/Sdri)",
+  "rekening": "nomor rekening atau ID penerima LENGKAP dengan sensor titik atau bintang jika ada (misal: ••••9531 atau ****9531 atau 0181 0107 6416 508 atau 0324562281 atau 1815110375). JANGAN HAPUS SENSOR TITIKNYA",
   "nominal": angka integer saja (misal: 500000),
-  "admin": angka integer (biaya admin konter default 5000 atau dari struk),
-  "tanggal": "tanggal transaksi dari struk (misal: 30 Nov 2025 atau 26 Juli 2025)",
-  "jam": "jam transaksi dari struk (misal: 17:01 WIB atau 20:57:58 WIB, BUKAN jam status bar HP)",
+  "admin": angka integer (biaya admin konter default 5000),
+  "tanggal": "tanggal transaksi asli dari struk (misal: 30 Nov 2025 atau 26 Juli 2025)",
+  "jam": "jam transaksi asli dari struk (misal: 17:01 WIB atau 20:57:58 WIB, BUKAN jam status bar HP di pojok atas)",
   "ref": "nomor referensi atau ID transaksi asli struk",
   "status": "BERHASIL"
 }`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType: mimeType, data: cleanBase64 } }
-              ]
-            }]
-          })
-        });
+        // Menggunakan model gemini-3.8-flash dengan cadangan otomatis (anti-gagal)
+        const modelList = ['gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        let response = null;
+        let lastErrorMsg = '';
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error?.message || 'Gagal menghubungi Gemini AI');
+        for (const model of modelList) {
+          try {
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                  ]
+                }]
+              })
+            });
+
+            if (response.ok) {
+              break; // Berhasil, keluar dari loop
+            } else {
+              const errData = await response.json().catch(() => ({}));
+              lastErrorMsg = errData.error?.message || `HTTP ${response.status}`;
+            }
+          } catch (e) {
+            lastErrorMsg = e.message;
+          }
+        }
+
+        if (!response || !response.ok) {
+          throw new Error(lastErrorMsg || 'Gagal menghubungi Google AI Vision');
         }
 
         const resJson = await response.json();
         let rawAiText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        rawAiText = rawAiText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        
+        // Ekstrak blok JSON dengan aman
         const jsonMatch = rawAiText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) rawAiText = jsonMatch[0];
-
-        const parsedAiData = JSON.parse(rawAiText);
+        if (!jsonMatch) throw new Error('Format respon AI tidak valid');
+        
+        const parsedAiData = JSON.parse(jsonMatch[0]);
         parsedAiData.admin = parseInt(document.getElementById('manualAdmin')?.value) || parsedAiData.admin || 5000;
         parsedAiData.total = (parsedAiData.nominal || 0) + parsedAiData.admin;
 
@@ -950,7 +968,7 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         showToast('AI gagal (' + aiErr.message + '), mencoba Tesseract lokal...', 'warning');
       }
     }
-
+    
     // JIKA TIDAK ADA KUNCI AI: GUNAKAN TESSERACT (OFFLINE)
     if (typeof Tesseract === 'undefined') {
       if (loadingArea) loadingArea.style.display = 'none';
