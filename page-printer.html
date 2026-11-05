@@ -901,7 +901,9 @@
         scannedData = parseReceiptText(text);
 
         try {
-          const perlu = scannedData && (!scannedData.rekening || /[^0-9]/.test(scannedData.rekening) || scannedData.rekening.replace(/\D/g, '').length < 8);
+          // Jangan timpa jika nomor rekening sudah ada (termasuk yang disensor titik • atau bintang *)
+          const isMasked = scannedData && /[•·.*xX]/.test(scannedData.rekening);
+          const perlu = scannedData && !isMasked && (!scannedData.rekening || scannedData.rekening === '-' || scannedData.rekening.replace(/\D/g, '').length < 6);
           if (perlu) {
             const w2 = await Tesseract.createWorker('eng', 1);
             await w2.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '6' });
@@ -1278,12 +1280,12 @@ function parseReceiptText(rawText) {
       }
     }
 
-    if (!data.rekening || /[^0-9]/.test(data.rekening)) {
-      const rekCtx = rawText.match(/(?:AKUN\s*BANK|NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?)\D{0,15}(\d[\d\s\-]{5,20}\d)/i);
-      if (rekCtx) data.rekening = rekCtx[1].replace(/[\s\-]/g, '');
+    // Jika rekening sudah terbaca (termasuk bentuk sensor ••••9531), pertahankan apa adanya
+    if (!data.rekening || data.rekening === '-') {
+      const rekCtx = rawText.match(/(?:AKUN\s*BANK|NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?)\s*[:.]?\s*([•·.*xX0-9\s]{4,24})/i);
+      if (rekCtx) data.rekening = rekCtx[1].trim();
     }
-  }
-
+      
   // --- FORMAT E: GENERIC FALLBACK (BCA, MANDIRI, BSI, GOPAY, OVO, SHOPEEPAY, SEABANK) ---
   else {
     const isEwal = textUpper.includes('GOPAY') || textUpper.includes('OVO') || textUpper.includes('SHOPEEPAY');
@@ -1323,13 +1325,18 @@ function parseReceiptText(rawText) {
       }
     }
 
-    if (!data.rekening) {
-      const genericRek = rawText.match(/\b(08\d{8,11}|\d{10,18})\b/);
-      if (genericRek && !genericRek[1].startsWith('202')) {
-        data.rekening = genericRek[1];
+    if (!data.rekening || data.rekening === '-') {
+      // Prioritaskan nomor yang menempel pada label rekening (termasuk yang disensor titik/bintang)
+      const rekCtx = rawText.match(/(?:NO\.?\s*REK(?:ENING)?|NOMOR\s*(?:REK|TUJUAN|HP|AKUN)|REKENING(?:\s*TUJUAN)?|AKUN\s*BANK|ID\s*DANA)\s*[:.]?\s*([•·.*xX0-9\s]{6,24})/i);
+      if (rekCtx) {
+        data.rekening = rekCtx[1].trim();
+      } else {
+        const genericRek = rawText.match(/\b(08\d{8,11}|\d{10,18})\b/);
+        if (genericRek && !genericRek[1].startsWith('202')) {
+          data.rekening = genericRek[1];
+        }
       }
     }
-  }
 
   // 3. Deteksi Nominal
   const nomMatch = rawText.match(/(?:TOTAL BAYAR|TOTAL PEMBAYARAN|NOMINAL|JUMLAH|TOTAL TRANSAKSI|TOTAL TRANSFER|TRANSFER RP|JUMLAH TERKIRIM)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
