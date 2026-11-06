@@ -4520,14 +4520,33 @@ async function loadUangGlobal() {
 }
   // ===== LOAD HEADER STATS DARI FIREBASE =====
 async function loadHeaderStats() {
-  // ⭐ OFFLINE: pakai data tersimpan
+  // ⭐ OFFLINE: ambil data dasar + gabungkan transaksi offline baru
   if (!navigator.onLine) {
-    const savedPenjualan = localStorage.getItem('header_penjualan');
-    const savedTransaksi = localStorage.getItem('header_transaksi');
-    const savedLaba = localStorage.getItem('header_laba');
-    if (savedPenjualan) document.getElementById('headerPenjualan').textContent = savedPenjualan;
-    if (savedTransaksi) document.getElementById('headerTransaksi').textContent = savedTransaksi;
-    if (savedLaba) document.getElementById('headerLaba').textContent = savedLaba;
+    var totalSalesOffline = 0;
+    var totalTxOffline = 0;
+    var totalProfitOffline = 0;
+
+    // 1. Ambil data terakhir sebelum offline
+    try {
+      totalSalesOffline = parseInt(localStorage.getItem('raw_header_penjualan') || '0') || 0;
+      totalTxOffline = parseInt(localStorage.getItem('raw_header_transaksi') || '0') || 0;
+      totalProfitOffline = parseInt(localStorage.getItem('raw_header_laba') || '0') || 0;
+    } catch(e) {}
+
+    // 2. Gabungkan dengan transaksi offline yang baru dibuat di kasir
+    try {
+      var pending = JSON.parse(localStorage.getItem('webpos_pending_transactions') || '[]');
+      pending.forEach(function(item) {
+        var tx = item.data || {};
+        totalSalesOffline += Number(tx.total || tx.nominal || 0);
+        totalTxOffline += 1;
+        totalProfitOffline += Number(tx.profit || tx.laba || 0);
+      });
+    } catch(e) {}
+
+    document.getElementById('headerPenjualan').textContent = formatRupiah(totalSalesOffline);
+    document.getElementById('headerTransaksi').textContent = totalTxOffline.toLocaleString('id-ID');
+    document.getElementById('headerLaba').textContent = formatRupiah(totalProfitOffline);
     return;
   }
 
@@ -4556,8 +4575,12 @@ async function loadHeaderStats() {
       localStorage.setItem('header_penjualan', formatRupiah(totalSales));
       localStorage.setItem('header_transaksi', totalTx.toString());
       localStorage.setItem('header_laba', formatRupiah(totalProfit));
+      // Simpan angka murni untuk perhitungan offline
+      localStorage.setItem('raw_header_penjualan', totalSales.toString());
+      localStorage.setItem('raw_header_transaksi', totalTx.toString());
+      localStorage.setItem('raw_header_laba', totalProfit.toString());
     } catch(e) {}
-
+    
   } catch (err) {
     console.error('kasir: gagal memuat statistik header', err);
   }
@@ -7171,15 +7194,17 @@ if (kurangiSaldo) {
       document.getElementById('loadingOverlay').classList.remove('active');
     }
 
-    // ⭐ OFFLINE: pakai currentUser sync, jangan nunggu listener
+    // ⭐ OFFLINE: jika ada sesi login di HP, jangan lempar ke login.html
     if (!navigator.onLine) {
       const user = firebase.auth().currentUser;
-      if (user) {
+      const hasSession = localStorage.getItem('webpos_session') || localStorage.getItem('webpos_user') || localStorage.getItem('firebase:authUser:' + (window.firebaseConfig ? window.firebaseConfig.apiKey : '') + ':[DEFAULT]');
+      if (user || hasSession) {
         runInit();
       } else {
         window.location.href = 'login.html';
       }
-    } else {
+    }
+    else {
       firebase.auth().onAuthStateChanged(user => {
         if (!user) {
           window.location.href = 'login.html';
