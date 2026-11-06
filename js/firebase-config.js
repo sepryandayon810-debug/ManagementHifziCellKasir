@@ -19,6 +19,53 @@ if (!window.firebaseConfigInitialized) {
 
   window.auth = firebase.auth();
   window.db = firebase.firestore();
+
+  // 1. AKTIFKAN OFFLINE PERSISTENCE (Bisa baca data saat tanpa sinyal)
+  if (!window.firestorePersistenceEnabled) {
+    window.firestorePersistenceEnabled = true;
+    window.db.enablePersistence({ synchronizeTabs: true })
+      .then(function() {
+        console.log("Firestore Offline Persistence: AKTIF");
+      })
+      .catch(function(err) {
+        console.warn("Firestore Persistence warning:", err.code);
+      });
+  }
+
+  // 2. OTOMATIS UPLOAD SEMUA TRANSAKSI PENDING KE FIRESTORE SAAT ONLINE
+  async function syncPendingTransactionsToFirestore() {
+    if (!navigator.onLine || !window.db) return;
+    try {
+      if (typeof window.getPendingTransactions !== 'function') return;
+      var pending = await window.getPendingTransactions();
+      if (!pending || pending.length === 0) return;
+
+      console.log("Ada " + pending.length + " transaksi offline. Memulai upload ke Firestore...");
+      for (var i = 0; i < pending.length; i++) {
+        var item = pending[i];
+        var dataKirim = Object.assign({}, item.data);
+        delete dataKirim.localId; // Hapus ID lokal sebelum ke cloud
+        dataKirim.syncedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+        // Upload ke koleksi transaksi Firestore
+        await window.db.collection('transaksi').add(dataKirim);
+
+        // Hapus dari antrean lokal setelah sukses terupload
+        if (typeof window.removeSyncedTransaction === 'function') {
+          await window.removeSyncedTransaction(item.localId);
+        }
+      }
+      console.log("Semua transaksi offline berhasil tersinkron ke Firestore!");
+    } catch (e) {
+      console.error("Gagal sinkronisasi transaksi offline:", e);
+    }
+  }
+
+  // Deteksi otomatis saat sinyal internet kembali masuk
+  window.addEventListener('online', syncPendingTransactionsToFirestore);
+  // Cek juga saat aplikasi baru pertama kali dibuka
+  setTimeout(syncPendingTransactionsToFirestore, 4000);
+
   try {
     window.storage = firebase.storage();
   } catch(e) {
