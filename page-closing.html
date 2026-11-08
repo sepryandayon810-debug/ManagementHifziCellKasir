@@ -255,21 +255,61 @@
     .card-header { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
 
-    .denomination-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+    /* PECAHAN UANG 2 KOLOM YANG HEMAT RUANG */
+    .denomination-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+    }
     .denomination-item {
-      display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem 1rem;
-      background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
     }
-    .denomination-item-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-    .denomination-label { font-weight: 700; font-size: 0.95rem; color: var(--text-sub); }
+    .denomination-item:focus-within {
+      border-color: var(--primary);
+      background: var(--bg-surface);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+    .denomination-item-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .denomination-label {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .denomination-total {
+      text-align: right;
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: var(--primary);
+      white-space: nowrap;
+    }
     .denomination-input {
-      width: 100% !important; text-align: left; padding: 0.55rem 0.75rem !important;
-      font-weight: 700; background: var(--bg-surface); border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm); color: var(--text-main); font-size: 1rem; outline: none;
+      width: 100% !important;
+      text-align: center;
+      padding: 0.45rem 0.6rem !important;
+      font-weight: 700;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
     }
-    .denomination-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-    .denomination-total { text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--primary); }
-
+    .denomination-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
     .system-data-grid { display: flex; flex-direction: column; gap: 0.65rem; }
     .system-data-item {
       display: flex; align-items: center; justify-content: space-between;
@@ -911,11 +951,11 @@
               <span class="denomination-label">${d.label}</span>
               <span class="denomination-total" id="total_${d.value}">Rp 0</span>
             </div>
-            <input type="number" class="form-input denomination-input" id="denom_${d.value}" placeholder="Jumlah lembar / keping" min="0" oninput="ClosingCalculator.calculate()">
+            <input type="number" class="form-input denomination-input" id="denom_${d.value}" placeholder="0 lbr" min="0" oninput="ClosingCalculator.calculate()">
           </div>
         `).join('');
       }
-
+      
       window.ClosingCalculator = {
         calculate() {
           fisikTotal = 0;
