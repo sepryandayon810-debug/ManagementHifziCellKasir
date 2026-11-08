@@ -260,6 +260,68 @@ function hideMenuItem(selector) {
     .sidebar [data-menu="log-aktivitas"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-clipboard-list { color: #0284c7 !important; }
     .sidebar [data-menu="printer"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-print { color: #7c3aed !important; }
     .sidebar [data-menu="reset"] i:not(.fa-chevron-down), .sidebar .nav-link i.fa-trash-alt, .sidebar .nav-link i.fa-trash-can { color: #ef4444 !important; }
+    /* ===== WARNA TOMBOL HEADER: DARK MODE & LOGOUT (BERLAKU SEMUA MENU & HALAMAN) ===== */
+    /* 1. Tombol Dark Mode (Aksen Emas / Amber Bulan Bersinar) */
+    .header-actions #btnTheme, .header-actions #themeToggle, .main-header #btnTheme, #btnTheme, #themeToggle, .btn-theme {
+      background: rgba(245, 158, 11, 0.12) !important;
+      border: 1px solid rgba(245, 158, 11, 0.32) !important;
+      color: #f59e0b !important;
+      border-radius: 8px !important;
+      transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    .header-actions #btnTheme i, .header-actions #themeToggle i, .main-header #btnTheme i, #btnTheme i, #themeToggle i, .btn-theme i, i.fa-moon, i.fa-sun {
+      color: #f59e0b !important;
+      transition: transform 0.25s ease !important;
+    }
+    .header-actions #btnTheme:hover, .header-actions #themeToggle:hover, #btnTheme:hover, #themeToggle:hover {
+      background: rgba(245, 158, 11, 0.24) !important;
+      border-color: #f59e0b !important;
+      transform: scale(1.08) !important;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
+    }
+    .header-actions #btnTheme:hover i, #btnTheme:hover i {
+      transform: rotate(18deg) scale(1.15) !important;
+    }
+    [data-theme="dark"] .header-actions #btnTheme, [data-theme="dark"] #btnTheme {
+      background: rgba(251, 191, 36, 0.18) !important;
+      border-color: rgba(251, 191, 36, 0.45) !important;
+      color: #fbbf24 !important;
+    }
+    [data-theme="dark"] .header-actions #btnTheme i, [data-theme="dark"] #btnTheme i {
+      color: #fbbf24 !important;
+    }
+
+    /* 2. Tombol Logout (Aksen Merah Crimson / Coral Berani) */
+    .header-actions #btnLogout, .main-header #btnLogout, #btnLogout, .btn-logout {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border: 1px solid rgba(239, 68, 68, 0.3) !important;
+      color: #ef4444 !important;
+      border-radius: 8px !important;
+      transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    .header-actions #btnLogout i, .main-header #btnLogout i, #btnLogout i, .btn-logout i, i.fa-sign-out-alt, i.fa-right-from-bracket {
+      color: #ef4444 !important;
+      transition: transform 0.25s ease !important;
+    }
+    .header-actions #btnLogout:hover, #btnLogout:hover {
+      background: #ef4444 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+      transform: scale(1.08) !important;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35) !important;
+    }
+    .header-actions #btnLogout:hover i, #btnLogout:hover i {
+      color: #ffffff !important;
+      transform: translateX(2px) scale(1.12) !important;
+    }
+    [data-theme="dark"] .header-actions #btnLogout, [data-theme="dark"] #btnLogout {
+      background: rgba(239, 68, 68, 0.18) !important;
+      border-color: rgba(239, 68, 68, 0.45) !important;
+      color: #f87171 !important;
+    }
+    [data-theme="dark"] .header-actions #btnLogout i, [data-theme="dark"] #btnLogout i {
+      color: #f87171 !important;
+    }
   `;
 
   let styleEl = document.getElementById("webposGlobalThemeStyle");
