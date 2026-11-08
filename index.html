@@ -1017,10 +1017,13 @@
             <span class="kas-item-value expense" id="kasTarikNonTunai">- Rp 0</span>
           </div>
 
-          <div class="kas-item">
+          <div class="kas-item" id="btnOpenPiutangModal" onclick="openPiutangModal()" style="cursor: pointer;" title="Klik untuk melihat rincian pelanggan berhutang">
             <div class="kas-item-info">
               <div class="kas-item-icon warning"><i class="fas fa-hand-holding-usd"></i></div>
-              <span class="kas-item-label">Piutang Aktif (Informasi)</span>
+              <div>
+                <span class="kas-item-label">Piutang Aktif (Informasi)</span>
+                <div style="font-size:0.68rem; color:var(--text-muted); font-weight:500;">Klik lihat rincian &raquo;</div>
+              </div>
             </div>
             <span class="kas-item-value" id="kasPiutang">Rp 0</span>
           </div>
@@ -1323,6 +1326,48 @@
   </div>
 </div>
 
+<!-- MODAL DETAIL PIUTANG AKTIF & PELANGGAN BERHUTANG -->
+<div class="modal-overlay" id="modalPiutangDetail" onclick="if(event.target===this) closePiutangModal()">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title"><i class="fas fa-hand-holding-usd" style="color:var(--warning);"></i> Rincian Piutang / Pelanggan Berhutang</h3>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;" id="piutangModalDateLabel">Hari Ini</div>
+      </div>
+      <button type="button" class="modal-close" onclick="closePiutangModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+      <div class="nt-summary-box">
+        <div class="nt-summary-row">
+          <span><i class="fas fa-file-invoice-dollar" style="color:var(--warning); width:16px;"></i> Total Piutang Tercatat</span>
+          <strong style="color:var(--warning); font-size:1.05rem;" id="piutangSumTotal">Rp 0</strong>
+        </div>
+        <div class="nt-summary-row">
+          <span><i class="fas fa-users" style="color:var(--primary); width:16px;"></i> Jumlah Transaksi / Pelanggan</span>
+          <strong style="color:var(--primary);" id="piutangSumCount">0 Transaksi</strong>
+        </div>
+      </div>
+
+      <div style="font-size:0.75rem; font-weight:700; color:var(--text-sub); margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+        <span><i class="fas fa-list-ul"></i> Daftar Yang Berhutang Hari Ini:</span>
+        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;" id="piutangListBadge">Data Kasir & Debts</span>
+      </div>
+
+      <div class="nt-tx-list" id="piutangTransactionList" style="max-height: 320px;">
+        <!-- Rincian pelanggan berhutang akan dimuat di sini -->
+      </div>
+    </div>
+    <div class="modal-footer" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+      <a href="page-hutang.html" class="btn btn-secondary" style="font-size:0.75rem; text-decoration:none; padding:0.45rem 0.8rem; display:inline-flex; align-items:center; gap:0.35rem;">
+        <i class="fas fa-external-link-alt"></i> Buka Menu Hutang
+      </a>
+      <button type="button" class="btn btn-primary" onclick="closePiutangModal()" style="padding:0.45rem 1.2rem; font-size:0.8rem;">
+        Tutup
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- TEMPATKAN DI SINI: -->
 <div class="toast-box" id="toastContainer"></div>
   
@@ -1584,6 +1629,8 @@ async function healLocalUserTransactions(user, displayName, roleName) {
   let lastDashboardUser = null;
   let cachedNonTunaiSummary = { penjualanNT: 0, bankMasuk: 0, bankKeluar: 0, totalBank: 0 };
   let cachedNonTunaiItems = [];
+  let cachedPiutangSummary = { totalPiutang: 0, count: 0 };
+  let cachedPiutangItems = [];
   let cachedUsersMap = {};
   let cachedKasCoreCols = null;
   let currentNonTunaiFilter = "all";
@@ -2085,6 +2132,172 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     }).join("");
   };
 
+  // ==========================================
+  // 📋 DETAIL LAPORAN PIUTANG & PELANGGAN BERHUTANG HARI INI
+  // ==========================================
+  async function buildPiutangReport(kas, combinedRecords, targetDate) {
+    const items = [];
+    const seen = new Set();
+
+    (combinedRecords || []).forEach(tx => {
+      if (!tx) return;
+      const methodStr = String(tx.metode_pembayaran || tx.paymentMethod || tx.metode || "").toLowerCase();
+      const katStr = String(tx.kategori || tx.category || tx.type || "").toLowerCase();
+      const isHutangMethod = /hutang|utang|tempo|kredit/.test(methodStr);
+      const isPiutangKat = /pinjaman_tunai|piutang/.test(katStr) || (tx.type === 'piutang');
+
+      if (isHutangMethod || isPiutangKat) {
+        const idKey = tx.id || tx.docId || tx.invoiceNumber || makeTxSignature(tx);
+        if (seen.has(idKey)) return;
+        seen.add(idKey);
+
+        const custName = tx.customerName || tx.pelanggan || tx.customer || tx.name || tx.namaPelanggan || tx.nama || "Pelanggan Tanpa Nama";
+        const nominal = safeNum(tx.nominal ?? tx.total ?? tx.amount ?? tx.sisa ?? tx.cash_in ?? tx.cashOut);
+        const timeStr = formatTxTime(tx);
+        const ts = getTxTimestamp(tx);
+        const uId = tx.userId || tx.kasirId || tx.uid || "";
+        const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || tx.kasir || "";
+
+        let desc = "";
+        if (Array.isArray(tx.items) && tx.items.length > 0) {
+          desc = tx.items.map(i => (i.nama || i.name || "Item") + (i.qty ? ` (x${i.qty})` : "")).join(", ");
+        } else if (tx.keterangan || tx.note || tx.catatan) {
+          desc = tx.keterangan || tx.note || tx.catatan;
+        } else if (isHutangMethod) {
+          desc = "Transaksi Kasir (Tempo/Hutang)";
+        } else {
+          desc = "Pinjaman Tunai / Piutang";
+        }
+
+        const rawStatus = String(tx.status || "unpaid").toLowerCase();
+        const isLunas = (/lunas|paid/.test(rawStatus) && safeNum(tx.sisa) === 0);
+        const statusLabel = isLunas ? "Lunas" : "Belum Lunas";
+
+        items.push({
+          id: idKey,
+          name: custName,
+          desc: desc,
+          nominal: nominal,
+          timeStr: timeStr,
+          staffName: staffName,
+          status: statusLabel,
+          ts: ts
+        });
+      }
+    });
+
+    try {
+      const p = targetDate.split("-").map(Number);
+      const startMs = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
+      const endMs = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999).getTime();
+
+      let debtSnap = await db.collection("debts").where("date", "==", targetDate).get();
+      if (debtSnap.empty) debtSnap = await db.collection("debts").where("tanggal", "==", targetDate).get();
+      if (debtSnap.empty) {
+        debtSnap = await db.collection("debts")
+          .where("timestamp", ">=", startMs)
+          .where("timestamp", "<=", endMs)
+          .get();
+      }
+
+      debtSnap.forEach(doc => {
+        const d = doc.data() || {};
+        if (d.type && d.type !== "piutang" && d.type !== "customer") return;
+
+        const idKey = doc.id;
+        if (seen.has(idKey) || (d.transactionId && seen.has(d.transactionId))) return;
+        seen.add(idKey);
+
+        const custName = d.name || d.customerName || d.pelanggan || "Pelanggan Tanpa Nama";
+        const nominal = safeNum(d.remainingAmount ?? d.sisa ?? d.amount ?? d.nominal);
+        const timeStr = formatTxTime(d);
+        const ts = getTxTimestamp(d);
+        const staffName = d.userName || d.kasir || "";
+
+        let desc = "";
+        if (Array.isArray(d.items) && d.items.length > 0) {
+          desc = d.items.map(i => (i.nama || i.name || "Item") + (i.qty ? ` (x${i.qty})` : "")).join(", ");
+        } else {
+          desc = d.note || d.catatan || d.keterangan || "Piutang Pelanggan";
+        }
+
+        const isLunas = d.status === "paid" || d.status === "lunas" || nominal <= 0;
+        const statusLabel = isLunas ? "Lunas" : "Belum Lunas";
+
+        items.push({
+          id: idKey,
+          name: custName,
+          desc: desc,
+          nominal: nominal || safeNum(d.amount),
+          timeStr: timeStr,
+          staffName: staffName,
+          status: statusLabel,
+          ts: ts
+        });
+      });
+    } catch (eDebt) {
+      console.warn("load debts query error:", eDebt);
+    }
+
+    items.sort((a, b) => b.ts - a.ts);
+    const totalPiutang = items.reduce((acc, curr) => acc + curr.nominal, 0);
+
+    return {
+      summary: { totalPiutang: totalPiutang || safeNum(kas.piutang), count: items.length },
+      items
+    };
+  }
+
+  window.openPiutangModal = function() {
+    const modal = document.getElementById("modalPiutangDetail");
+    if (!modal) return;
+    const s = cachedPiutangSummary || { totalPiutang: 0, count: 0 };
+    document.getElementById("piutangModalDateLabel").textContent = "Periode: " + formatKasDateLabel(selectedDashboardDate);
+    document.getElementById("piutangSumTotal").textContent = formatRupiah(s.totalPiutang);
+    document.getElementById("piutangSumCount").textContent = s.count + " Transaksi";
+
+    const listEl = document.getElementById("piutangTransactionList");
+    if (listEl) {
+      if (!cachedPiutangItems || cachedPiutangItems.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.8rem;">' +
+          '<i class="fas fa-check-circle" style="font-size:1.8rem; color:var(--success); margin-bottom:0.5rem; display:block;"></i>' +
+          'Tidak ada transaksi piutang / pelanggan berhutang pada tanggal ini.</div>';
+      } else {
+        listEl.innerHTML = cachedPiutangItems.map(it => {
+          const isLunas = it.status === "Lunas";
+          const badgeStyle = isLunas 
+            ? 'background:var(--success-light); color:var(--success);' 
+            : 'background:rgba(217, 119, 6, 0.12); color:var(--warning);';
+
+          return '<div class="nt-tx-item">' +
+            '<div style="min-width:0; flex:1;">' +
+              '<div style="font-size:0.84rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">' +
+                '<i class="fas fa-user" style="color:var(--text-muted); font-size:0.75rem;"></i> ' + it.name +
+              '</div>' +
+              '<div style="font-size:0.73rem; color:var(--text-sub); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+                it.desc +
+              '</div>' +
+              '<div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">' +
+                it.timeStr + (it.staffName ? ' · Kasir: ' + it.staffName : '') +
+              '</div>' +
+            '</div>' +
+            '<div style="text-align:right; flex-shrink:0;">' +
+              '<div style="font-weight:800; font-size:0.88rem; color:var(--warning);">' + formatRupiah(it.nominal) + '</div>' +
+              '<span style="font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:999px; display:inline-block; margin-top:3px; ' + badgeStyle + '">' +
+                it.status.toUpperCase() +
+              '</span>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+      }
+    }
+    modal.classList.add("active");
+  };
+
+  window.closePiutangModal = function() {
+    document.getElementById("modalPiutangDetail")?.classList.remove("active");
+  };
+
   async function loadDashboardStats(user) {
     lastDashboardUser = user;
     const targetDate = selectedDashboardDate || getTodayString();
@@ -2148,6 +2361,13 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       cachedNonTunaiSummary = ntReport.summary;
       cachedNonTunaiItems = ntReport.items;
+      try {
+        const piutangReport = await buildPiutangReport(kas, combinedRecords, targetDate);
+        cachedPiutangSummary = piutangReport.summary;
+        cachedPiutangItems = piutangReport.items;
+      } catch (ePiutang) {
+        console.warn("Gagal membuat laporan piutang harian:", ePiutang);
+      }
 
       document.getElementById("kasPenjualanNonTunai").textContent = "+ " + formatRupiah(ntReport.summary.penjualanNT);
       document.getElementById("kasTopUpNonTunai").textContent     = "+ " + formatRupiah(ntReport.summary.bankMasuk);
