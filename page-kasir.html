@@ -7300,6 +7300,102 @@ function getSortedCategories() {
   );
 }
   
+    // ===== IKON OTOMATIS & LOGO WARNA OPERATOR UNTUK KATEGORI =====
+  function buildOperatorBadgeSvg(label, bgFrom, bgTo, textColor, fontSize, isVoucher) {
+    var uid = 'op_' + label.replace(/[^a-zA-Z0-9]/g, '') + '_' + (isVoucher ? 'v' : 'p');
+    if (isVoucher) {
+      return '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;">' +
+        '<defs><linearGradient id="' + uid + '" x1="4" y1="8" x2="40" y2="36" gradientUnits="userSpaceOnUse">' +
+        '<stop offset="0%" stop-color="' + bgFrom + '"/><stop offset="100%" stop-color="' + bgTo + '"/></linearGradient></defs>' +
+        '<path d="M6 11C6 8.8 7.8 7 10 7H34C36.2 7 38 8.8 38 11V17.5C35.8 17.5 34 19.3 34 21.5C34 23.7 35.8 25.5 38 25.5V33C38 35.2 36.2 37 34 37H10C7.8 37 6 35.2 6 33V25.5C8.2 25.5 10 23.7 10 21.5C10 19.3 8.2 17.5 6 17.5V11Z" fill="url(#' + uid + ')"/>' +
+        '<line x1="12" y1="13" x2="32" y2="13" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="2.5 2.5"/>' +
+        '<text x="22" y="26.5" text-anchor="middle" fill="' + textColor + '" font-size="' + fontSize + '" font-weight="800" font-family="system-ui,-apple-system,sans-serif">' + label + '</text>' +
+        '<text x="22" y="33.2" text-anchor="middle" fill="' + textColor + '" fill-opacity="0.85" font-size="6" font-weight="700" font-family="system-ui,-apple-system,sans-serif" letter-spacing="0.8">VOUCHER</text>' +
+        '</svg>';
+    }
+    return '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;">' +
+      '<defs><linearGradient id="' + uid + '" x1="4" y1="4" x2="40" y2="40" gradientUnits="userSpaceOnUse">' +
+      '<stop offset="0%" stop-color="' + bgFrom + '"/><stop offset="100%" stop-color="' + bgTo + '"/></linearGradient></defs>' +
+      '<rect x="4" y="4" width="36" height="36" rx="11" fill="url(#' + uid + ')"/>' +
+      '<path d="M13 13.5C15.8 11.2 18.8 10 22 10C25.2 10 28.2 11.2 31 13.5" stroke="' + textColor + '" stroke-opacity="0.42" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<path d="M16.5 16.5C18.2 15.1 20 14.4 22 14.4C24 14.4 25.8 15.1 27.5 16.5" stroke="' + textColor + '" stroke-opacity="0.6" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<text x="22" y="30" text-anchor="middle" fill="' + textColor + '" font-size="' + fontSize + '" font-weight="900" font-family="system-ui,-apple-system,sans-serif">' + label + '</text>' +
+      '</svg>';
+  }
+
+  function getAutoCategoryVisual(cat, fallbackColor) {
+    if (cat && cat.icon && cat.icon !== '🏷️') {
+      return { color: fallbackColor, bg: fallbackColor + '22', emoji: cat.icon, html: cat.icon };
+    }
+    var n = ((cat && cat.name) || '').toLowerCase();
+    var isVoucher = n.indexOf('voucher') !== -1 || n.indexOf('vcr') !== -1;
+
+    if (n.indexOf('telkomsel') !== -1 || n.indexOf('tsel') !== -1 || n.indexOf('simpati') !== -1) {
+      return { color: '#dc2626', bg: '#fee2e2', emoji: isVoucher ? '🎟️' : '🔴', html: buildOperatorBadgeSvg('TSEL', '#ef4444', '#b91c1c', '#FFFFFF', 10.5, isVoucher) };
+    }
+    if (n.indexOf('axis') !== -1) {
+      return { color: '#7e22ce', bg: '#f3e8ff', emoji: isVoucher ? '🎟️' : '🟣', html: buildOperatorBadgeSvg('AXIS', '#a855f7', '#6b21a8', '#FFFFFF', 10.5, isVoucher) };
+    }
+    if (n.indexOf('xl') !== -1) {
+      return { color: '#1d4ed8', bg: '#dbeafe', emoji: isVoucher ? '🎟️' : '🔵', html: buildOperatorBadgeSvg('XL', '#3b82f6', '#1e3a8a', '#FFFFFF', 14, isVoucher) };
+    }
+    if (n.indexOf('im3') !== -1 || n.indexOf('indosat') !== -1) {
+      return { color: '#ca8a04', bg: '#fef9c3', emoji: isVoucher ? '🎟️' : '🟡', html: buildOperatorBadgeSvg('IM3', '#facc15', '#ea580c', '#1f2937', 12.5, isVoucher) };
+    }
+    if (n.indexOf('by.u') !== -1 || n.indexOf('byu') !== -1) {
+      return { color: '#0284c7', bg: '#e0f2fe', emoji: isVoucher ? '🎟️' : '🩵', html: buildOperatorBadgeSvg('by.U', '#38bdf8', '#0369a1', '#FFFFFF', 11.5, isVoucher) };
+    }
+    if (n.indexOf('smart') !== -1) {
+      return { color: '#e11d48', bg: '#ffe4e6', emoji: isVoucher ? '🎟️' : '🩷', html: buildOperatorBadgeSvg('SF', '#fb7185', '#be123c', '#FFFFFF', 13.5, isVoucher) };
+    }
+    if (n.indexOf('tri') !== -1 || n.indexOf('three') !== -1) {
+      return { color: '#db2777', bg: '#fce7f3', emoji: isVoucher ? '🎟️' : '3️⃣', html: buildOperatorBadgeSvg('3', '#3f3f46', '#18181b', '#f472b6', 17, isVoucher) };
+    }
+    if (n.indexOf('token') !== -1 || n.indexOf('pln') !== -1 || n.indexOf('listrik') !== -1) {
+      return {
+        color: '#d97706', bg: '#fef3c7', emoji: '⚡',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><rect x="4" y="4" width="36" height="36" rx="11" fill="#0284c7"/><path d="M24.5 9L13 24H21.2L19.5 35L31 20H22.8L24.5 9Z" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.2" stroke-linejoin="round"/></svg>'
+      };
+    }
+    if (n.indexOf('perdana') !== -1 || n.indexOf('sim') !== -1 || n.indexOf('kartu') !== -1) {
+      return {
+        color: '#ea580c', bg: '#ffedd5', emoji: '📱',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><path d="M12 6H26L34 14V34C34 36.2 32.2 38 30 38H12C9.8 38 8 36.2 8 34V10C8 7.8 9.8 6 12 6Z" fill="#ea580c"/><rect x="14" y="19" width="14" height="12" rx="2.5" fill="#fde047" stroke="#FFFFFF" stroke-width="1.3"/><path d="M14 25H28M21 19V31" stroke="#b45309" stroke-width="1.2"/></svg>'
+      };
+    }
+    if (n.indexOf('aksesoris') !== -1 || n.indexOf('acces') !== -1 || n.indexOf('charger') !== -1 || n.indexOf('kabel') !== -1) {
+      return {
+        color: '#0d9488', bg: '#ccfbf1', emoji: '🎧',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><path d="M10 24V21C10 14.4 15.4 9 22 9C28.6 9 34 14.4 34 21V24" stroke="#0d9488" stroke-width="4" stroke-linecap="round"/><rect x="7" y="22" width="7.5" height="13" rx="3.75" fill="#0f766e"/><rect x="29.5" y="22" width="7.5" height="13" rx="3.75" fill="#0f766e"/><rect x="10" y="25" width="2" height="7" rx="1" fill="#ccfbf1"/><rect x="32" y="25" width="2" height="7" rx="1" fill="#ccfbf1"/></svg>'
+      };
+    }
+    if (n.indexOf('game') !== -1) {
+      return {
+        color: '#4f46e5', bg: '#e0e7ff', emoji: '🎮',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><path d="M13 14H31C35.5 14 38.5 18 37.8 23L36.5 30.5C36 33 33.4 34.4 31.2 33L27.5 30.5H16.5L12.8 33C10.6 34.4 8 33 7.5 30.5L6.2 23C5.5 18 8.5 14 13 14Z" fill="#4f46e5"/><path d="M14.5 19.5V25.5M11.5 22.5H17.5" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/><circle cx="28.5" cy="21" r="1.8" fill="#fde047"/><circle cx="31.5" cy="24" r="1.8" fill="#34d399"/></svg>'
+      };
+    }
+    if (n.indexOf('gas') !== -1 || n.indexOf('lpg') !== -1) {
+      return {
+        color: '#16a34a', bg: '#dcfce7', emoji: '🟢',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><path d="M17 11V8C17 6.9 17.9 6 19 6H25C26.1 6 27 6.9 27 8V11" stroke="#15803d" stroke-width="2.5" stroke-linecap="round"/><rect x="20" y="9" width="4" height="4" rx="1" fill="#dc2626"/><rect x="11" y="13" width="22" height="24" rx="8.5" fill="#16a34a"/><rect x="15" y="36" width="14" height="3" rx="1.5" fill="#166534"/><path d="M22 19C22 19 26 22.5 26 25.5C26 27.7 24.2 29.5 22 29.5C19.8 29.5 18 27.7 18 25.5C18 22.5 22 19 22 19Z" fill="#fde047"/></svg>'
+      };
+    }
+    if (n.indexOf('kain') !== -1 || n.indexOf('batik') !== -1 || n.indexOf('sarung') !== -1 || n.indexOf('baju') !== -1) {
+      return {
+        color: '#9333ea', bg: '#f3e8ff', emoji: '🧣',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><rect x="8" y="8" width="28" height="28" rx="7" fill="#9333ea"/><path d="M14 14L22 22L30 14M14 22L22 30L30 22" stroke="#f5d0fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="22" cy="14" r="1.8" fill="#fde047"/><circle cx="22" cy="22" r="1.8" fill="#fde047"/><circle cx="22" cy="30" r="1.8" fill="#fde047"/></svg>'
+      };
+    }
+    if (n.indexOf('parfum') !== -1 || n.indexOf('wangi') !== -1) {
+      return {
+        color: '#ec4899', bg: '#fce7f3', emoji: '🌸',
+        html: '<svg viewBox="0 0 44 44" fill="none" style="width:36px;height:36px;display:block;"><rect x="17.5" y="7" width="9" height="5" rx="2" fill="#f59e0b"/><rect x="19.5" y="12" width="5" height="3.5" fill="#d97706"/><rect x="11" y="15.5" width="22" height="22" rx="6.5" fill="#ec4899"/><rect x="16" y="21.5" width="12" height="10" rx="2.5" fill="#FFFFFF" fill-opacity="0.9"/><path d="M19 26.5H25" stroke="#be185d" stroke-width="1.8" stroke-linecap="round"/></svg>'
+      };
+    }
+    return { color: fallbackColor, bg: fallbackColor + '22', emoji: '🏷️', html: '🏷️' };
+  }
+
     function renderCategoryGrid() {
       const grid = document.getElementById('categoryGrid');
       const countEl = document.getElementById('categoryCount');
@@ -7310,14 +7406,14 @@ function getSortedCategories() {
     const pillColors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
     let html = '<div class="category-pills" style="grid-column:1/-1;padding-bottom:.25rem;">';
     html += '<button class="category-pill active" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-    getSortedCategories().forEach(function(cat) {
+    getSortedCategories().forEach(function(cat, idx) {
     var safeName = (cat.name || '').replace(/'/g, "\\'");
-    var icon = cat.icon || '🏷️';
-      html += '<button class="category-pill" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'' + (pillColors[0]) + '\')">' + icon + ' ' + cat.name + '</button>';
+    var vis = getAutoCategoryVisual(cat, pillColors[idx % pillColors.length]);
+      html += '<button class="category-pill" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' + vis.emoji + ' ' + cat.name + '</button>';
     });
     html += '</div>';
     grid.innerHTML = html;
-    return; // sisanya (grid tiles) tidak dirender
+    return;
   }
 
       const colors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
@@ -7334,14 +7430,14 @@ function getSortedCategories() {
         '</button>';
 
       getSortedCategories().forEach(function(cat, i) {
-    var color = colors[i % colors.length];
+    var fallbackColor = colors[i % colors.length];
         var count = countByCategory[cat.id] || 0;
-        var icon = cat.icon || '🏷️';
+        var vis = getAutoCategoryVisual(cat, fallbackColor);
         var safeName = cat.name.replace(/'/g, "\\'");
-        html += '<button class="cat-grid-btn" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'' + color + '\')">' +
-          '<div class="cat-grid-icon" style="background:' + color + '22">' + icon + '</div>' +
+        html += '<button class="cat-grid-btn" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' +
+          '<div class="cat-grid-icon" style="background:' + vis.bg + '">' + vis.html + '</div>' +
           '<span class="cat-grid-name">' + cat.name + '</span>' +
-          (count > 0 ? '<span class="cat-grid-badge" style="background:' + color + '">' + count + '</span>' : '') +
+          (count > 0 ? '<span class="cat-grid-badge" style="background:' + vis.color + '">' + count + '</span>' : '') +
           '</button>';
       });
 
@@ -7355,12 +7451,11 @@ function getSortedCategories() {
       let html = '<button class="category-pill' + (currentCategory === 'all' ? ' active' : '') + '" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
       getSortedCategories().forEach(function(cat) {
     var safeName = (cat.name || '').replace(/'/g, "\\'");
-    var icon = cat.icon || '🏷️';
-        html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + icon + '\',\'\')">' + icon + ' ' + cat.name + '</button>';
+    var vis = getAutoCategoryVisual(cat, '#059669');
+        html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'\')">' + vis.emoji + ' ' + cat.name + '</button>';
       });
       bar.innerHTML = html;
     }
-
     // ===== TAMPILKAN LAYER PRODUK (klik kategori) =====
     function showLayerProduk(categoryId, categoryName, icon, color) {
       currentCategory = categoryId;
