@@ -2067,16 +2067,68 @@ function getDisplayDebtName(data) {
             a.displayName.localeCompare(b.displayName)
           );
           
+          function getDebtTimestampMs(it) {
+            if (!it) return 0;
+            const candidates = [it.created_at, it.createdAt, it.waktu, it.timestamp, it.updatedAt, it.date];
+            for (let i = 0; i < candidates.length; i++) {
+              const v = candidates[i];
+              if (v === null || v === undefined || v === '') continue;
+              if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+              if (typeof v === 'object') {
+                if (typeof v.toMillis === 'function') return v.toMillis();
+                if (typeof v.seconds === 'number') return v.seconds * 1000;
+              }
+              const s = String(v).trim();
+              if (/^\d{10,13}$/.test(s)) return s.length === 10 ? Number(s) * 1000 : Number(s);
+              const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+              if (ymd) return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12, 0, 0).getTime();
+              const parsed = Date.parse(s);
+              if (Number.isFinite(parsed)) return parsed;
+            }
+            return 0;
+          }
+
+          function hasExactDebtTime(it) {
+            if (!it) return false;
+            const t = it.created_at || it.createdAt || it.waktu || it.timestamp;
+            if (!t) return false;
+            if (typeof t === 'number') return true;
+            if (typeof t === 'object' && (typeof t.toMillis === 'function' || typeof t.seconds === 'number')) return true;
+            return /^\d{10,13}$/.test(String(t).trim()) || String(t).includes(':');
+          }
+
+          function getDebtDateKey(it) {
+            const ms = getDebtTimestampMs(it);
+            if (ms > 0) {
+              const d = new Date(ms);
+              return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            if (it && typeof it.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.date.trim())) {
+              return it.date.trim();
+            }
+            return '0000-00-00';
+          }
+
+          function formatDebtDateHeader(dateKey) {
+            if (!dateKey || dateKey === '0000-00-00') return 'Tanpa Tanggal';
+            const p = dateKey.split('-');
+            if (p.length !== 3) return dateKey;
+            const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+            return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+          }
+
+          function formatShortDate(ms) {
+            if (!ms) return '-';
+            return new Date(ms).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+          }
+
           groupedArray.forEach(group => {
-            group.firstDate = group.items.reduce((min, it) => {
-  const t = it.createdAt || it.date || it.updatedAt;
-  if (!t) return min;
-  const ms = typeof t === 'number' ? t : new Date(t).getTime();
-  return (!min || ms < min) ? ms : min;
-}, null);
-            group.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            group.items.sort((a, b) => getDebtTimestampMs(b) - getDebtTimestampMs(a));
+            const validTimes = group.items.map(getDebtTimestampMs).filter(ms => ms > 0);
+            group.firstDate = validTimes.length ? Math.min(...validTimes) : null;
+            group.lastDate = validTimes.length ? Math.max(...validTimes) : null;
           });
-          
+
           if (groupedArray.length === 0) {
             const message = currentSearch 
               ? `Tidak ada hasil untuk "${currentSearch}"`
@@ -2090,10 +2142,108 @@ function getDisplayDebtName(data) {
           } else {
             groupedArray.forEach(group => {
               const isPaid = !group.hasActive;
-              const groupId = 'group_' + group.displayName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+              const groupId = 'group_' + group.type + '_' + group.displayName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
               const totalAmount = group.items.reduce((sum, item) => sum + (item.amount || 0), 0);
-              
               const safeGroupName = group.displayName.replace(/'/g, "\\'");
+
+              // Rentang tanggal ringkas di header kartu pelanggan
+              const firstStr = formatShortDate(group.firstDate);
+              const lastStr = formatShortDate(group.lastDate);
+              const dateRangeText = (firstStr === lastStr) ? lastStr : `${firstStr} – ${lastStr}`;
+
+              // Kelompokkan rincian transaksi per tanggal (terbaru di atas)
+              const dateBucketMap = {};
+              group.items.forEach(item => {
+                const dk = getDebtDateKey(item);
+                if (!dateBucketMap[dk]) dateBucketMap[dk] = [];
+                dateBucketMap[dk].push(item);
+              });
+              const sortedDateKeys = Object.keys(dateBucketMap).sort((a, b) => b.localeCompare(a));
+
+              const detailByDateHtml = sortedDateKeys.map(dk => {
+                const dayItems = dateBucketMap[dk];
+                const dayTotal = dayItems.reduce((s, it) => s + Number(it.remaining != null ? it.remaining : (it.amount || 0)), 0);
+                const dateLabel = formatDebtDateHeader(dk);
+
+                const itemsHtml = dayItems.map(item => {
+                  const isItemPaid = item.status === 'paid' || item.status === 'inactive';
+                  const itemName = getTransactionItemName(item);
+                  const ms = getDebtTimestampMs(item);
+                  const timeStr = (ms > 0 && hasExactDebtTime(item))
+                    ? new Date(ms).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  const remainingVal = Number(item.remaining != null ? item.remaining : (item.amount || 0));
+                  const totalVal = Number(item.amount || 0);
+                  const isPartial = !isItemPaid && totalVal > 0 && remainingVal < totalVal;
+                  const shortNota = item.invoiceNumber
+                    ? (String(item.invoiceNumber).length > 10 ? '#' + String(item.invoiceNumber).slice(-6).toUpperCase() : '#' + item.invoiceNumber)
+                    : '';
+                  const accentColor = item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)';
+
+                  return `
+                    <div style="display:flex; flex-direction:column; gap:0.45rem; padding:0.7rem 0.8rem; background:var(--bg-surface); border-radius:10px; border:1px solid var(--border); border-left:3.5px solid ${accentColor};">
+                      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.65rem;">
+                        <div style="font-weight:700; color:var(--text-main); font-size:0.86rem; line-height:1.35; word-break:break-word; flex:1; min-width:0;">
+                          ${itemName}
+                        </div>
+                        <div style="text-align:right; flex-shrink:0;">
+                          <div style="font-weight:800; color:${isItemPaid ? 'var(--success)' : accentColor}; font-size:0.9rem; ${isItemPaid ? 'text-decoration:line-through; opacity:0.7;' : ''}">
+                            ${Utils.formatRupiah(remainingVal)}
+                          </div>
+                          ${isPartial ? `<div style="font-size:0.66rem; color:var(--text-muted); margin-top:1px;">dari ${Utils.formatRupiah(totalVal)}</div>` : ''}
+                        </div>
+                      </div>
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; padding-top:0.35rem; border-top:1px dashed var(--border);">
+                        <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; font-size:0.72rem; color:var(--text-muted);">
+                          <span class="status-badge ${isItemPaid ? 'inactive' : 'active'}" style="font-size:0.62rem; padding:0.12rem 0.42rem;">
+                            ${isItemPaid ? 'Lunas' : 'Aktif'}
+                          </span>
+                          ${timeStr ? `<span><i class="far fa-clock" style="margin-right:3px;"></i>${timeStr}</span>` : ''}
+                          ${shortNota ? `<span style="font-weight:600; background:var(--bg-subtle); padding:1px 6px; border-radius:5px;">${shortNota}</span>` : ''}
+                        </div>
+                        <div style="display:flex; gap:0.3rem; margin-left:auto;">
+                          ${!isItemPaid ? `
+                            <button class="btn-icon-sm btn-pay" onclick="window.openPayment('${item.id}')" title="Bayar" style="width:28px; height:28px; min-width:28px;">
+                              <i class="fas fa-money-bill-wave" style="font-size:0.74rem;"></i>
+                            </button>
+                            <button class="btn-icon-sm btn-transfer" onclick="window.openTransferSingle('${item.id}')" title="Transfer / Alihkan Hutang" style="width:28px; height:28px; min-width:28px;">
+                              <i class="fas fa-exchange-alt" style="font-size:0.72rem;"></i>
+                            </button>
+                          ` : `
+                            <button class="btn-icon-sm btn-restore" onclick="window.restoreHutang('${item.id}')" title="Restore" style="width:28px; height:28px; min-width:28px;">
+                              <i class="fas fa-undo" style="font-size:0.74rem;"></i>
+                            </button>
+                          `}
+                          <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
+                            <i class="fas fa-edit" style="font-size:0.74rem;"></i>
+                          </button>
+                          <button class="btn-icon-sm btn-delete" onclick="window.deleteHutang('${item.id}')" title="Hapus" style="width:28px; height:28px; min-width:28px;">
+                            <i class="fas fa-trash" style="font-size:0.74rem;"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('');
+
+                return `
+                  <div style="margin-bottom:0.75rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; padding:0.32rem 0.6rem; margin-bottom:0.4rem; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; font-size:0.73rem;">
+                      <span style="font-weight:700; color:var(--text-main); display:inline-flex; align-items:center; gap:0.35rem;">
+                        <i class="fas fa-calendar-alt" style="color:var(--primary);"></i>
+                        ${dateLabel}
+                        <span style="font-weight:600; color:var(--text-muted);">(${dayItems.length})</span>
+                      </span>
+                      <span style="font-weight:700; color:${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'};">
+                        ${Utils.formatRupiah(dayTotal)}
+                      </span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.45rem;">
+                      ${itemsHtml}
+                    </div>
+                  </div>
+                `;
+              }).join('');
 
               html += `
                 <div class="hutang-item" onclick="window.toggleDetail('${groupId}')" style="cursor: pointer; border-left: 4px solid ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'};">
@@ -2110,12 +2260,12 @@ function getDisplayDebtName(data) {
                           ${group.items.length} transaksi
                         </span>
                       </div>
-                      <div style="display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.25rem 0.65rem; margin-top: 0.25rem; font-size: 0.78rem; color: var(--text-muted);">
                         <span>Total: ${Utils.formatRupiah(totalAmount)}</span>
                         <span>•</span>
                         <span>Sisa: <span style="color: ${group.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">${Utils.formatRupiah(group.totalRemaining)}</span></span>
                         <span>•</span>
-<span><i class="fas fa-calendar-day" style="margin-right:0.25rem;"></i>${group.firstDate ? new Date(group.firstDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-'}</span>
+                        <span><i class="fas fa-calendar-day" style="margin-right:0.25rem;"></i>${dateRangeText}</span>
                       </div>
                     </div>
                   </div>
@@ -2142,78 +2292,23 @@ function getDisplayDebtName(data) {
                 <!-- DETAIL PER TANGGAL -->
                 <div class="hutang-detail-row" id="detail-${groupId}">
                   <div class="hutang-detail-content">
-                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-  <div style="font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
-    Detail Transaksi / Rincian Produk
-  </div>
-  ${!isPaid ? `
-    <button class="btn btn-transfer-outline btn-sm" onclick="window.openTransferGroup('${safeGroupName}', '${group.type}')" style="padding: 2px 8px; font-size: 0.72rem;">
-      <i class="fas fa-exchange-alt"></i> Alihkan Semua
-    </button>
-  ` : ''}
-</div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                      ${group.items.map((item, idx) => {
-                        const rawDate = item.createdAt || item.date || item.updatedAt;
-const createdDate = rawDate
-  ? new Date(rawDate).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
-  : '-';
-                        const isItemPaid = item.status === 'paid' || item.status === 'inactive';
-                        const itemName = getTransactionItemName(item);
-                        
-                        return `
-                          <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 0.75rem; background: var(--bg-surface); border-radius: 8px; border-left: 3px solid ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; gap: 0.5rem;">
-                            <div style="flex: 1; min-width: 140px;">
-                              <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">
-                                ${itemName}
-                              </div>
-                              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
-                                <i class="fas fa-calendar-alt" style="margin-right: 0.25rem;"></i>${createdDate}
-                                ${item.invoiceNumber ? ` | <span style="font-weight:600;">Nota: ${item.invoiceNumber}</span>` : ''}
-                              </div>
-                              <div style="margin-top: 0.25rem;">
-                                <span class="status-badge ${isItemPaid ? 'inactive' : 'active'}" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">
-                                  ${isItemPaid ? 'Lunas' : 'Aktif'}
-                                </span>
-                              </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
-                              <div style="text-align: right;">
-                                <div style="font-weight: 800; color: ${item.type === 'hutang' ? 'var(--danger)' : 'var(--warning)'}; font-size: 0.92rem;">
-                                  ${Utils.formatRupiah(item.remaining || item.amount || 0)}
-                                </div>
-                              </div>
-                              <div style="display: flex; gap: 0.25rem;">
-                               ${!isItemPaid ? `
-                                  <button class="btn-icon-sm btn-pay" onclick="window.openPayment('${item.id}')" title="Bayar" style="width: 28px; height: 28px; min-width: 28px;">
-                                    <i class="fas fa-money-bill-wave" style="font-size: 0.75rem;"></i>
-                                  </button>
-                                  <button class="btn-icon-sm btn-transfer" onclick="window.openTransferSingle('${item.id}')" title="Transfer / Alihkan Hutang" style="width: 28px; height: 28px; min-width: 28px;">
-                                    <i class="fas fa-exchange-alt" style="font-size: 0.72rem;"></i>
-                                  </button>
-                                ` : `
-                                  <button class="btn-icon-sm btn-restore" onclick="window.restoreHutang('${item.id}')" title="Restore" style="width: 28px; height: 28px; min-width: 28px;">
-                                    <i class="fas fa-undo" style="font-size: 0.75rem;"></i>
-                                  </button>
-                                `}
-                                <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width: 28px; height: 28px; min-width: 28px;">
-                                  <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
-                                </button>
-                                <button class="btn-icon-sm btn-delete" onclick="window.deleteHutang('${item.id}')" title="Hapus" style="width: 28px; height: 28px; min-width: 28px;">
-                                  <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        `;
-                      }).join('')}
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem;">
+                      <div style="font-weight: 700; color: var(--text-muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.3px;">
+                        Detail Transaksi per Tanggal
+                      </div>
+                      ${!isPaid ? `
+                        <button class="btn btn-transfer-outline btn-sm" onclick="window.openTransferGroup('${safeGroupName}', '${group.type}')" style="padding: 2px 8px; font-size: 0.72rem;">
+                          <i class="fas fa-exchange-alt"></i> Alihkan Semua
+                        </button>
+                      ` : ''}
                     </div>
+                    ${detailByDateHtml}
                   </div>
                 </div>
               `;
             });
           }
-          
+
           list.innerHTML = html;
         }
         
