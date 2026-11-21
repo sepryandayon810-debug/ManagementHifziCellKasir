@@ -178,3 +178,12 @@ if (!window.firebaseConfigInitialized) {
 var auth = window.auth;
 var db = window.db;
 var storage = window.storage;
+
+// 3. DAFTARKAN SERVICE WORKER (Agar pindah menu cepat & tetap bisa dibuka saat offline)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js')
+      .then(function() { console.log('Service Worker: AKTIF'); })
+      .catch(function(err) { console.warn('Service Worker gagal daftar:', err); });
+  });
+}
