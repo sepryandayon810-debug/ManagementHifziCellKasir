@@ -11,7 +11,7 @@ if (!window.firebaseConfigInitialized) {
   appId: "1:275855765943:web:93ed6975a3417fb3c73832"
 };
 
-
+  window.firebaseConfig = firebaseConfig;
 
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -19,6 +19,11 @@ if (!window.firebaseConfigInitialized) {
 
   window.auth = firebase.auth();
   window.db = firebase.firestore();
+
+  // Pastikan sesi login tersimpan lokal permanen di HP/WebView
+  try {
+    window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (e) {}
 
   // 1. AKTIFKAN OFFLINE PERSISTENCE (Bisa baca data saat tanpa sinyal)
   if (!window.firestorePersistenceEnabled) {
@@ -32,16 +37,73 @@ if (!window.firebaseConfigInitialized) {
       });
   }
 
-  // Simpan UID user terakhir agar transaksi offline selalu punya userId valid
-  if (window.auth && typeof window.auth.onAuthStateChanged === 'function') {
-    window.auth.onAuthStateChanged(function(user) {
-      if (user && user.uid) {
-        try {
-          localStorage.setItem('webpos_last_uid', user.uid);
-          if (user.displayName) localStorage.setItem('webpos_last_username', user.displayName);
-        } catch (e) {}
+  // 1b. PENJAGA SESI LOGIN SAAT OFFLINE (Untuk semua 29 halaman agar pindah menu offline tidak ke-logout)
+  function _getCachedOfflineUser() {
+    try {
+      var raw = localStorage.getItem('webpos_session');
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.uid) {
+        return {
+          uid: parsed.uid,
+          email: parsed.email || 'kasir@offline.local',
+          displayName: parsed.displayName || '',
+          isOfflineSession: true
+        };
       }
-    });
+    } catch (e) {}
+    return null;
+  }
+
+  if (window.auth && typeof window.auth.signOut === 'function' && !window.auth.__offlineGuardWrapped) {
+    window.auth.__offlineGuardWrapped = true;
+
+    // Jika user klik Logout asli -> bersihkan sesi lokal
+    var _origSignOut = window.auth.signOut.bind(window.auth);
+    window.auth.signOut = function() {
+      try {
+        localStorage.removeItem('webpos_session');
+        localStorage.removeItem('webpos_last_uid');
+        localStorage.removeItem('webpos_last_username');
+      } catch (e) {}
+      return _origSignOut.apply(window.auth, arguments);
+    };
+
+    // Jika offline dan masih ada sesi login tersimpan -> jangan lempar ke login.html
+    var _origOnAuthStateChanged = window.auth.onAuthStateChanged.bind(window.auth);
+    window.auth.onAuthStateChanged = function(nextOrObserver, error, completed) {
+      var cb = (typeof nextOrObserver === 'function')
+        ? nextOrObserver
+        : (nextOrObserver && typeof nextOrObserver.next === 'function' ? nextOrObserver.next.bind(nextOrObserver) : null);
+      if (!cb) return _origOnAuthStateChanged(nextOrObserver, error, completed);
+
+      return _origOnAuthStateChanged(function(user) {
+        if (user && user.uid) {
+          try {
+            localStorage.setItem('webpos_session', JSON.stringify({
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || ''
+            }));
+            localStorage.setItem('webpos_last_uid', user.uid);
+            if (user.displayName) localStorage.setItem('webpos_last_username', user.displayName);
+          } catch (e) {}
+          cb(user);
+          return;
+        }
+        if (!navigator.onLine) {
+          var offlineUser = _getCachedOfflineUser();
+          if (offlineUser) {
+            cb(offlineUser);
+            return;
+          }
+        }
+        cb(null);
+      }, error, completed);
+    };
+
+    // Simpan sesi begitu auth siap saat online
+    window.auth.onAuthStateChanged(function() {});
   }
 
   // 2. OTOMATIS UPLOAD SEMUA TRANSAKSI PENDING KE FIRESTORE SAAT ONLINE (SATU PINTU UNTUK SEMUA HALAMAN)
