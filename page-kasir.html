@@ -7396,27 +7396,118 @@ function getSortedCategories() {
     return { color: fallbackColor, bg: fallbackColor + '22', emoji: '🏷️', html: '🏷️' };
   }
 
+    // ===== HELPER IKON / LOGO KATEGORI (Prioritas: 1. Logo Upload dari Produk -> 2. SVG Otomatis Operator/Produk) =====
+    function buildOperatorBadgeSvg(bg, fg, label, fontSize) {
+      return '<svg viewBox="0 0 36 36" width="30" height="30" fill="none">' +
+        '<rect x="2" y="2" width="32" height="32" rx="9" fill="' + bg + '"/>' +
+        '<text x="18" y="22" text-anchor="middle" fill="' + fg + '" font-family="system-ui,-apple-system,sans-serif" font-weight="900" font-size="' + (fontSize || 11) + '">' + label + '</text>' +
+      '</svg>';
+    }
+
+    function getAutoCategoryVisual(cat, fallbackColor) {
+      var rawImg = (cat && cat.imageUrl) ? String(cat.imageUrl).trim() : '';
+      var n = (cat && cat.name ? cat.name : '').toLowerCase();
+
+      // 1) PRIORITAS UTAMA: Logo / Foto yang di-upload dari halaman Produk (cat.imageUrl)
+      if (rawImg) {
+        return {
+          hasImage: true,
+          imageUrl: rawImg,
+          color: fallbackColor,
+          bg: 'transparent',
+          emoji: (cat && cat.icon) ? cat.icon : '🏷️',
+          html: '<img src="' + rawImg + '" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:10px;display:block;">',
+          pillHtml: '<img src="' + rawImg + '" alt="" style="width:18px;height:18px;object-fit:contain;border-radius:4px;vertical-align:middle;margin-right:4px;">'
+        };
+      }
+
+      // 2) FALLBACK OTOMATIS: Jika belum di-upload logo, pakai ikon SVG operator / jenis produk
+      var color = fallbackColor;
+      var emoji = (cat && cat.icon) ? cat.icon : '🏷️';
+      var svg = '';
+
+      if (n.indexOf('telkomsel') !== -1 || n.indexOf('tsel') !== -1) {
+        color = '#E11D48'; emoji = '🔴';
+        svg = buildOperatorBadgeSvg('#E11D48', '#FFFFFF', 'TSEL', 10);
+      } else if (n.indexOf('axis') !== -1) {
+        color = '#7C3AED'; emoji = '🟣';
+        svg = buildOperatorBadgeSvg('#7C3AED', '#FFFFFF', 'AXIS', 10);
+      } else if (n.indexOf('xl') !== -1) {
+        color = '#1D4ED8'; emoji = '🔵';
+        svg = buildOperatorBadgeSvg('#1D4ED8', '#FFFFFF', 'XL', 13);
+      } else if (n.indexOf('im3') !== -1 || n.indexOf('indosat') !== -1) {
+        color = '#D97706'; emoji = '🟡';
+        svg = buildOperatorBadgeSvg('#F59E0B', '#111827', 'IM3', 11);
+      } else if (n.indexOf('by.u') !== -1 || n.indexOf('byu') !== -1) {
+        color = '#0EA5E9'; emoji = '🩵';
+        svg = buildOperatorBadgeSvg('#0284C7', '#FFFFFF', 'by.U', 10);
+      } else if (n.indexOf('smart') !== -1) {
+        color = '#DB2777'; emoji = '🩷';
+        svg = buildOperatorBadgeSvg('#DB2777', '#FFFFFF', 'SF', 13);
+      } else if (n.indexOf('tri') !== -1 || n.indexOf('three') !== -1) {
+        color = '#1E293B'; emoji = '⚫';
+        svg = buildOperatorBadgeSvg('#1E293B', '#FFFFFF', '3', 16);
+      } else if (n.indexOf('voucher') !== -1) {
+        color = '#EA580C'; emoji = '🎟️';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>';
+      } else if (n.indexOf('token') !== -1 || n.indexOf('pln') !== -1 || n.indexOf('listrik') !== -1) {
+        color = '#D97706'; emoji = '⚡';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#F59E0B" stroke="#B45309" stroke-width="1.5" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>';
+      } else if (n.indexOf('perdana') !== -1 || n.indexOf('sim') !== -1) {
+        color = '#0D9488'; emoji = '💳';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><rect x="8" y="11" width="8" height="7" rx="1"/></svg>';
+      } else if (n.indexOf('gas') !== -1 || n.indexOf('lpg') !== -1) {
+        color = '#16A34A'; emoji = '🟢';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v3M14 3v3"/><rect x="6" y="6" width="12" height="14" rx="5"/><path d="M8 21h8M9 12h6"/></svg>';
+      } else if (n.indexOf('parfum') !== -1) {
+        color = '#E11D48'; emoji = '🧴';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#E11D48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="3" rx="1"/><path d="M12 6v2"/><rect x="6" y="8" width="12" height="13" rx="3"/><path d="M9 14h6"/></svg>';
+      } else if (n.indexOf('game') !== -1) {
+        color = '#4F46E5'; emoji = '🎮';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1" fill="#4F46E5"/><circle cx="18" cy="13" r="1" fill="#4F46E5"/></svg>';
+      } else if (n.indexOf('aksesoris') !== -1) {
+        color = '#0284C7'; emoji = '🎧';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v3a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M16 14v3a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1a2 2 0 0 0-2 2z"/><path d="M3 14a9 9 0 0 1 18 0"/></svg>';
+      } else if (n.indexOf('kain') !== -1 || n.indexOf('baju') !== -1) {
+        color = '#9333EA'; emoji = '🧵';
+        svg = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#9333EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3z"/><path d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>';
+      } else {
+        svg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+      }
+
+      return {
+        hasImage: false,
+        imageUrl: '',
+        color: color,
+        bg: color + '18',
+        emoji: emoji,
+        html: svg,
+        pillHtml: emoji + ' '
+      };
+    }
+
     function renderCategoryGrid() {
       const grid = document.getElementById('categoryGrid');
       const countEl = document.getElementById('categoryCount');
       if (!grid) return;
       if (countEl) countEl.textContent = categories.length + ' kategori';
-       // ⭐ BARU: mode pills (scroll kiri-kanan seperti gambar 2)
-  if (categoryViewMode === 'pills') {
-    const pillColors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
-    let html = '<div class="category-pills" style="grid-column:1/-1;padding-bottom:.25rem;">';
-    html += '<button class="category-pill active" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-    getSortedCategories().forEach(function(cat, idx) {
-    var safeName = (cat.name || '').replace(/'/g, "\\'");
-    var vis = getAutoCategoryVisual(cat, pillColors[idx % pillColors.length]);
-      html += '<button class="category-pill" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' + vis.emoji + ' ' + cat.name + '</button>';
-    });
-    html += '</div>';
-    grid.innerHTML = html;
-    return;
-  }
 
       const colors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
+
+      // ⭐ BARU: mode pills (scroll kiri-kanan)
+      if (categoryViewMode === 'pills') {
+        let html = '<div class="category-pills" style="grid-column:1/-1;padding-bottom:.25rem;">';
+        html += '<button class="category-pill active" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
+        getSortedCategories().forEach(function(cat, i) {
+          var safeName = (cat.name || '').replace(/'/g, "\\'");
+          var vis = getAutoCategoryVisual(cat, colors[i % colors.length]);
+          html += '<button class="category-pill" style="display:inline-flex;align-items:center;" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' + vis.pillHtml + cat.name + '</button>';
+        });
+        html += '</div>';
+        grid.innerHTML = html;
+        return; // sisanya (grid tiles) tidak dirender
+      }
+
       const countByCategory = {};
       products.forEach(function(p) {
         if (p.categoryId) countByCategory[p.categoryId] = (countByCategory[p.categoryId] || 0) + 1;
@@ -7430,12 +7521,15 @@ function getSortedCategories() {
         '</button>';
 
       getSortedCategories().forEach(function(cat, i) {
-    var fallbackColor = colors[i % colors.length];
         var count = countByCategory[cat.id] || 0;
-        var vis = getAutoCategoryVisual(cat, fallbackColor);
-        var safeName = cat.name.replace(/'/g, "\\'");
+        var safeName = (cat.name || '').replace(/'/g, "\\'");
+        var vis = getAutoCategoryVisual(cat, colors[i % colors.length]);
+        var iconBoxStyle = vis.hasImage
+          ? 'background:var(--bg-body, #f8fafc); padding:3px; overflow:hidden; border:1px solid var(--border-color, #e2e8f0);'
+          : 'background:' + vis.bg + ';';
+
         html += '<button class="cat-grid-btn" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' +
-          '<div class="cat-grid-icon" style="background:' + vis.bg + '">' + vis.html + '</div>' +
+          '<div class="cat-grid-icon" style="' + iconBoxStyle + '">' + vis.html + '</div>' +
           '<span class="cat-grid-name">' + cat.name + '</span>' +
           (count > 0 ? '<span class="cat-grid-badge" style="background:' + vis.color + '">' + count + '</span>' : '') +
           '</button>';
@@ -7448,20 +7542,29 @@ function getSortedCategories() {
     function renderCatPillsBar() {
       const bar = document.getElementById('catPillsBar');
       if (!bar) return;
+      const colors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
       let html = '<button class="category-pill' + (currentCategory === 'all' ? ' active' : '') + '" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-      getSortedCategories().forEach(function(cat) {
-    var safeName = (cat.name || '').replace(/'/g, "\\'");
-    var vis = getAutoCategoryVisual(cat, '#059669');
-        html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'\')">' + vis.emoji + ' ' + cat.name + '</button>';
+      getSortedCategories().forEach(function(cat, i) {
+        var safeName = (cat.name || '').replace(/'/g, "\\'");
+        var vis = getAutoCategoryVisual(cat, colors[i % colors.length]);
+        html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" style="display:inline-flex;align-items:center;" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' + vis.pillHtml + cat.name + '</button>';
       });
       bar.innerHTML = html;
     }
+
     // ===== TAMPILKAN LAYER PRODUK (klik kategori) =====
     function showLayerProduk(categoryId, categoryName, icon, color) {
       currentCategory = categoryId;
       var iconEl = document.getElementById('activeCatIcon');
       var nameEl = document.getElementById('activeCatName');
-      if (iconEl) iconEl.textContent = icon + ' ';
+      if (iconEl) {
+        var foundCat = categories.find(function(c) { return c.id === categoryId; });
+        if (foundCat && foundCat.imageUrl) {
+          iconEl.innerHTML = '<img src="' + foundCat.imageUrl + '" alt="" style="width:20px;height:20px;object-fit:contain;border-radius:4px;vertical-align:middle;margin-right:6px;">';
+        } else {
+          iconEl.textContent = icon + ' ';
+        }
+      }
       if (nameEl) nameEl.textContent = categoryName;
             // ⭐ Tampilkan pills di layer produk kalau mode pills aktif
       var bar = document.getElementById('catPillsBar');
@@ -7477,7 +7580,7 @@ function getSortedCategories() {
       document.getElementById('layerProduk').style.display = 'block';
       renderProducts();
     }
-
+  
     // ===== KEMBALI KE LAYER KATEGORI =====
     function showLayerKategori() {
       document.getElementById('layerProduk').style.display = 'none';
