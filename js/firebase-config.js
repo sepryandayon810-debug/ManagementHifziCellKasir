@@ -241,11 +241,13 @@ var auth = window.auth;
 var db = window.db;
 var storage = window.storage;
 
-// 3. DAFTARKAN SERVICE WORKER + NOTIFIKASI UPDATE VERSI OTOMATIS
+// 3. DAFTARKAN SERVICE WORKER + AUTO-DETECT UPDATE GITHUB OTOMATIS (Tanpa perlu ganti v1/v2 manual)
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', function() {
     var hadController = Boolean(navigator.serviceWorker.controller);
     var updateNotifShown = false;
+    var latestDetectedBuild = '';
+    var lastCheckAt = 0;
 
     function showAppUpdateBanner() {
       if (updateNotifShown || document.getElementById('webposUpdateBanner')) return;
@@ -269,19 +271,58 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
       var btnReload = document.getElementById('btnReloadWebposUpdate');
       var btnClose = document.getElementById('btnCloseWebposUpdate');
-      if (btnReload) btnReload.onclick = function() { window.location.reload(); };
+      if (btnReload) {
+        btnReload.onclick = function() {
+          if (latestDetectedBuild) {
+            try { localStorage.setItem('webpos_last_build_ver', latestDetectedBuild); } catch (e) {}
+          }
+          window.location.reload();
+        };
+      }
       if (btnClose) btnClose.onclick = function() { bar.remove(); };
+    }
+
+    // Cek otomatis stempel deploy terbaru dari GitHub Pages (tanpa perlu edit sw.js!)
+    function checkGithubBuildUpdate(force) {
+      if (!navigator.onLine) return;
+      var now = Date.now();
+      if (!force && (now - lastCheckAt) < 60000) return; // maksimal cek 1x per menit agar hemat kuota
+      lastCheckAt = now;
+
+      fetch('./index.html?_chk=' + now, { method: 'HEAD', cache: 'no-store' })
+        .then(function(res) {
+          if (!res || !res.ok) return;
+          var serverBuild = res.headers.get('last-modified') || res.headers.get('etag') || '';
+          if (!serverBuild) return;
+
+          var savedBuild = '';
+          try { savedBuild = localStorage.getItem('webpos_last_build_ver') || ''; } catch (e) {}
+
+          if (!savedBuild) {
+            // Pertama kali simpan versi dasar tanpa munculkan popup
+            try { localStorage.setItem('webpos_last_build_ver', serverBuild); } catch (e) {}
+          } else if (savedBuild !== serverBuild) {
+            latestDetectedBuild = serverBuild;
+            showAppUpdateBanner();
+          }
+        })
+        .catch(function() {});
     }
 
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
       console.log('Service Worker: AKTIF');
 
-      // Cek update otomatis setiap internet kembali online
       window.addEventListener('online', function() {
         try { reg.update(); } catch (e) {}
+        checkGithubBuildUpdate(true);
       });
 
-      // Deteksi jika ada versi sw.js baru yang selesai terpasang
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          checkGithubBuildUpdate(false);
+        }
+      });
+
       reg.addEventListener('updatefound', function() {
         var newWorker = reg.installing;
         if (!newWorker) return;
@@ -298,5 +339,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     navigator.serviceWorker.addEventListener('controllerchange', function() {
       if (hadController) showAppUpdateBanner();
     });
+
+    // Cek otomatis 2 detik setelah halaman terbuka
+    setTimeout(function() { checkGithubBuildUpdate(true); }, 2000);
   });
 }
