@@ -98,6 +98,7 @@ if (!window.firebaseConfigInitialized) {
           if (!existingSnap.exists) {
             var dataKirim = Object.assign({}, raw);
             delete dataKirim.localId;
+            delete dataKirim.id;
 
             dataKirim.userId = dataKirim.userId || fallbackUid;
             dataKirim.waktu = nowMs;
