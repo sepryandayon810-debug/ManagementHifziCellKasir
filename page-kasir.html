@@ -5992,8 +5992,10 @@ const transaction = {
             showStrukModal(transaction);
           }
 
-          await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
-
+renderProducts();
+          try { await saveProductsToCache(products); } catch (err) {}
+          await Promise.all([loadHeaderStats(), loadUangGlobal()]);
+          
         } catch (e) {
           console.error('Piutang error:', e);
           document.getElementById('loadingOverlay').classList.remove('active');
@@ -6095,16 +6097,19 @@ const transaction = {
   timestamp: Date.now()
 };
 
-        // Update stok produk
         for (const item of cart) {
+          if (!item.productId || item.isManual) continue;
           const ref = db.ref(`products/${item.productId}`);
           const snap = await ref.once('value');
           const prod = snap.val();
           if (prod) {
+            const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
             await ref.update({
-              stock: Math.max(0, (prod.stock || 0) - item.quantity),
+              stock: newStock,
               soldCount: (prod.soldCount || 0) + item.quantity
             });
+            const localP = products.find(p => p.id === item.productId);
+            if (localP && !localP.isUnlimited) localP.stock = newStock;
           }
         }
 
@@ -6126,7 +6131,9 @@ const transaction = {
           showStrukModal(transaction);
         }
         // Reload produk, statistik, dan uang global
-        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+       renderProducts();
+        try { await saveProductsToCache(products); } catch (err) {}
+        await Promise.all([loadHeaderStats(), loadUangGlobal()]);
 
       } catch (e) {
         console.error('Payment error:', e);
