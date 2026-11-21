@@ -4542,11 +4542,33 @@ document.querySelectorAll('.nav-link').forEach(link => {
 
     // ===== BAGIAN 4: LOAD DATA GLOBAL (UANG LACI & HEADER STATS) =====
     // ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
-async function loadUangGlobal() {
+  async function loadUangGlobal() {
   const today = new Date();
   const todayStr = today.getFullYear() + '-' +
     String(today.getMonth() + 1).padStart(2, '0') + '-' +
     String(today.getDate()).padStart(2, '0');
+
+  if (!navigator.onLine) {
+    var baseLaci = 0;
+    try {
+      if (localStorage.getItem('raw_header_date') === todayStr) {
+        baseLaci = parseInt(localStorage.getItem('raw_header_uang_global') || '0', 10) || 0;
+      }
+      var pendingLaci = JSON.parse(localStorage.getItem('webpos_pending_transactions') || '[]');
+      pendingLaci.forEach(function(item) {
+        var tx = (item && item.data) ? item.data : {};
+        var txDate = tx.date_key || tx.date || '';
+        if (txDate && txDate !== todayStr) return;
+        if (Number(tx.cash_in || 0) > 0) {
+          baseLaci += Number(tx.cash_in || 0);
+        } else if (tx.paymentMethod === 'cash' || tx.metode_pembayaran === 'tunai') {
+          baseLaci += Number(tx.total || tx.nominal || 0);
+        }
+      });
+    } catch (e) {}
+    document.getElementById('headerUangGlobal').textContent = formatRupiah(baseLaci);
+    return;
+  }
 
   try {
     const user = firebase.auth().currentUser;
@@ -4557,7 +4579,11 @@ async function loadUangGlobal() {
     });
 
     document.getElementById('headerUangGlobal').textContent = formatRupiah(kas.totalLaci);
-    try { localStorage.setItem('header_uang_global', formatRupiah(kas.totalLaci)); } catch (e) {}
+    try {
+      localStorage.setItem('header_uang_global', formatRupiah(kas.totalLaci));
+      localStorage.setItem('raw_header_uang_global', String(Math.round(kas.totalLaci || 0)));
+      localStorage.setItem('raw_header_date', todayStr);
+    } catch (e) {}
   } catch (err) {
     console.error('kasir: gagal memuat uang global', err);
     if (!navigator.onLine) {
@@ -4568,27 +4594,36 @@ async function loadUangGlobal() {
 }
   // ===== LOAD HEADER STATS DARI FIREBASE =====
 async function loadHeaderStats() {
-  // ⭐ OFFLINE: ambil data dasar + gabungkan transaksi offline baru
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+
+  // ⭐ OFFLINE: ambil data dasar hari ini + gabungkan transaksi offline hari ini
   if (!navigator.onLine) {
     var totalSalesOffline = 0;
     var totalTxOffline = 0;
     var totalProfitOffline = 0;
 
-    // 1. Ambil data terakhir sebelum offline
+    // 1. Ambil data terakhir hari ini sebelum offline
     try {
-      totalSalesOffline = parseInt(localStorage.getItem('raw_header_penjualan') || '0') || 0;
-      totalTxOffline = parseInt(localStorage.getItem('raw_header_transaksi') || '0') || 0;
-      totalProfitOffline = parseInt(localStorage.getItem('raw_header_laba') || '0') || 0;
+      if (localStorage.getItem('raw_header_date') === todayStr) {
+        totalSalesOffline = parseInt(localStorage.getItem('raw_header_penjualan') || '0', 10) || 0;
+        totalTxOffline = parseInt(localStorage.getItem('raw_header_transaksi') || '0', 10) || 0;
+        totalProfitOffline = parseInt(localStorage.getItem('raw_header_laba') || '0', 10) || 0;
+      }
     } catch(e) {}
 
-    // 2. Gabungkan dengan transaksi offline yang baru dibuat di kasir
+    // 2. Gabungkan dengan transaksi offline HARI INI saja
     try {
       var pending = JSON.parse(localStorage.getItem('webpos_pending_transactions') || '[]');
       pending.forEach(function(item) {
-        var tx = item.data || {};
+        var tx = (item && item.data) ? item.data : {};
+        var txDate = tx.date_key || tx.date || '';
+        if (txDate && txDate !== todayStr) return;
         totalSalesOffline += Number(tx.total || tx.nominal || 0);
         totalTxOffline += 1;
-        totalProfitOffline += Number(tx.profit || tx.laba || 0);
+        totalProfitOffline += Number(tx.profit != null ? tx.profit : (tx.laba || 0));
       });
     } catch(e) {}
 
@@ -4598,11 +4633,6 @@ async function loadHeaderStats() {
     return;
   }
 
-  const today = new Date();
-  const todayStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
-
   try {
     const user = firebase.auth().currentUser;
     const summary = await KasCore.getDailySummary({
@@ -4610,7 +4640,6 @@ async function loadHeaderStats() {
       userId: user ? user.uid : null
     });
 
-    // Gunakan summary.totalSales, summary.transactionCount, dan summary.totalProfit
     const totalSales = summary.totalSales || 0;
     const totalTx = summary.transactionCount || 0;
     const totalProfit = summary.totalProfit || 0;
@@ -4623,7 +4652,8 @@ async function loadHeaderStats() {
       localStorage.setItem('header_penjualan', formatRupiah(totalSales));
       localStorage.setItem('header_transaksi', totalTx.toString());
       localStorage.setItem('header_laba', formatRupiah(totalProfit));
-      // Simpan angka murni untuk perhitungan offline
+      // Simpan angka murni + tanggal untuk perhitungan offline
+      localStorage.setItem('raw_header_date', todayStr);
       localStorage.setItem('raw_header_penjualan', totalSales.toString());
       localStorage.setItem('raw_header_transaksi', totalTx.toString());
       localStorage.setItem('raw_header_laba', totalProfit.toString());
@@ -4632,8 +4662,7 @@ async function loadHeaderStats() {
   } catch (err) {
     console.error('kasir: gagal memuat statistik header', err);
   }
-}
-    
+}    
     // ===== BAGIAN 5: STATE & ANGKA/HARGA/SETTING TERPUSAT =====
     // ===== STATE =====
     let products = [];
@@ -5639,7 +5668,7 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
         paymentMethod === 'qris' ? 'qris' :
         paymentMethod === 'transfer' ? 'transfer' : 'utang';
 
-      // ⭐ MODE OFFLINE
+     // ⭐ MODE OFFLINE
       if (!navigator.onLine) {
         if (cart.length === 0) {
           showToast('Keranjang kosong', 'warning');
@@ -5650,31 +5679,71 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
           return;
         }
         if (paymentAmount < total && total > 0) {
-        showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
-        return;
-      }
+          showToast(`Pembayaran kurang ${formatRupiah(total - paymentAmount)}. Gunakan mode Hutang untuk pembayaran sebagian.`, 'error');
+          return;
+        }
         try {
-          const today = new Date();
+          const user = firebase.auth().currentUser;
+          const uidOffline = (user && user.uid) || localStorage.getItem('webpos_last_uid') || 'unknown';
+          const cashierNameText = (document.getElementById('userName') && document.getElementById('userName').textContent) || 'Kasir';
+          const nowMs = Date.now();
+          const today = new Date(nowMs);
           const todayStr = today.getFullYear() + '-' +
             String(today.getMonth() + 1).padStart(2, '0') + '-' +
             String(today.getDate()).padStart(2, '0');
+
+          const offlineReseller = getActiveResellerInfo();
+          const baseNoteOffline = localStorage.getItem('kasir_note') || '';
+          let notePrefixOffline = '';
+          if (discount > 0) {
+            notePrefixOffline = (discountNote && discountNote.toLowerCase().includes('owner'))
+              ? '[AMBIL OWNER] '
+              : `[DISKON: ${discountNote || ''}] `;
+          }
+          const finalOfflineNote = (notePrefixOffline + (offlineReseller.isReseller
+            ? ('Reseller: ' + offlineReseller.counterName + (baseNoteOffline ? ' • ' + baseNoteOffline : ''))
+            : baseNoteOffline)).trim();
+          const isOwnerTakeOffline = Boolean(discountNote && discountNote.toLowerCase().includes('owner'));
+          const modalProdukOffline = getCartModal();
+          const subtotalOffline = getCartSubtotal();
 
           const offlineMutation = KasCore.mapTransactionMutation({
             kategori: 'jual',
             metode_pembayaran: metodeKasCore,
             nominal: total,
-            modal_produk: getCartModal()
+            modal_produk: modalProdukOffline,
+            catatan: finalOfflineNote,
+            isOwnerTake: isOwnerTakeOffline
           });
 
+          const normalizedOfflineItems = cart.map(i => ({
+            productId: i.productId,
+            name: i.name,
+            price: i.price,
+            cost: toMoney(i.cost || 0),
+            regularPrice: toMoney(i.regularPrice || i.price),
+            priceType: i.priceType || (offlineReseller.isReseller ? 'reseller' : 'regular'),
+            isUnlimited: !!i.isUnlimited,
+            isManual: !!i.isManual,
+            quantity: i.quantity,
+            total: i.total
+          }));
+
           const transactionData = {
+            id: 'OFF_' + nowMs,
             type: 'penjualan',
             kategori: 'jual',
             metode_pembayaran: offlineMutation.metode_pembayaran,
             nominal: total,
-            items: JSON.parse(JSON.stringify(cart)),
-            subtotal: getCartSubtotal(),
+            modal_produk: modalProdukOffline,
+            items: normalizedOfflineItems,
+            subtotal: subtotalOffline,
             total: total,
-            profit: getCartProfit(),
+            diskon: discount,
+            discount: discount,
+            discountNote: discountNote || null,
+            isOwnerTake: isOwnerTakeOffline,
+            profit: isOwnerTakeOffline ? 0 : getCartProfit(),
             laba: offlineMutation.laba,
             cash_in: offlineMutation.cash_in,
             cash_out: offlineMutation.cash_out,
@@ -5686,25 +5755,33 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
             masuk_penjualan: offlineMutation.masuk_penjualan,
             pengaruhi_kas_global: offlineMutation.pengaruhi_kas_global,
             paymentMethod: paymentMethod,
-            paymentAmount: total,
-            change: 0,
-            discount: discount,
-            note: localStorage.getItem('kasir_note') || '',
-            timestamp: Date.now(),
+            paymentAmount: paymentAmount || total,
+            change: Math.max(0, (paymentAmount || total) - total),
+            note: finalOfflineNote,
+            catatan: finalOfflineNote,
+            customerName: offlineReseller.isReseller ? offlineReseller.counterName : (isOwnerTakeOffline ? 'Owner' : ''),
+            userId: uidOffline,
+            userName: cashierNameText,
+            cashierName: cashierNameText,
+            shiftId: localStorage.getItem('active_shift_id') || null,
+            waktu: nowMs,
+            created_at: nowMs,
+            timestamp: nowMs,
             date: todayStr,
             date_key: todayStr,
-            cashierName: document.getElementById('userName').textContent,
             status: 'pending_sync',
-            priceMode: getActiveResellerInfo().isReseller ? 'reseller' : 'regular',
-            resellerMode: getActiveResellerInfo().isReseller,
-            resellerName: getActiveResellerInfo().isReseller ? getActiveResellerInfo().counterName : null
+            priceMode: offlineReseller.isReseller ? 'reseller' : 'regular',
+            resellerMode: offlineReseller.isReseller,
+            resellerName: offlineReseller.isReseller ? offlineReseller.counterName : null
           };
+
           if (transactionData.resellerMode) {
             rememberResellerCounterName(transactionData.resellerName);
             clearActiveResellerInput();
           }
           await saveOfflineTransaction(transactionData);
-          // Kurangi stok lokal
+
+          // Kurangi stok di cache lokal
           for (const item of cart) {
             const prod = products.find(p => p.id === item.productId);
             if (prod && !prod.isUnlimited) {
@@ -5713,24 +5790,28 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
           }
           await saveProductsToCache(products);
 
-          cart = []; discount = 0;
+          cart = [];
+          discount = 0;
+          discountType = 'nominal';
+          discountPercent = 0;
+          discountNote = '';
           localStorage.removeItem('kasir_note');
           saveCart(); renderCart(); updateSummary();
           paymentModal.classList.remove('active');
+          document.getElementById('cartSection').classList.remove('open');
           showToast('Transaksi tersimpan offline. Sync otomatis saat online.', 'warning');
-                    if (document.getElementById('printReceiptToggle').checked) {
+          if (document.getElementById('printReceiptToggle').checked) {
             showStrukModal(transactionData);
-          } else {
-            showToast('Transaksi tersimpan offline (tanpa struk)', 'success');
           }
           loadHeaderStats();
+          loadUangGlobal();
         } catch(err) {
           console.error('Offline save error:', err);
           showToast('Gagal menyimpan offline', 'error');
         }
         return;
       }
-
+  
       /* =========================================
          MODE PIUTANG / HUTANG CUSTOMER (DIPERBAIKI)
          ========================================= */
@@ -6525,36 +6606,37 @@ document.addEventListener('keydown', (e) => {
   }
 });
     
-      // ⭐ AUTO-SYNC SAAT ONLINE
+// ⭐ AUTO-SYNC SAAT ONLINE (Satu pintu lewat firebase-config.js agar tidak dobel)
     window.addEventListener('online', async () => {
-      showToast('Internet kembali! Menyinkronkan...', 'info');
       const pending = await getPendingTransactions();
-      if (pending.length === 0) return;
-      
-      document.getElementById('loadingOverlay').classList.add('active');
-      let synced = 0;
-      const db = createFirestoreCompat();
-      const todayStr = new Date().toISOString().split('T')[0];
-      
-      for (const item of pending) {
-        try {
-          const tx = item.data;
-          tx.id = tx.id || ('TRX_' + Date.now() + '_' + Math.random().toString(36).substr(2,5));
-          tx.syncedAt = Date.now();
-          tx.status = 'completed';
-          await db.ref('transactions/' + todayStr + '/' + tx.id).set(tx);
-          await removeSyncedTransaction(item.localId);
-          synced++;
-        } catch(e) {
-          console.error('Sync failed:', e);
-        }
+      if (!pending || pending.length === 0) {
+        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+        return;
       }
-      
-      document.getElementById('loadingOverlay').classList.remove('active');
-      showToast(`${synced}/${pending.length} transaksi tersinkronkan`, synced > 0 ? 'success' : 'warning');
-      await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+      showToast('Internet kembali! Menyinkronkan transaksi offline...', 'info');
+      document.getElementById('loadingOverlay').classList.add('active');
+      try {
+        if (typeof window.syncPendingTransactionsToFirestore === 'function') {
+          const res = await window.syncPendingTransactionsToFirestore();
+          if (res && !res.busy && res.total > 0) {
+            showToast(`${res.synced}/${res.total} transaksi offline tersinkronkan`, res.synced > 0 ? 'success' : 'warning');
+          }
+        }
+      } finally {
+        document.getElementById('loadingOverlay').classList.remove('active');
+        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+      }
     });
 
+    // Jika sync selesai dipicu otomatis (misal saat baru buka halaman), refresh angka kasir
+    window.addEventListener('webpos:offline-synced', async (ev) => {
+      const d = ev.detail || {};
+      if (d.synced > 0) {
+        showToast(`${d.synced} transaksi offline berhasil tersinkronkan`, 'success');
+        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+      }
+    });
+  
     // ===== BAGIAN 15: CETAK STRUK PENJUALAN (HEADER, ESC/POS, MODAL, BLUETOOTH) =====
     // ==========================================
     // CETAK STRUK PENJUALAN (TAMBAHAN)
