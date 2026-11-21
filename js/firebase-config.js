@@ -179,11 +179,62 @@ var auth = window.auth;
 var db = window.db;
 var storage = window.storage;
 
-// 3. DAFTARKAN SERVICE WORKER (Agar pindah menu cepat & tetap bisa dibuka saat offline)
+// 3. DAFTARKAN SERVICE WORKER + NOTIFIKASI UPDATE VERSI OTOMATIS
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js')
-      .then(function() { console.log('Service Worker: AKTIF'); })
-      .catch(function(err) { console.warn('Service Worker gagal daftar:', err); });
+    var hadController = Boolean(navigator.serviceWorker.controller);
+    var updateNotifShown = false;
+
+    function showAppUpdateBanner() {
+      if (updateNotifShown || document.getElementById('webposUpdateBanner')) return;
+      updateNotifShown = true;
+      var bar = document.createElement('div');
+      bar.id = 'webposUpdateBanner';
+      bar.style.cssText = [
+        'position:fixed', 'left:50%', 'bottom:76px', 'transform:translateX(-50%)',
+        'z-index:99999', 'background:#0f172a', 'color:#fff',
+        'padding:10px 14px', 'border-radius:12px',
+        'box-shadow:0 10px 25px rgba(0,0,0,0.28)',
+        'display:flex', 'align-items:center', 'gap:10px',
+        'font-family:inherit', 'font-size:13px', 'max-width:92vw',
+        'border:1px solid rgba(255,255,255,0.15)'
+      ].join(';');
+      bar.innerHTML =
+        '<span style="line-height:1.3;">✨ <b>Aplikasi diperbarui</b> ke versi terbaru!</span>' +
+        '<button type="button" id="btnReloadWebposUpdate" style="background:#22c55e;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">Muat Ulang</button>' +
+        '<button type="button" id="btnCloseWebposUpdate" style="background:transparent;color:#94a3b8;border:none;font-size:16px;line-height:1;cursor:pointer;padding:0 4px;">&times;</button>';
+      document.body.appendChild(bar);
+
+      var btnReload = document.getElementById('btnReloadWebposUpdate');
+      var btnClose = document.getElementById('btnCloseWebposUpdate');
+      if (btnReload) btnReload.onclick = function() { window.location.reload(); };
+      if (btnClose) btnClose.onclick = function() { bar.remove(); };
+    }
+
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      console.log('Service Worker: AKTIF');
+
+      // Cek update otomatis setiap internet kembali online
+      window.addEventListener('online', function() {
+        try { reg.update(); } catch (e) {}
+      });
+
+      // Deteksi jika ada versi sw.js baru yang selesai terpasang
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && hadController) {
+            showAppUpdateBanner();
+          }
+        });
+      });
+    }).catch(function(err) {
+      console.warn('Service Worker gagal daftar:', err);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (hadController) showAppUpdateBanner();
+    });
   });
 }
