@@ -4995,8 +4995,7 @@ async function loadCustomers() {
   }
 }
 
-    // ===== LOAD PRODUCTS =====
-       async function loadProducts() {
+    async function loadProducts(forceServer = false) {
       // ⭐ OFFLINE: langsung dari cache, skip Firebase
       if (!navigator.onLine) {
         const cached = await getProductsFromCache();
@@ -5005,35 +5004,48 @@ async function loadCustomers() {
           renderProducts();
           showToast('Produk dari cache offline', 'warning');
         } else {
-          renderProducts(); // kosongkan skeleton
+          renderProducts();
           showToast('Belum ada cache produk. Buka sekali saat online.', 'error');
         }
         return;
       }
 
+      // ⭐ HEMAT KUOTA: jika cache produk < 15 menit & tidak dipaksa refresh, pakai cache lokal (0 Read!)
+      if (!forceServer) {
+        try {
+          const cacheTs = Number(localStorage.getItem('webpos_cache_timestamp') || '0');
+          if (cacheTs > 0 && (Date.now() - cacheTs) < 15 * 60 * 1000) {
+            const cached = await getProductsFromCache();
+            if (cached.length > 0) {
+              products = cached;
+              renderProducts();
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+
       try {
         const snap = await createFirestoreCompat().ref('products').once('value');
         const data = snap.val() || {};
-         products = Object.entries(data)
+        products = Object.entries(data)
           .map(([id, d]) => ({ id, ...d }))
           .filter(p => p.status !== 'inactive');
         renderProducts();
-        // ⭐ Simpan ke cache untuk offline
         try { await saveProductsToCache(products); } catch(err) {}
       } catch (e) {
-      console.error('Error loading products:', e);
-      // ⭐ Fallback ke cache IndexedDB
-      const cached = await getProductsFromCache();
-      if (cached.length > 0) {
-        products = cached;
-        renderProducts();
-        showToast('Produk dari cache offline', 'warning');
-      } else {
-        showToast('Gagal memuat produk', 'error');
+        console.error('Error loading products:', e);
+        const cached = await getProductsFromCache();
+        if (cached.length > 0) {
+          products = cached;
+          renderProducts();
+          showToast('Produk dari cache lokal', 'warning');
+        } else {
+          showToast('Gagal memuat produk', 'error');
+        }
       }
     }
-    }
-
+  
     // ===== BAGIAN 7: PRODUK (VIEW, RENDER, CARI, TAMBAH/HAPUS KERANJANG) =====
     // ===== VIEW MODE HELPER =====
 function applyCurrentView() {
@@ -5935,16 +5947,19 @@ const transaction = {
   timestamp: Date.now()
 };
 
-          // 3. Update stok (barang tetap keluar)
           for (const item of cart) {
+            if (!item.productId || item.isManual) continue;
             const ref = db.ref(`products/${item.productId}`);
             const snap = await ref.once('value');
             const prod = snap.val();
             if (prod) {
+              const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
               await ref.update({
-                stock: Math.max(0, (prod.stock || 0) - item.quantity),
+                stock: newStock,
                 soldCount: (prod.soldCount || 0) + item.quantity
               });
+              const localP = products.find(p => p.id === item.productId);
+              if (localP && !localP.isUnlimited) localP.stock = newStock;
             }
           }
 
