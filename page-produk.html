@@ -1940,9 +1940,77 @@ const resellerText = p.resellerPrice
     document.getElementById("produkModal").classList.remove("active");
   }
 
-  function openKategoriModal(id = "", name = "", imageUrl = "") {
+  window.renderKatIconPicker = function() {
+    const picker = document.getElementById("katIconPickerGrid");
+    const previewBox = document.getElementById("katActiveIconPreview");
+    const statusEl = document.getElementById("katActiveIconStatus");
+    if (!picker) return;
+
+    const currentName = (document.getElementById("kategoriName").value || "").trim();
+    const currentPreset = (document.getElementById("katIconPreset").value || "").trim();
+    const currentImg = (document.getElementById("katImageUrl").value || "").trim();
+
+    if (previewBox && statusEl) {
+      const activeVis = getAutoCategoryVisual(
+        { name: currentName, imageUrl: currentImg, iconPreset: currentPreset },
+        "#059669",
+        "prev_"
+      );
+      previewBox.style.background = activeVis.bg;
+      previewBox.style.border = activeVis.hasImage ? "1px solid var(--border, #cbd5e1)" : "1px solid " + activeVis.color + "44";
+      previewBox.style.padding = "4px";
+      previewBox.innerHTML = activeVis.html;
+
+      if (currentImg) {
+        statusEl.textContent = "Memakai Logo Upload (prioritas utama)";
+      } else if (currentPreset) {
+        const found = CATEGORY_ICON_PRESET_LIST.find(x => x.key === currentPreset);
+        statusEl.textContent = "Ikon Pilihan: " + (found ? found.label : currentPreset);
+      } else {
+        statusEl.textContent = currentName
+          ? 'Otomatis sesuai nama "' + currentName + '"'
+          : "Otomatis mengikuti nama kategori";
+      }
+    }
+
+    const autoKey = detectCategoryPresetKey(currentName);
+    const autoVis = getCategoryPresetVisual(autoKey, "#059669", "pkauto_");
+    const isAutoActive = !currentImg && !currentPreset;
+    let html = '<button type="button" onclick="window.selectKatIconPreset(\'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;border-radius:8px;cursor:pointer;background:' + (isAutoActive ? '#ecfdf5' : 'var(--bg-surface, #fff)') + ';border:' + (isAutoActive ? '2px solid #10b981' : '1px solid var(--border, #e2e8f0)') + ';">' +
+      '<div style="width:30px;height:30px;border-radius:8px;background:' + autoVis.bg + ';display:flex;align-items:center;justify-content:center;padding:3px;">' + autoVis.html + '</div>' +
+      '<span style="font-size:0.64rem;font-weight:700;color:' + (isAutoActive ? '#047857' : 'var(--text-main)') + ';line-height:1.1;text-align:center;">Otomatis</span>' +
+      '</button>';
+
+    CATEGORY_ICON_PRESET_LIST.forEach((item, idx) => {
+      const vis = getCategoryPresetVisual(item.key, "#059669", "pk_" + idx + "_");
+      const isSelected = !currentImg && currentPreset === item.key;
+      html += '<button type="button" onclick="window.selectKatIconPreset(\'' + item.key + '\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;border-radius:8px;cursor:pointer;background:' + (isSelected ? '#ecfdf5' : 'var(--bg-surface, #fff)') + ';border:' + (isSelected ? '2px solid #10b981' : '1px solid var(--border, #e2e8f0)') + ';">' +
+        '<div style="width:30px;height:30px;border-radius:8px;background:' + vis.bg + ';display:flex;align-items:center;justify-content:center;padding:3px;">' + vis.html + '</div>' +
+        '<span style="font-size:0.64rem;font-weight:700;color:' + (isSelected ? '#047857' : 'var(--text-main)') + ';line-height:1.1;text-align:center;">' + item.label + '</span>' +
+        '</button>';
+    });
+
+    picker.innerHTML = html;
+  };
+
+  window.selectKatIconPreset = function(presetKey) {
+    document.getElementById("katIconPreset").value = presetKey || "";
+    if (document.getElementById("katImageUrl").value) {
+      document.getElementById("katImageUrl").value = "";
+      const preview = document.getElementById("katImagePreview");
+      preview.src = "";
+      preview.style.display = "none";
+      document.getElementById("katImageFile").value = "";
+      const btnRemove = document.getElementById("btnRemoveKatImage");
+      if (btnRemove) btnRemove.style.display = "none";
+    }
+    window.renderKatIconPicker();
+  };
+
+  function openKategoriModal(id = "", name = "", imageUrl = "", iconPreset = "") {
     document.getElementById("kategoriId").value = id;
     document.getElementById("kategoriName").value = name;
+    document.getElementById("katIconPreset").value = iconPreset || "";
     document.getElementById("kategoriModalTitle").textContent = id ? "Edit Kategori" : "Tambah Kategori Baru";
     
     document.getElementById("katImageUrl").value = imageUrl;
@@ -1959,6 +2027,7 @@ const resellerText = p.resellerPrice
     }
     document.getElementById("katImageFile").value = "";
 
+    window.renderKatIconPicker();
     document.getElementById("kategoriModal").classList.add("active");
   }
 
@@ -1970,13 +2039,13 @@ const resellerText = p.resellerPrice
     document.getElementById("katImageFile").value = "";
     const btnRemove = document.getElementById("btnRemoveKatImage");
     if (btnRemove) btnRemove.style.display = "none";
+    window.renderKatIconPicker();
   };
 
   function closeKategoriModal() {
     document.getElementById("kategoriModal").classList.remove("active");
   }
 
-  // Otomatis perkecil & kompres gambar agar ringan disimpan di Firestore & cache offline Kasir
   window.previewImage = function(input, previewId, hiddenId) {
     if (input.files && input.files[0]) {
       const file = input.files[0];
@@ -2017,6 +2086,7 @@ const resellerText = p.resellerPrice
           if (previewId === "katImagePreview") {
             const btnRemove = document.getElementById("btnRemoveKatImage");
             if (btnRemove) btnRemove.style.display = "inline-flex";
+            window.renderKatIconPicker();
           }
         };
         img.src = e.target.result;
@@ -2024,7 +2094,7 @@ const resellerText = p.resellerPrice
       reader.readAsDataURL(file);
     }
   };
-    
+  
   async function saveProduct() {
     const id = document.getElementById("produkId").value;
     const name = document.getElementById("produkName").value.trim();
@@ -2079,7 +2149,8 @@ const resellerText = p.resellerPrice
   async function saveKategori() {
     const id = document.getElementById("kategoriId").value;
     const name = document.getElementById("kategoriName").value.trim();
-    let imageUrl = document.getElementById("katImageUrl").value;
+    const imageUrl = document.getElementById("katImageUrl").value;
+    const iconPreset = document.getElementById("katIconPreset").value || "";
 
     if (!name) {
       toast("Nama kategori wajib diisi!", "error");
@@ -2090,6 +2161,7 @@ const resellerText = p.resellerPrice
       const katData = {
         name,
         imageUrl: imageUrl.startsWith("data:") ? imageUrl : (imageUrl || ""),
+        iconPreset,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
@@ -2108,7 +2180,7 @@ const resellerText = p.resellerPrice
       toast("Gagal menyimpan kategori: " + err.message, "error");
     }
   }
-
+  
   window.editProd = function(id) {
     const p = productsList.find(x => x.id === id);
     if (p) openProductModal(p);
@@ -2128,7 +2200,7 @@ const resellerText = p.resellerPrice
 
   window.editKat = function(id) {
     const c = categoriesList.find(x => x.id === id);
-    if (c) openKategoriModal(c.id, c.name || "", c.imageUrl || "");
+    if (c) openKategoriModal(c.id, c.name || "", c.imageUrl || "", c.iconPreset || "");
   };
 
   window.deleteKat = function(id) {
