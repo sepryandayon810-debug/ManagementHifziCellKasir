@@ -80,7 +80,7 @@ function fetchWithTimeout(request, timeoutMs) {
     var timer = setTimeout(function() {
       reject(new Error('timeout'));
     }, timeoutMs);
-    fetch(request).then(function(res) {
+    fetch(request, { cache: 'no-cache' }).then(function(res) {
       clearTimeout(timer);
       resolve(res);
     }).catch(function(err) {
