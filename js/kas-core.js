@@ -935,7 +935,7 @@ if (category === 'kas_keluar') {
     function snapshotToArray(snapshot) {
       var transactions = [];
       snapshot.forEach(function (doc) {
-        transactions.push(Object.assign({ id: doc.id }, doc.data()));
+        transactions.push(Object.assign({}, doc.data(), { id: doc.id }));
       });
       return transactions;
     }
