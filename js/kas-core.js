@@ -1418,7 +1418,7 @@ if (category === 'kas_keluar') {
       // ---------- AMBIL SEMUA DATA SEKALI ----------
       var debtsPromise;
       try {
-        debtsPromise = db.collection('debts').get();
+        debtsPromise = db.collection('debts').where('date', '==', date).get();
       } catch (e) {
         debtsPromise = Promise.resolve({ forEach: function () {} });
       }
