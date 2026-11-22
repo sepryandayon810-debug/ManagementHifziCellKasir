@@ -955,40 +955,67 @@ if (category === 'kas_keluar') {
       return snapshotToArray(snapshot);
     }
 
+    var _pastRangeMemCache = {};
+
     async function loadTransactionsByRange(startDate, endDate) {
-  var db = getDb();
-  var resultById = {};
+      var todayKey = formatDateKey(new Date());
+      var isPastOnly = Boolean(startDate && endDate && endDate < todayKey);
+      var rangeCacheKey = 'webpos_tx_range_' + startDate + '_' + endDate;
 
-  async function collectByField(field) {
-    try {
-      var rows = await queryByField(
-        db,
-        field,
-        startDate,
-        endDate
-      );
-
-      rows.forEach(function (row) {
-        if (!resultById[row.id]) {
-          resultById[row.id] = row;
+      // HEMAT KUOTA: jika tarik laporan tanggal yang sudah lewat, pakai cache sesi (0 Read!)
+      if (isPastOnly) {
+        if (_pastRangeMemCache[rangeCacheKey]) {
+          return _pastRangeMemCache[rangeCacheKey];
         }
-      });
-    } catch (error) {
-      console.warn(
-        'KasCore: query field ' + field + ' gagal.',
-        error
-      );
+        try {
+          var cachedRaw = sessionStorage.getItem(rangeCacheKey);
+          if (cachedRaw) {
+            var cachedParsed = JSON.parse(cachedRaw);
+            if (Array.isArray(cachedParsed)) {
+              _pastRangeMemCache[rangeCacheKey] = cachedParsed;
+              return cachedParsed;
+            }
+          }
+        } catch (e) {}
+      }
+
+      var db = getDb();
+      var resultById = {};
+
+      async function collectByField(field) {
+        try {
+          var rows = await queryByField(db, field, startDate, endDate);
+          rows.forEach(function (row) {
+            if (!resultById[row.id]) {
+              resultById[row.id] = row;
+            }
+          });
+        } catch (error) {
+          console.warn('KasCore: query field ' + field + ' gagal.', error);
+        }
+      }
+
+      // Jalankan query data baru (date_key) & data lama (date) secara paralel (2x lebih cepat)
+      await Promise.all([
+        collectByField('date_key'),
+        collectByField('date')
+      ]);
+
+      var mergedList = Object.values(resultById);
+
+      // Simpan cache khusus untuk rentang tanggal masa lalu agar cek ulang 0 Read
+      if (isPastOnly) {
+        _pastRangeMemCache[rangeCacheKey] = mergedList;
+        try {
+          var serialized = JSON.stringify(mergedList);
+          if (serialized.length < 400000) {
+            sessionStorage.setItem(rangeCacheKey, serialized);
+          }
+        } catch (e) {}
+      }
+
+      return mergedList;
     }
-  }
-
-  // Baca data baru
-  await collectByField('date_key');
-
-  // Baca data lama
-  await collectByField('date');
-
-  return Object.values(resultById);
-}
     /* ==========================================================
      * 20. GET TRANSACTIONS BY RANGE
      * ========================================================== */
