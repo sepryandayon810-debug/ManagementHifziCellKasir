@@ -1,5 +1,5 @@
 // Service Worker WebPOS — Cache halaman & aset agar pindah menu cepat & tetap jalan saat offline
-const CACHE_NAME = 'webpos-hifzi-v4';  // ubah jadi v4, v5 setiap rilis baru
+const CACHE_NAME = 'webpos-hifzi-v5';  // ubah jadi v5, v6 setiap rilis baru
 
 const CORE_ASSETS = [
   './',
@@ -114,7 +114,8 @@ self.addEventListener('fetch', function(event) {
   var isStaticCdn =
     url.hostname.includes('gstatic.com') ||
     url.hostname.includes('cdnjs.cloudflare.com') ||
-    url.hostname.includes('fonts.googleapis.com');
+    url.hostname.includes('fonts.googleapis.com') ||
+    url.hostname.includes('cdn.jsdelivr.net');
 
   if (isStaticCdn) {
     event.respondWith(
