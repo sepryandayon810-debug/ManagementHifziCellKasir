@@ -132,22 +132,30 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // B. Halaman HTML & JS toko kita sendiri -> Network-First (timeout 2.5 detik), fallback ke Cache saat offline
+  // B. Halaman HTML & JS toko sendiri -> Stale-While-Revalidate (INSTAN dari cache HP, update diam-diam di background)
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetchWithTimeout(req, 2500).then(function(res) {
-        if (res && res.ok) {
-          var copy = res.clone();
-          caches.open(CACHE_NAME).then(function(cache) { cache.put(req, copy); });
-        }
-        return res;
-      }).catch(function() {
-        return caches.match(req, { ignoreSearch: true }).then(function(cached) {
-          if (cached) return cached;
-          if (req.mode === 'navigate') {
-            return caches.match('./page-kasir.html') || caches.match('./index.html');
+      caches.open(CACHE_NAME).then(function(cache) {
+        return cache.match(req, { ignoreSearch: true }).then(function(cached) {
+          var networkUpdate = fetchWithTimeout(req, 4000).then(function(res) {
+            if (res && res.ok) {
+              cache.put(req, res.clone());
+            }
+            return res;
+          }).catch(function() { return null; });
+
+          if (cached) {
+            event.waitUntil(networkUpdate);
+            return cached;
           }
-          return new Response('', { status: 503, statusText: 'Offline' });
+
+          return networkUpdate.then(function(res) {
+            if (res) return res;
+            if (req.mode === 'navigate') {
+              return cache.match('./page-kasir.html') || cache.match('./index.html');
+            }
+            return new Response('', { status: 503, statusText: 'Offline' });
+          });
         });
       })
     );
