@@ -69,13 +69,23 @@ if (!window.firebaseConfigInitialized) {
       return _origSignOut.apply(window.auth, arguments);
     };
 
-    // Jika offline dan masih ada sesi login tersimpan -> jangan lempar ke login.html
+    // FAST-BOOT AUTH + OFFLINE GUARD: Jangan bikin layar HP macet 20-40 detik menunggu verifikasi auth
     var _origOnAuthStateChanged = window.auth.onAuthStateChanged.bind(window.auth);
+    var _isLoginPage = /login\.html$/i.test(window.location.pathname || '');
     window.auth.onAuthStateChanged = function(nextOrObserver, error, completed) {
       var cb = (typeof nextOrObserver === 'function')
         ? nextOrObserver
         : (nextOrObserver && typeof nextOrObserver.next === 'function' ? nextOrObserver.next.bind(nextOrObserver) : null);
       if (!cb) return _origOnAuthStateChanged(nextOrObserver, error, completed);
+
+      var fastUid = null;
+      if (!_isLoginPage) {
+        var cachedUser = _getCachedOfflineUser();
+        if (cachedUser && cachedUser.uid) {
+          fastUid = cachedUser.uid;
+          setTimeout(function() { cb(cachedUser); }, 0);
+        }
+      }
 
       return _origOnAuthStateChanged(function(user) {
         if (user && user.uid) {
@@ -88,20 +98,24 @@ if (!window.firebaseConfigInitialized) {
             localStorage.setItem('webpos_last_uid', user.uid);
             if (user.displayName) localStorage.setItem('webpos_last_username', user.displayName);
           } catch (e) {}
+          // Jika halaman sudah jalan via Fast-Boot dengan UID yang sama, jangan render ulang 2x
+          if (fastUid && fastUid === user.uid) return;
           cb(user);
           return;
         }
         if (!navigator.onLine) {
           var offlineUser = _getCachedOfflineUser();
           if (offlineUser) {
+            if (fastUid && fastUid === offlineUser.uid) return;
             cb(offlineUser);
             return;
           }
         }
+        try { localStorage.removeItem('webpos_session'); } catch (e) {}
         cb(null);
       }, error, completed);
     };
-
+    
     // Simpan sesi begitu auth siap saat online
     window.auth.onAuthStateChanged(function() {});
   }
@@ -743,7 +757,33 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var svg = wrap.firstElementChild;
       if (svg) {
         svg.dataset.u3dFor = '1';
-        if (el.classList.contains('field-icon')) svg.classList.add('ui-3d-abs');
+        var isInlineAbs = (el.style && el.style.position === 'absolute');
+        var isFieldWrap = el.classList.contains('field-icon') ||
+          (parent.classList && (
+            parent.classList.contains('input-wrap') ||
+            parent.classList.contains('barcode-input-wrap') ||
+            parent.classList.contains('riwayat-search-box') ||
+            parent.classList.contains('search-box') ||
+            parent.classList.contains('produk-search') ||
+            parent.classList.contains('search-input-wrapper')
+          ));
+        if (isInlineAbs || isFieldWrap) {
+          svg.classList.add('ui-3d-abs');
+          svg.style.setProperty('position', 'absolute', 'important');
+          svg.style.setProperty('top', (el.style && el.style.top) || '50%', 'important');
+          if (el.style && el.style.right && !el.style.left) {
+            svg.style.setProperty('right', el.style.right, 'important');
+            svg.style.setProperty('left', 'auto', 'important');
+          } else {
+            svg.style.setProperty('left', (el.style && el.style.left) || '0.85rem', 'important');
+          }
+          svg.style.setProperty('transform', (el.style && el.style.transform) || 'translateY(-50%)', 'important');
+          svg.style.setProperty('width', '16px', 'important');
+          svg.style.setProperty('height', '16px', 'important');
+          svg.style.setProperty('margin', '0', 'important');
+          svg.style.setProperty('pointer-events', 'none', 'important');
+          svg.style.setProperty('z-index', '2', 'important');
+        }
         el.style.setProperty('display', 'none', 'important');
         el.dataset.upgraded3d = '1';
         el.dataset.u3dClass = curClass;
@@ -841,7 +881,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         themeBtn.appendChild(themeSlot);
 
         function renderTheme3d() {
-          var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          var t = document.documentElement.getAttribute('data-theme') || 'light';
+          var isDark = (t === 'dark' || t === 'midnight' || t === 'emerald' || t === 'oled');
           seq++;
           themeSlot.innerHTML = (isDark ? UI3D.sun : UI3D.moon).replace(/__ID__/g, 'u3d_' + seq + '_');
         }
@@ -1147,11 +1188,30 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         if (window.WebPOSLoader) window.WebPOSLoader.hide();
       });
 
-      // 3. Percantik #loadingOverlay & #loadingVeil yang sudah ada
+     // 3. Percantik #loadingOverlay, #loadingVeil, dan teks statis "Memuat..." di dalam grid/tabel
       var mainOverlay = document.getElementById('loadingOverlay');
       if (mainOverlay) enhanceOverlay(mainOverlay);
       var existingVeil = document.getElementById('loadingVeil');
       if (existingVeil) enhanceOverlay(existingVeil);
+
+      var inlineContainers = document.querySelectorAll('#kategoriGrid, #produkGrid, #transactionList');
+      for (var ic = 0; ic < inlineContainers.length; ic++) {
+        var box = inlineContainers[ic];
+        var txt = (box.textContent || '').trim();
+        if (txt.length > 0 && txt.length < 48 && /memuat/i.test(txt) && !box.querySelector('.wpl-inline-box')) {
+          var inlineHtml =
+            '<div class="wpl-inline-box" style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.55rem;padding:2.2rem 1rem;text-align:center;">' +
+              '<div class="wpl-orbit" style="width:54px;height:54px;"><div class="wpl-ring"></div>' + LOADER_SVG.replace('class="wpl-3d-emblem"', 'class="wpl-3d-emblem" style="width:32px;height:32px;"') + '</div>' +
+              '<div style="font-size:0.86rem;font-weight:800;color:var(--text-main,#0f172a);">' + txt + '</div>' +
+              '<div class="wpl-bar" style="max-width:210px;"><div class="wpl-bar-fill" style="width:68%;"></div></div>' +
+            '</div>';
+          if (box.tagName === 'TBODY') {
+            box.innerHTML = '<tr><td colspan="9" style="padding:0;border:none;">' + inlineHtml + '</td></tr>';
+          } else {
+            box.innerHTML = inlineHtml;
+          }
+        }
+      }
 
       // 4. Pantau otomatis jika Utils.showLoading() membuat #loadingVeil baru di body
       new MutationObserver(function(muts) {
