@@ -671,22 +671,28 @@
         
         document.getElementById('btnGenerate').onclick = () => fetchAndProcessData(true);
         document.querySelectorAll('.period-pill').forEach(pill => {
-  pill.onclick = () => {
-    document.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
-    pill.classList.add('active');
-    currentPeriod = pill.dataset.period;
-    document.getElementById('customRangePanel').style.display =
-      currentPeriod === 'custom' ? 'flex' : 'none';
-    if (currentPeriod !== 'custom') processReportData();
-  };
-});
-document.getElementById('btnApplyRange').onclick = () => {
-  if (!document.getElementById('customStart').value || !document.getElementById('customEnd').value) {
-    Utils.showToast('Pilih tanggal mulai dan tanggal akhir', 'warning');
-    return;
-  }
-  processReportData();
-};
+          pill.onclick = () => {
+            document.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentPeriod = pill.dataset.period;
+            document.getElementById('customRangePanel').style.display =
+              currentPeriod === 'custom' ? 'flex' : 'none';
+            if (currentPeriod !== 'custom') fetchAndProcessData(false);
+          };
+        });
+        document.getElementById('btnApplyRange').onclick = () => {
+          const s = document.getElementById('customStart').value;
+          const e = document.getElementById('customEnd').value;
+          if (!s || !e) {
+            Utils.showToast('Pilih tanggal mulai dan tanggal akhir', 'warning');
+            return;
+          }
+          if (s > e) {
+            Utils.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'warning');
+            return;
+          }
+          fetchAndProcessData(false);
+        };
         document.getElementById('filterCategory').onchange = () => processReportData();
         document.getElementById('filterLimit').onchange = () => processReportData();
         document.getElementById('btnExport').onclick = exportCSV;
@@ -710,35 +716,64 @@ document.getElementById('btnApplyRange').onclick = () => {
         }
       }
 
+      // Cache per rentang tanggal agar pindah-pindah filter tidak boros kuota Read
+      const loadedRangesCache = {};
+
+      function getSelectedDateRangeKeys() {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+        if (currentPeriod === 'today') {
+          const t = fmt(now);
+          return { startDate: t, endDate: t };
+        }
+        if (currentPeriod === 'yesterday') {
+          const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+          const ys = fmt(y);
+          return { startDate: ys, endDate: ys };
+        }
+        if (currentPeriod === 'week') {
+          const w = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+          return { startDate: fmt(w), endDate: fmt(now) };
+        }
+        if (currentPeriod === 'month') {
+          const m = new Date(now.getFullYear(), now.getMonth(), 1);
+          return { startDate: fmt(m), endDate: fmt(now) };
+        }
+        if (currentPeriod === 'custom') {
+          const s = document.getElementById('customStart').value;
+          const e = document.getElementById('customEnd').value;
+          if (s && e) return { startDate: s, endDate: e };
+        }
+        const fallback = fmt(now);
+        return { startDate: fallback, endDate: fallback };
+      }
+
       async function fetchAndProcessData(forceRefresh = false) {
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) overlay.style.opacity = '1', overlay.style.visibility = 'visible';
 
         try {
-          if (forceRefresh || !isDataLoaded || globalTransactions.length === 0) {
-            const snap = await db.collection('transactions').get();
+          const range = getSelectedDateRangeKeys();
+          const cacheKey = `${range.startDate}_${range.endDate}`;
 
-globalTransactions = [];
-
-snap.forEach(doc => {
-  const data = {
-    id: doc.id,
-    ...doc.data()
-  };
-
-  /*
-   * Validasi status dan kategori dilakukan KasCore.
-   * Ini kompatibel dengan data lama maupun data baru.
-   */
-  if (
-    KasCore.isValidTransaction(data) &&
-    KasCore.getCategory(data) === 'jual'
-  ) {
-    globalTransactions.push(data);
-  }
-});
+          if (!forceRefresh && loadedRangesCache[cacheKey]) {
+            globalTransactions = loadedRangesCache[cacheKey];
+          } else {
+            // HEMAT KUOTA: hanya ambil transaksi pada rentang tanggal terpilih saja
+            const list = await KasCore.getTransactionsByDateRange({
+              startDate: range.startDate,
+              endDate: range.endDate,
+              category: 'jual'
+            });
+            globalTransactions = (list || []).filter(data =>
+              KasCore.isValidTransaction(data) && KasCore.getCategory(data) === 'jual'
+            );
+            loadedRangesCache[cacheKey] = globalTransactions;
             isDataLoaded = true;
           }
+
           processReportData();
           if (forceRefresh) Utils.showToast('Data berhasil disegarkan', 'success');
         } catch (e) {
@@ -748,7 +783,6 @@ snap.forEach(doc => {
           if (overlay) overlay.style.opacity = '0', overlay.style.visibility = 'hidden';
         }
       }
-
       function processReportData() {
         const now = new Date();
 let startDate = null;
