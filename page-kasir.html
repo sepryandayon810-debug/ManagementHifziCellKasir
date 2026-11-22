@@ -744,9 +744,12 @@ html,body{overflow-x:hidden;max-width:100vw}
   #paymentModal .modal-body>.amount-display,#paymentModal .amount-display{padding:0.3rem 0.5rem!important;margin-bottom:0.15rem!important;border-radius:0.4rem!important;flex-shrink:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;min-height:44px!important;height:auto!important}
   #paymentModal .amount-label{font-size:0.6rem!important;margin-bottom:0.05rem!important;text-transform:uppercase!important;letter-spacing:0.02em!important;opacity:0.8!important}
   #paymentModal .amount-value{font-size:1.15rem!important;font-weight:700!important;line-height:1.2!important}
-  #paymentModal .amount-display:nth-child(3) .amount-value{font-size:1.35rem!important;color:var(--primary)!important}
-  #paymentModal .amount-display:nth-child(4){background:rgba(16,185,129,0.08)!important}
-  #paymentModal .amount-display:nth-child(4) .amount-value{color:var(--success)!important;font-size:1.15rem!important}
+  #paymentModal #paymentTotal{font-size:1.15rem!important;color:var(--text-primary)!important}
+  #paymentModal #paymentInput{font-size:1.35rem!important;color:var(--primary)!important}
+  #paymentModal #paymentChange{color:var(--success)!important;font-size:1.15rem!important}
+  #paymentModal #paymentItemsBox{flex-shrink:0!important;margin-bottom:0.1rem!important}
+  #paymentModal #paymentItemsList{max-height:84px!important}
+  #paymentModal #paymentItemsList > div{flex-shrink:0!important}
   #paymentModal .quick-amounts{display:flex!important;gap:0.25rem!important;margin-bottom:0.15rem!important;flex-shrink:0!important;overflow-x:auto!important;scrollbar-width:none!important;padding-bottom:0.1rem!important;height:32px!important;align-items:center!important}
   #paymentModal .quick-amounts::-webkit-scrollbar{display:none!important}
   #paymentModal .quick-amount{padding:0.25rem 0.5rem!important;font-size:0.65rem!important;border-radius:50px!important;flex-shrink:0!important;border:1px solid var(--border-color)!important;background:var(--bg-secondary)!important;font-weight:500!important;white-space:nowrap!important;height:26px!important;display:flex!important;align-items:center!important;line-height:1!important}
@@ -1225,17 +1228,18 @@ html,body{overflow-x:hidden;max-width:100vw}
     filter:brightness(0.95)!important;
   }
   
-  /* Modal body lebih lega karena footer hilang */
+ /* Modal body lebih lega karena footer hilang */
   #paymentModal .modal-body{
-    padding:0.75rem 1rem 1.25rem!important;
-    gap:0.5rem!important;
+    padding:0.5rem 0.85rem 0.9rem!important;
+    gap:0.35rem!important;
   }
   
   /* Numpad lebih lega */
   #paymentModal .numpad{
-    margin-bottom:0.5rem!important;
-    min-height:280px!important;
+    margin-bottom:0.35rem!important;
+    min-height:215px!important;
   }
+  
   #paymentModal .numpad-btn{
     font-size:1.5rem!important;
     font-weight:700!important;
@@ -1843,9 +1847,19 @@ html,body{overflow-x:hidden;max-width:100vw}
 #paymentModal .payment-method[data-method="hutang"].active i {
   color:var(--warning) !important;
 }
+#paymentModal .modal-body > .amount-display.payment-mode-hidden,
+#paymentModal .modal-body > .payment-mode-hidden,
 #paymentModal .payment-mode-hidden {
   display:none !important;
 }
+#paymentModal #paymentItemsBox,
+#paymentModal #piutangSection {
+  flex-shrink:0 !important;
+}
+#paymentModal #paymentItemsList > div {
+  flex-shrink:0 !important;
+}
+  
 #paymentModal .piutang-section .form-input,
 #paymentModal .piutang-section input.form-input {
   background:var(--bg-secondary) !important;
@@ -4284,15 +4298,15 @@ html,body{overflow-x:hidden;max-width:100vw}
         </div>
 
         <!-- RINCIAN BARANG YANG DIBELI (SELALU TAMPIL DI TUNAI / TRANSFER / QRIS / HUTANG) -->
-        <div id="paymentItemsBox" style="margin-bottom:0.65rem; border:1px solid var(--border); border-radius:12px; background:var(--bg-subtle, rgba(148,163,184,0.08)); overflow:hidden;">
-          <div onclick="window.togglePaymentItemsList()" style="display:flex; align-items:center; justify-content:space-between; padding:0.48rem 0.72rem; cursor:pointer; user-select:none; border-bottom:1px solid var(--border);">
-            <span style="font-size:0.75rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:0.35rem;">
+        <div id="paymentItemsBox" style="flex-shrink:0; margin-bottom:0.35rem; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); overflow:hidden;">
+          <div onclick="window.togglePaymentItemsList()" style="display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.65rem; cursor:pointer; user-select:none;">
+            <span style="font-size:0.74rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:0.35rem;">
               <i class="fas fa-shopping-bag" style="color:var(--primary);"></i>
               <span id="paymentItemsCount">Rincian Belanja (0 item)</span>
             </span>
-            <i class="fas fa-chevron-up" id="paymentItemsChevron" style="font-size:0.7rem; color:var(--text-muted); transition:transform 0.2s;"></i>
+            <i class="fas fa-chevron-up" id="paymentItemsChevron" style="font-size:0.68rem; color:var(--text-muted); transition:transform 0.2s;"></i>
           </div>
-          <div id="paymentItemsList" style="max-height:115px; overflow-y:auto; padding:0.35rem 0.72rem; display:flex; flex-direction:column; gap:0.32rem;"></div>
+          <div id="paymentItemsList" style="max-height:110px; overflow-y:auto; padding:0.3rem 0.65rem; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:0.18rem;"></div>
         </div>
 
         <div class="amount-display">
@@ -5772,13 +5786,13 @@ function renderCart() {
       const totalPcs = cart.reduce((s, i) => s + toMoney(i.quantity), 0);
       countEl.textContent = `Rincian Belanja (${cart.length} item • ${totalPcs} pcs)`;
 
-      let html = cart.map(item => `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; padding:0.22rem 0; border-bottom:1px dashed var(--border);">
-          <div style="min-width:0; flex:1;">
-            <div style="font-size:0.78rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
+     let html = cart.map((item, idx) => `
+        <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; padding:0.2rem 0; ${idx < cart.length - 1 ? 'border-bottom:1px dashed var(--border-color);' : ''}">
+          <div style="min-width:0; flex:1; line-height:1.25;">
+            <div style="font-size:0.76rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
             <div style="font-size:0.68rem; color:var(--text-muted);">${item.quantity} × ${formatRupiah(item.price)}</div>
           </div>
-          <div style="font-size:0.78rem; font-weight:800; color:var(--text-main); white-space:nowrap;">${formatRupiah(item.total)}</div>
+          <div style="font-size:0.76rem; font-weight:800; color:var(--text-primary); white-space:nowrap;">${formatRupiah(item.total)}</div>
         </div>
       `).join('');
 
