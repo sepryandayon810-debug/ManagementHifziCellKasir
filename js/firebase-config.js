@@ -87,7 +87,7 @@ if (!window.firebaseConfigInitialized) {
             return origGet.call(self, { source: 'cache' }).catch(function() { return origGet.call(self); });
           }
 
-          return new Promise(function(resolve, reject) {
+         return new Promise(function(resolve, reject) {
             var settled = false;
             var serverPromise = origGet.call(self);
             var fallbackTimer = setTimeout(function() {
@@ -96,16 +96,38 @@ if (!window.firebaseConfigInitialized) {
                 var hasData = isDoc ? (cacheSnap && cacheSnap.exists) : (cacheSnap && !cacheSnap.empty);
                 if (!settled && hasData) {
                   settled = true;
+                  clearTimeout(hardTimer);
                   resolve(cacheSnap);
                 }
               }).catch(function() {});
             }, 1800);
 
+            // Hard fail-safe 5.5 detik: walau cache kosong & sinyal HP pelan, jangan biarkan halaman stuck di 95%
+            var hardTimer = setTimeout(function() {
+              if (settled) return;
+              origGet.call(self, { source: 'cache' }).then(function(cacheSnap) {
+                if (!settled) {
+                  settled = true;
+                  resolve(cacheSnap);
+                }
+              }).catch(function() {
+                if (!settled) {
+                  settled = true;
+                  resolve(isDoc
+                    ? { exists: false, id: self.id || '', data: function() { return undefined; } }
+                    : { empty: true, size: 0, docs: [], forEach: function() {} }
+                  );
+                }
+              });
+            }, 5500);
+
             serverPromise.then(function(snap) {
               clearTimeout(fallbackTimer);
+              clearTimeout(hardTimer);
               if (!settled) { settled = true; resolve(snap); }
             }).catch(function(err) {
               clearTimeout(fallbackTimer);
+              clearTimeout(hardTimer);
               if (settled) return;
               origGet.call(self, { source: 'cache' }).then(function(cacheSnap) {
                 settled = true;
@@ -1170,7 +1192,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         } else if (currentPct < 94) {
           setVisual(currentPct + 2, 'Hampir selesai...');
         }
-        if (ticks >= 14 && skipBtn) {
+        if (ticks >= 9 && skipBtn) {
           subEl.textContent = 'Koneksi agak lambat, bisa lanjut dulu';
           skipBtn.style.display = 'inline-block';
         }
@@ -1195,6 +1217,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function enhanceOverlay(overlay) {
     if (!overlay || overlay.dataset.wplReady === '1') return;
+    var preCs = window.getComputedStyle(overlay);
+    // Cegah #loadingOverlay tanpa CSS tersembunyi (Restock, Data Pelanggan, Modal Harian) menutupi layar permanen
+    if (overlay.id === 'loadingOverlay' && preCs.position !== 'fixed' && !overlay.classList.contains('active')) {
+      overlay.style.display = 'none';
+      return;
+    }
     overlay.dataset.wplReady = '1';
     overlay.classList.add('wpl-upgraded');
 
@@ -1221,6 +1249,76 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     }
     syncVis();
     new MutationObserver(syncVis).observe(overlay, { attributes: true, attributeFilter: ['class', 'style'] });
+  }
+
+  // Upgrade otomatis semua teks/spinner "Memuat..." di dalam tabel/grid/kartu di SELURUH 28 halaman jadi 3D Progress Bar ber-%
+  function createInlineProgressNode(labelText) {
+    var wrap = document.createElement('div');
+    wrap.className = 'wpl-inline-box';
+    wrap.style.cssText = 'grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.48rem;padding:2rem 1rem;text-align:center;width:100%;';
+    wrap.innerHTML =
+      '<div class="wpl-orbit" style="width:52px;height:52px;"><div class="wpl-ring"></div>' +
+        LOADER_SVG.replace('class="wpl-3d-emblem"', 'class="wpl-3d-emblem" style="width:30px;height:30px;"') +
+      '</div>' +
+      '<div class="wpl-inline-title" style="font-size:0.85rem;font-weight:800;color:var(--text-main,#0f172a);"></div>' +
+      '<div style="width:min(220px,78%);display:flex;align-items:center;justify-content:space-between;font-size:0.7rem;font-weight:700;color:var(--text-muted,#64748b);">' +
+        '<span class="wpl-inline-sub">Menyiapkan data...</span>' +
+        '<span class="wpl-inline-pct" style="color:var(--primary,#4f46e5);font-weight:800;">16%</span>' +
+      '</div>' +
+      '<div class="wpl-bar" style="max-width:220px;height:7px;"><div class="wpl-bar-fill" style="width:16%;"></div></div>';
+
+    var titleEl = wrap.querySelector('.wpl-inline-title');
+    var subEl = wrap.querySelector('.wpl-inline-sub');
+    var pctEl = wrap.querySelector('.wpl-inline-pct');
+    var fillEl = wrap.querySelector('.wpl-bar-fill');
+    if (titleEl) titleEl.textContent = labelText || 'Memuat data...';
+
+    var pct = 16;
+    var timer = setInterval(function() {
+      if (!wrap.isConnected) { clearInterval(timer); return; }
+      if (pct < 48) {
+        pct += 11;
+      } else if (pct < 78) {
+        pct += 6;
+        if (subEl) subEl.textContent = 'Menyinkronkan data...';
+      } else if (pct < 92) {
+        pct += 2;
+        if (subEl) subEl.textContent = 'Hampir selesai...';
+      }
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (fillEl) fillEl.style.width = pct + '%';
+    }, 420);
+
+    return wrap;
+  }
+
+  function upgradeInlineLoaders(scope) {
+    try {
+      var root = (scope && scope.querySelectorAll) ? scope : document;
+      var candidates = root.querySelectorAll('main td, main div, .main-content td, .main-content div, .content-area td, .content-area div, #kategoriGrid, #produkGrid, #transactionList, #tbodyRiwayat td, #payrollTableBody td, #summaryTableBody td, #logBody td, #viewerTableBody td, #deviceHistoryList, #historyModalBody, #customerTableBody td');
+      for (var i = 0; i < candidates.length; i++) {
+        var el = candidates[i];
+        if (!el || !el.isConnected) continue;
+        if (el.closest('button, a, select, option, .sidebar, .header, .top-header, .wpl-card, .wpl-inline-box, #loadingOverlay, #loadingVeil, #webposGlobalLoader')) continue;
+        if (el.id === 'userName' || el.id === 'dateRangeInfo' || el.id === 'badgeTelegramKasir' || el.id === 'importProgressLabel' || el.id === 'gasCodeDisplay') continue;
+        if (el.querySelector('.wpl-inline-box, button, input, select, textarea, table, a, form, .kategori-card, .produk-card')) continue;
+
+        var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        var hasSpinIcon = !!el.querySelector('.fa-spinner, .spinner');
+        var isMemuatText = txt.length >= 6 && txt.length <= 68 && /^memuat\b/i.test(txt);
+        var isSpinnerLoad = hasSpinIcon && txt.length > 0 && txt.length <= 68 && /(memuat|memproses|mengambil|sinkron)/i.test(txt);
+
+        if (!isMemuatText && !isSpinnerLoad) continue;
+        // Jika elemen ini pembungkus yang punya anak div/td lain yang juga cocok, biarkan anaknya yang di-upgrade
+        if (el.tagName === 'DIV' && el.id !== 'kategoriGrid' && el.id !== 'produkGrid' && el.id !== 'transactionList' && el.querySelector('div, td')) {
+          var innerTxt = (el.firstElementChild && el.firstElementChild.textContent || '').trim();
+          if (innerTxt === txt) continue;
+        }
+
+        el.innerHTML = '';
+        el.appendChild(createInlineProgressNode(txt));
+      }
+    } catch (e) {}
   }
 
   function initUnifiedLoader() {
@@ -1268,7 +1366,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         }
       };
 
-      // 2. Prefetch halus saat jari menyentuh / hover menu + Transisi Mulus Tanpa Kedip Gelap
+      // 2. Prefetch halus saat jari menyentuh / hover menu + Transisi Mulus Anti-Stuck
       var prefetchedUrls = {};
       function prefetchPage(e) {
         var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
@@ -1285,69 +1383,78 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       document.addEventListener('mouseenter', prefetchPage, true);
 
       var navDelayTimer = null;
+      var navSafetyTimer = null;
+      function clearNavLoaders() {
+        if (navDelayTimer) { clearTimeout(navDelayTimer); navDelayTimer = null; }
+        if (navSafetyTimer) { clearTimeout(navSafetyTimer); navSafetyTimer = null; }
+        if (window.WebPOSLoader) window.WebPOSLoader.hide();
+      }
+
       document.addEventListener('click', function(e) {
+        if (e.defaultPrevented) return;
         var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
         if (!link) return;
-        var href = link.getAttribute('href') || '';
+        var href = (link.getAttribute('href') || '').trim();
         if (!href || href.charAt(0) === '#' || link.target === '_blank' || e.ctrlKey || e.metaKey) return;
+
+        // Jangan tampilkan loader jika klik menu halaman yang sedang terbuka saat ini
+        try {
+          var targetUrl = new URL(href, window.location.href);
+          if (targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search) {
+            return;
+          }
+        } catch (err) {}
+
         var labelEl = link.querySelector('span');
         var pageLabel = labelEl ? labelEl.textContent.trim() : 'Halaman';
 
-        // Langsung jalankan garis progress atas yang mulus
         topBar.style.opacity = '1';
         topBar.style.width = '78%';
 
-        // Kartu progress 3D hanya muncul jika perpindahan > 350ms (kalau dari cache HP langsung mulus tanpa kedip!)
         if (navDelayTimer) clearTimeout(navDelayTimer);
+        if (navSafetyTimer) clearTimeout(navSafetyTimer);
         navDelayTimer = setTimeout(function() {
           window.WebPOSLoader.show('Membuka ' + pageLabel + '...', 'Menyiapkan halaman...');
+          navSafetyTimer = setTimeout(clearNavLoaders, 6000);
         }, 350);
-      }, true);
+      }, false);
 
-      // Pastikan loader bersih saat user tekan tombol Back di HP (bfcache)
-      window.addEventListener('pageshow', function() {
-        if (window.WebPOSLoader) window.WebPOSLoader.hide();
-      });
+      window.addEventListener('pageshow', clearNavLoaders);
+      window.addEventListener('pagehide', clearNavLoaders);
 
-     // 3. Percantik #loadingOverlay, #loadingVeil, dan teks statis "Memuat..." di dalam grid/tabel
+      // 3. Percantik #loadingOverlay, #loadingVeil, dan SEMUA spinner/teks "Memuat..." di 28 halaman
       var mainOverlay = document.getElementById('loadingOverlay');
       if (mainOverlay) enhanceOverlay(mainOverlay);
       var existingVeil = document.getElementById('loadingVeil');
       if (existingVeil) enhanceOverlay(existingVeil);
+      upgradeInlineLoaders(document);
 
-      var inlineContainers = document.querySelectorAll('#kategoriGrid, #produkGrid, #transactionList');
-      for (var ic = 0; ic < inlineContainers.length; ic++) {
-        var box = inlineContainers[ic];
-        var txt = (box.textContent || '').trim();
-        if (txt.length > 0 && txt.length < 48 && /memuat/i.test(txt) && !box.querySelector('.wpl-inline-box')) {
-          var inlineHtml =
-            '<div class="wpl-inline-box" style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.55rem;padding:2.2rem 1rem;text-align:center;">' +
-              '<div class="wpl-orbit" style="width:54px;height:54px;"><div class="wpl-ring"></div>' + LOADER_SVG.replace('class="wpl-3d-emblem"', 'class="wpl-3d-emblem" style="width:32px;height:32px;"') + '</div>' +
-              '<div style="font-size:0.86rem;font-weight:800;color:var(--text-main,#0f172a);">' + txt + '</div>' +
-              '<div class="wpl-bar" style="max-width:210px;"><div class="wpl-bar-fill" style="width:68%;"></div></div>' +
-            '</div>';
-          if (box.tagName === 'TBODY') {
-            box.innerHTML = '<tr><td colspan="9" style="padding:0;border:none;">' + inlineHtml + '</td></tr>';
-          } else {
-            box.innerHTML = inlineHtml;
-          }
-        }
-      }
-
-      // 4. Pantau otomatis jika Utils.showLoading() membuat #loadingVeil baru di body
+      // 4. Pantau otomatis #loadingVeil baru dan loader "Memuat..." yang dirender dinamis oleh JS halaman
+      var inlineScanTimer = null;
       new MutationObserver(function(muts) {
+        var needInlineScan = false;
         for (var i = 0; i < muts.length; i++) {
           var nodes = muts[i].addedNodes;
           for (var j = 0; j < nodes.length; j++) {
             var n = nodes[j];
-            if (n && n.nodeType === 1 && (n.id === 'loadingVeil' || n.id === 'loadingOverlay')) {
+            if (!n || n.nodeType !== 1) continue;
+            if (n.id === 'loadingVeil' || n.id === 'loadingOverlay') {
               enhanceOverlay(n);
+            } else if (!n.classList.contains('wpl-inline-box') && !n.classList.contains('wpl-card')) {
+              needInlineScan = true;
             }
           }
         }
-      }).observe(document.body, { childList: true });
+        if (needInlineScan && !inlineScanTimer) {
+          inlineScanTimer = setTimeout(function() {
+            inlineScanTimer = null;
+            upgradeInlineLoaders(document);
+          }, 60);
+        }
+      }).observe(document.body, { childList: true, subtree: true });
     } catch (e) {}
   }
+  
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initUnifiedLoader);
