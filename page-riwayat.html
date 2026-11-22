@@ -644,7 +644,6 @@
             <table class="transaction-table">
               <thead>
                 <tr>
-                  <th style="width:34px"></th>
                   <th class="sequence-heading">No</th>
                   <th>ID / Keterangan</th>
                   <th>Tanggal</th>
@@ -657,7 +656,7 @@
               </thead>
               <tbody id="transactionList">
                 <tr>
-                  <td colspan="9" style="text-align:center;padding:3rem;">
+                  <td colspan="8" style="text-align:center;padding:3rem;">
                     <div style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat riwayat...</div>
                   </td>
                 </tr>
@@ -929,25 +928,30 @@ const TYPE_ICONS = {
             return;
           }
 
-          let userData = { name: user.email, role: 'kasir' };
-          try {
-            const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) {
-              userData = doc.data();
-              if (typeof RoleGuard !== 'undefined') {
-                RoleGuard.apply(userData.role || 'kasir');
-              }
-            }
-          } catch(e) {}
-
-          const dName = userData.name || userData.username || user.email.split('@')[0];
-          document.getElementById('userName').textContent = dName;
-          document.getElementById('userRole').textContent = (userData.role || 'Kasir').toUpperCase();
+          const fallbackName = localStorage.getItem('webpos_user_name') || user.email.split('@')[0];
+          const fallbackRole = localStorage.getItem('webpos_user_role') || 'kasir';
+          document.getElementById('userName').textContent = fallbackName;
+          document.getElementById('userRole').textContent = fallbackRole.toUpperCase();
           const avatar = document.getElementById('userAvatar');
-          if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
+          if (avatar) avatar.textContent = fallbackName.slice(0, 2).toUpperCase();
+          if (typeof RoleGuard !== 'undefined') RoleGuard.apply(fallbackRole);
 
+          // Jalankan riwayat LANGSUNG tanpa menunggu query user selesai!
           setupSidebarEvents();
           initRiwayat();
+
+          db.collection("users").doc(user.uid).get().then(doc => {
+            if (!doc.exists) return;
+            const userData = doc.data();
+            const dName = userData.name || userData.username || user.email.split('@')[0];
+            const dRole = userData.role || 'kasir';
+            localStorage.setItem('webpos_user_name', dName);
+            localStorage.setItem('webpos_user_role', dRole);
+            document.getElementById('userName').textContent = dName;
+            document.getElementById('userRole').textContent = dRole.toUpperCase();
+            if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
+            if (typeof RoleGuard !== 'undefined') RoleGuard.apply(dRole);
+          }).catch(() => {});
         });
       });
 
@@ -1287,9 +1291,14 @@ const TYPE_ICONS = {
               cached.items.forEach(t => { if (t && t.id) mergedMap.set(String(t.id), t); });
               let nextMaxWaktu = cached.maxWaktu || 0;
 
-              try {
-                const sinceMs = Math.max(0, nextMaxWaktu - 5000);
-                const deltaSnap = await db.collection('transactions').where('waktu', '>=', sinceMs).get();
+              // TAMPILKAN CACHE INSTAN DULU (< 0.1 detik di HP!)
+              allTransactions = [...mergedMap.values()].filter(t => KasCore.isValidTransaction(t));
+              filterAndRender();
+
+              // Sinkron transaksi baru diam-diam di background
+              const sinceMs = Math.max(0, nextMaxWaktu - 5000);
+              db.collection('transactions').where('waktu', '>=', sinceMs).get().then(async deltaSnap => {
+                let changed = false;
                 deltaSnap.forEach(doc => {
                   const data = { ...doc.data(), id: doc.id };
                   const dStr = getTxDateStr(data);
@@ -1297,18 +1306,17 @@ const TYPE_ICONS = {
                     mergedMap.set(String(doc.id), data);
                     const w = getTimestampMillis(data);
                     if (w > nextMaxWaktu) nextMaxWaktu = w;
+                    changed = true;
                   }
                 });
-                const mergedList = [...mergedMap.values()];
-                allTransactions = mergedList;
-                filterAndRender();
-                await writeRiwayatCache(rangeKey, mergedList, nextMaxWaktu || Date.now());
-                return;
-              } catch (eDelta) {
-                allTransactions = [...mergedMap.values()];
-                filterAndRender();
-                return;
-              }
+                if (changed) {
+                  const mergedList = [...mergedMap.values()];
+                  allTransactions = mergedList;
+                  filterAndRender();
+                  await writeRiwayatCache(rangeKey, mergedList, nextMaxWaktu || Date.now());
+                }
+              }).catch(() => {});
+              return;
             }
           }
         }
@@ -1535,7 +1543,7 @@ const TYPE_ICONS = {
         document.getElementById('trxCount').textContent = transactions.length + ' transaksi';
 
         if (transactions.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:3rem"><div style="color:var(--text-muted)"><i class="fas fa-receipt" style="font-size:2rem;margin-bottom:.5rem;"></i><p>Belum ada transaksi</p></div></td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:3rem"><div style="color:var(--text-muted)"><i class="fas fa-receipt" style="font-size:2rem;margin-bottom:.5rem;"></i><p>Belum ada transaksi</p></div></td></tr>`;
           return;
         }
 
@@ -1545,7 +1553,6 @@ const TYPE_ICONS = {
           const konterName = isReseller ? getResellerCounterName(t) : '';
           const desc = getTransactionDesc(t);
           const icon = isReseller ? 'fa-store' : (TYPE_ICONS[cat] || 'fa-circle');
-          const itemsHtml = buildDetailItems(t);
           const amountValue = KasCore.getNominal(t);
           const displaySeq = t.inputSequence || '-';
           const isOwnerTake = Boolean(t.isOwnerTake || (t.catatan && t.catatan.includes('[AMBIL OWNER]')) || (t.note && t.note.includes('[AMBIL OWNER]')));
@@ -1560,11 +1567,11 @@ const TYPE_ICONS = {
               : '<span class="transaction-type ' + cat + '">' + (TYPE_LABELS[cat] || cat) + '</span>');
 
           return `
-            <tr class="data-row">
-              <td><button class="expand-btn" id="expand-${t.id}" onclick="toggleDetail('${t.id}')"><i class="fas fa-chevron-down"></i></button></td>
+            <tr class="data-row" onclick="toggleDetail('${t.id}')" style="cursor:pointer;" title="Klik untuk melihat detail transaksi">
               <td style="text-align:center;"><span class="transaction-sequence">${displaySeq}</span></td>
               <td>
-<div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:${isReseller ? '#7c3aed' : 'var(--primary)'};"></i>${ownerTag}${discountTag}${desc}</div>                ${isReseller ? `<div style="margin-top:2px;"><span class="reseller-counter-badge"><i class="fas fa-users"></i> ${konterName}</span></div>` : ''}
+                <div style="font-weight:700; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas ${icon}" style="margin-right:.35rem;color:${isReseller ? '#7c3aed' : 'var(--primary)'};"></i>${ownerTag}${discountTag}${desc}</div>
+                ${isReseller ? `<div style="margin-top:2px;"><span class="reseller-counter-badge"><i class="fas fa-users"></i> ${konterName}</span></div>` : ''}
               </td>
               <td style="white-space:nowrap; font-size:0.8rem;">${formatDateTime(t.waktu || t.timestamp)}</td>
               <td>${typeBadgeHtml}</td>
@@ -1574,21 +1581,21 @@ const TYPE_ICONS = {
                 <span style="font-size:0.62rem;font-weight:800;padding:0.1rem 0.35rem;border-radius:4px;background:var(--bg-subtle);color:var(--text-muted);text-transform:uppercase;">${getTransactionRole(t)}</span>
               </td>
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
-              <td style="text-align:center; white-space:nowrap;">
+              <td style="text-align:center; white-space:nowrap;" onclick="event.stopPropagation()">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk" style="padding:0.25rem 0.45rem;"><i class="fas fa-print"></i></button>
                 <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit" style="padding:0.25rem 0.45rem;"><i class="fas fa-pen"></i></button>
                 <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus" style="padding:0.25rem 0.45rem;"><i class="fas fa-trash"></i></button>
               </td>
             </tr>
             <tr class="detail-row" id="detail-${t.id}">
-              <td colspan="9">
-                <div class="detail-panel">${itemsHtml}</div>
+              <td colspan="8">
+                <div class="detail-panel" id="detail-panel-${t.id}"></div>
               </td>
             </tr>
           `;
         }).join('');
       }
-
+      
       function buildDetailItems(t) {
         const isReseller = isResellerTx(t);
         const konterName = isReseller ? getResellerCounterName(t) : '-';
@@ -1633,19 +1640,24 @@ const TYPE_ICONS = {
         return html;
       }
 
-      window.toggleDetail = function(id) {
+     window.toggleDetail = function(id) {
         const row = document.getElementById('detail-' + id);
-        const btn = document.getElementById('expand-' + id);
         if (!row) return;
         const isOpen = row.classList.contains('open');
         document.querySelectorAll('.detail-row.open').forEach(r => r.classList.remove('open'));
-        document.querySelectorAll('.expand-btn.open').forEach(b => b.classList.remove('open'));
         if (!isOpen) {
+          const panel = document.getElementById('detail-panel-' + id);
+          if (panel && !panel.dataset.loaded) {
+            const tx = allTransactions.find(x => String(x.id) === String(id));
+            if (tx) {
+              panel.innerHTML = buildDetailItems(tx);
+              panel.dataset.loaded = '1';
+            }
+          }
           row.classList.add('open');
-          if (btn) btn.classList.add('open');
         }
       };
-
+      
       function updateSummary(transactions) {
         const container = document.getElementById('summaryCardsContainer');
         if (!container) return;
