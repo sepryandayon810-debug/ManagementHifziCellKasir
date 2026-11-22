@@ -213,6 +213,104 @@ function hideMenuItem(selector) {
                   radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 0 1px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 8px 9px !important;
       background-color: #1e293b !important; background-size: 16px 16px !important;
     }
+   /* ===== 5 GAYA GRAFIS 3D & MODERN PREMIUM ===== */
+    /* 1. Clay 3D Soft */
+    [data-theme-style="clay3d"] .card, [data-theme-style="clay3d"] .stat-card, [data-theme-style="clay3d"] .summary-card, [data-theme-style="clay3d"] .produk-card, [data-theme-style="clay3d"] .kategori-card {
+      border-radius: 20px !important;
+      border: 1px solid rgba(255,255,255,0.45) !important;
+      box-shadow: 0 12px 26px -6px rgba(15,23,42,0.14), inset 0 2px 2px rgba(255,255,255,0.55), inset 0 -4px 8px rgba(15,23,42,0.06) !important;
+    }
+    [data-theme-style="clay3d"] .btn-primary, [data-theme-style="clay3d"] .tab-btn.active {
+      border-radius: 14px !important;
+      box-shadow: 0 8px 18px -4px color-mix(in srgb, var(--primary) 48%, transparent), inset 0 2px 3px rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.18) !important;
+    }
+
+    /* 2. 3D Emboss Timbul (Taktil saat ditekan) */
+    [data-theme-style="neo3d"] .card, [data-theme-style="neo3d"] .stat-card, [data-theme-style="neo3d"] .summary-card, [data-theme-style="neo3d"] .produk-card, [data-theme-style="neo3d"] .kategori-card {
+      border: 1.5px solid var(--border) !important;
+      border-bottom: 4px solid color-mix(in srgb, var(--primary) 35%, var(--border)) !important;
+      box-shadow: 0 8px 18px rgba(15,23,42,0.09) !important;
+      transition: transform 0.16s ease, box-shadow 0.16s ease !important;
+    }
+    [data-theme-style="neo3d"] .btn, [data-theme-style="neo3d"] .tab-btn {
+      border-bottom: 3.5px solid rgba(0,0,0,0.22) !important;
+      transition: transform 0.12s ease !important;
+    }
+    [data-theme-style="neo3d"] .btn:active, [data-theme-style="neo3d"] .kategori-card:active, [data-theme-style="neo3d"] .produk-card:active {
+      transform: translateY(2px) !important;
+    }
+
+    /* 3. Aurora Glow 3D */
+    [data-theme-style="aurora3d"] body, [data-theme-style="aurora3d"] .main-content {
+      background-image:
+        radial-gradient(at 10% 10%, color-mix(in srgb, var(--primary) 24%, transparent) 0px, transparent 50%),
+        radial-gradient(at 90% 15%, rgba(16, 185, 129, 0.2) 0px, transparent 48%),
+        radial-gradient(at 50% 95%, rgba(139, 92, 246, 0.2) 0px, transparent 52%) !important;
+      background-attachment: fixed !important;
+    }
+    [data-theme-style="aurora3d"] .card, [data-theme-style="aurora3d"] .stat-card, [data-theme-style="aurora3d"] .summary-card {
+      background: color-mix(in srgb, var(--bg-surface) 88%, transparent) !important;
+      box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--primary) 22%, rgba(15,23,42,0.12)) !important;
+      border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border)) !important;
+    }
+
+    /* 4. Neon Cyber */
+    [data-theme-style="cyber3d"] .card, [data-theme-style="cyber3d"] .stat-card, [data-theme-style="cyber3d"] .summary-card, [data-theme-style="cyber3d"] .sidebar, [data-theme-style="cyber3d"] .main-header {
+      border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent) !important;
+      box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 24%, transparent) !important;
+    }
+    [data-theme-style="cyber3d"] .btn-primary, [data-theme-style="cyber3d"] .tab-btn.active {
+      box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 60%, transparent) !important;
+    }
+
+    /* 5. Gold Executive */
+    [data-theme-style="luxury"] .card, [data-theme-style="luxury"] .stat-card, [data-theme-style="luxury"] .summary-card, [data-theme-style="luxury"] .main-header {
+      border: 1px solid rgba(217, 169, 66, 0.45) !important;
+      box-shadow: 0 10px 24px -8px rgba(180, 130, 35, 0.18), inset 0 1px 0 rgba(253, 224, 71, 0.25) !important;
+    }
+    [data-theme-style="luxury"] .btn-primary, [data-theme-style="luxury"] .tab-btn.active {
+      background: linear-gradient(135deg, #d97706, #eab308, #b45309) !important;
+      color: #ffffff !important;
+      border-color: #facc15 !important;
+    }
+
+    /* ===== AKTIFKAN 7 CORAK DESAIN LAINNYA ===== */
+    [data-theme-style="batik"] body, [data-theme-style="batik"] .main-content, [data-theme-style="batik"] .sidebar {
+      background-image: linear-gradient(135deg, color-mix(in srgb, var(--primary) 9%, transparent) 25%, transparent 25%),
+                        linear-gradient(225deg, color-mix(in srgb, var(--primary) 9%, transparent) 25%, transparent 25%),
+                        linear-gradient(45deg, color-mix(in srgb, var(--primary) 9%, transparent) 25%, transparent 25%),
+                        linear-gradient(315deg, color-mix(in srgb, var(--primary) 9%, transparent) 25%, transparent 25%) !important;
+      background-position: 14px 0, 14px 0, 0 0, 0 0 !important;
+      background-size: 28px 28px !important;
+    }
+    [data-theme-style="stars"] body, [data-theme-style="stars"] .main-content, [data-theme-style="stars"] .sidebar {
+      background-image: radial-gradient(color-mix(in srgb, var(--primary) 45%, #facc15) 1.5px, transparent 1.5px),
+                        radial-gradient(rgba(250, 204, 21, 0.45) 1px, transparent 1px) !important;
+      background-size: 32px 32px, 19px 19px !important;
+      background-position: 0 0, 9px 11px !important;
+    }
+    [data-theme-style="wood"] body, [data-theme-style="wood"] .main-content, [data-theme-style="wood"] .sidebar {
+      background-image: repeating-linear-gradient(90deg, rgba(146,64,14,0.06) 0px, rgba(146,64,14,0.06) 2px, transparent 2px, transparent 14px),
+                        repeating-linear-gradient(0deg, rgba(180,83,9,0.04) 0px, rgba(180,83,9,0.04) 1px, transparent 1px, transparent 28px) !important;
+    }
+    [data-theme-style="zigzag"] body, [data-theme-style="zigzag"] .main-content, [data-theme-style="zigzag"] .sidebar {
+      background-image: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, transparent) 25%, transparent 25%),
+                        linear-gradient(225deg, color-mix(in srgb, var(--primary) 10%, transparent) 25%, transparent 25%) !important;
+      background-size: 22px 22px !important;
+    }
+    [data-theme-style="circuit"] body, [data-theme-style="circuit"] .main-content, [data-theme-style="circuit"] .sidebar {
+      background-image: linear-gradient(to right, rgba(6,182,212,0.12) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(6,182,212,0.12) 1px, transparent 1px),
+                        radial-gradient(circle, rgba(6,182,212,0.32) 2px, transparent 2px) !important;
+      background-size: 26px 26px !important;
+    }
+    [data-theme-style="comic"] .card, [data-theme-style="comic"] .stat-card, [data-theme-style="comic"] .btn {
+      border: 2px solid var(--text-main) !important;
+      box-shadow: 4px 4px 0px color-mix(in srgb, var(--primary) 75%, #0f172a) !important;
+    }
+    [data-theme-style="compact"] .card, [data-theme-style="compact"] .stat-card, [data-theme-style="compact"] .btn, [data-theme-style="compact"] .form-input {
+      border-radius: 6px !important;
+    }
    [data-theme-style="standard"], [data-theme-style="standard"] body, [data-theme-style="standard"] .main-content, [data-theme-style="standard"] .sidebar {
       background-image: none !important;
     }
