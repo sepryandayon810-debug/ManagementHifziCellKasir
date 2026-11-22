@@ -1145,7 +1145,7 @@
     <div class="page-content">
       <!-- KARTU RINGKASAN (IKON SVG GRADASI + BENTO RESPONSIF) -->
       <div class="modal-summary-card">
-        <div class="modal-summary-item summary-modal-card">
+        <div class="modal-summary-item summary-modal-card" onclick="window.openModalBreakdown()" style="cursor:pointer;" title="Klik untuk lihat rincian modal per kategori (stok fisik)">
           <div class="summary-svg-icon" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #a7f3d0;">
             <svg viewBox="0 0 44 44" fill="none" style="width:30px;height:30px;display:block;">
               <defs>
@@ -1164,8 +1164,11 @@
               <circle cx="31.5" cy="28.5" r="3.4" fill="#ffffff" fill-opacity="0.28" stroke="#fff" stroke-width="1.3"/>
             </svg>
           </div>
-          <div class="summary-text-wrap">
-            <div class="modal-summary-label">Total Modal</div>
+         <div class="summary-text-wrap" style="flex:1;">
+            <div class="modal-summary-label" style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+              <span>Total Modal</span>
+              <span style="font-size:0.66rem; font-weight:700; color:var(--primary); text-transform:none; letter-spacing:0;">Rincian &rsaquo;</span>
+            </div>
             <div class="modal-summary-value" id="totalModalValue">Rp 0</div>
           </div>
         </div>
@@ -1511,8 +1514,31 @@
   </div>
 </div>
 
-<div class="toast-box" id="toastContainer"></div>
+<!-- MODAL RINCIAN TOTAL MODAL PER KATEGORI (KHUSUS PRODUK FISIK) -->
+<div class="custom-modal-backdrop" id="modalBreakdownModal" onclick="if(event.target===this) window.closeModalBreakdown()">
+  <div class="custom-dialog-card" style="max-width:460px; width:94vw; text-align:left; padding:1.25rem; max-height:84vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border);">
+      <div>
+        <h3 style="margin:0; font-size:1rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:0.45rem;">
+          <i class="fas fa-wallet" style="color:var(--success);"></i> Modal Per Kategori
+        </h3>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Khusus produk fisik (produk Unlimited tidak dihitung)</div>
+      </div>
+      <button type="button" onclick="window.closeModalBreakdown()" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--bg-subtle);color:var(--text-main);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
 
+    <div id="modalBreakdownSummary" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-bottom:0.9rem;"></div>
+    <div id="modalBreakdownList" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:0.55rem; padding-right:2px;"></div>
+
+    <div style="margin-top:0.9rem; padding-top:0.75rem; border-top:1px solid var(--border); text-align:right;">
+      <button type="button" class="btn btn-secondary" onclick="window.closeModalBreakdown()" style="width:100%;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toastContainer"></div>
 <script>
 (function() {
   "use strict";
@@ -2266,6 +2292,90 @@ document.getElementById("filterKategori").onchange = function() {
     document.getElementById("totalStokValue").textContent = totalStok.toLocaleString('id-ID') + " item";
     document.getElementById("totalProdukValue").textContent = totalProduk.toLocaleString('id-ID');
   }
+
+  window.closeModalBreakdown = function() {
+    const m = document.getElementById("modalBreakdownModal");
+    if (m) m.classList.remove("open");
+  };
+
+  window.openModalBreakdown = function() {
+    const modal = document.getElementById("modalBreakdownModal");
+    const sumEl = document.getElementById("modalBreakdownSummary");
+    const listEl = document.getElementById("modalBreakdownList");
+    if (!modal || !sumEl || !listEl) return;
+
+    const catNameMap = {};
+    categoriesList.forEach(c => { catNameMap[c.id] = c.name || "Tanpa Nama"; });
+
+    const byCat = {};
+    let grandModal = 0;
+    let grandStok = 0;
+    let grandFisikCount = 0;
+
+    productsList.forEach(p => {
+      const stok = parseInt(p.stock) || 0;
+      const isUnlimited = !!p.isUnlimited || stok >= 9999;
+      if (isUnlimited) return; // Abaikan produk digital / unlimited
+
+      const modal = (parseInt(p.costPrice) || 0) * stok;
+      const cid = p.categoryId || "__umum__";
+      if (!byCat[cid]) {
+        byCat[cid] = {
+          id: p.categoryId || "",
+          name: p.categoryId ? (catNameMap[p.categoryId] || "Lainnya") : "Tanpa Kategori",
+          modal: 0,
+          stok: 0,
+          count: 0
+        };
+      }
+      byCat[cid].modal += modal;
+      byCat[cid].stok += stok;
+      byCat[cid].count += 1;
+      grandModal += modal;
+      grandStok += stok;
+      grandFisikCount += 1;
+    });
+
+    const rows = Object.values(byCat).sort((a, b) => b.modal - a.modal);
+
+    sumEl.innerHTML = `
+      <div style="padding:0.65rem 0.8rem; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border);">
+        <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">TOTAL MODAL FISIK</div>
+        <div style="font-size:0.98rem; font-weight:800; color:var(--success); margin-top:2px;">${formatRupiah(grandModal)}</div>
+      </div>
+      <div style="padding:0.65rem 0.8rem; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border);">
+        <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">STOK FISIK AKTIF</div>
+        <div style="font-size:0.98rem; font-weight:800; color:var(--primary); margin-top:2px;">${grandStok.toLocaleString('id-ID')} pcs <span style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">(${grandFisikCount} brg)</span></div>
+      </div>
+    `;
+
+    if (rows.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem;">Belum ada kategori dengan produk stok fisik.</div>`;
+    } else {
+      listEl.innerHTML = rows.map(r => {
+        const pct = grandModal > 0 ? Math.round((r.modal / grandModal) * 100) : 0;
+        const safeName = (r.name || "").replace(/'/g, "\\'");
+        const clickAttr = r.id ? `onclick="window.closeModalBreakdown(); window.selectCategory('${r.id}', '${safeName}')"` : "";
+        return `
+          <div ${clickAttr} style="padding:0.7rem 0.85rem; border-radius:12px; background:var(--bg-surface); border:1px solid var(--border); cursor:${r.id ? 'pointer' : 'default'};">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+              <div style="font-weight:800; font-size:0.84rem; color:var(--text-main);">${r.name}</div>
+              <div style="font-weight:800; font-size:0.86rem; color:var(--success); white-space:nowrap;">${formatRupiah(r.modal)}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); margin-top:3px;">
+              <span>${r.count} produk fisik • ${r.stok.toLocaleString('id-ID')} pcs</span>
+              <span style="font-weight:700; color:var(--primary);">${pct}%</span>
+            </div>
+            <div style="height:5px; border-radius:999px; background:var(--bg-subtle); margin-top:6px; overflow:hidden;">
+              <div style="height:100%; width:${Math.max(pct, r.modal > 0 ? 3 : 0)}%; border-radius:999px; background:linear-gradient(90deg,#10b981,#3b82f6);"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    modal.classList.add("open");
+  };
 
   function renderProducts() {
     const grid = document.getElementById("produkGrid");
