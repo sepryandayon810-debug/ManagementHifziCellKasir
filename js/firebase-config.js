@@ -384,24 +384,40 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var bar = document.createElement('div');
       bar.id = 'webposUpdateBanner';
       bar.style.cssText = [
-        'position:fixed', 'left:50%', 'bottom:76px', 'transform:translateX(-50%)',
-        'z-index:99999', 'background:#0f172a', 'color:#fff',
-        'padding:10px 14px', 'border-radius:12px',
-        'box-shadow:0 10px 25px rgba(0,0,0,0.28)',
-        'display:flex', 'align-items:center', 'gap:10px',
-        'font-family:inherit', 'font-size:13px', 'max-width:92vw',
-        'border:1px solid rgba(255,255,255,0.15)'
+        'position:fixed', 'left:50%', 'bottom:78px', 'transform:translateX(-50%)',
+        'z-index:99999', 'width:min(380px, calc(100vw - 24px))', 'box-sizing:border-box',
+        'background:linear-gradient(145deg,#0f172a,#1e293b)', 'color:#f8fafc',
+        'padding:14px 15px', 'border-radius:16px',
+        'box-shadow:0 18px 40px rgba(2,6,23,0.45),0 2px 8px rgba(15,23,42,0.3)',
+        'border:1px solid rgba(148,163,184,0.22)',
+        'font-family:inherit'
       ].join(';');
       bar.innerHTML =
-        '<span style="line-height:1.3;">✨ <b>Aplikasi diperbarui</b> ke versi terbaru!</span>' +
-        '<button type="button" id="btnReloadWebposUpdate" style="background:#22c55e;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">Refresh</button>' +
-        '<button type="button" id="btnCloseWebposUpdate" style="background:transparent;color:#94a3b8;border:none;font-size:16px;line-height:1;cursor:pointer;padding:0 4px;">&times;</button>';
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 25%,#6ee7b7 0%,#10b981 52%,#047857 100%);border:1.5px solid rgba(255,255,255,0.75);box-shadow:0 6px 14px rgba(16,185,129,0.38),inset 0 2px 4px rgba(255,255,255,0.5);">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>' +
+          '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
+              '<span style="font-size:13.5px;font-weight:800;color:#ffffff;letter-spacing:0.01em;">Pembaruan Aplikasi Tersedia</span>' +
+            '</div>' +
+            '<div style="font-size:12px;line-height:1.45;color:#cbd5e1;">Versi terbaru WebPOS sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.</div>' +
+          '</div>' +
+          '<button type="button" id="btnCloseWebposUpdate" aria-label="Tutup" style="background:rgba(148,163,184,0.14);color:#cbd5e1;border:none;width:26px;height:26px;border-radius:8px;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">&times;</button>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">' +
+          '<button type="button" id="btnLaterWebposUpdate" style="flex:0 0 auto;background:rgba(148,163,184,0.14);color:#e2e8f0;border:1px solid rgba(148,163,184,0.22);padding:8px 14px;border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;">Nanti</button>' +
+          '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Muat Ulang Sekarang</button>' +
+        '</div>';
       document.body.appendChild(bar);
 
       var btnReload = document.getElementById('btnReloadWebposUpdate');
       var btnClose = document.getElementById('btnCloseWebposUpdate');
+      var btnLater = document.getElementById('btnLaterWebposUpdate');
       if (btnReload) {
         btnReload.onclick = function() {
+          btnReload.disabled = true;
+          btnReload.textContent = 'Memuat ulang...';
           if (latestDetectedBuild) {
             try { localStorage.setItem('webpos_last_build_ver', latestDetectedBuild); } catch (e) {}
           }
@@ -409,6 +425,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         };
       }
       if (btnClose) btnClose.onclick = function() { bar.remove(); };
+      if (btnLater) btnLater.onclick = function() { bar.remove(); };
     }
 
     // Cek otomatis stempel deploy terbaru dari GitHub Pages (maksimal 1x per 5 menit agar pindah menu bebas request online)
