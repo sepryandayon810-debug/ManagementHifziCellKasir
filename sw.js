@@ -1,5 +1,5 @@
 // Service Worker WebPOS — Cache halaman & aset agar pindah menu cepat & tetap jalan saat offline
-const CACHE_NAME = 'webpos-hifzi-v3';  // ubah jadi v3, v4 setiap rilis baru
+const CACHE_NAME = 'webpos-hifzi-v4';  // ubah jadi v4, v5 setiap rilis baru
 
 const CORE_ASSETS = [
   './',
