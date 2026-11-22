@@ -1258,6 +1258,13 @@
               <option value="active">Aktif</option>
               <option value="inactive">Nonaktif</option>
             </select>
+            <select class="filter-select" id="sortProduk" onchange="window.triggerRenderProducts && window.triggerRenderProducts()">
+              <option value="">Urutkan: Default</option>
+              <option value="name_asc">Nama A → Z</option>
+              <option value="name_desc">Nama Z → A</option>
+              <option value="price_desc">Harga Termahal → Termurah</option>
+              <option value="price_asc">Harga Termurah → Termahal</option>
+            </select>
             <div class="view-toggle">
               <button class="view-btn active" id="btnGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
               <button class="view-btn" id="btnListView" title="List View"><i class="fas fa-list"></i></button>
@@ -1529,7 +1536,18 @@
       </button>
     </div>
 
-    <div id="modalBreakdownSummary" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-bottom:0.9rem;"></div>
+    <div id="modalBreakdownSummary" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-bottom:0.75rem;"></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.75rem;">
+      <span style="font-size:0.74rem; font-weight:700; color:var(--text-muted); white-space:nowrap;">
+        <i class="fas fa-sort"></i> Urutkan:
+      </span>
+      <select id="modalBreakdownSort" class="filter-select" onchange="window.openModalBreakdown()" style="flex:1; padding:0.42rem 0.65rem; font-size:0.78rem; border-radius:10px;">
+        <option value="modal_desc">Termahal → Termurah</option>
+        <option value="modal_asc">Termurah → Termahal</option>
+        <option value="name_asc">Nama A → Z</option>
+        <option value="name_desc">Nama Z → A</option>
+      </select>
+    </div>
     <div id="modalBreakdownList" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:0.55rem; padding-right:2px;"></div>
 
     <div style="margin-top:0.9rem; padding-top:0.75rem; border-top:1px solid var(--border); text-align:right;">
@@ -1643,6 +1661,7 @@
       invalidateKasirCatalogCache();
       try { localStorage.setItem("webpos_cache_categories_v1", JSON.stringify(categoriesList)); } catch (e) {}
       renderCategoriesGrid();
+      updateSummaryCards();
       toast(nextStatus === "inactive"
         ? `Kategori "${cat.name}" dinonaktifkan & disembunyikan di Kasir`
         : `Kategori "${cat.name}" diaktifkan kembali di Kasir`, "success");
@@ -1661,8 +1680,9 @@
       prod.status = nextStatus;
       invalidateKasirCatalogCache();
       renderProducts();
+      updateSummaryCards();
       toast(nextStatus === "inactive"
-        ? `Produk "${prod.name}" dinonaktifkan & disembunyikan di Kasir`
+            ? `Produk "${prod.name}" dinonaktifkan & disembunyikan di Kasir`
         : `Produk "${prod.name}" diaktifkan kembali di Kasir`, "success");
     } catch (err) {
       console.error(err);
@@ -2273,11 +2293,19 @@ document.getElementById("filterKategori").onchange = function() {
   }
   
   function updateSummaryCards() {
+    const hiddenCatIds = new Set(
+      categoriesList.filter(c => c.status === "inactive").map(c => c.id)
+    );
     let totalModal = 0;
     let totalStok = 0;
-    let totalProduk = productsList.length;
+    let totalProduk = 0;
 
     productsList.forEach(p => {
+      // Abaikan produk / kategori yang disembunyikan (nonaktif)
+      if (p.status === "inactive") return;
+      if (p.categoryId && hiddenCatIds.has(p.categoryId)) return;
+
+      totalProduk += 1;
       const stok = parseInt(p.stock) || 0;
       // ⭐ Stok 9999 ke atas dianggap unlimited (pulsa/digital), jangan dihitung
       const isUnlimited = !!p.isUnlimited || stok >= 9999;
@@ -2305,7 +2333,11 @@ document.getElementById("filterKategori").onchange = function() {
     if (!modal || !sumEl || !listEl) return;
 
     const catNameMap = {};
-    categoriesList.forEach(c => { catNameMap[c.id] = c.name || "Tanpa Nama"; });
+    const hiddenCatIds = new Set();
+    categoriesList.forEach(c => {
+      catNameMap[c.id] = c.name || "Tanpa Nama";
+      if (c.status === "inactive") hiddenCatIds.add(c.id);
+    });
 
     const byCat = {};
     let grandModal = 0;
@@ -2313,6 +2345,10 @@ document.getElementById("filterKategori").onchange = function() {
     let grandFisikCount = 0;
 
     productsList.forEach(p => {
+      // Abaikan produk nonaktif & kategori yang disembunyikan
+      if (p.status === "inactive") return;
+      if (p.categoryId && hiddenCatIds.has(p.categoryId)) return;
+
       const stok = parseInt(p.stock) || 0;
       const isUnlimited = !!p.isUnlimited || stok >= 9999;
       if (isUnlimited) return; // Abaikan produk digital / unlimited
@@ -2336,7 +2372,13 @@ document.getElementById("filterKategori").onchange = function() {
       grandFisikCount += 1;
     });
 
-    const rows = Object.values(byCat).sort((a, b) => b.modal - a.modal);
+    const sortMode = document.getElementById("modalBreakdownSort")?.value || "modal_desc";
+    const rows = Object.values(byCat).sort((a, b) => {
+      if (sortMode === "modal_asc") return a.modal - b.modal;
+      if (sortMode === "name_asc") return (a.name || "").localeCompare(b.name || "", "id", { sensitivity: "base" });
+      if (sortMode === "name_desc") return (b.name || "").localeCompare(a.name || "", "id", { sensitivity: "base" });
+      return b.modal - a.modal; // default: Termahal -> Termurah
+    });
 
     sumEl.innerHTML = `
       <div style="padding:0.65rem 0.8rem; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border);">
@@ -2350,7 +2392,7 @@ document.getElementById("filterKategori").onchange = function() {
     `;
 
     if (rows.length === 0) {
-      listEl.innerHTML = `<div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem;">Belum ada kategori dengan produk stok fisik.</div>`;
+      listEl.innerHTML = `<div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem;">Belum ada kategori aktif dengan produk stok fisik.</div>`;
     } else {
       listEl.innerHTML = rows.map(r => {
         const pct = grandModal > 0 ? Math.round((r.modal / grandModal) * 100) : 0;
@@ -2377,11 +2419,14 @@ document.getElementById("filterKategori").onchange = function() {
     modal.classList.add("open");
   };
 
+  window.triggerRenderProducts = function() { renderProducts(); };
+
   function renderProducts() {
     const grid = document.getElementById("produkGrid");
     const search = (document.getElementById("searchProduk").value || "").toLowerCase().trim();
     const statusFilter = document.getElementById("filterStatus").value;
     const katFilter = document.getElementById("filterKategori").value;
+    const sortVal = (document.getElementById("sortProduk")?.value || "");
 
     const filtered = productsList.filter(p => {
       const matchSearch = !search ||
@@ -2393,6 +2438,16 @@ document.getElementById("filterKategori").onchange = function() {
       return matchSearch && matchStatus && matchKat;
     });
 
+    if (sortVal === "name_asc") {
+      filtered.sort((a, b) => (a.name || "").localeCompare(b.name || "", "id", { sensitivity: "base" }));
+    } else if (sortVal === "name_desc") {
+      filtered.sort((a, b) => (b.name || "").localeCompare(a.name || "", "id", { sensitivity: "base" }));
+    } else if (sortVal === "price_desc") {
+      filtered.sort((a, b) => (parseInt(b.sellingPrice) || 0) - (parseInt(a.sellingPrice) || 0));
+    } else if (sortVal === "price_asc") {
+      filtered.sort((a, b) => (parseInt(a.sellingPrice) || 0) - (parseInt(b.sellingPrice) || 0));
+    }
+    
     if (filtered.length === 0) {
       grid.className = "produk-grid";
       grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem 1rem; color:var(--text-muted);"><i class="fas fa-box-open" style="font-size:2.5rem; opacity:0.35; margin-bottom:0.6rem; display:block;"></i>Belum ada produk ditemukan.</div>`;
