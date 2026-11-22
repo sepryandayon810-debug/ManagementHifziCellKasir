@@ -468,7 +468,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 
-// 5. ALL-IN-ONE 3D ICON ENGINE UNTUK SEMUA 29 HALAMAN (HEADER, STAT CARD, TAB, MODAL, AKSI, & TOMBOL)
+// 5. UNIVERSAL 3D ICON ENGINE — SEMUA 28 HALAMAN + SEMUA POP-UP / MODAL (ANTI-ERROR)
 (function() {
   if (window.__webpos3dGlobalUiInit) return;
   window.__webpos3dGlobalUiInit = true;
@@ -488,6 +488,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     money: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="5" y1="10" x2="43" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="55%" stop-color="#059669"/><stop offset="100%" stop-color="#065F46"/></linearGradient></defs><rect x="5" y="11" width="38" height="26" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="9" y="15" width="30" height="18" rx="3" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="1.4"/><circle cx="24" cy="24" r="6" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.5"/></svg>',
 
+    bank: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><path d="M24 6L43 16.5H5L24 6Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.4" stroke-linejoin="round"/><rect x="8" y="16.5" width="32" height="4" rx="1.5" fill="#60A5FA"/><rect x="10.5" y="21" width="5" height="14.5" rx="1.5" fill="#DBEAFE"/><rect x="21.5" y="21" width="5" height="14.5" rx="1.5" fill="#DBEAFE"/><rect x="32.5" y="21" width="5" height="14.5" rx="1.5" fill="#DBEAFE"/><rect x="5" y="36" width="38" height="6" rx="3" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.3"/></svg>',
+
+    card: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="5" y1="10" x2="43" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A78BFA"/><stop offset="55%" stop-color="#6366F1"/><stop offset="100%" stop-color="#3730A3"/></linearGradient></defs><rect x="5" y="10" width="38" height="28" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="5" y="16.5" width="38" height="6" fill="#1E1B4B" fill-opacity="0.65"/><rect x="10" y="27" width="10" height="6.5" rx="2" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.1"/><circle cx="34" cy="30.2" r="3.5" fill="#FB7185"/><circle cx="37.5" cy="30.2" r="3.5" fill="#FACC15" fill-opacity="0.88"/></svg>',
+
+    qrcode: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="55%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><rect x="6" y="6" width="36" height="36" rx="8" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="11" y="11" width="10" height="10" rx="2.5" fill="#FFFFFF"/><rect x="14" y="14" width="4" height="4" rx="1" fill="#0369A1"/><rect x="27" y="11" width="10" height="10" rx="2.5" fill="#FFFFFF"/><rect x="30" y="14" width="4" height="4" rx="1" fill="#0369A1"/><rect x="11" y="27" width="10" height="10" rx="2.5" fill="#FFFFFF"/><rect x="14" y="30" width="4" height="4" rx="1" fill="#0369A1"/><rect x="27" y="27" width="4.5" height="4.5" rx="1" fill="#FEF08A"/><rect x="33" y="27" width="4" height="10" rx="1.2" fill="#FFFFFF"/><rect x="27" y="33" width="4.5" height="4" rx="1" fill="#FFFFFF"/></svg>',
+
+    barcode: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="10" x2="42" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#94A3B8"/><stop offset="55%" stop-color="#475569"/><stop offset="100%" stop-color="#1E293B"/></linearGradient></defs><rect x="5" y="10" width="38" height="28" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="10" y="15" width="3.5" height="18" rx="1" fill="#FFFFFF"/><rect x="15.5" y="15" width="2" height="18" rx="1" fill="#E2E8F0"/><rect x="19.5" y="15" width="4" height="18" rx="1" fill="#FFFFFF"/><rect x="25.5" y="15" width="2" height="18" rx="1" fill="#E2E8F0"/><rect x="29.5" y="15" width="3.5" height="18" rx="1" fill="#FFFFFF"/><rect x="35" y="15" width="3" height="18" rx="1" fill="#FEF08A"/></svg>',
+
     receipt: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><path d="M10 8C10 6.3 11.3 5 13 5H35C36.7 5 38 6.3 38 8V42.5L33.5 39L29 42.5L24 39L19 42.5L14.5 39L10 42.5V8Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.4" stroke-linejoin="round"/><rect x="16" y="13" width="16" height="3" rx="1.5" fill="#FFFFFF"/><rect x="16" y="20" width="12" height="2.8" rx="1.4" fill="#A7F3D0"/><rect x="16" y="27" width="16" height="2.8" rx="1.4" fill="#FEF08A"/></svg>',
 
     box: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><path d="M24 5L42 14.5L24 24L6 14.5L24 5Z" fill="#FEF08A"/><path d="M6 14.5L24 24V43L6 33.5V14.5Z" fill="#F59E0B"/><path d="M42 14.5L24 24V43L42 33.5V14.5Z" fill="#B45309"/><path d="M15 9.8L33 19.3V26.5L28 24V21.7L10 12.2L15 9.8Z" fill="#FFFFFF" fill-opacity="0.92"/></svg>',
@@ -496,11 +504,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     cart: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="12" x2="43" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E40AF"/></linearGradient></defs><rect x="17" y="7" width="16" height="13" rx="3.5" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.4"/><path d="M6 12H11.5L15.2 30.5C15.6 32.4 17.2 33.8 19.2 33.8H36.8C38.6 33.8 40.2 32.5 40.6 30.7L43 19.5H13" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="40" r="3.6" fill="#1E40AF" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="35.5" cy="40" r="3.6" fill="#1E40AF" stroke="#FFFFFF" stroke-width="1.5"/></svg>',
 
-    debt: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="36" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FCD34D"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><rect x="7" y="7" width="28" height="34" rx="6" fill="url(#__ID__a)"/><rect x="13" y="16" width="16" height="2.8" rx="1.4" fill="#FFFFFF"/><rect x="13" y="23" width="12" height="2.6" rx="1.3" fill="#FEF3C7"/><circle cx="34" cy="33" r="9.5" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.8"/></svg>',
+    basket: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="18" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDBA74"/><stop offset="55%" stop-color="#F97316"/><stop offset="100%" stop-color="#C2410C"/></linearGradient></defs><path d="M16 19L21 9M32 19L27 9" stroke="#F59E0B" stroke-width="3.6" stroke-linecap="round"/><path d="M6 20H42L38.5 37.5C38 39.8 36 41.5 33.6 41.5H14.4C12 41.5 10 39.8 9.5 37.5L6 20Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><path d="M16 26V35M24 26V35M32 26V35" stroke="#FFFFFF" stroke-opacity="0.88" stroke-width="2.6" stroke-linecap="round"/></svg>',
+
+    debt: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="36" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FCD34D"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><rect x="7" y="7" width="28" height="34" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.4"/><rect x="13" y="16" width="16" height="2.8" rx="1.4" fill="#FFFFFF"/><rect x="13" y="23" width="12" height="2.6" rx="1.3" fill="#FEF3C7"/><circle cx="34" cy="33" r="9.5" fill="#FACC15" stroke="#FFFFFF" stroke-width="1.8"/></svg>',
 
     chart: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><rect x="7" y="23" width="9.5" height="17" rx="3.2" fill="#38BDF8" stroke="#FFFFFF" stroke-width="1.3"/><rect x="19.3" y="15" width="9.5" height="25" rx="3.2" fill="#10B981" stroke="#FFFFFF" stroke-width="1.3"/><rect x="31.5" y="7" width="9.5" height="33" rx="3.2" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.3"/><rect x="5" y="38.5" width="38" height="4" rx="2" fill="#334155"/></svg>',
 
     trophy: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="10" y1="6" x2="38" y2="34" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><path d="M13 8H35V20C35 26.2 30.1 31 24 31C17.9 31 13 26.2 13 20V8Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M13 12H7.5C7.5 18 10 21.5 13.5 22M35 12H40.5C40.5 18 38 21.5 34.5 22" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/><rect x="20.5" y="30" width="7" height="7" fill="#D97706"/><rect x="14" y="36.5" width="20" height="5.5" rx="2.7" fill="#B45309" stroke="#FFFFFF" stroke-width="1.3"/></svg>',
+
+    star: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="10" y1="6" x2="38" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><path d="M24 5.5L29.6 16.9L42.2 18.7L33.1 27.6L35.2 40.1L24 34.2L12.8 40.1L14.9 27.6L5.8 18.7L18.4 16.9L24 5.5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/></svg>',
 
     arrowdown: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M24 14V33M16.5 26.5L24 34L31.5 26.5" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
@@ -508,9 +520,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     plus: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M24 14V34M14 24H34" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></svg>',
 
+    minus: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#F43F5E"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M14 24H34" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round"/></svg>',
+
+    ban: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M16.5 16.5L31.5 31.5M31.5 16.5L16.5 31.5" stroke="#FFFFFF" stroke-width="3.8" stroke-linecap="round"/></svg>',
+
     save: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><path d="M8 11C8 8.2 10.2 6 13 6H33L40 13V37C40 39.8 37.8 42 35 42H13C10.2 42 8 39.8 8 37V11Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="15" y="6" width="16" height="11" rx="2" fill="#E0F2FE"/><rect x="14" y="25" width="20" height="17" rx="2.5" fill="#FFFFFF" fill-opacity="0.92"/></svg>',
 
     clock: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A5B4FC"/><stop offset="55%" stop-color="#6366F1"/><stop offset="100%" stop-color="#3730A3"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M24 14V24.5L31.5 28.5" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="24.5" r="2.5" fill="#FEF08A"/></svg>',
+
+    calendar: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="10" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#CBD5E1"/></linearGradient></defs><rect x="6" y="10" width="36" height="32" rx="7" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M6 17C6 13.1 9.1 10 13 10H35C38.9 10 42 13.1 42 17V20H6V17Z" fill="#EF4444"/><rect x="14" y="6" width="4.5" height="9" rx="2.2" fill="#3B82F6" stroke="#FFFFFF" stroke-width="1.2"/><rect x="29.5" y="6" width="4.5" height="9" rx="2.2" fill="#3B82F6" stroke="#FFFFFF" stroke-width="1.2"/><rect x="13" y="25" width="6" height="5" rx="1.5" fill="#3B82F6"/><rect x="21" y="25" width="6" height="5" rx="1.5" fill="#10B981"/><rect x="29" y="25" width="6" height="5" rx="1.5" fill="#F59E0B"/><rect x="13" y="32" width="14" height="4.5" rx="1.5" fill="#94A3B8"/></svg>',
 
     check: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M15.5 24.5L21.5 30.5L33 18" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
@@ -520,7 +538,21 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     users: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="36" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F472B6"/><stop offset="55%" stop-color="#EC4899"/><stop offset="100%" stop-color="#9D174D"/></linearGradient></defs><circle cx="24" cy="16" r="8.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M8 38.5C8 30.8 14.5 26 24 26C33.5 26 40 30.8 40 38.5C40 40.7 38.2 42.5 36 42.5H12C9.8 42.5 8 40.7 8 38.5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/></svg>',
 
+    idcard: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="5" y1="10" x2="43" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><rect x="5" y="10" width="38" height="28" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="16.5" cy="21" r="4" fill="#FEF08A"/><path d="M10.5 32C10.5 28.5 13 26.5 16.5 26.5C20 26.5 22.5 28.5 22.5 32" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/><rect x="26" y="18" width="12" height="3" rx="1.5" fill="#FFFFFF"/><rect x="26" y="24.5" width="9" height="2.8" rx="1.4" fill="#BAE6FD"/></svg>',
+
+    whatsapp: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ADE80"/><stop offset="55%" stop-color="#16A34A"/><stop offset="100%" stop-color="#14532D"/></linearGradient></defs><path d="M24 6C14.1 6 6 14 6 23.8C6 27.3 7 30.6 8.8 33.4L6.2 42L15.1 39.5C17.8 41 20.8 41.8 24 41.8C33.9 41.8 42 33.8 42 23.9C42 14 33.9 6 24 6Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><path d="M18.2 16.5C17.5 16.5 16.3 17.2 16.1 18.6C15.9 20.1 16.6 23.1 19.6 26.3C22.6 29.5 26 30.8 28.2 31C29.7 31.1 31.1 29.9 31.4 28.8C31.6 28.1 31.4 27.6 30.9 27.3L28 25.9C27.5 25.6 27 25.7 26.6 26.1L25.5 27.3C24.2 26.7 21.8 24.6 20.8 22.7L21.9 21.5C22.3 21.1 22.4 20.5 22.1 20L20.8 17.2C20.5 16.7 19.9 16.5 18.2 16.5Z" fill="#FFFFFF"/></svg>',
+
+    telegram: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="44" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="50%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><circle cx="24" cy="24" r="20" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M35.5 14.5L30.8 34.8C30.4 36.4 29.5 36.8 28.1 36L20.9 30.7L17.4 34C17 34.4 16.7 34.7 16 34.7L16.5 27.4L29.8 15.4C30.4 14.9 29.7 14.6 28.9 15.1L12.5 25.4L5.5 23.2C4 22.7 4 21.7 5.8 21L33.4 10.4C34.7 9.9 35.9 10.7 35.5 14.5Z" fill="#FFFFFF" transform="translate(2.5 2) scale(0.9)"/></svg>',
+
+    mail: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="5" y1="10" x2="43" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="55%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1D4ED8"/></linearGradient></defs><rect x="5" y="10" width="38" height="28" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M8 14L24 26L40 14" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
     excel: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="55%" stop-color="#16A34A"/><stop offset="100%" stop-color="#14532D"/></linearGradient></defs><rect x="8" y="5" width="32" height="38" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M17 18L31 32M31 18L17 32" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/></svg>',
+
+    pdf: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#EF4444"/><stop offset="100%" stop-color="#991B1B"/></linearGradient></defs><rect x="8" y="5" width="32" height="38" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="13" y="18" width="22" height="12" rx="3" fill="#FFFFFF"/><rect x="16" y="22.5" width="16" height="3" rx="1.5" fill="#DC2626"/></svg>',
+
+    folder: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="12" x2="42" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><path d="M6 14C6 11.2 8.2 9 11 9H20L24 14H37C39.8 14 42 16.2 42 19V35C42 37.8 39.8 40 37 40H11C8.2 40 6 37.8 6 35V14Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><rect x="13" y="23" width="22" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.85"/></svg>',
+
+    copy: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="14" y1="12" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A5B4FC"/><stop offset="55%" stop-color="#6366F1"/><stop offset="100%" stop-color="#3730A3"/></linearGradient></defs><rect x="8" y="6" width="23" height="29" rx="5" fill="#93C5FD" stroke="#FFFFFF" stroke-width="1.3"/><rect x="17" y="13" width="23" height="29" rx="5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="22" y="22" width="13" height="2.8" rx="1.4" fill="#FFFFFF"/><rect x="22" y="29" width="9" height="2.8" rx="1.4" fill="#FEF08A"/></svg>',
 
     cloud: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="10" x2="42" y2="39" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="50%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><path d="M14.5 38H35C39.7 38 43 34.6 43 30.2C43 26.2 40.1 23 36.2 22.4C35 15.5 29.1 10.5 22.2 10.5C15.1 10.5 9.4 15.8 8.6 22.6C6.4 24.1 5 26.7 5 29.6C5 34.3 9.2 38 14.5 38Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M24 33V20M19 25L24 19.5L29 25" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
@@ -532,9 +564,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     list: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="6" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#5EEAD4"/><stop offset="55%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0F766E"/></linearGradient></defs><rect x="9" y="7" width="30" height="35" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.4"/><rect x="15" y="16" width="18" height="3" rx="1.5" fill="#FFFFFF"/><rect x="15" y="23.5" width="14" height="2.8" rx="1.4" fill="#CCFBF1"/><rect x="15" y="31" width="11" height="2.8" rx="1.4" fill="#FEF08A"/></svg>',
 
+    grid: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><rect x="7" y="7" width="15" height="15" rx="4" fill="#3B82F6" stroke="#FFFFFF" stroke-width="1.4"/><rect x="26" y="7" width="15" height="15" rx="4" fill="#10B981" stroke="#FFFFFF" stroke-width="1.4"/><rect x="7" y="26" width="15" height="15" rx="4" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.4"/><rect x="26" y="26" width="15" height="15" rx="4" fill="#8B5CF6" stroke="#FFFFFF" stroke-width="1.4"/></svg>',
+
     edit: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><path d="M33.5 7.5L40.5 14.5C41.8 15.8 41.8 17.8 40.5 19.1L20 39.6L8 42.5L10.9 30.5L31.4 10C32.1 9.3 32.8 8.2 33.5 7.5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/><path d="M27.5 13.5L34.5 20.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></svg>',
 
-    telegram: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="44" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="50%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><circle cx="24" cy="24" r="20" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M35.5 14.5L30.8 34.8C30.4 36.4 29.5 36.8 28.1 36L20.9 30.7L17.4 34C17 34.4 16.7 34.7 16 34.7L16.5 27.4L29.8 15.4C30.4 14.9 29.7 14.6 28.9 15.1L12.5 25.4L5.5 23.2C4 22.7 4 21.7 5.8 21L33.4 10.4C34.7 9.9 35.9 10.7 35.5 14.5Z" fill="#FFFFFF" transform="translate(2.5 2) scale(0.9)"/></svg>',
+    image: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="8" x2="42" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#C4B5FD"/><stop offset="55%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs><rect x="6" y="9" width="36" height="30" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="16.5" cy="18" r="3.5" fill="#FEF08A"/><path d="M10 34L19 24L26 30L31.5 25L38 34H10Z" fill="#FFFFFF" fill-opacity="0.9"/></svg>',
+
+    tag: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="7" y1="7" x2="41" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F472B6"/><stop offset="55%" stop-color="#EC4899"/><stop offset="100%" stop-color="#9D174D"/></linearGradient></defs><path d="M9 14C9 10.7 11.7 8 15 8H24.5L40.5 24C42.2 25.7 42.2 28.4 40.5 30.1L30.1 40.5C28.4 42.2 25.7 42.2 24 40.5L9 25.5V14Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><circle cx="17.5" cy="16.5" r="3" fill="#FEF08A"/></svg>',
+
+    mobile: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="12" y1="5" x2="36" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="55%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><rect x="12" y="5" width="24" height="38" rx="6" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><rect x="16" y="11" width="16" height="22" rx="2.5" fill="#FFFFFF" fill-opacity="0.9"/><circle cx="24" cy="38" r="2.2" fill="#FEF08A"/></svg>',
+
+    calc: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="9" y1="5" x2="39" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#94A3B8"/><stop offset="55%" stop-color="#475569"/><stop offset="100%" stop-color="#1E293B"/></linearGradient></defs><rect x="9" y="5" width="30" height="38" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="14" y="10" width="20" height="8" rx="2.5" fill="#A7F3D0"/><circle cx="17" cy="25" r="2.6" fill="#FFFFFF"/><circle cx="24" cy="25" r="2.6" fill="#FFFFFF"/><circle cx="31" cy="25" r="2.6" fill="#FACC15"/><circle cx="17" cy="33" r="2.6" fill="#FFFFFF"/><circle cx="24" cy="33" r="2.6" fill="#FFFFFF"/><circle cx="31" cy="33" r="2.6" fill="#34D399"/></svg>',
+
+    link: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E40AF"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M19 29L29 19M15.5 23.5L13.5 25.5C11.5 27.5 11.5 30.8 13.5 32.8L15.2 34.5C17.2 36.5 20.5 36.5 22.5 34.5L24.5 32.5M23.5 15.5L25.5 13.5C27.5 11.5 30.8 11.5 32.8 13.5L34.5 15.2C36.5 17.2 36.5 20.5 34.5 22.5L32.5 24.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/></svg>',
 
     bolt: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="12" y1="5" x2="36" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><path d="M27 5L10 27H23L20 43L38 20H25L27 5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/></svg>',
 
@@ -549,17 +591,38 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function mapGlobalUiKey(el) {
     var c = el.className || '';
-    if (!c || /fa-spin|fa-spinner|fa-chevron|fa-angle|fa-caret|fa-times|fa-xmark|fa-eye|fa-search/.test(c)) return null;
+    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-chevron|fa-angle|fa-caret|fa-arrow-left|fa-arrow-right|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
+    if (/(?:^|\s)fa-(?:times|xmark|search)(?:\s|$)/.test(c)) return null;
+
+    if (c.indexOf('fa-sun') !== -1) return 'sun';
+    if (c.indexOf('fa-moon') !== -1) return 'moon';
+    if (c.indexOf('fa-sign-out') !== -1 || c.indexOf('fa-right-from-bracket') !== -1) return 'logout';
+    if (c.indexOf('fa-qrcode') !== -1) return 'qrcode';
+    if (c.indexOf('fa-barcode') !== -1) return 'barcode';
+    if (c.indexOf('fa-credit-card') !== -1) return 'card';
+    if (c.indexOf('fa-university') !== -1 || c.indexOf('fa-building-columns') !== -1 || c.indexOf('fa-landmark') !== -1) return 'bank';
+    if (c.indexOf('fa-whatsapp') !== -1) return 'whatsapp';
+    if (c.indexOf('fa-telegram') !== -1 || c.indexOf('fa-paper-plane') !== -1) return 'telegram';
+    if (c.indexOf('fa-envelope') !== -1 || c.indexOf('fa-inbox') !== -1) return 'mail';
+    if (c.indexOf('fa-file-pdf') !== -1) return 'pdf';
+    if (c.indexOf('fa-file-excel') !== -1 || c.indexOf('fa-file-csv') !== -1 || c.indexOf('fa-table') !== -1) return 'excel';
+    if (c.indexOf('fa-file-archive') !== -1 || c.indexOf('fa-folder') !== -1) return 'folder';
+    if (c.indexOf('fa-copy') !== -1 || c.indexOf('fa-paste') !== -1 || c.indexOf('fa-clone') !== -1) return 'copy';
+    if (c.indexOf('fa-calendar') !== -1) return 'calendar';
+    if (c.indexOf('fa-times-circle') !== -1 || c.indexOf('fa-circle-xmark') !== -1 || c.indexOf('fa-ban') !== -1) return 'ban';
+    if (c.indexOf('fa-minus') !== -1) return 'minus';
+    if (c.indexOf('fa-shopping-basket') !== -1 || c.indexOf('fa-basket-shopping') !== -1) return 'basket';
+    if (c.indexOf('fa-cart') !== -1) return 'cart';
+    if (c.indexOf('fa-hand-holding-usd') !== -1 || c.indexOf('fa-hand-holding-dollar') !== -1) return 'debt';
     if (c.indexOf('fa-coins') !== -1) return 'coins';
     if (c.indexOf('fa-wallet') !== -1) return 'wallet';
     if (c.indexOf('fa-money') !== -1 || c.indexOf('fa-piggy-bank') !== -1) return 'money';
     if (c.indexOf('fa-receipt') !== -1 || c.indexOf('fa-file-invoice') !== -1) return 'receipt';
     if (c.indexOf('fa-layer-group') !== -1 || c.indexOf('fa-boxes') !== -1) return 'layers';
     if (c.indexOf('fa-box') !== -1 || c.indexOf('fa-cube') !== -1 || c.indexOf('fa-warehouse') !== -1) return 'box';
-    if (c.indexOf('fa-cart') !== -1) return 'cart';
-    if (c.indexOf('fa-hand-holding-usd') !== -1) return 'debt';
     if (c.indexOf('fa-chart') !== -1) return 'chart';
     if (c.indexOf('fa-trophy') !== -1 || c.indexOf('fa-crown') !== -1) return 'trophy';
+    if (c.indexOf('fa-star') !== -1 || c.indexOf('fa-gem') !== -1) return 'star';
     if (c.indexOf('fa-arrow-down') !== -1 || c.indexOf('fa-sign-in') !== -1 || c.indexOf('fa-download') !== -1 || c.indexOf('fa-file-import') !== -1) return 'arrowdown';
     if (c.indexOf('fa-arrow-up') !== -1 || c.indexOf('fa-upload') !== -1 || c.indexOf('fa-file-export') !== -1) return 'arrowup';
     if (c.indexOf('fa-plus') !== -1) return 'plus';
@@ -568,41 +631,93 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-check') !== -1) return 'check';
     if (c.indexOf('fa-exclamation') !== -1 || c.indexOf('fa-triangle') !== -1) return 'warning';
     if (c.indexOf('fa-trash') !== -1) return 'trash';
+    if (c.indexOf('fa-id-card') !== -1 || c.indexOf('fa-handshake') !== -1) return 'idcard';
     if (c.indexOf('fa-user') !== -1 || c.indexOf('fa-address-book') !== -1) return 'users';
-    if (c.indexOf('fa-file-excel') !== -1 || c.indexOf('fa-file-csv') !== -1 || c.indexOf('fa-table') !== -1) return 'excel';
     if (c.indexOf('fa-google-drive') !== -1 || c.indexOf('fa-database') !== -1 || c.indexOf('fa-cloud') !== -1) return 'cloud';
     if (c.indexOf('fa-print') !== -1 || c.indexOf('fa-bluetooth') !== -1) return 'print';
     if (c.indexOf('fa-store') !== -1 || c.indexOf('fa-cash-register') !== -1 || c.indexOf('fa-briefcase') !== -1) return 'store';
-    if (c.indexOf('fa-cog') !== -1 || c.indexOf('fa-tools') !== -1 || c.indexOf('fa-palette') !== -1 || c.indexOf('fa-language') !== -1 || c.indexOf('fa-keyboard') !== -1 || c.indexOf('fa-shield') !== -1) return 'settings';
-    if (c.indexOf('fa-list') !== -1 || c.indexOf('fa-filter') !== -1 || c.indexOf('fa-clipboard') !== -1) return 'list';
-    if (c.indexOf('fa-edit') !== -1 || c.indexOf('fa-pen') !== -1 || c.indexOf('fa-camera') !== -1) return 'edit';
-    if (c.indexOf('fa-telegram') !== -1) return 'telegram';
-    if (c.indexOf('fa-robot') !== -1 || c.indexOf('fa-bolt') !== -1) return 'bolt';
+    if (c.indexOf('fa-th-large') !== -1 || c.indexOf('fa-border-all') !== -1 || c.indexOf('fa-table-cells') !== -1 || c.indexOf('fa-shapes') !== -1) return 'grid';
+    if (c.indexOf('fa-image') !== -1 || c.indexOf('fa-camera') !== -1 || c.indexOf('fa-palette') !== -1 || c.indexOf('fa-wand-magic') !== -1 || c.indexOf('fa-droplet') !== -1 || c.indexOf('fa-font') !== -1) return 'image';
+    if (c.indexOf('fa-tag') !== -1 || c.indexOf('fa-percent') !== -1) return 'tag';
+    if (c.indexOf('fa-mobile') !== -1 || c.indexOf('fa-laptop') !== -1 || c.indexOf('fa-desktop') !== -1) return 'mobile';
+    if (c.indexOf('fa-calculator') !== -1) return 'calc';
+    if (c.indexOf('fa-link') !== -1 || c.indexOf('fa-unlink') !== -1 || c.indexOf('fa-external-link') !== -1) return 'link';
+    if (c.indexOf('fa-cog') !== -1 || c.indexOf('fa-tools') !== -1 || c.indexOf('fa-language') !== -1 || c.indexOf('fa-keyboard') !== -1 || c.indexOf('fa-shield') !== -1) return 'settings';
+    if (c.indexOf('fa-list') !== -1 || c.indexOf('fa-filter') !== -1 || c.indexOf('fa-clipboard') !== -1 || c.indexOf('fa-search-minus') !== -1) return 'list';
+    if (c.indexOf('fa-edit') !== -1 || c.indexOf('fa-pen') !== -1) return 'edit';
+    if (c.indexOf('fa-robot') !== -1 || c.indexOf('fa-bolt') !== -1 || c.indexOf('fa-microchip') !== -1 || c.indexOf('fa-burst') !== -1 || c.indexOf('fa-mug-hot') !== -1 || c.indexOf('fa-tree') !== -1) return 'bolt';
     if (c.indexOf('fa-exchange') !== -1) return 'exchange';
-    if (c.indexOf('fa-sync') !== -1 || c.indexOf('fa-redo') !== -1 || c.indexOf('fa-undo') !== -1) return 'sync';
+    if (c.indexOf('fa-sync') !== -1 || c.indexOf('fa-redo') !== -1 || c.indexOf('fa-undo') !== -1 || c.indexOf('fa-rotate') !== -1) return 'sync';
     if (c.indexOf('fa-lock') !== -1 || c.indexOf('fa-key') !== -1) return 'lock';
-    if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-book') !== -1) return 'info';
+    if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-book') !== -1 || c.indexOf('fa-question') !== -1) return 'info';
     return null;
   }
 
   var seq = window.__webpos3dUiSeq || 0;
+  var SKIP_SEL = [
+    'aside .nav-link',
+    'aside .nav-dropdown-toggle',
+    '.mobile-bar',
+    '.mobile-nav',
+    '#ptrIndicator',
+    '.ptr-indicator',
+    '.modal-close',
+    '.close-btn',
+    '.search-input-wrapper',
+    '.produk-search',
+    '.search-box',
+    '.password-toggle',
+    '.qty-btn',
+    '.cart-item-remove',
+    '.kas-date-btn',
+    '.numpad-btn',
+    '.user-avatar',
+    '#btnThemeToggle',
+    '#btnLogout',
+    '#mobileMenuToggle'
+  ].join(',');
+
+  function upgradeSingleIcon(el) {
+    if (!el || el.id === 'shiftToggleIcon' || el.classList.contains('dropdown-arrow')) return;
+    if (el.closest(SKIP_SEL)) return;
+
+    var curClass = el.className || '';
+    if (el.dataset.upgraded3d === '1' && el.dataset.u3dClass === curClass) return;
+
+    // Bersihkan SVG 3D lama jika class ikon berubah dinamis
+    var next = el.nextElementSibling;
+    if (next && next.dataset && next.dataset.u3dFor === '1') {
+      next.remove();
+    }
+
+    var key = mapGlobalUiKey(el);
+    if (!key || !UI3D[key]) {
+      // Tampilkan kembali ikon asli jika berubah jadi spinner / kontrol mikro
+      if (el.dataset.upgraded3d === '1') {
+        el.style.display = '';
+        delete el.dataset.upgraded3d;
+        delete el.dataset.u3dClass;
+      }
+      return;
+    }
+
+    seq++;
+    var wrap = document.createElement('span');
+    wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
+    var svg = wrap.firstElementChild;
+    if (svg && el.parentNode) {
+      svg.dataset.u3dFor = '1';
+      el.style.display = 'none';
+      el.dataset.upgraded3d = '1';
+      el.dataset.u3dClass = curClass;
+      el.parentNode.insertBefore(svg, el.nextSibling);
+    }
+  }
 
   function upgradeNodesInDom() {
-    var nodes = document.querySelectorAll(
-      '.stat-icon > i, .summary-icon > i, .action-icon > i,' +
-      '.tab-btn > i, .card-title > i, .modal-title > i, .section-title > i, .empty-state > i,' +
-      '.btn-primary > i, .btn-success > i, .btn-danger > i, .btn-warning > i'
-    );
+    var nodes = document.querySelectorAll('i[class*="fa-"]');
     for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (!el || el.id === 'shiftToggleIcon' || el.closest('#ptrIndicator,.btn-sm,.qty-btn,.cart-item-edit,.cart-item-remove')) continue;
-      var key = mapGlobalUiKey(el);
-      if (!key || !UI3D[key]) continue;
-      seq++;
-      var wrap = document.createElement('span');
-      wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
-      var svg = wrap.firstElementChild;
-      if (svg && el.parentNode) el.parentNode.replaceChild(svg, el);
+      upgradeSingleIcon(nodes[i]);
     }
     window.__webpos3dUiSeq = seq;
   }
@@ -612,29 +727,45 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var st = document.createElement('style');
       st.id = 'webpos3dGlobalUiStyle';
       st.textContent = [
-        '.ui-3d-svg{display:inline-block;flex-shrink:0;vertical-align:middle;filter:drop-shadow(0 2px 4px rgba(15,23,42,0.2));transition:transform .18s ease;}',
-        '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
+        '.ui-3d-svg{width:1.22em;height:1.22em;display:inline-block;flex-shrink:0;vertical-align:-0.18em;filter:drop-shadow(0 2px 4px rgba(15,23,42,0.2));transition:transform .18s ease;}',
+        '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg),.dialog-icon-wrap:has(> .ui-3d-svg),.kas-item-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
+        '.logo-icon > .ui-3d-svg{width:26px;height:26px;}',
+        '.dialog-icon-wrap > .ui-3d-svg{width:34px;height:34px;}',
         '.stat-icon > .ui-3d-svg,.summary-icon > .ui-3d-svg{width:36px;height:36px;}',
         '.action-icon > .ui-3d-svg{width:30px;height:30px;}',
+        '.kas-item-icon > .ui-3d-svg{width:26px;height:26px;}',
         '.empty-state > .ui-3d-svg{width:44px;height:44px;margin-bottom:8px;}',
         '.stat-card:hover .stat-icon > .ui-3d-svg{transform:scale(1.1);}',
-        '.tab-btn > .ui-3d-svg{width:19px;height:19px;margin-right:4px;}',
+        '.tab-btn > .ui-3d-svg,.viewer-tab-btn > .ui-3d-svg{width:19px;height:19px;margin-right:4px;}',
         '.card-title > .ui-3d-svg,.modal-title > .ui-3d-svg,.section-title > .ui-3d-svg{width:22px;height:22px;margin-right:5px;}',
-        '.btn > .ui-3d-svg{width:18px;height:18px;margin-right:4px;}',
-        '#btnThemeToggle .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;}',
+        '.btn > .ui-3d-svg,button > .ui-3d-svg{margin-right:4px;}',
+        '.btn > .ui-3d-svg:last-child,button > .ui-3d-svg:last-child,.btn-icon-box > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{margin-right:0;}',
+        '#btnThemeToggle .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;margin:0;}',
         '#btnThemeToggle:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg{transform:scale(1.12);}'
       ].join('\n');
       document.head.appendChild(st);
     }
 
-    // 1. Tombol Header Dark Mode (Otomatis Bulan 3D <-> Matahari 3D)
+    // 1. Tombol Header Dark Mode (tetap simpan <i> tersembunyi agar script page-kasir aman 100%)
     var themeBtn = document.getElementById('btnThemeToggle');
     if (themeBtn && !themeBtn.dataset.upgraded3d) {
       themeBtn.dataset.upgraded3d = '1';
+      var hiddenThemeI = themeBtn.querySelector('i');
+      if (!hiddenThemeI) {
+        hiddenThemeI = document.createElement('i');
+        hiddenThemeI.className = 'fas fa-moon';
+        themeBtn.appendChild(hiddenThemeI);
+      }
+      hiddenThemeI.style.display = 'none';
+      var themeSlot = document.createElement('span');
+      themeSlot.className = 'u3d-theme-slot';
+      themeSlot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+      themeBtn.appendChild(themeSlot);
+
       function renderTheme3d() {
         var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         seq++;
-        themeBtn.innerHTML = (isDark ? UI3D.sun : UI3D.moon).replace(/__ID__/g, 'u3d_' + seq + '_');
+        themeSlot.innerHTML = (isDark ? UI3D.sun : UI3D.moon).replace(/__ID__/g, 'u3d_' + seq + '_');
       }
       renderTheme3d();
       new MutationObserver(renderTheme3d).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -644,28 +775,50 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var logoutBtn = document.getElementById('btnLogout');
     if (logoutBtn && !logoutBtn.dataset.upgraded3d) {
       logoutBtn.dataset.upgraded3d = '1';
+      var oldLogoutI = logoutBtn.querySelector('i');
+      if (oldLogoutI) oldLogoutI.style.display = 'none';
       seq++;
-      logoutBtn.innerHTML = UI3D.logout.replace(/__ID__/g, 'u3d_' + seq + '_');
+      var lw = document.createElement('span');
+      lw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+      lw.innerHTML = UI3D.logout.replace(/__ID__/g, 'u3d_' + seq + '_');
+      logoutBtn.appendChild(lw);
     }
 
     // 3. Tombol Header Menu Mobile
     var menuBtn = document.getElementById('mobileMenuToggle');
     if (menuBtn && !menuBtn.dataset.upgraded3d) {
       menuBtn.dataset.upgraded3d = '1';
+      var oldMenuI = menuBtn.querySelector('i');
+      if (oldMenuI) oldMenuI.style.display = 'none';
       seq++;
-      menuBtn.innerHTML = UI3D.menu.replace(/__ID__/g, 'u3d_' + seq + '_');
+      var mw = document.createElement('span');
+      mw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+      mw.innerHTML = UI3D.menu.replace(/__ID__/g, 'u3d_' + seq + '_');
+      menuBtn.appendChild(mw);
     }
 
-    // 4. Upgrade semua ikon halaman + pantau modal/elemen dinamis secara ringan
+    // 4. Upgrade semua ikon di halaman & seluruh pop-up/modal (termasuk yang baru muncul dinamis)
     upgradeNodesInDom();
     var debounceTimer = null;
-    new MutationObserver(function() {
-      if (debounceTimer) return;
+    new MutationObserver(function(mutations) {
+      var shouldRun = false;
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+          shouldRun = true;
+          break;
+        }
+        if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
+          shouldRun = true;
+          break;
+        }
+      }
+      if (!shouldRun || debounceTimer) return;
       debounceTimer = setTimeout(function() {
         debounceTimer = null;
         upgradeNodesInDom();
-      }, 150);
-    }).observe(document.body, { childList: true, subtree: true });
+      }, 120);
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 
   if (document.readyState === 'loading') {
