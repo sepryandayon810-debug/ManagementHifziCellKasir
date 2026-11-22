@@ -1,58 +1,50 @@
 // js/sidebar-filter.js - Role-Based Menu Filter
-function applyMenuVisibility() {
-  if (typeof auth === "undefined" || typeof db === "undefined") return;
+function applyRoleRulesUI(role) {
+  const r = String(role || "kasir").toLowerCase();
+  const roleEl = document.getElementById("userRole");
+  if (roleEl) roleEl.textContent = r.toUpperCase();
+  if (r === "developer" || r === "owner") return;
+  if (r === "admin") {
+    hideMenuItem('[data-menu="penggajian"]');
+    hideMenuItem('[data-menu="reset"]');
+    hideMenuItem('[data-menu="pengguna"]');
+    hideMenuItem('[data-menu="setting"]');
+    hideMenuItem('[data-menu="log-aktivitas"]');
+    return;
+  }
+  if (r === "kasir") {
+    hideMenuItem('[data-menu="pembelian"]');
+    hideMenuItem('[data-menu="laporan"]');
+    hideMenuItem('[data-menu="laporan-stok"]');
+    hideMenuItem('[data-menu="laporan-terlaris"]');
+    hideMenuItem('[data-menu="telegram"]');
+    hideMenuItem('[data-menu="penggajian"]');
+    hideMenuItem('[data-menu="pengguna"]');
+    hideMenuItem('[data-menu="backup"]');
+    hideMenuItem('[data-menu="reset"]');
+    hideMenuItem('[data-menu="log-aktivitas"]');
+    const labaEl = document.getElementById("totalLaba");
+    if (labaEl) { const card = labaEl.closest(".stat-card"); if (card) card.style.display = "none"; }
+    const modalEl = document.getElementById("modalAwal");
+    if (modalEl) { const card = modalEl.closest(".stat-card"); if (card) card.style.display = "none"; }
+  }
+}
 
+function applyMenuVisibility() {
+  // 1. Terapkan role tersimpan SEGERA (0 ms, tanpa nunggu jaringan)
+  try {
+    const cachedRole = localStorage.getItem("webpos_user_role");
+    if (cachedRole) applyRoleRulesUI(cachedRole);
+  } catch (e) {}
+
+  if (typeof auth === "undefined" || typeof db === "undefined") return;
   auth.onAuthStateChanged(user => {
     if (!user) return;
-
     db.collection("users").doc(user.uid).get().then(doc => {
       if (!doc.exists) return;
       const role = (doc.data().role || "kasir").toLowerCase();
-
-      // Update text role di profile bawah jika ada elemennya
-      const roleEl = document.getElementById("userRole");
-      if (roleEl) roleEl.textContent = role.toUpperCase();
-
-      // 1. DEVELOPER & OWNER: Buka semua akses menu
-      if (role === "developer" || role === "owner") {
-        return;
-      }
-
-      // 2. ADMIN: Sembunyikan menu pengaturan sistem tingkat tinggi & Log Aktivitas
-      if (role === "admin") {
-        hideMenuItem('[data-menu="penggajian"]');
-        hideMenuItem('[data-menu="reset"]');
-        hideMenuItem('[data-menu="pengguna"]');
-        hideMenuItem('[data-menu="setting"]');
-        hideMenuItem('[data-menu="log-aktivitas"]'); // ← Tambahkan ini untuk Admin
-        return;
-      }
-
-      // 3. KASIR: Hanya fokus pada kasir dan pencatatan harian
-      if (role === "kasir") {
-        hideMenuItem('[data-menu="pembelian"]');
-        hideMenuItem('[data-menu="laporan"]');
-        hideMenuItem('[data-menu="laporan-stok"]');
-        hideMenuItem('[data-menu="laporan-terlaris"]');
-        hideMenuItem('[data-menu="telegram"]');
-        hideMenuItem('[data-menu="penggajian"]');
-        hideMenuItem('[data-menu="pengguna"]');
-        hideMenuItem('[data-menu="backup"]');
-        hideMenuItem('[data-menu="reset"]');
-        hideMenuItem('[data-menu="log-aktivitas"]'); // ← Tambahkan ini untuk Kasir
-
-        // Sembunyikan kartu laba & modal di dashboard kasir
-        const labaEl = document.getElementById("totalLaba");
-        if (labaEl) {
-          const card = labaEl.closest(".stat-card");
-          if (card) card.style.display = "none";
-        }
-        const modalEl = document.getElementById("modalAwal");
-        if (modalEl) {
-          const card = modalEl.closest(".stat-card");
-          if (card) card.style.display = "none";
-        }
-      }
+      try { localStorage.setItem("webpos_user_role", role); } catch (e) {}
+      applyRoleRulesUI(role);
     }).catch(err => console.error("Role filter error:", err));
   });
 }
@@ -77,15 +69,36 @@ function hideMenuItem(selector) {
   document.documentElement.setAttribute("data-theme-color", savedColor);
   document.documentElement.setAttribute("data-theme-font", savedFont);
 
-  // 1. Muat 15 Google Fonts Resmi ke Head jika belum ada
+  // 1. Muat HANYA 1 Google Font yang aktif (hemat 15x trafik di tiap pindah halaman! Semua 15 font hanya dimuat di page-setting.html)
   if (!document.getElementById("webposGoogleFonts")) {
-    const fontLink = document.createElement("link");
-    fontLink.id = "webposGoogleFonts";
-    fontLink.rel = "stylesheet";
-    fontLink.href = "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=DM+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700;800&family=Montserrat:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Outfit:wght@400;500;600;700&family=Patrick+Hand&family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&family=Quicksand:wght@500;600;700&family=Roboto:wght@400;500;700&family=Rubik:wght@500;600;700&family=Space+Grotesk:wght@500;700&display=swap";
-    document.head.appendChild(fontLink);
+    const isSettingPage = /page-setting\.html/i.test(window.location.pathname || "");
+    const fontMap = {
+      poppins: "Poppins:wght@400;500;600;700",
+      inter: "Inter:wght@400;500;600;700",
+      outfit: "Outfit:wght@400;500;600;700",
+      dmsans: "DM+Sans:wght@400;500;700",
+      roboto: "Roboto:wght@400;500;700",
+      space: "Space+Grotesk:wght@500;700",
+      mono: "Courier+Prime:wght@400;700",
+      manrope: "Manrope:wght@500;700;800",
+      nunito: "Nunito:wght@500;600;700;800",
+      quicksand: "Quicksand:wght@500;600;700",
+      montserrat: "Montserrat:wght@500;600;700",
+      rubik: "Rubik:wght@500;600;700",
+      playfair: "Playfair+Display:wght@600;700;800",
+      hand: "Patrick+Hand"
+    };
+    const allFontsHref = "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=DM+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700;800&family=Montserrat:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Outfit:wght@400;500;600;700&family=Patrick+Hand&family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&family=Quicksand:wght@500;600;700&family=Roboto:wght@400;500;700&family=Rubik:wght@500;600;700&family=Space+Grotesk:wght@500;700&display=swap";
+    const targetHref = isSettingPage ? allFontsHref : (fontMap[savedFont] ? "https://fonts.googleapis.com/css2?family=" + fontMap[savedFont] + "&display=swap" : "");
+    if (targetHref) {
+      const fontLink = document.createElement("link");
+      fontLink.id = "webposGoogleFonts";
+      fontLink.rel = "stylesheet";
+      fontLink.href = targetHref;
+      document.head.appendChild(fontLink);
+    }
   }
-
+  
   const css = `
     /* ===== 15 PILIHAN GAYA TULISAN (FONT) GLOBAL ===== */
     :root { --font-family: 'Plus Jakarta Sans', sans-serif; }
