@@ -1057,7 +1057,7 @@ function applyGlobalTranslations() {
     if (href.includes("index") && dict.dashboard) span.textContent = dict.dashboard;
     else if (href.includes("kasir") && dict.kasir) span.textContent = dict.kasir;
     else if (href.includes("produk") && dict.produk) span.textContent = dict.produk;
-    else if (href.includes("riwayat") && dict.riwayat) span.textContent = dict.riwayat;
+    else if (href.includes("riwayat")) span.textContent = (lang === "en" ? "History" : (lang === "ms" ? "Sejarah" : (lang === "ar" ? "السجل" : "Riwayat")));
     else if (href.includes("setting") && dict.setting) span.textContent = dict.setting;
   });
 }
