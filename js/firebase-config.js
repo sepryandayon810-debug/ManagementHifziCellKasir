@@ -407,7 +407,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">' +
           '<button type="button" id="btnLaterWebposUpdate" style="flex:0 0 auto;background:rgba(148,163,184,0.14);color:#e2e8f0;border:1px solid rgba(148,163,184,0.22);padding:8px 14px;border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;">Nanti</button>' +
-          '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Muat Ulang Sekarang</button>' +
+          '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Refresh</button>' +
         '</div>';
       document.body.appendChild(bar);
 
