@@ -1483,3 +1483,104 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     initUnifiedLoader();
   }
 })();
+
+// 7. JAM LIVE 3D SESUAI DEVICE (DI ATAS PROFIL SIDEBAR + CHIP RINGKAS HEADER HP)
+(function() {
+  if (window.__webposLiveClockInit) return;
+  window.__webposLiveClockInit = true;
+
+  var HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function getZoneLabel(date) {
+    var off = -date.getTimezoneOffset();
+    if (off === 420) return 'WIB';
+    if (off === 480) return 'WITA';
+    if (off === 540) return 'WIT';
+    return '';
+  }
+
+  function initLiveClock() {
+    try {
+      if (window.location.pathname.indexOf('login.html') !== -1) return;
+
+      if (!document.getElementById('webposLiveClockStyle')) {
+        var st = document.createElement('style');
+        st.id = 'webposLiveClockStyle';
+        st.textContent = [
+          '.webpos-sidebar-clock{margin:0.5rem 0.85rem 0.65rem;padding:0.65rem 0.75rem;border-radius:14px;background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));display:flex;align-items:center;gap:0.65rem;flex-shrink:0;box-shadow:0 4px 12px rgba(15,23,42,0.06);transition:all .2s ease;}',
+          '.webpos-clock-icon3d{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 25%,#a5b4fc 0%,var(--primary,#6366f1) 55%,#312e81 100%);border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 4px 10px rgba(79,70,229,0.32),inset 0 2px 3px rgba(255,255,255,0.5);}',
+          '.webpos-clock-body{min-width:0;flex:1;line-height:1.2;}',
+          '.webpos-clock-time-row{display:flex;align-items:baseline;gap:5px;}',
+          '.webpos-clock-time{font-size:0.98rem;font-weight:800;letter-spacing:0.02em;color:var(--text-main,var(--text-primary,#0f172a));font-variant-numeric:tabular-nums;}',
+          '.webpos-clock-tz{font-size:0.62rem;font-weight:700;color:var(--primary,#6366f1);background:rgba(99,102,241,0.12);padding:1px 5px;border-radius:5px;}',
+          '.webpos-clock-date{font-size:0.7rem;font-weight:600;color:var(--text-muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+          '.sidebar.collapsed .webpos-sidebar-clock{margin:0.4rem auto;padding:0.4rem;width:42px;justify-content:center;}',
+          '.sidebar.collapsed .webpos-clock-body{display:none;}',
+          '.webpos-mobile-clock{display:none;align-items:center;gap:5px;padding:0 9px;height:34px;border-radius:10px;background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.75rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;}',
+          '.webpos-mobile-clock-dot{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#6ee7b7,#10b981);box-shadow:0 0 6px rgba(16,185,129,0.6);flex-shrink:0;}',
+          '@media(max-width:768px){.webpos-mobile-clock{display:inline-flex;}}',
+          '@media(max-width:400px){.webpos-mobile-clock{padding:0 7px;font-size:0.7rem;height:32px;}}'
+        ].join('\n');
+        document.head.appendChild(st);
+      }
+
+      // 1. Kartu Jam 3D di Sidebar (tepat di atas .sidebar-footer / profil SE)
+      var footer = document.querySelector('.sidebar-footer');
+      if (footer && footer.parentNode && !document.getElementById('webposSidebarClock')) {
+        var box = document.createElement('div');
+        box.id = 'webposSidebarClock';
+        box.className = 'webpos-sidebar-clock';
+        box.innerHTML =
+          '<div class="webpos-clock-icon3d" aria-hidden="true">' +
+            '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>' +
+          '</div>' +
+          '<div class="webpos-clock-body">' +
+            '<div class="webpos-clock-time-row"><span class="webpos-clock-time" id="wposClockTime">--:--:--</span><span class="webpos-clock-tz" id="wposClockTz"></span></div>' +
+            '<div class="webpos-clock-date" id="wposClockDate">Memuat waktu...</div>' +
+          '</div>';
+        footer.parentNode.insertBefore(box, footer);
+      }
+
+      // 2. Chip Jam Ringkas di Header Kanan (khusus tampilan HP saat sidebar tersembunyi)
+      var actions = document.querySelector('.main-header .header-actions');
+      if (actions && !document.getElementById('webposMobileClock')) {
+        var chip = document.createElement('div');
+        chip.id = 'webposMobileClock';
+        chip.className = 'webpos-mobile-clock';
+        chip.innerHTML = '<span class="webpos-mobile-clock-dot"></span><span id="wposMobClockTime">--:--:--</span>';
+        actions.insertBefore(chip, actions.firstChild);
+      }
+
+      function tickClock() {
+        var now = new Date();
+        var hh = pad2(now.getHours());
+        var mm = pad2(now.getMinutes());
+        var ss = pad2(now.getSeconds());
+        var timeStr = hh + ':' + mm + ':' + ss;
+        var dateStr = HARI[now.getDay()] + ', ' + now.getDate() + ' ' + BULAN[now.getMonth()] + ' ' + now.getFullYear();
+        var tzStr = getZoneLabel(now);
+
+        var elT = document.getElementById('wposClockTime');
+        var elD = document.getElementById('wposClockDate');
+        var elZ = document.getElementById('wposClockTz');
+        var elM = document.getElementById('wposMobClockTime');
+        if (elT) elT.textContent = timeStr;
+        if (elD) elD.textContent = dateStr;
+        if (elZ) { elZ.textContent = tzStr; elZ.style.display = tzStr ? 'inline-block' : 'none'; }
+        if (elM) { elM.textContent = timeStr; elM.parentNode.title = dateStr + (tzStr ? ' • ' + tzStr : ''); }
+      }
+
+      tickClock();
+      setInterval(tickClock, 1000);
+    } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLiveClock);
+  } else {
+    initLiveClock();
+  }
+})();
