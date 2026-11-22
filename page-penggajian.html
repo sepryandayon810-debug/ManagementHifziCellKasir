@@ -609,7 +609,62 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="closeManageStaffModal()">Tutup</button>
+      <button type="button" class="btn btn-secondary" onclick="closePayrollModal()">Batal</button>
+      <button type="button" class="btn btn-primary" id="btnSubmitPayroll">Simpan Data Penggajian</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BAYAR GAJI & PELUNASAN HUTANG STAF -->
+<div class="modal-overlay" id="modalPayPayroll">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-money-bill-wave" style="color:var(--success);"></i> Bayar Gaji &amp; Cek Hutang</h3>
+      <button class="modal-close" onclick="closePayPayrollModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="payPayrollId">
+      <div style="background:var(--bg-subtle); padding:0.85rem 1rem; border-radius:var(--radius-md); border:1px solid var(--border); margin-bottom:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+          <div>
+            <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">NAMA STAF</div>
+            <div id="payStaffNameLabel" style="font-size:0.98rem; font-weight:800; color:var(--text-main);">-</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">PERIODE</div>
+            <div id="payPeriodLabel" style="font-size:0.88rem; font-weight:700; color:var(--primary);">-</div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-top:0.65rem; padding-top:0.65rem; border-top:1px dashed var(--border);">
+          <span style="color:var(--text-muted);">Gaji Sebelum Potongan Baru:</span>
+          <strong id="payBaseNetLabel" style="color:var(--text-main);">Rp 0</strong>
+        </div>
+      </div>
+
+      <div class="form-group" style="background:var(--bg-subtle); padding:0.9rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+        <label class="form-label" style="margin-bottom:0.5rem;">
+          <i class="fas fa-hand-holding-usd" style="color:var(--danger);"></i> Hutang Aktif di Halaman Hutang (Centang untuk Sekalian Dilunasi)
+        </label>
+        <div id="payDebtsContainer" style="font-size:0.84rem; color:var(--text-muted);">Memeriksa hutang aktif staf...</div>
+        <div style="margin-top:0.65rem; font-weight:700; font-size:0.84rem; text-align:right;">
+          Potongan Hutang Sekarang: <span id="payDebtDeductionLabel" style="color:var(--danger);">Rp 0</span>
+        </div>
+      </div>
+
+      <div id="payWarningBox" style="display:none; background:#fef3c7; color:#92400e; border:1px solid #f59e0b; border-radius:10px; padding:0.65rem 0.85rem; font-size:0.78rem; font-weight:600; margin-bottom:0.85rem;">
+        <i class="fas fa-exclamation-triangle"></i> Total hutang yang dicentang lebih besar dari gaji. Anda bisa lepas sebagian centang hutang jika ingin dipotong bulan depan.
+      </div>
+
+      <div style="background:var(--primary-light); padding:1rem; border-radius:var(--radius-md); display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+        <div style="font-weight:700; color:var(--text-main); font-size:0.88rem;">Yang Harus Dibayar ke Staf:</div>
+        <div id="payFinalAmountLabel" style="font-size:1.25rem; font-weight:800; color:var(--success); white-space:nowrap;">Rp 0</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closePayPayrollModal()">Batal</button>
+      <button type="button" class="btn btn-primary" id="btnConfirmPayPayroll" style="background:var(--success); border-color:var(--success);" onclick="confirmPayPayroll()">
+        <i class="fas fa-check-circle"></i> Konfirmasi Sudah Bayar
+      </button>
     </div>
   </div>
 </div>
@@ -974,8 +1029,9 @@
         <td style="color:var(--danger)">- ${formatRupiah(p.totalDebtDeduction)}</td>
         <td style="color:var(--warning)">+ ${formatRupiah(p.prevUnpaidSalary)}</td>
         <td><strong style="color:var(--success)">${formatRupiah(p.netSalary)}</strong></td>
-        <td><span class="badge badge-${p.status}">${p.status === 'paid' ? 'Lunas' : 'Belum Lunas'}</span></td>
-        <td style="text-align:right">
+        <td><span class="badge badge-${p.status}">${p.status === 'paid' ? '<i class="fas fa-check-circle"></i> Sudah Bayar' : 'Belum Lunas'}</span></td>
+        <td style="text-align:right; white-space:nowrap;">
+          ${p.status !== 'paid' ? `<button class="btn btn-sm" style="background:var(--success); color:#fff; margin-right:0.35rem;" onclick="window.openPayPayrollModal('${p.id}')" title="Cek Hutang &amp; Bayar Gaji"><i class="fas fa-money-bill-wave"></i> Bayar</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="window.deletePayroll('${p.id}')" title="Hapus"><i class="fas fa-trash"></i></button>
         </td>
       </tr>
@@ -1284,6 +1340,158 @@
   btn.innerHTML = "Simpan Data Penggajian";
 }
 }
+
+  let currentPayRecord = null;
+  let currentPayActiveDebts = [];
+
+  window.openPayPayrollModal = async function(payrollId) {
+    const rec = allPayrolls.find(p => p.id === payrollId);
+    if (!rec) {
+      toast("Data penggajian tidak ditemukan", "error");
+      return;
+    }
+    currentPayRecord = rec;
+    currentPayActiveDebts = [];
+
+    document.getElementById("payPayrollId").value = rec.id;
+    document.getElementById("payStaffNameLabel").textContent = rec.staffName || "-";
+    document.getElementById("payPeriodLabel").textContent = rec.periodName || rec.period || "-";
+    document.getElementById("payBaseNetLabel").textContent = formatRupiah(rec.netSalary || 0);
+    document.getElementById("payDebtDeductionLabel").textContent = "Rp 0";
+    document.getElementById("payFinalAmountLabel").textContent = formatRupiah(rec.netSalary || 0);
+    document.getElementById("payWarningBox").style.display = "none";
+
+    const container = document.getElementById("payDebtsContainer");
+    container.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memeriksa hutang aktif staf...';
+    document.getElementById("modalPayPayroll").classList.add("active");
+
+    try {
+      currentPayActiveDebts = await KasCore.getActiveStaffDebts({
+        staffId: rec.staffId || "",
+        staffName: rec.staffName || ""
+      });
+
+      if (!currentPayActiveDebts || currentPayActiveDebts.length === 0) {
+        container.innerHTML = '<div style="color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Tidak ada hutang aktif di halaman Hutang. Bisa langsung dibayar penuh.</div>';
+        recalcPayPayroll();
+        return;
+      }
+
+      container.innerHTML = currentPayActiveDebts.map(d => {
+        const sisa = d.remaining || d.amount || 0;
+        const tgl = d.date ? ` • ${d.date}` : "";
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.45rem; background:var(--bg-surface); padding:0.55rem 0.65rem; border-radius:8px; border:1px solid var(--border);">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; flex:1; margin:0;">
+              <input type="checkbox" class="pay-debt-checkbox" value="${d.id}" data-remaining="${sisa}" onchange="recalcPayPayroll()" checked>
+              <div>
+                <div style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${d.note || d.customerName || 'Hutang Staf'}</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">${d.type || 'hutang'}${tgl}</div>
+              </div>
+            </label>
+            <span style="font-weight:800; color:var(--danger); white-space:nowrap;">${formatRupiah(sisa)}</span>
+          </div>
+        `;
+      }).join("");
+
+      recalcPayPayroll();
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<span style="color:var(--danger);">Gagal memeriksa hutang staf.</span>';
+    }
+  };
+
+  window.closePayPayrollModal = function() {
+    document.getElementById("modalPayPayroll").classList.remove("active");
+    currentPayRecord = null;
+    currentPayActiveDebts = [];
+  };
+
+  window.recalcPayPayroll = function() {
+    if (!currentPayRecord) return;
+    const baseNet = parseFloat(currentPayRecord.netSalary) || 0;
+    let extraDeduction = 0;
+    document.querySelectorAll(".pay-debt-checkbox:checked").forEach(chk => {
+      extraDeduction += parseFloat(chk.dataset.remaining) || 0;
+    });
+    const finalPay = baseNet - extraDeduction;
+
+    document.getElementById("payDebtDeductionLabel").textContent = formatRupiah(extraDeduction);
+    const finalEl = document.getElementById("payFinalAmountLabel");
+    finalEl.textContent = formatRupiah(finalPay);
+    finalEl.style.color = finalPay < 0 ? "var(--danger)" : "var(--success)";
+
+    const warnBox = document.getElementById("payWarningBox");
+    if (warnBox) warnBox.style.display = finalPay < 0 ? "block" : "none";
+  };
+
+  window.confirmPayPayroll = async function() {
+    if (!currentPayRecord) return;
+    const btn = document.getElementById("btnConfirmPayPayroll");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
+    try {
+      const checkedIds = Array.from(document.querySelectorAll(".pay-debt-checkbox:checked")).map(c => c.value);
+      const newlyPaidDebts = [];
+      let extraDeduction = 0;
+
+      checkedIds.forEach(dId => {
+        const dObj = currentPayActiveDebts.find(d => d.id === dId);
+        if (!dObj) return;
+        const amt = parseFloat(dObj.remaining || dObj.amount) || 0;
+        if (amt <= 0) return;
+        extraDeduction += amt;
+        newlyPaidDebts.push({
+          id: dObj.id,
+          name: dObj.customerName || dObj.note || currentPayRecord.staffName || "Hutang",
+          amountDeducted: amt
+        });
+      });
+
+      const oldDeduction = parseFloat(currentPayRecord.totalDebtDeduction) || 0;
+      const oldNet = parseFloat(currentPayRecord.netSalary) || 0;
+      const oldDebts = Array.isArray(currentPayRecord.selectedDebts) ? currentPayRecord.selectedDebts : [];
+
+      const batch = db.batch();
+      const payrollRef = db.collection("payrolls").doc(currentPayRecord.id);
+
+      batch.update(payrollRef, {
+        status: "paid",
+        totalDebtDeduction: oldDeduction + extraDeduction,
+        netSalary: oldNet - extraDeduction,
+        selectedDebts: oldDebts.concat(newlyPaidDebts),
+        paidAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      newlyPaidDebts.forEach(debt => {
+        const debtRef = db.collection("debts").doc(debt.id);
+        batch.update(debtRef, {
+          remaining: 0,
+          status: "paid",
+          paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+          paidViaPayrollId: currentPayRecord.id
+        });
+      });
+
+      await batch.commit();
+
+      toast(
+        newlyPaidDebts.length > 0
+          ? `Gaji ditandai Sudah Bayar & ${newlyPaidDebts.length} hutang staf dilunasi!`
+          : "Gaji berhasil ditandai Sudah Bayar!",
+        "success"
+      );
+      closePayPayrollModal();
+      loadStaffAndPayrolls();
+    } catch (err) {
+      console.error(err);
+      toast("Gagal memproses pembayaran gaji: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Sudah Bayar';
+    }
+  };
 
   window.deletePayroll = function(id) {
     showCustomConfirm("Hapus Gaji", "Hapus catatan penggajian ini dari sistem?", "danger", "Ya, Hapus", async () => {
