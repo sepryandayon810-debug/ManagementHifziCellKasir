@@ -113,6 +113,56 @@ function hideMenuItem(selector) {
       font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", sans-serif !important;
     }
 
+    /* ===== 6 TEMA DASAR TAMBAHAN GLOBAL (SELAIN LIGHT & DARK) ===== */
+    [data-theme="midnight"] {
+      --bg-base: #070d1f; --bg-body: #070d1f; --bg-primary: #070d1f;
+      --bg-surface: #0f1a36; --bg-card: #0f1a36; --bg-secondary: #162447;
+      --bg-subtle: #162447; --bg-input: #162447;
+      --border: #253864; --border-color: #253864;
+      --text-main: #eef4ff; --text-primary: #eef4ff;
+      --text-muted: #93acd4; --text-secondary: #93acd4; --text-sub: #b4c8e8;
+    }
+    [data-theme="emerald"] {
+      --bg-base: #041712; --bg-body: #041712; --bg-primary: #041712;
+      --bg-surface: #08241c; --bg-card: #08241c; --bg-secondary: #0f362b;
+      --bg-subtle: #0f362b; --bg-input: #0f362b;
+      --border: #1a4d3e; --border-color: #1a4d3e;
+      --text-main: #ecfdf5; --text-primary: #ecfdf5;
+      --text-muted: #86c7b4; --text-secondary: #86c7b4; --text-sub: #a7dfd0;
+    }
+    [data-theme="oled"] {
+      --bg-base: #000000; --bg-body: #000000; --bg-primary: #000000;
+      --bg-surface: #0a0a0c; --bg-card: #0a0a0c; --bg-secondary: #141418;
+      --bg-subtle: #141418; --bg-input: #141418;
+      --border: #26262e; --border-color: #26262e;
+      --text-main: #f8fafc; --text-primary: #f8fafc;
+      --text-muted: #94a3b8; --text-secondary: #94a3b8; --text-sub: #cbd5e1;
+    }
+    [data-theme="sepia"] {
+      --bg-base: #f6efe2; --bg-body: #f6efe2; --bg-primary: #f6efe2;
+      --bg-surface: #fffbf2; --bg-card: #fffbf2; --bg-secondary: #ede2ce;
+      --bg-subtle: #ede2ce; --bg-input: #fffdf8;
+      --border: #dfd0b6; --border-color: #dfd0b6;
+      --text-main: #3b2d1f; --text-primary: #3b2d1f;
+      --text-muted: #7c6751; --text-secondary: #7c6751; --text-sub: #5c4936;
+    }
+    [data-theme="ocean"] {
+      --bg-base: #eef7fd; --bg-body: #eef7fd; --bg-primary: #eef7fd;
+      --bg-surface: #ffffff; --bg-card: #ffffff; --bg-secondary: #dff0fb;
+      --bg-subtle: #dff0fb; --bg-input: #f8fcff;
+      --border: #c2e0f4; --border-color: #c2e0f4;
+      --text-main: #0c2a44; --text-primary: #0c2a44;
+      --text-muted: #4b7496; --text-secondary: #4b7496; --text-sub: #2d5575;
+    }
+    [data-theme="sakura"] {
+      --bg-base: #fdf2f6; --bg-body: #fdf2f6; --bg-primary: #fdf2f6;
+      --bg-surface: #ffffff; --bg-card: #ffffff; --bg-secondary: #fbe4ed;
+      --bg-subtle: #fbe4ed; --bg-input: #fff9fb;
+      --border: #f3c8d9; --border-color: #f3c8d9;
+      --text-main: #3d1628; --text-primary: #3d1628;
+      --text-muted: #8f5670; --text-secondary: #8f5670; --text-sub: #6b364e;
+    }
+
     /* ===== 15 WARNA BRAND POPULER ===== */
     [data-theme-color="dana"]       { --primary: #118eea; --primary-hover: #0b75c4; --primary-light: #e8f4fd; }
     [data-theme-color="gojek"]      { --primary: #00aa13; --primary-hover: #00880f; --primary-light: #e6f7e7; }
