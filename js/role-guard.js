@@ -107,21 +107,68 @@ var RoleGuard = window.RoleGuard;
       unhideAllowedMenus(cached);
     } catch (e) {}
 
-    // 3. Tarik izin user dari database Firestore secara real-time
+    // 3. Tarik izin & validasi akses URL langsung dari Firestore secara real-time
     if (typeof firebase !== 'undefined' && firebase.auth && firebase.firestore) {
-      firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
+      var ADMIN_BLOCKED_PAGES = {
+        'page-penggajian.html': 'penggajian',
+        'page-reset.html': 'reset',
+        'page-pengguna.html': 'pengguna',
+        'page-log-aktivitas.html': 'log-aktivitas',
+        'page-backup.html': 'backup'
+      };
+      var KASIR_BLOCKED_PAGES = {
+        'page-pembelian.html': 'pembelian',
+        'page-laporan.html': 'laporan',
+        'page-laporan-stok.html': 'laporan-stok',
+        'page-laporan-terlaris.html': 'laporan-terlaris',
+        'page-saldo-telegram.html': 'telegram',
+        'page-data-pelanggan.html': 'data-pelanggan',
+        'page-penggajian.html': 'penggajian',
+        'page-pengguna.html': 'pengguna',
+        'page-backup.html': 'backup',
+        'page-reset.html': 'reset',
+        'page-log-aktivitas.html': 'log-aktivitas'
+      };
+
+      if (!window.__webposRouteGuardBound) {
+        window.__webposRouteGuardBound = true;
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (!user) return;
+          var pageName = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+
           firebase.firestore().collection('users').doc(user.uid).get().then(function(doc) {
-            if (doc.exists && doc.data() && doc.data().permissions) {
-              const livePerms = doc.data().permissions;
-              localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms));
-              unhideAllowedMenus(livePerms);
+            if (!doc.exists || !doc.data()) return;
+            var uData = doc.data();
+            var liveStatus = (uData.status || 'active').toLowerCase();
+            if (liveStatus === 'inactive' || liveStatus === 'rejected' || liveStatus === 'pending') {
+              firebase.auth().signOut().finally(function() {
+                window.location.replace('login.html');
+              });
+              return;
+            }
+
+            var liveRole = (uData.role || 'kasir').toLowerCase();
+            var livePerms = (uData.permissions && typeof uData.permissions === 'object') ? uData.permissions : {};
+            try { localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms)); } catch (e) {}
+
+            if (liveRole === 'owner' || liveRole === 'developer') return;
+
+            unhideAllowedMenus(livePerms);
+
+            var restrictedMap = liveRole === 'admin' ? ADMIN_BLOCKED_PAGES : KASIR_BLOCKED_PAGES;
+            var requiredKey = restrictedMap[pageName];
+            if (requiredKey) {
+              var allowed = livePerms[requiredKey] === true ||
+                (requiredKey === 'data-pelanggan' && livePerms.pelanggan === true);
+              if (!allowed) {
+                window.location.replace('index.html');
+              }
             }
           }).catch(function(err) {
             console.warn("Gagal sync izin:", err);
           });
-        }
-      });
+        });
+      }
     }
   };
 })();
