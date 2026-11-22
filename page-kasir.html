@@ -5172,30 +5172,57 @@ function getCartProfit() { return Math.round(cart.reduce(function(s,i){return s+
 
     // ===== LOAD CATEGORIES =====
         async function loadCategories() {
-      // ⭐ OFFLINE: ambil dari localStorage
+      // 1. Muat cepat dari cache lokal dulu agar status kategori langsung terbaca sebelum produk dirender
+      try {
+        const saved = localStorage.getItem('kasir_categories');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0 && categories.length === 0) {
+            categories = parsed;
+            renderCategoryGrid();
+          }
+        }
+      } catch(e) {}
+
+      // ⭐ OFFLINE: cukup pakai localStorage
       if (!navigator.onLine) {
-        try {
-          const saved = localStorage.getItem('kasir_categories');
-          if (saved) categories = JSON.parse(saved);
-        } catch(e) {}
         renderCategoryGrid();
+        renderCatPillsBar();
         populateBeliCategoryOptions();
+        renderProducts();
         return;
       }
 
       try {
-        const snap = await createFirestoreCompat().ref('categories').once('value');
-        const data = snap.val() || {};
+        let data = {};
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+          try {
+            const freshSnap = await firebase.firestore().collection('categories').get({ source: 'server' });
+            freshSnap.docs.forEach(doc => { data[doc.id] = Object.assign({ id: doc.id }, doc.data()); });
+          } catch (serverErr) {
+            const snap = await createFirestoreCompat().ref('categories').once('value');
+            data = snap.val() || {};
+          }
+        } else {
+          const snap = await createFirestoreCompat().ref('categories').once('value');
+          data = snap.val() || {};
+        }
         categories = Object.entries(data).map(([id, d]) => ({ id, ...d }));
+        if (currentCategory !== 'all') {
+          const activeCat = categories.find(c => c && c.id === currentCategory);
+          if (!activeCat || activeCat.status === 'inactive') currentCategory = 'all';
+        }
         // ⭐ Simpan ke localStorage untuk offline
         try { localStorage.setItem('kasir_categories', JSON.stringify(categories)); } catch(err) {}
         renderCategoryGrid();
+        renderCatPillsBar();
         populateBeliCategoryOptions();
+        renderProducts();
       } catch (e) {
         console.error('Error loading categories:', e);
       }
     }
-
+  
     // ===== LOAD CUSTOMERS (untuk autocomplete piutang) =====
 async function loadCustomers() {
   try {
@@ -5237,12 +5264,24 @@ async function loadCustomers() {
       }
 
       try {
-        const snap = await createFirestoreCompat().ref('products').once('value');
-        const data = snap.val() || {};
+        let data = {};
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+          try {
+            const freshSnap = await firebase.firestore().collection('products').get({ source: 'server' });
+            freshSnap.docs.forEach(doc => { data[doc.id] = Object.assign({ id: doc.id }, doc.data()); });
+          } catch (serverErr) {
+            const snap = await createFirestoreCompat().ref('products').once('value');
+            data = snap.val() || {};
+          }
+        } else {
+          const snap = await createFirestoreCompat().ref('products').once('value');
+          data = snap.val() || {};
+        }
         products = Object.entries(data)
           .map(([id, d]) => ({ id, ...d }))
           .filter(p => p.status !== 'inactive');
         renderProducts();
+        renderCategoryGrid();
         try { await saveProductsToCache(products); } catch(err) {}
       } catch (e) {
         console.error('Error loading products:', e);
@@ -6932,7 +6971,7 @@ document.addEventListener('keydown', (e) => {
     window.addEventListener('online', async () => {
       const pending = await getPendingTransactions();
       if (!pending || pending.length === 0) {
-        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+        await Promise.all([loadCategories(), loadProducts(true), loadHeaderStats(), loadUangGlobal()]);
         return;
       }
       showToast('Internet kembali! Menyinkronkan transaksi offline...', 'info');
@@ -6946,16 +6985,16 @@ document.addEventListener('keydown', (e) => {
         }
       } finally {
         document.getElementById('loadingOverlay').classList.remove('active');
-        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+        await Promise.all([loadCategories(), loadProducts(true), loadHeaderStats(), loadUangGlobal()]);
       }
     });
 
     // Jika sync selesai dipicu otomatis (misal saat baru buka halaman), refresh angka kasir
     window.addEventListener('webpos:offline-synced', async (ev) => {
       const d = ev.detail || {};
-      if (d.synced > 0) {
+     if (d.synced > 0) {
         showToast(`${d.synced} transaksi offline berhasil tersinkronkan`, 'success');
-        await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+        await Promise.all([loadProducts(true), loadHeaderStats(), loadUangGlobal()]);
       }
     });
   
@@ -7611,8 +7650,9 @@ if (kurangiSaldo) {
     waktu: timestamp
   });
 }
-    // Refresh produk, statistik header, dan uang global tanpa perlu pindah menu
-    await Promise.all([loadProducts(), loadHeaderStats(), loadUangGlobal()]);
+   // Hapus cache produk lama lalu paksa ambil stok terbaru dari server
+    try { localStorage.removeItem('webpos_cache_timestamp'); } catch(e) {}
+    await Promise.all([loadProducts(true), loadHeaderStats(), loadUangGlobal()]);
 
     closeModalBeli();
     document.getElementById('loadingOverlay').classList.remove('active');
@@ -7936,7 +7976,7 @@ function getSortedCategories() {
       if (!bar) return;
       const colors = ['#059669','#3b82f6','#f97316','#8b5cf6','#ef4444','#f59e0b','#06b6d4','#ec4899','#14b8a6','#84cc16'];
       let html = '<button class="category-pill' + (currentCategory === 'all' ? ' active' : '') + '" onclick="showLayerProduk(\'all\',\'Semua Produk\',\'📦\',\'var(--primary)\')">Semua</button>';
-      getSortedCategories().forEach(function(cat, i) {
+      getSortedCategories().filter(function(cat) { return cat && cat.status !== 'inactive'; }).forEach(function(cat, i) {
         var safeName = (cat.name || '').replace(/'/g, "\\'");
         var vis = getAutoCategoryVisual(cat, colors[i % colors.length]);
         html += '<button class="category-pill' + (currentCategory === cat.id ? ' active' : '') + '" style="display:inline-flex;align-items:center;" onclick="showLayerProduk(\'' + cat.id + '\',\'' + safeName + '\',\'' + vis.emoji + '\',\'' + vis.color + '\')">' + vis.pillHtml + cat.name + '</button>';
@@ -8024,9 +8064,10 @@ function getSortedCategories() {
         if (dy >= THRESHOLD) {
           indicator.classList.add('spin');
           indicator.querySelector('i').className = 'fas fa-sync-alt';
+          try { localStorage.removeItem('webpos_cache_timestamp'); } catch(e) {}
           await Promise.all([
-            loadProducts(),
             loadCategories(),
+            loadProducts(true),
             loadHeaderStats(),
             loadUangGlobal()
           ]);
