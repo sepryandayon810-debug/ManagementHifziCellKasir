@@ -1073,26 +1073,28 @@
 
       try {
         const doc = await db.collection("users").doc(user.uid).get();
-        if (doc.exists) {
-          const u = doc.data();
-          const name = u.name || u.username || user.email;
-          const role = u.role || "admin";
-          document.getElementById("userName").textContent = name;
-          document.getElementById("userRole").textContent = role.toUpperCase();
-          document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
-          if (typeof RoleGuard !== "undefined") {
-            RoleGuard.apply(role.toLowerCase());
-          }
-        } else {
-          document.getElementById("userName").textContent = user.email || "Admin";
-          document.getElementById("userRole").textContent = "ADMIN";
-          document.getElementById("userAvatar").textContent = (user.email || "A").slice(0, 2).toUpperCase();
+        if (!doc.exists) {
+          window.location.replace("index.html");
+          return;
+        }
+        const u = doc.data();
+        const name = u.name || u.username || user.email;
+        const role = (u.role || "kasir").toLowerCase();
+        if (role !== "owner" && role !== "developer") {
+          window.location.replace("index.html");
+          return;
+        }
+        document.getElementById("userName").textContent = name;
+        document.getElementById("userRole").textContent = role.toUpperCase();
+        document.getElementById("userAvatar").textContent = name.slice(0, 2).toUpperCase();
+        if (typeof RoleGuard !== "undefined") {
+          RoleGuard.apply(role);
         }
       } catch (err) {
         console.error("Error loading user:", err);
-        document.getElementById("userName").textContent = user.email || "Admin";
+        window.location.replace("index.html");
+        return;
       }
-
       loadStats();
       checkExistingTrash();
     });
