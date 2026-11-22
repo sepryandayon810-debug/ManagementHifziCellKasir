@@ -713,7 +713,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var parent = el.parentNode;
       if (!parent) return;
 
-      // Jika parent sudah punya SVG 3D khusus (dash-3d-svg / nav-3d-svg / prod-3d-icon), jangan dobel!
       if (parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon')) {
         var oldDup = el.nextElementSibling;
         if (oldDup && oldDup.dataset && oldDup.dataset.u3dFor === '1') oldDup.remove();
@@ -738,24 +737,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         return;
       }
 
-      // Cek apakah ikon asli diposisikan absolute (misal di dalam kotak input login / barcode)
-      var cs = window.getComputedStyle(el);
-      var isAbs = (cs && (cs.position === 'absolute' || cs.position === 'fixed')) || el.classList.contains('field-icon');
-
       seq++;
       var wrap = document.createElement('span');
       wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
       var svg = wrap.firstElementChild;
       if (svg) {
         svg.dataset.u3dFor = '1';
-        if (isAbs) {
-          svg.classList.add('ui-3d-abs');
-          if (cs && cs.position === 'absolute') {
-            if (cs.left && cs.left !== 'auto') svg.style.left = cs.left;
-            if (cs.right && cs.right !== 'auto') svg.style.right = cs.right;
-            if (cs.top && cs.top !== 'auto') svg.style.top = cs.top;
-          }
-        }
+        if (el.classList.contains('field-icon')) svg.classList.add('ui-3d-abs');
         el.style.setProperty('display', 'none', 'important');
         el.dataset.upgraded3d = '1';
         el.dataset.u3dClass = curClass;
@@ -764,14 +752,41 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     } catch (e) {}
   }
 
-  function upgradeNodesInDom() {
+  var batchQueue = [];
+  var batchRaf = 0;
+
+  function flushIconBatch() {
+    batchRaf = 0;
     try {
-      cleanupDuplicate3dSvgs();
-      var nodes = document.querySelectorAll('i[class*="fa-"]');
-      for (var i = 0; i < nodes.length; i++) {
+      var limit = 55;
+      while (batchQueue.length && limit-- > 0) {
+        var node = batchQueue.shift();
+        if (node && node.isConnected) upgradeSingleIcon(node);
+      }
+      window.__webpos3dUiSeq = seq;
+      if (batchQueue.length) {
+        batchRaf = requestAnimationFrame(flushIconBatch);
+      }
+    } catch (e) {
+      batchQueue.length = 0;
+    }
+  }
+
+  function upgradeNodesInDom(onlyPending) {
+    try {
+      if (!onlyPending) cleanupDuplicate3dSvgs();
+      var sel = onlyPending ? 'i[class*="fa-"]:not([data-upgraded3d="1"])' : 'i[class*="fa-"]';
+      var nodes = document.querySelectorAll(sel);
+      var immediate = Math.min(nodes.length, 45);
+      for (var i = 0; i < immediate; i++) {
         upgradeSingleIcon(nodes[i]);
       }
-      cleanupDuplicate3dSvgs();
+      if (nodes.length > immediate) {
+        for (var j = immediate; j < nodes.length; j++) {
+          batchQueue.push(nodes[j]);
+        }
+        if (!batchRaf) batchRaf = requestAnimationFrame(flushIconBatch);
+      }
       window.__webpos3dUiSeq = seq;
     } catch (e) {}
   }
@@ -783,7 +798,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         st.id = 'webpos3dGlobalUiStyle';
         st.textContent = [
           'i[data-upgraded3d="1"]{display:none !important;}',
-          '.ui-3d-svg{width:1.2em;height:1.2em;max-width:100%;max-height:100%;display:inline-block;flex-shrink:0;vertical-align:-0.18em;filter:drop-shadow(0 2px 3px rgba(15,23,42,0.2));transition:transform .2s ease;}',
+          '.ui-3d-svg{width:1.2em;height:1.2em;max-width:100%;max-height:100%;display:inline-block;flex-shrink:0;vertical-align:-0.18em;filter:drop-shadow(0 2px 3px rgba(15,23,42,0.18));transition:transform .2s ease;}',
           '.ui-3d-abs,.input-wrap > .ui-3d-svg,.barcode-input-wrap > .ui-3d-svg,.riwayat-search-box > .ui-3d-svg{position:absolute !important;left:0.9rem !important;top:50% !important;transform:translateY(-50%) !important;width:18px !important;height:18px !important;margin:0 !important;pointer-events:none !important;z-index:2;}',
           '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg),.dialog-icon-wrap:has(> .ui-3d-svg),.kas-item-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
           '.logo-badge > .ui-3d-svg{width:30px;height:30px;margin:0;}',
@@ -808,7 +823,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         document.head.appendChild(st);
       }
 
-      // 1. Tombol Header Dark Mode (#btnThemeToggle maupun #btnTheme di kasir/hutang)
+      // 1. Tombol Header Dark Mode (#btnThemeToggle maupun #btnTheme)
       var themeBtn = document.getElementById('btnThemeToggle') || document.getElementById('btnTheme');
       if (themeBtn && !themeBtn.dataset.upgraded3d) {
         themeBtn.dataset.upgraded3d = '1';
@@ -866,29 +881,37 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         menuBtn.appendChild(mw);
       }
 
-      // 4. Jalankan upgrade & bersihkan duplikat setelah script halaman (seperti Dashboard) selesai jalan
-      upgradeNodesInDom();
-      setTimeout(upgradeNodesInDom, 80);
+      // 4. Jalankan upgrade ringan & bersihkan duplikat
+      upgradeNodesInDom(false);
+      setTimeout(function() { cleanupDuplicate3dSvgs(); }, 100);
 
       var debounceTimer = null;
+      var changedIcons = [];
       new MutationObserver(function(mutations) {
-        var shouldRun = false;
+        var hasNewDom = false;
         for (var i = 0; i < mutations.length; i++) {
           var m = mutations[i];
-          if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
-            shouldRun = true;
-            break;
-          }
-          if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
-            shouldRun = true;
-            break;
+          if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+            for (var k = 0; k < m.addedNodes.length; k++) {
+              var n = m.addedNodes[k];
+              if (n.nodeType === 1 && !n.classList.contains('ui-3d-svg') && !n.classList.contains('wpl-card')) {
+                hasNewDom = true;
+                break;
+              }
+            }
+          } else if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
+            changedIcons.push(m.target);
           }
         }
-        if (!shouldRun || debounceTimer) return;
+        if (!hasNewDom && !changedIcons.length) return;
+        if (debounceTimer) return;
         debounceTimer = setTimeout(function() {
           debounceTimer = null;
-          upgradeNodesInDom();
-        }, 120);
+          while (changedIcons.length) {
+            upgradeSingleIcon(changedIcons.shift());
+          }
+          if (hasNewDom) upgradeNodesInDom(true);
+        }, 160);
       }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     } catch (e) {}
   }
@@ -897,5 +920,172 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     document.addEventListener('DOMContentLoaded', applyGlobalUi3D);
   } else {
     applyGlobalUi3D();
+  }
+})();
+
+// 6. UNIFIED INTERACTIVE 3D LOADER & TOP PROGRESS BAR (SERAGAM DI SEMUA 28 HALAMAN & RINGAN DI HP)
+(function() {
+  if (window.__webpos3dLoaderInit) return;
+  window.__webpos3dLoaderInit = true;
+
+  var LOADER_SVG =
+    '<svg viewBox="0 0 64 64" fill="none" class="wpl-3d-emblem">' +
+      '<defs>' +
+        '<linearGradient id="wplRoof" x1="8" y1="10" x2="56" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#EA580C"/></linearGradient>' +
+        '<linearGradient id="wplBody" x1="12" y1="26" x2="52" y2="56" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="55%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient>' +
+      '</defs>' +
+      '<rect x="13" y="26" width="38" height="28" rx="7" fill="url(#wplBody)" stroke="#FFFFFF" stroke-width="2"/>' +
+      '<rect x="26" y="36" width="12" height="18" rx="3.5" fill="#FFFFFF" fill-opacity="0.95"/>' +
+      '<path d="M8 24.5L13.5 11.5C14.3 9.7 16 8.5 18 8.5H46C48 8.5 49.7 9.7 50.5 11.5L56 24.5C56.8 26.5 55.6 29 53.2 29H10.8C8.4 29 7.2 26.5 8 24.5Z" fill="url(#wplRoof)" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>' +
+      '<circle cx="46" cy="40" r="3" fill="#34D399"/>' +
+    '</svg>';
+
+  function injectLoaderStyles() {
+    if (document.getElementById('webposUnifiedLoaderStyle')) return;
+    var st = document.createElement('style');
+    st.id = 'webposUnifiedLoaderStyle';
+    st.textContent = [
+      '@keyframes wplSpin{to{transform:rotate(360deg)}}',
+      '@keyframes wplFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}',
+      '@keyframes wplShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(220%)}}',
+      '@keyframes wplTopBar{0%{width:12%}55%{width:72%}100%{width:92%}}',
+      '#webposTopProgress{position:fixed;top:0;left:0;height:3.5px;width:0;z-index:999999;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6,#f59e0b);box-shadow:0 0 10px rgba(59,130,246,0.6);pointer-events:none;opacity:0;transition:opacity .2s ease;}',
+      '#webposTopProgress.running{opacity:1;animation:wplTopBar 2.2s cubic-bezier(.22,1,.36,1) forwards;}',
+      '#loadingOverlay.wpl-upgraded,#loadingVeil.wpl-upgraded{background:rgba(15,23,42,0.58) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;padding:1.25rem !important;}',
+      '#loadingOverlay.wpl-upgraded > .spinner,#loadingOverlay.wpl-upgraded > .loader,#loadingVeil.wpl-upgraded > div:not(.wpl-card){display:none !important;}',
+      '.wpl-card{width:min(290px,86vw);background:rgba(255,255,255,0.96);color:#0f172a;border:1px solid rgba(148,163,184,0.28);border-radius:22px;padding:1.45rem 1.35rem 1.25rem;box-shadow:0 20px 45px rgba(15,23,42,0.28);display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.65rem;}',
+      '[data-theme="dark"] .wpl-card{background:rgba(30,41,59,0.96);color:#f8fafc;border-color:rgba(148,163,184,0.2);}',
+      '.wpl-orbit{position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:center;}',
+      '.wpl-ring{position:absolute;inset:0;border-radius:50%;padding:3.5px;background:conic-gradient(from 0deg,#10b981,#3b82f6,#8b5cf6,#f59e0b,#10b981);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:wplSpin 1.15s linear infinite;will-change:transform;}',
+      '.wpl-3d-emblem{width:42px;height:42px;filter:drop-shadow(0 4px 6px rgba(15,23,42,0.22));animation:wplFloat 1.8s ease-in-out infinite;will-change:transform;}',
+      '.wpl-title{font-size:0.92rem !important;font-weight:800 !important;color:#0f172a !important;margin:0 !important;line-height:1.35 !important;}',
+      '[data-theme="dark"] .wpl-title{color:#f8fafc !important;}',
+      '.wpl-sub{font-size:0.74rem;font-weight:600;color:#64748b;margin:0;min-height:1.1em;}',
+      '[data-theme="dark"] .wpl-sub{color:#94a3b8;}',
+      '.wpl-bar{width:100%;height:6px;border-radius:999px;background:rgba(148,163,184,0.22);overflow:hidden;position:relative;}',
+      '.wpl-bar-fill{position:absolute;top:0;left:0;bottom:0;width:48%;border-radius:999px;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6);animation:wplShimmer 1.25s ease-in-out infinite;will-change:transform;}',
+      '.wpl-skip-btn{display:none;margin-top:0.25rem;padding:0.45rem 0.9rem;border-radius:10px;border:1px solid rgba(79,70,229,0.3);background:rgba(79,70,229,0.1);color:#4f46e5;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;}',
+      '[data-theme="dark"] .wpl-skip-btn{background:rgba(99,102,241,0.2);color:#a5b4fc;border-color:rgba(165,180,252,0.3);}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function isOverlayVisible(el) {
+    if (!el || !el.isConnected) return false;
+    var cs = window.getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0.05;
+  }
+
+  function enhanceOverlay(overlay) {
+    if (!overlay || overlay.dataset.wplReady === '1') return;
+    overlay.dataset.wplReady = '1';
+    overlay.classList.add('wpl-upgraded');
+
+    // Ambil teks pesan asli halaman (tetap pertahankan ID #loadingText / #loadingVeilMsg)
+    var existingMsg = overlay.querySelector('#loadingText, #loadingVeilMsg, p');
+    var card = document.createElement('div');
+    card.className = 'wpl-card';
+    card.innerHTML =
+      '<div class="wpl-orbit"><div class="wpl-ring"></div>' + LOADER_SVG + '</div>' +
+      '<div class="wpl-msg-slot"></div>' +
+      '<div class="wpl-sub">Menyiapkan tampilan...</div>' +
+      '<div class="wpl-bar"><div class="wpl-bar-fill"></div></div>' +
+      '<button type="button" class="wpl-skip-btn">Tutup &amp; Lihat Halaman</button>';
+
+    var msgSlot = card.querySelector('.wpl-msg-slot');
+    if (existingMsg) {
+      existingMsg.classList.add('wpl-title');
+      existingMsg.removeAttribute('style');
+      msgSlot.appendChild(existingMsg);
+    } else {
+      var p = document.createElement('p');
+      p.className = 'wpl-title';
+      p.textContent = 'Memuat data...';
+      msgSlot.appendChild(p);
+    }
+
+    var subEl = card.querySelector('.wpl-sub');
+    var skipBtn = card.querySelector('.wpl-skip-btn');
+    skipBtn.onclick = function() {
+      overlay.classList.remove('active');
+      overlay.style.display = 'none';
+      overlay.style.visibility = 'hidden';
+      overlay.style.opacity = '0';
+    };
+
+    // Sembunyikan spinner lama lainnya & sisipkan kartu 3D
+    var kids = overlay.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i] !== card) kids[i].style.display = 'none';
+    }
+    overlay.appendChild(card);
+
+    // Status interaktif otomatis saat loading berlangsung
+    var t1 = null, t2 = null;
+    function syncTimers() {
+      if (isOverlayVisible(overlay)) {
+        if (!t1) {
+          subEl.textContent = 'Menyiapkan data...';
+          skipBtn.style.display = 'none';
+          t1 = setTimeout(function() {
+            if (isOverlayVisible(overlay)) subEl.textContent = 'Menyinkronkan dari server...';
+          }, 3000);
+          t2 = setTimeout(function() {
+            if (isOverlayVisible(overlay)) {
+              subEl.textContent = 'Koneksi agak lambat, Anda bisa lanjut dulu';
+              skipBtn.style.display = 'inline-block';
+            }
+          }, 7500);
+        }
+      } else {
+        if (t1) { clearTimeout(t1); t1 = null; }
+        if (t2) { clearTimeout(t2); t2 = null; }
+        skipBtn.style.display = 'none';
+      }
+    }
+    syncTimers();
+    new MutationObserver(syncTimers).observe(overlay, { attributes: true, attributeFilter: ['class', 'style'] });
+  }
+
+  function initUnifiedLoader() {
+    try {
+      injectLoaderStyles();
+
+      // 1. Top Progress Bar saat klik pindah halaman (respons instan di HP)
+      var topBar = document.createElement('div');
+      topBar.id = 'webposTopProgress';
+      document.body.appendChild(topBar);
+
+      document.addEventListener('click', function(e) {
+        var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        if (!href || href.charAt(0) === '#' || link.target === '_blank') return;
+        topBar.classList.remove('running');
+        void topBar.offsetWidth;
+        topBar.classList.add('running');
+      }, true);
+
+      // 2. Percantik #loadingOverlay yang sudah ada di 18 halaman
+      var mainOverlay = document.getElementById('loadingOverlay');
+      if (mainOverlay) enhanceOverlay(mainOverlay);
+
+      // 3. Percantik Utils.showLoading / #loadingVeil secara otomatis
+      if (window.Utils && typeof window.Utils.showLoading === 'function' && !window.Utils.__wplWrapped) {
+        window.Utils.__wplWrapped = true;
+        var origShow = window.Utils.showLoading.bind(window.Utils);
+        window.Utils.showLoading = function(msg) {
+          origShow(msg);
+          var veil = document.getElementById('loadingVeil');
+          if (veil) enhanceOverlay(veil);
+        };
+      }
+    } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUnifiedLoader);
+  } else {
+    initUnifiedLoader();
   }
 })();
