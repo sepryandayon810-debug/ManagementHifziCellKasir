@@ -1606,9 +1606,8 @@
     setupSidebarEvents();
     setupTabs();
     setupViewToggle();
-    await loadCategories();
-    loadProducts();
-
+    Promise.all([loadCategories(), loadProducts()]);
+    
     document.getElementById("btnAddProduk").onclick = () => openProductModal();
     document.getElementById("closeProdukModal").onclick = closeProductModal;
     document.getElementById("btnCancelProduk").onclick = closeProductModal;
@@ -1775,29 +1774,42 @@ document.getElementById("filterKategori").onchange = function() {
     };
   }
 
+  function applyCategoriesUI() {
+    const filterKat = document.getElementById("filterKategori");
+    const produkKat = document.getElementById("produkKategori");
+    let html = '<option value="">Semua Kategori</option>';
+    let modalHtml = '<option value="">Pilih Kategori</option>';
+    categoriesList.forEach(c => {
+      html += `<option value="${c.id}">${c.name}</option>`;
+      modalHtml += `<option value="${c.id}">${c.name}</option>`;
+    });
+    if (filterKat) filterKat.innerHTML = html;
+    if (produkKat) produkKat.innerHTML = modalHtml;
+    renderCategoriesGrid();
+  }
+
   async function loadCategories() {
+    // 1. Tampilkan cache kategori seketika (< 0.05 detik)
+    try {
+      const cached = localStorage.getItem("webpos_cache_categories_v1");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          categoriesList = parsed;
+          applyCategoriesUI();
+        }
+      }
+    } catch (e) {}
+
+    // 2. Sinkron kategori terbaru dari server
     try {
       const snap = await db.collection("categories").get();
       categoriesList = [];
       snap.forEach(doc => {
         categoriesList.push({ id: doc.id, ...doc.data() });
       });
-
-      const filterKat = document.getElementById("filterKategori");
-      const produkKat = document.getElementById("produkKategori");
-
-      let html = '<option value="">Semua Kategori</option>';
-      let modalHtml = '<option value="">Pilih Kategori</option>';
-
-      categoriesList.forEach(c => {
-        html += `<option value="${c.id}">${c.name}</option>`;
-        modalHtml += `<option value="${c.id}">${c.name}</option>`;
-      });
-
-      filterKat.innerHTML = html;
-      produkKat.innerHTML = modalHtml;
-
-      renderCategoriesGrid();
+      try { localStorage.setItem("webpos_cache_categories_v1", JSON.stringify(categoriesList)); } catch (e) {}
+      applyCategoriesUI();
     } catch(err) {
       console.error(err);
     }
@@ -2065,21 +2077,54 @@ document.getElementById("filterKategori").onchange = function() {
   }
   
   async function loadProducts() {
+    let renderedFromCache = false;
+    // 1. Tampilkan cache produk SEGERA agar di HP langsung muncul < 0.2 detik!
+    try {
+      const cached = localStorage.getItem("webpos_cache_products_v1");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          productsList = parsed;
+          renderProducts();
+          updateSummaryCards();
+          renderCategoriesGrid();
+          renderedFromCache = true;
+        }
+      }
+    } catch (e) {}
+
+    if (!renderedFromCache && window.WebPOSLoader) {
+      window.WebPOSLoader.show("Memuat daftar produk...", "Mengambil katalog dari server...");
+    }
+
+    // 2. Sinkron data produk terbaru di background (atau langsung saat cache kosong)
     try {
       const snap = await db.collection("products").get();
       productsList = [];
       snap.forEach(doc => {
         productsList.push({ id: doc.id, ...doc.data() });
       });
+      try {
+        const lightCache = productsList.map(p => {
+          const copy = { ...p };
+          if (copy.imageUrl && copy.imageUrl.length > 4000) delete copy.imageUrl;
+          return copy;
+        });
+        localStorage.setItem("webpos_cache_products_v1", JSON.stringify(lightCache));
+      } catch (e) {}
       renderProducts();
       updateSummaryCards();
       renderCategoriesGrid();
     } catch(err) {
       console.error(err);
-      toast("Gagal memuat daftar produk", "error");
+      if (!renderedFromCache) toast("Gagal memuat daftar produk", "error");
+    } finally {
+      if (!renderedFromCache && window.WebPOSLoader) {
+        window.WebPOSLoader.hide();
+      }
     }
   }
-
+  
   function updateSummaryCards() {
     let totalModal = 0;
     let totalStok = 0;
