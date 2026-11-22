@@ -468,7 +468,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 
-// 5. UNIVERSAL 3D ICON ENGINE — SEMUA 28 HALAMAN + SEMUA POP-UP / MODAL (ANTI-ERROR)
+// 5. UNIVERSAL 3D ICON ENGINE v2 — ANTI-DOBEL, PRESISI DALAM KOTAK, + IKON 3D (< / > / ←)
 (function() {
   if (window.__webpos3dGlobalUiInit) return;
   window.__webpos3dGlobalUiInit = true;
@@ -481,6 +481,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     logout: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="28" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#F43F5E"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs><path d="M25 8H13C9.7 8 7 10.7 7 14V34C7 37.3 9.7 40 13 40H25C27.2 40 29 38.2 29 36V32H23V34H13V14H23V16H29V12C29 9.8 27.2 8 25 8Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.3"/><path d="M21 24H40M34 17.5L40.5 24L34 30.5" stroke="#F43F5E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
     menu: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="6.5" rx="3.2" fill="#10B981"/><rect x="6" y="21" width="28" height="6.5" rx="3.2" fill="#3B82F6"/><rect x="6" y="32" width="36" height="6.5" rx="3.2" fill="#F59E0B"/></svg>',
+
+    chevleft: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="55%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M27.5 15L18.5 24L27.5 33" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    chevright: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="55%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M20.5 15L29.5 24L20.5 33" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    back: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M33 24H16M22.5 17L15.5 24L22.5 31" stroke="#FFFFFF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
     coins: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="6" x2="38" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><circle cx="20" cy="20" r="13.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="29" cy="29" r="13" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M29 23V35M25.8 26.2C25.8 24.8 27.2 24 29 24C30.8 24 32.2 24.8 32.2 26.2C32.2 27.7 30.8 28.2 29 28.6C27.2 29 25.8 29.6 25.8 31C25.8 32.5 27.2 33.4 29 33.4C30.8 33.4 32.2 32.5 32.2 31" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>',
 
@@ -591,9 +597,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function mapGlobalUiKey(el) {
     var c = el.className || '';
-    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-chevron|fa-angle|fa-caret|fa-arrow-left|fa-arrow-right|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
-    if (/(?:^|\s)fa-(?:times|xmark|search)(?:\s|$)/.test(c)) return null;
+    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-chevron-down|fa-chevron-up|fa-angle-down|fa-angle-up|fa-caret|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
+    if (/(?:^|\s)fa-(?:times|xmark|search|arrow-right)(?:\s|$)/.test(c)) return null;
 
+    if (c.indexOf('fa-chevron-left') !== -1 || c.indexOf('fa-angle-left') !== -1) return 'chevleft';
+    if (c.indexOf('fa-chevron-right') !== -1 || c.indexOf('fa-angle-right') !== -1) return 'chevright';
+    if (c.indexOf('fa-arrow-left') !== -1) return 'back';
     if (c.indexOf('fa-sun') !== -1) return 'sun';
     if (c.indexOf('fa-moon') !== -1) return 'moon';
     if (c.indexOf('fa-sign-out') !== -1 || c.indexOf('fa-right-from-bracket') !== -1) return 'logout';
@@ -603,7 +612,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-university') !== -1 || c.indexOf('fa-building-columns') !== -1 || c.indexOf('fa-landmark') !== -1) return 'bank';
     if (c.indexOf('fa-whatsapp') !== -1) return 'whatsapp';
     if (c.indexOf('fa-telegram') !== -1 || c.indexOf('fa-paper-plane') !== -1) return 'telegram';
-    if (c.indexOf('fa-envelope') !== -1 || c.indexOf('fa-inbox') !== -1) return 'mail';
+    if (c.indexOf('fa-envelope') !== -1 || c.indexOf('fa-inbox') !== -1 || /(?:^|\s)fa-at(?:\s|$)/.test(c)) return 'mail';
     if (c.indexOf('fa-file-pdf') !== -1) return 'pdf';
     if (c.indexOf('fa-file-excel') !== -1 || c.indexOf('fa-file-csv') !== -1 || c.indexOf('fa-table') !== -1) return 'excel';
     if (c.indexOf('fa-file-archive') !== -1 || c.indexOf('fa-folder') !== -1) return 'folder';
@@ -612,7 +621,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-times-circle') !== -1 || c.indexOf('fa-circle-xmark') !== -1 || c.indexOf('fa-ban') !== -1) return 'ban';
     if (c.indexOf('fa-minus') !== -1) return 'minus';
     if (c.indexOf('fa-shopping-basket') !== -1 || c.indexOf('fa-basket-shopping') !== -1) return 'basket';
-    if (c.indexOf('fa-cart') !== -1) return 'cart';
+    if (c.indexOf('fa-cart') !== -1 || c.indexOf('fa-shopping-cart') !== -1) return 'cart';
     if (c.indexOf('fa-hand-holding-usd') !== -1 || c.indexOf('fa-hand-holding-dollar') !== -1) return 'debt';
     if (c.indexOf('fa-coins') !== -1) return 'coins';
     if (c.indexOf('fa-wallet') !== -1) return 'wallet';
@@ -623,19 +632,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-chart') !== -1) return 'chart';
     if (c.indexOf('fa-trophy') !== -1 || c.indexOf('fa-crown') !== -1) return 'trophy';
     if (c.indexOf('fa-star') !== -1 || c.indexOf('fa-gem') !== -1) return 'star';
-    if (c.indexOf('fa-arrow-down') !== -1 || c.indexOf('fa-sign-in') !== -1 || c.indexOf('fa-download') !== -1 || c.indexOf('fa-file-import') !== -1) return 'arrowdown';
-    if (c.indexOf('fa-arrow-up') !== -1 || c.indexOf('fa-upload') !== -1 || c.indexOf('fa-file-export') !== -1) return 'arrowup';
+    if (c.indexOf('fa-arrow-down') !== -1 || c.indexOf('fa-arrow-circle-down') !== -1 || c.indexOf('fa-sign-in') !== -1 || c.indexOf('fa-download') !== -1 || c.indexOf('fa-file-download') !== -1 || c.indexOf('fa-file-import') !== -1) return 'arrowdown';
+    if (c.indexOf('fa-arrow-up') !== -1 || c.indexOf('fa-upload') !== -1 || c.indexOf('fa-file-upload') !== -1 || c.indexOf('fa-file-export') !== -1) return 'arrowup';
     if (c.indexOf('fa-plus') !== -1) return 'plus';
     if (c.indexOf('fa-save') !== -1 || c.indexOf('fa-floppy') !== -1) return 'save';
     if (c.indexOf('fa-clock') !== -1 || c.indexOf('fa-history') !== -1) return 'clock';
-    if (c.indexOf('fa-check') !== -1) return 'check';
+    if (c.indexOf('fa-check') !== -1 || c.indexOf('fa-circle-check') !== -1) return 'check';
     if (c.indexOf('fa-exclamation') !== -1 || c.indexOf('fa-triangle') !== -1) return 'warning';
     if (c.indexOf('fa-trash') !== -1) return 'trash';
     if (c.indexOf('fa-id-card') !== -1 || c.indexOf('fa-handshake') !== -1) return 'idcard';
     if (c.indexOf('fa-user') !== -1 || c.indexOf('fa-address-book') !== -1) return 'users';
     if (c.indexOf('fa-google-drive') !== -1 || c.indexOf('fa-database') !== -1 || c.indexOf('fa-cloud') !== -1) return 'cloud';
     if (c.indexOf('fa-print') !== -1 || c.indexOf('fa-bluetooth') !== -1) return 'print';
-    if (c.indexOf('fa-store') !== -1 || c.indexOf('fa-cash-register') !== -1 || c.indexOf('fa-briefcase') !== -1) return 'store';
+    if (c.indexOf('fa-store') !== -1 || c.indexOf('fa-home') !== -1 || c.indexOf('fa-cash-register') !== -1 || c.indexOf('fa-briefcase') !== -1) return 'store';
     if (c.indexOf('fa-th-large') !== -1 || c.indexOf('fa-border-all') !== -1 || c.indexOf('fa-table-cells') !== -1 || c.indexOf('fa-shapes') !== -1) return 'grid';
     if (c.indexOf('fa-image') !== -1 || c.indexOf('fa-camera') !== -1 || c.indexOf('fa-palette') !== -1 || c.indexOf('fa-wand-magic') !== -1 || c.indexOf('fa-droplet') !== -1 || c.indexOf('fa-font') !== -1) return 'image';
     if (c.indexOf('fa-tag') !== -1 || c.indexOf('fa-percent') !== -1) return 'tag';
@@ -649,7 +658,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-exchange') !== -1) return 'exchange';
     if (c.indexOf('fa-sync') !== -1 || c.indexOf('fa-redo') !== -1 || c.indexOf('fa-undo') !== -1 || c.indexOf('fa-rotate') !== -1) return 'sync';
     if (c.indexOf('fa-lock') !== -1 || c.indexOf('fa-key') !== -1) return 'lock';
-    if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-book') !== -1 || c.indexOf('fa-question') !== -1) return 'info';
+    if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-circle-info') !== -1 || c.indexOf('fa-circle-question') !== -1 || c.indexOf('fa-circle-dot') !== -1 || c.indexOf('fa-book') !== -1 || c.indexOf('fa-question') !== -1) return 'info';
     return null;
   }
 
@@ -667,158 +676,221 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     '.produk-search',
     '.search-box',
     '.password-toggle',
+    '.toggle-password',
     '.qty-btn',
     '.cart-item-remove',
-    '.kas-date-btn',
     '.numpad-btn',
     '.user-avatar',
+    '.action-arrow',
     '#btnThemeToggle',
+    '#btnTheme',
     '#btnLogout',
     '#mobileMenuToggle'
   ].join(',');
 
-  function upgradeSingleIcon(el) {
-    if (!el || el.id === 'shiftToggleIcon' || el.classList.contains('dropdown-arrow')) return;
-    if (el.closest(SKIP_SEL)) return;
-
-    var curClass = el.className || '';
-    if (el.dataset.upgraded3d === '1' && el.dataset.u3dClass === curClass) return;
-
-    // Bersihkan SVG 3D lama jika class ikon berubah dinamis
-    var next = el.nextElementSibling;
-    if (next && next.dataset && next.dataset.u3dFor === '1') {
-      next.remove();
-    }
-
-    var key = mapGlobalUiKey(el);
-    if (!key || !UI3D[key]) {
-      // Tampilkan kembali ikon asli jika berubah jadi spinner / kontrol mikro
-      if (el.dataset.upgraded3d === '1') {
-        el.style.display = '';
-        delete el.dataset.upgraded3d;
-        delete el.dataset.u3dClass;
+  // Hapus SVG 3D duplikat jika halaman (seperti Dashboard index.html) sudah punya SVG 3D sendiri
+  function cleanupDuplicate3dSvgs() {
+    try {
+      var svgs = document.querySelectorAll('svg[data-u3d-for="1"]');
+      for (var i = 0; i < svgs.length; i++) {
+        var s = svgs[i];
+        var parent = s.parentNode;
+        if (!parent) continue;
+        var prev = s.previousElementSibling;
+        var hasCustom3d = parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon');
+        if (hasCustom3d || !prev || prev.tagName !== 'I' || prev.dataset.upgraded3d !== '1') {
+          s.remove();
+        }
       }
-      return;
-    }
+    } catch (e) {}
+  }
 
-    seq++;
-    var wrap = document.createElement('span');
-    wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
-    var svg = wrap.firstElementChild;
-    if (svg && el.parentNode) {
-      svg.dataset.u3dFor = '1';
-      el.style.display = 'none';
-      el.dataset.upgraded3d = '1';
-      el.dataset.u3dClass = curClass;
-      el.parentNode.insertBefore(svg, el.nextSibling);
-    }
+  function upgradeSingleIcon(el) {
+    try {
+      if (!el || el.id === 'shiftToggleIcon' || el.classList.contains('dropdown-arrow')) return;
+      if (el.closest(SKIP_SEL)) return;
+
+      var parent = el.parentNode;
+      if (!parent) return;
+
+      // Jika parent sudah punya SVG 3D khusus (dash-3d-svg / nav-3d-svg / prod-3d-icon), jangan dobel!
+      if (parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon')) {
+        var oldDup = el.nextElementSibling;
+        if (oldDup && oldDup.dataset && oldDup.dataset.u3dFor === '1') oldDup.remove();
+        return;
+      }
+
+      var curClass = el.className || '';
+      if (el.dataset.upgraded3d === '1' && el.dataset.u3dClass === curClass) return;
+
+      var next = el.nextElementSibling;
+      if (next && next.dataset && next.dataset.u3dFor === '1') {
+        next.remove();
+      }
+
+      var key = mapGlobalUiKey(el);
+      if (!key || !UI3D[key]) {
+        if (el.dataset.upgraded3d === '1') {
+          el.style.removeProperty('display');
+          delete el.dataset.upgraded3d;
+          delete el.dataset.u3dClass;
+        }
+        return;
+      }
+
+      // Cek apakah ikon asli diposisikan absolute (misal di dalam kotak input login / barcode)
+      var cs = window.getComputedStyle(el);
+      var isAbs = (cs && (cs.position === 'absolute' || cs.position === 'fixed')) || el.classList.contains('field-icon');
+
+      seq++;
+      var wrap = document.createElement('span');
+      wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
+      var svg = wrap.firstElementChild;
+      if (svg) {
+        svg.dataset.u3dFor = '1';
+        if (isAbs) {
+          svg.classList.add('ui-3d-abs');
+          if (cs && cs.position === 'absolute') {
+            if (cs.left && cs.left !== 'auto') svg.style.left = cs.left;
+            if (cs.right && cs.right !== 'auto') svg.style.right = cs.right;
+            if (cs.top && cs.top !== 'auto') svg.style.top = cs.top;
+          }
+        }
+        el.style.setProperty('display', 'none', 'important');
+        el.dataset.upgraded3d = '1';
+        el.dataset.u3dClass = curClass;
+        parent.insertBefore(svg, el.nextSibling);
+      }
+    } catch (e) {}
   }
 
   function upgradeNodesInDom() {
-    var nodes = document.querySelectorAll('i[class*="fa-"]');
-    for (var i = 0; i < nodes.length; i++) {
-      upgradeSingleIcon(nodes[i]);
-    }
-    window.__webpos3dUiSeq = seq;
+    try {
+      cleanupDuplicate3dSvgs();
+      var nodes = document.querySelectorAll('i[class*="fa-"]');
+      for (var i = 0; i < nodes.length; i++) {
+        upgradeSingleIcon(nodes[i]);
+      }
+      cleanupDuplicate3dSvgs();
+      window.__webpos3dUiSeq = seq;
+    } catch (e) {}
   }
 
   function applyGlobalUi3D() {
-    if (!document.getElementById('webpos3dGlobalUiStyle')) {
-      var st = document.createElement('style');
-      st.id = 'webpos3dGlobalUiStyle';
-      st.textContent = [
-        '.ui-3d-svg{width:1.22em;height:1.22em;display:inline-block;flex-shrink:0;vertical-align:-0.18em;filter:drop-shadow(0 2px 4px rgba(15,23,42,0.2));transition:transform .18s ease;}',
-        '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg),.dialog-icon-wrap:has(> .ui-3d-svg),.kas-item-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
-        '.logo-icon > .ui-3d-svg{width:26px;height:26px;}',
-        '.dialog-icon-wrap > .ui-3d-svg{width:34px;height:34px;}',
-        '.stat-icon > .ui-3d-svg,.summary-icon > .ui-3d-svg{width:36px;height:36px;}',
-        '.action-icon > .ui-3d-svg{width:30px;height:30px;}',
-        '.kas-item-icon > .ui-3d-svg{width:26px;height:26px;}',
-        '.empty-state > .ui-3d-svg{width:44px;height:44px;margin-bottom:8px;}',
-        '.stat-card:hover .stat-icon > .ui-3d-svg{transform:scale(1.1);}',
-        '.tab-btn > .ui-3d-svg,.viewer-tab-btn > .ui-3d-svg{width:19px;height:19px;margin-right:4px;}',
-        '.card-title > .ui-3d-svg,.modal-title > .ui-3d-svg,.section-title > .ui-3d-svg{width:22px;height:22px;margin-right:5px;}',
-        '.btn > .ui-3d-svg,button > .ui-3d-svg{margin-right:4px;}',
-        '.btn > .ui-3d-svg:last-child,button > .ui-3d-svg:last-child,.btn-icon-box > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{margin-right:0;}',
-        '#btnThemeToggle .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;margin:0;}',
-        '#btnThemeToggle:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg{transform:scale(1.12);}'
-      ].join('\n');
-      document.head.appendChild(st);
-    }
-
-    // 1. Tombol Header Dark Mode (tetap simpan <i> tersembunyi agar script page-kasir aman 100%)
-    var themeBtn = document.getElementById('btnThemeToggle');
-    if (themeBtn && !themeBtn.dataset.upgraded3d) {
-      themeBtn.dataset.upgraded3d = '1';
-      var hiddenThemeI = themeBtn.querySelector('i');
-      if (!hiddenThemeI) {
-        hiddenThemeI = document.createElement('i');
-        hiddenThemeI.className = 'fas fa-moon';
-        themeBtn.appendChild(hiddenThemeI);
+    try {
+      if (!document.getElementById('webpos3dGlobalUiStyle')) {
+        var st = document.createElement('style');
+        st.id = 'webpos3dGlobalUiStyle';
+        st.textContent = [
+          'i[data-upgraded3d="1"]{display:none !important;}',
+          '.ui-3d-svg{width:1.2em;height:1.2em;max-width:100%;max-height:100%;display:inline-block;flex-shrink:0;vertical-align:-0.18em;filter:drop-shadow(0 2px 3px rgba(15,23,42,0.2));transition:transform .2s ease;}',
+          '.ui-3d-abs,.input-wrap > .ui-3d-svg,.barcode-input-wrap > .ui-3d-svg,.riwayat-search-box > .ui-3d-svg{position:absolute !important;left:0.9rem !important;top:50% !important;transform:translateY(-50%) !important;width:18px !important;height:18px !important;margin:0 !important;pointer-events:none !important;z-index:2;}',
+          '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg),.dialog-icon-wrap:has(> .ui-3d-svg),.kas-item-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
+          '.logo-badge > .ui-3d-svg{width:30px;height:30px;margin:0;}',
+          '.logo-icon > .ui-3d-svg{width:24px;height:24px;margin:0;}',
+          '.dialog-icon-wrap > .ui-3d-svg{width:34px;height:34px;margin:0;}',
+          '.stat-icon > .ui-3d-svg,.summary-icon > .ui-3d-svg{width:36px;height:36px;margin:0;}',
+          '.action-icon > .ui-3d-svg{width:30px;height:30px;margin:0;}',
+          '.kas-item-icon > .ui-3d-svg{width:24px;height:24px;margin:0;}',
+          '.modal-summary-item > .ui-3d-svg{width:32px;height:32px;margin:0;}',
+          '.payment-method > .ui-3d-svg{width:22px;height:22px;margin:0 auto 3px;display:block;}',
+          '#paymentModal .payment-method > .ui-3d-svg{width:18px;height:18px;margin:0 auto 2px;}',
+          '.empty-state > .ui-3d-svg{width:42px;height:42px;margin:0 auto 8px;display:block;}',
+          '.stat-card:hover .stat-icon > .ui-3d-svg{transform:scale(1.1);}',
+          '.tab-btn > .ui-3d-svg,.viewer-tab-btn > .ui-3d-svg{width:18px;height:18px;}',
+          '.card-title > .ui-3d-svg,.modal-title > .ui-3d-svg,.section-title > .ui-3d-svg{width:21px;height:21px;}',
+          '.menu-toggle > .ui-3d-svg{width:20px;height:20px;margin:0;}',
+          '.sidebar.collapsed .menu-toggle > .ui-3d-svg{transform:rotate(180deg);}',
+          '.kas-date-btn > .ui-3d-svg,.page-btn > .ui-3d-svg,.btn-icon-box > .ui-3d-svg,.btn-icon-sm > .ui-3d-svg,.btn-icon > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{width:18px;height:18px;margin:0;}',
+          '#btnThemeToggle .ui-3d-svg,#btnTheme .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;margin:0;}',
+          '#btnThemeToggle:hover .ui-3d-svg,#btnTheme:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg,.menu-toggle:hover > .ui-3d-svg{transform:scale(1.12);}'
+        ].join('\n');
+        document.head.appendChild(st);
       }
-      hiddenThemeI.style.display = 'none';
-      var themeSlot = document.createElement('span');
-      themeSlot.className = 'u3d-theme-slot';
-      themeSlot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
-      themeBtn.appendChild(themeSlot);
 
-      function renderTheme3d() {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      // 1. Tombol Header Dark Mode (#btnThemeToggle maupun #btnTheme di kasir/hutang)
+      var themeBtn = document.getElementById('btnThemeToggle') || document.getElementById('btnTheme');
+      if (themeBtn && !themeBtn.dataset.upgraded3d) {
+        themeBtn.dataset.upgraded3d = '1';
+        var hiddenThemeI = themeBtn.querySelector('i');
+        if (!hiddenThemeI) {
+          hiddenThemeI = document.createElement('i');
+          hiddenThemeI.className = 'fas fa-moon';
+          themeBtn.appendChild(hiddenThemeI);
+        }
+        hiddenThemeI.style.setProperty('display', 'none', 'important');
+        hiddenThemeI.dataset.upgraded3d = '1';
+        var themeSlot = document.createElement('span');
+        themeSlot.className = 'u3d-theme-slot';
+        themeSlot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+        themeBtn.appendChild(themeSlot);
+
+        function renderTheme3d() {
+          var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          seq++;
+          themeSlot.innerHTML = (isDark ? UI3D.sun : UI3D.moon).replace(/__ID__/g, 'u3d_' + seq + '_');
+        }
+        renderTheme3d();
+        new MutationObserver(renderTheme3d).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      }
+
+      // 2. Tombol Header Logout
+      var logoutBtn = document.getElementById('btnLogout');
+      if (logoutBtn && !logoutBtn.dataset.upgraded3d) {
+        logoutBtn.dataset.upgraded3d = '1';
+        var oldLogoutI = logoutBtn.querySelector('i');
+        if (oldLogoutI) {
+          oldLogoutI.style.setProperty('display', 'none', 'important');
+          oldLogoutI.dataset.upgraded3d = '1';
+        }
         seq++;
-        themeSlot.innerHTML = (isDark ? UI3D.sun : UI3D.moon).replace(/__ID__/g, 'u3d_' + seq + '_');
+        var lw = document.createElement('span');
+        lw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+        lw.innerHTML = UI3D.logout.replace(/__ID__/g, 'u3d_' + seq + '_');
+        logoutBtn.appendChild(lw);
       }
-      renderTheme3d();
-      new MutationObserver(renderTheme3d).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    }
 
-    // 2. Tombol Header Logout
-    var logoutBtn = document.getElementById('btnLogout');
-    if (logoutBtn && !logoutBtn.dataset.upgraded3d) {
-      logoutBtn.dataset.upgraded3d = '1';
-      var oldLogoutI = logoutBtn.querySelector('i');
-      if (oldLogoutI) oldLogoutI.style.display = 'none';
-      seq++;
-      var lw = document.createElement('span');
-      lw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
-      lw.innerHTML = UI3D.logout.replace(/__ID__/g, 'u3d_' + seq + '_');
-      logoutBtn.appendChild(lw);
-    }
-
-    // 3. Tombol Header Menu Mobile
-    var menuBtn = document.getElementById('mobileMenuToggle');
-    if (menuBtn && !menuBtn.dataset.upgraded3d) {
-      menuBtn.dataset.upgraded3d = '1';
-      var oldMenuI = menuBtn.querySelector('i');
-      if (oldMenuI) oldMenuI.style.display = 'none';
-      seq++;
-      var mw = document.createElement('span');
-      mw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
-      mw.innerHTML = UI3D.menu.replace(/__ID__/g, 'u3d_' + seq + '_');
-      menuBtn.appendChild(mw);
-    }
-
-    // 4. Upgrade semua ikon di halaman & seluruh pop-up/modal (termasuk yang baru muncul dinamis)
-    upgradeNodesInDom();
-    var debounceTimer = null;
-    new MutationObserver(function(mutations) {
-      var shouldRun = false;
-      for (var i = 0; i < mutations.length; i++) {
-        var m = mutations[i];
-        if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
-          shouldRun = true;
-          break;
+      // 3. Tombol Header Menu Mobile
+      var menuBtn = document.getElementById('mobileMenuToggle');
+      if (menuBtn && !menuBtn.dataset.upgraded3d) {
+        menuBtn.dataset.upgraded3d = '1';
+        var oldMenuI = menuBtn.querySelector('i');
+        if (oldMenuI) {
+          oldMenuI.style.setProperty('display', 'none', 'important');
+          oldMenuI.dataset.upgraded3d = '1';
         }
-        if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
-          shouldRun = true;
-          break;
-        }
+        seq++;
+        var mw = document.createElement('span');
+        mw.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;';
+        mw.innerHTML = UI3D.menu.replace(/__ID__/g, 'u3d_' + seq + '_');
+        menuBtn.appendChild(mw);
       }
-      if (!shouldRun || debounceTimer) return;
-      debounceTimer = setTimeout(function() {
-        debounceTimer = null;
-        upgradeNodesInDom();
-      }, 120);
-    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+
+      // 4. Jalankan upgrade & bersihkan duplikat setelah script halaman (seperti Dashboard) selesai jalan
+      upgradeNodesInDom();
+      setTimeout(upgradeNodesInDom, 80);
+
+      var debounceTimer = null;
+      new MutationObserver(function(mutations) {
+        var shouldRun = false;
+        for (var i = 0; i < mutations.length; i++) {
+          var m = mutations[i];
+          if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
+            shouldRun = true;
+            break;
+          }
+          if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
+            shouldRun = true;
+            break;
+          }
+        }
+        if (!shouldRun || debounceTimer) return;
+        debounceTimer = setTimeout(function() {
+          debounceTimer = null;
+          upgradeNodesInDom();
+        }, 120);
+      }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
   }
 
   if (document.readyState === 'loading') {
