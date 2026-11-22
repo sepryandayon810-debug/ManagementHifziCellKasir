@@ -1225,7 +1225,7 @@
         <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
           <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali</button>
          <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap;">
-            <button class="btn btn-secondary" id="btnToggleEmptyKat" style="display:none; font-size:0.78rem; padding:0.45rem 0.75rem;" onclick="window.toggleEmptyCategories()"></button>
+            <button class="btn btn-secondary" id="btnToggleHiddenKat" style="display:none; font-size:0.78rem; padding:0.45rem 0.75rem;" onclick="window.toggleHiddenCategories()"></button>
             <div class="view-toggle">
               <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
               <button class="view-btn" id="btnKatListView" title="List View"><i class="fas fa-list"></i></button>
@@ -1591,8 +1591,59 @@
  let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
   let currentKatViewMode = localStorage.getItem("webpos_kat_view") || "grid";
   let selectedCategoryFilter = "";
-  let hideEmptyCategories = localStorage.getItem("webpos_hide_empty_cat") !== "false";
+  let showHiddenCategories = false;
 
+  function invalidateKasirCatalogCache() {
+    try {
+      localStorage.removeItem("webpos_cache_timestamp");
+      localStorage.removeItem("kasir_categories");
+      localStorage.removeItem("webpos_cache_categories_v1");
+      localStorage.removeItem("webpos_cache_products_v1");
+    } catch (e) {}
+  }
+
+  window.toggleHiddenCategories = function() {
+    showHiddenCategories = !showHiddenCategories;
+    renderCategoriesGrid();
+  };
+
+  window.toggleCategoryStatus = async function(catId) {
+    const cat = categoriesList.find(c => c.id === catId);
+    if (!cat) return;
+    const nextStatus = (cat.status === "inactive") ? "active" : "inactive";
+    try {
+      await db.collection("categories").doc(catId).update({ status: nextStatus });
+      cat.status = nextStatus;
+      invalidateKasirCatalogCache();
+      try { localStorage.setItem("webpos_cache_categories_v1", JSON.stringify(categoriesList)); } catch (e) {}
+      renderCategoriesGrid();
+      toast(nextStatus === "inactive"
+        ? `Kategori "${cat.name}" dinonaktifkan & disembunyikan di Kasir`
+        : `Kategori "${cat.name}" diaktifkan kembali di Kasir`, "success");
+    } catch (err) {
+      console.error(err);
+      toast("Gagal mengubah status kategori", "error");
+    }
+  };
+
+  window.toggleProductStatus = async function(prodId) {
+    const prod = productsList.find(p => p.id === prodId);
+    if (!prod) return;
+    const nextStatus = (prod.status === "inactive") ? "active" : "inactive";
+    try {
+      await db.collection("products").doc(prodId).update({ status: nextStatus });
+      prod.status = nextStatus;
+      invalidateKasirCatalogCache();
+      renderProducts();
+      toast(nextStatus === "inactive"
+        ? `Produk "${prod.name}" dinonaktifkan & disembunyikan di Kasir`
+        : `Produk "${prod.name}" diaktifkan kembali di Kasir`, "success");
+    } catch (err) {
+      console.error(err);
+      toast("Gagal mengubah status produk", "error");
+    }
+  };
+  
   window.toggleEmptyCategories = function() {
     hideEmptyCategories = !hideEmptyCategories;
     localStorage.setItem("webpos_hide_empty_cat", hideEmptyCategories ? "true" : "false");
@@ -2041,50 +2092,37 @@ document.getElementById("filterKategori").onchange = function() {
 
   function renderCategoriesGrid() {
     const grid = document.getElementById("kategoriGrid");
-    const toggleBtn = document.getElementById("btnToggleEmptyKat");
+    const toggleBtn = document.getElementById("btnToggleHiddenKat");
     if (categoriesList.length === 0) {
       if (toggleBtn) toggleBtn.style.display = "none";
       grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Belum ada kategori.</div>`;
       return;
     }
 
-    // Hitung jumlah produk per kategori sekali jalan (jauh lebih cepat di HP)
     const countMap = {};
     productsList.forEach(p => {
       if (p && p.categoryId) countMap[p.categoryId] = (countMap[p.categoryId] || 0) + 1;
     });
 
-    const hasProductsLoaded = productsList.length > 0;
-    const emptyCount = hasProductsLoaded ? categoriesList.filter(c => (countMap[c.id] || 0) === 0).length : 0;
-
+    const inactiveCount = categoriesList.filter(c => c.status === "inactive").length;
     if (toggleBtn) {
-      if (emptyCount > 0) {
+      if (inactiveCount > 0) {
         toggleBtn.style.display = "inline-flex";
-        toggleBtn.innerHTML = hideEmptyCategories
-          ? `<i class="fas fa-eye"></i> Tampilkan Kosong (${emptyCount})`
-          : `<i class="fas fa-eye-slash"></i> Sembunyikan Kosong (${emptyCount})`;
+        toggleBtn.innerHTML = showHiddenCategories
+          ? `<i class="fas fa-eye-slash"></i> Sembunyikan Nonaktif (${inactiveCount})`
+          : `<i class="fas fa-eye"></i> Tampilkan Nonaktif (${inactiveCount})`;
       } else {
         toggleBtn.style.display = "none";
       }
     }
 
-    const visibleCats = (hideEmptyCategories && hasProductsLoaded)
-      ? categoriesList.filter(c => (countMap[c.id] || 0) > 0)
-      : categoriesList;
-
-    // Sinkronkan dropdown filter Tab Produk (form Tambah/Edit Produk tetap tampil semua kategori)
-    const filterKat = document.getElementById("filterKategori");
-    if (filterKat && hasProductsLoaded) {
-      const curVal = filterKat.value;
-      let fHtml = '<option value="">Semua Kategori</option>';
-      visibleCats.forEach(c => { fHtml += `<option value="${c.id}">${c.name}</option>`; });
-      filterKat.innerHTML = fHtml;
-      if (curVal && visibleCats.some(c => c.id === curVal)) filterKat.value = curVal;
-    }
+    const visibleCats = showHiddenCategories
+      ? categoriesList
+      : categoriesList.filter(c => c.status !== "inactive");
 
     if (visibleCats.length === 0) {
       grid.className = "kategori-grid";
-      grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Semua kategori (${emptyCount}) masih kosong (0 produk).<br><button class="btn btn-secondary" style="margin-top:0.75rem;" onclick="window.toggleEmptyCategories()"><i class="fas fa-eye"></i> Tampilkan Kategori Kosong</button></div>`;
+      grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Semua kategori (${inactiveCount}) sedang dinonaktifkan.<br><button class="btn btn-secondary" style="margin-top:0.75rem;" onclick="window.toggleHiddenCategories()"><i class="fas fa-eye"></i> Tampilkan Kategori Nonaktif</button></div>`;
       return;
     }
 
@@ -2094,19 +2132,22 @@ document.getElementById("filterKategori").onchange = function() {
       grid.className = "kategori-list";
       grid.innerHTML = visibleCats.map((c, idx) => {
         const count = countMap[c.id] || 0;
+        const isOff = c.status === "inactive";
         const safeName = (c.name || "").replace(/'/g, "\\'");
         const vis = getAutoCategoryVisual(c, fallbackColors[idx % fallbackColors.length], "klist_" + idx + "_");
         const boxBorder = vis.hasImage ? "1px solid var(--border-color, #e2e8f0)" : "1px solid " + vis.color + "33";
-        const emptyStyle = count === 0 ? "opacity:0.72; border-style:dashed;" : "";
+        const offStyle = isOff ? "opacity:0.58; border-style:dashed;" : "";
+        const offBadge = isOff ? '<span style="margin-left:0.35rem;font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:6px;background:var(--text-muted);color:#fff;font-weight:700;">Nonaktif</span>' : "";
 
         return `
-          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="padding:0.75rem 1rem; ${emptyStyle}">
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="padding:0.75rem 1rem; ${offStyle}">
             <div class="kategori-icon" style="background:${vis.bg}; width:42px; height:42px; padding:4px; border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:${boxBorder}; flex-shrink:0;">${vis.html}</div>
             <div class="kategori-info">
-              <div class="kategori-name">${c.name}</div>
+              <div class="kategori-name">${c.name}${offBadge}</div>
               <div class="kategori-count">${count} produk terdaftar</div>
             </div>
             <div style="display:flex; gap:0.35rem;" onclick="event.stopPropagation()">
+              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
               <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>
               <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
             </div>
@@ -2117,21 +2158,23 @@ document.getElementById("filterKategori").onchange = function() {
       grid.className = "kategori-grid";
       grid.innerHTML = visibleCats.map((c, idx) => {
         const count = countMap[c.id] || 0;
+        const isOff = c.status === "inactive";
         const safeName = (c.name || "").replace(/'/g, "\\'");
         const vis = getAutoCategoryVisual(c, fallbackColors[idx % fallbackColors.length], "kgrid_" + idx + "_");
         const boxBorder = vis.hasImage ? "1px solid var(--border-color, #e2e8f0)" : "1px solid " + vis.color + "33";
-        const emptyStyle = count === 0 ? "opacity:0.72; border-style:dashed;" : "";
+        const offStyle = isOff ? "opacity:0.58; border-style:dashed;" : "";
 
         return `
-          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important; max-height:none !important; flex-direction:column !important; align-items:center !important; text-align:center !important; padding:0.6rem 0.35rem 0.5rem !important; gap:0.3rem !important; display:flex !important; justify-content:flex-start !important; overflow:visible !important; border-radius:14px !important; ${emptyStyle}">
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important; max-height:none !important; flex-direction:column !important; align-items:center !important; text-align:center !important; padding:0.6rem 0.35rem 0.5rem !important; gap:0.3rem !important; display:flex !important; justify-content:flex-start !important; overflow:visible !important; border-radius:14px !important; ${offStyle}">
             <div class="kategori-icon" style="background:${vis.bg}; width:44px; height:44px; min-height:44px; padding:4px; flex-shrink:0; border-radius:11px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:${boxBorder};">${vis.html}</div>
             <div class="kategori-info" style="width:100%; min-width:0; padding:0; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
               <div class="kategori-name" style="white-space:normal !important; font-size:0.74rem; font-weight:700; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;">${c.name}</div>
-              <div class="kategori-count" style="font-size:0.64rem; color:var(--text-muted); line-height:1.2;">${count} produk</div>
+              <div class="kategori-count" style="font-size:0.64rem; color:var(--text-muted); line-height:1.2;">${isOff ? 'Nonaktif • ' : ''}${count} produk</div>
             </div>
-            <div style="display:flex; gap:0.35rem; width:100%; justify-content:center; margin-top:auto; padding-top:0.35rem; border-top:1px solid var(--border); flex-shrink:0;" onclick="event.stopPropagation()">
-              <button class="btn btn-secondary" style="flex:1; max-width:34px; padding:0 !important; font-size:0.7rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="flex:1; max-width:34px; padding:0 !important; font-size:0.7rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+            <div style="display:flex; gap:0.25rem; width:100%; justify-content:center; margin-top:auto; padding-top:0.35rem; border-top:1px solid var(--border); flex-shrink:0;" onclick="event.stopPropagation()">
+              <button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
+              <button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
             </div>
           </div>
         `;
@@ -2313,11 +2356,61 @@ document.getElementById("filterKategori").onchange = function() {
           imgEl = `<div style="width:58px;height:58px;display:flex;align-items:center;justify-content:center;">${vis.html.replace(/max-width:34px;max-height:34px;/g, "width:54px;height:54px;")}</div>`;
         }
 
+        const isOff = p.status === "inactive";
+        const offStyle = isOff ? "opacity:0.6; border-style:dashed;" : "";
+        const offTag = isOff ? '<span style="margin-left:0.35rem;font-size:0.62rem;padding:0.1rem 0.35rem;border-radius:5px;background:var(--text-muted);color:#fff;font-weight:700;">Nonaktif</span>' : "";
+
         return `
-          <div class="produk-card">
+          <div class="produk-card" style="${offStyle}">
+            <div class="produk-list-main">
+              <div class="produk-thumb" style="${thumbStyle}">${thumbEl}</div>
+              <div class="produk-info">
+                <div class="produk-name">${p.name}${offTag}</div>
+                <div class="produk-code">${catName} • ${stockText}</div>
+              </div>
+            </div>
+            <div class="produk-list-meta">
+              <div class="produk-list-price-wrap">
+                <div class="produk-list-price">${formatRupiah(p.sellingPrice)}</div>
+                ${resellerBadge}
+              </div>
+              <div class="produk-actions">
+                <button type="button" class="btn btn-secondary" style="${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
+                <button type="button" class="btn btn-secondary" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i><span>Edit</span></button>
+                <button type="button" class="btn btn-danger" title="Hapus Produk" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i><span>Hapus</span></button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    } else {
+      grid.className = "produk-grid";
+      grid.innerHTML = filtered.map((p, idx) => {
+        const cat = categoriesList.find(c => c.id === p.categoryId);
+        const catName = cat ? cat.name : "Umum";
+        const isOff = p.status === "inactive";
+        const vis = getAutoCategoryVisual(cat || { name: catName }, fallbackColors[idx % fallbackColors.length], "pgrid_" + idx + "_");
+        const resellerText = p.resellerPrice
+          ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>`
+          : `<div class="produk-reseller" style="visibility:hidden;">-</div>`;
+        const stockBadgeText = p.isUnlimited ? "Unlimited ♾️" : `Stok: ${p.stock || 0}`;
+
+        let imgEl = "";
+        let imgWrapStyle = "";
+        if (p.imageUrl) {
+          imgEl = `<img src="${p.imageUrl}" alt="${p.name}">`;
+        } else if (cat && cat.imageUrl) {
+          imgEl = `<img src="${cat.imageUrl}" alt="${p.name}" style="object-fit:contain; padding:14px;">`;
+        } else {
+          imgWrapStyle = `background:${vis.bg};`;
+          imgEl = `<div style="width:58px;height:58px;display:flex;align-items:center;justify-content:center;">${vis.html.replace(/max-width:34px;max-height:34px;/g, "width:54px;height:54px;")}</div>`;
+        }
+
+        return `
+          <div class="produk-card" style="${isOff ? 'opacity:0.62; border-style:dashed;' : ''}">
             <div class="produk-image" style="${imgWrapStyle}">
               ${imgEl}
-              <span class="produk-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'Aktif' : 'Nonaktif'}</span>
+              <span class="produk-status ${!isOff ? 'active' : 'inactive'}">${!isOff ? 'Aktif' : 'Nonaktif'}</span>
               <span class="produk-stock-badge">${stockBadgeText}</span>
             </div>
             <div class="produk-info">
@@ -2327,6 +2420,7 @@ document.getElementById("filterKategori").onchange = function() {
               ${resellerText}
             </div>
             <div class="produk-actions">
+              <button type="button" class="btn btn-secondary" style="flex:0 0 auto; padding:0.45rem 0.6rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
               <button type="button" class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
               <button type="button" class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i> Hapus</button>
             </div>
