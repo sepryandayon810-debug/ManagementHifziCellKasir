@@ -923,7 +923,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 
-// 6. UNIFIED INTERACTIVE 3D LOADER & TOP PROGRESS BAR (SERAGAM DI SEMUA 28 HALAMAN & RINGAN DI HP)
+// 6. UNIFIED INTERACTIVE 3D PROGRESS LOADER (PINDAH HALAMAN & MUAT DATA SERAGAM DI SEMUA 28 HALAMAN)
 (function() {
   if (window.__webpos3dLoaderInit) return;
   window.__webpos3dLoaderInit = true;
@@ -946,26 +946,25 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     st.id = 'webposUnifiedLoaderStyle';
     st.textContent = [
       '@keyframes wplSpin{to{transform:rotate(360deg)}}',
-      '@keyframes wplFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}',
-      '@keyframes wplShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(220%)}}',
-      '@keyframes wplTopBar{0%{width:12%}55%{width:72%}100%{width:92%}}',
-      '#webposTopProgress{position:fixed;top:0;left:0;height:3.5px;width:0;z-index:999999;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6,#f59e0b);box-shadow:0 0 10px rgba(59,130,246,0.6);pointer-events:none;opacity:0;transition:opacity .2s ease;}',
-      '#webposTopProgress.running{opacity:1;animation:wplTopBar 2.2s cubic-bezier(.22,1,.36,1) forwards;}',
-      '#loadingOverlay.wpl-upgraded,#loadingVeil.wpl-upgraded{background:rgba(15,23,42,0.58) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;padding:1.25rem !important;}',
+      '@keyframes wplFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}',
+      '@keyframes wplShine{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}',
+      '@keyframes wplPop{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}',
+      '#webposTopProgress{position:fixed;top:0;left:0;height:3.5px;width:0;z-index:999999;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6,#f59e0b);box-shadow:0 0 10px rgba(59,130,246,0.6);pointer-events:none;opacity:0;transition:width .25s ease,opacity .2s ease;}',
+      '#loadingOverlay.wpl-upgraded,#loadingVeil.wpl-upgraded,#webposGlobalLoader{position:fixed !important;inset:0 !important;z-index:99998 !important;background:rgba(15,23,42,0.52) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;padding:1.25rem !important;}',
+      '#webposGlobalLoader{display:none;}',
+      '#webposGlobalLoader.active{display:flex !important;}',
       '#loadingOverlay.wpl-upgraded > .spinner,#loadingOverlay.wpl-upgraded > .loader,#loadingVeil.wpl-upgraded > div:not(.wpl-card){display:none !important;}',
-      '.wpl-card{width:min(290px,86vw);background:rgba(255,255,255,0.96);color:#0f172a;border:1px solid rgba(148,163,184,0.28);border-radius:22px;padding:1.45rem 1.35rem 1.25rem;box-shadow:0 20px 45px rgba(15,23,42,0.28);display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.65rem;}',
-      '[data-theme="dark"] .wpl-card{background:rgba(30,41,59,0.96);color:#f8fafc;border-color:rgba(148,163,184,0.2);}',
-      '.wpl-orbit{position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:center;}',
-      '.wpl-ring{position:absolute;inset:0;border-radius:50%;padding:3.5px;background:conic-gradient(from 0deg,#10b981,#3b82f6,#8b5cf6,#f59e0b,#10b981);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:wplSpin 1.15s linear infinite;will-change:transform;}',
-      '.wpl-3d-emblem{width:42px;height:42px;filter:drop-shadow(0 4px 6px rgba(15,23,42,0.22));animation:wplFloat 1.8s ease-in-out infinite;will-change:transform;}',
-      '.wpl-title{font-size:0.92rem !important;font-weight:800 !important;color:#0f172a !important;margin:0 !important;line-height:1.35 !important;}',
-      '[data-theme="dark"] .wpl-title{color:#f8fafc !important;}',
-      '.wpl-sub{font-size:0.74rem;font-weight:600;color:#64748b;margin:0;min-height:1.1em;}',
-      '[data-theme="dark"] .wpl-sub{color:#94a3b8;}',
-      '.wpl-bar{width:100%;height:6px;border-radius:999px;background:rgba(148,163,184,0.22);overflow:hidden;position:relative;}',
-      '.wpl-bar-fill{position:absolute;top:0;left:0;bottom:0;width:48%;border-radius:999px;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6);animation:wplShimmer 1.25s ease-in-out infinite;will-change:transform;}',
-      '.wpl-skip-btn{display:none;margin-top:0.25rem;padding:0.45rem 0.9rem;border-radius:10px;border:1px solid rgba(79,70,229,0.3);background:rgba(79,70,229,0.1);color:#4f46e5;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;}',
-      '[data-theme="dark"] .wpl-skip-btn{background:rgba(99,102,241,0.2);color:#a5b4fc;border-color:rgba(165,180,252,0.3);}'
+      '.wpl-card{width:min(300px,86vw);background:var(--bg-surface,#ffffff);color:var(--text-main,#0f172a);border:1px solid var(--border,rgba(148,163,184,0.28));border-radius:22px;padding:1.35rem 1.3rem 1.2rem;box-shadow:0 20px 45px rgba(15,23,42,0.28);display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.55rem;animation:wplPop .18s ease-out;}',
+      '.wpl-orbit{position:relative;width:68px;height:68px;display:flex;align-items:center;justify-content:center;margin-bottom:0.1rem;}',
+      '.wpl-ring{position:absolute;inset:0;border-radius:50%;padding:3.5px;background:conic-gradient(from 0deg,#10b981,#3b82f6,#8b5cf6,#f59e0b,#10b981);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:wplSpin 1.1s linear infinite;will-change:transform;}',
+      '.wpl-3d-emblem{width:40px;height:40px;filter:drop-shadow(0 4px 6px rgba(15,23,42,0.22));animation:wplFloat 1.7s ease-in-out infinite;will-change:transform;}',
+      '.wpl-title{font-size:0.92rem !important;font-weight:800 !important;color:var(--text-main,#0f172a) !important;margin:0 !important;line-height:1.3 !important;}',
+      '.wpl-meta-row{width:100%;display:flex;align-items:center;justify-content:space-between;font-size:0.72rem;font-weight:700;color:var(--text-muted,#64748b);margin-top:0.1rem;}',
+      '.wpl-pct{color:var(--primary,#4f46e5);font-weight:800;font-variant-numeric:tabular-nums;}',
+      '.wpl-bar{width:100%;height:8px;border-radius:999px;background:var(--bg-subtle,rgba(148,163,184,0.22));overflow:hidden;position:relative;}',
+      '.wpl-bar-fill{position:relative;height:100%;width:15%;border-radius:999px;background:linear-gradient(90deg,#10b981,#3b82f6,#8b5cf6);transition:width .28s cubic-bezier(.22,1,.36,1);overflow:hidden;}',
+      '.wpl-bar-fill::after{content:"";position:absolute;inset:0;width:45%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent);animation:wplShine 1.1s linear infinite;}',
+      '.wpl-skip-btn{display:none;margin-top:0.25rem;padding:0.42rem 0.9rem;border-radius:10px;border:1px solid rgba(79,70,229,0.32);background:var(--primary-light,rgba(79,70,229,0.1));color:var(--primary,#4f46e5);font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -976,19 +975,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0.05;
   }
 
-  function enhanceOverlay(overlay) {
-    if (!overlay || overlay.dataset.wplReady === '1') return;
-    overlay.dataset.wplReady = '1';
-    overlay.classList.add('wpl-upgraded');
-
-    // Ambil teks pesan asli halaman (tetap pertahankan ID #loadingText / #loadingVeilMsg)
-    var existingMsg = overlay.querySelector('#loadingText, #loadingVeilMsg, p');
+  function buildCard(existingMsg, defaultText) {
     var card = document.createElement('div');
     card.className = 'wpl-card';
     card.innerHTML =
       '<div class="wpl-orbit"><div class="wpl-ring"></div>' + LOADER_SVG + '</div>' +
       '<div class="wpl-msg-slot"></div>' +
-      '<div class="wpl-sub">Menyiapkan tampilan...</div>' +
+      '<div class="wpl-meta-row"><span class="wpl-sub">Menyiapkan data...</span><span class="wpl-pct">12%</span></div>' +
       '<div class="wpl-bar"><div class="wpl-bar-fill"></div></div>' +
       '<button type="button" class="wpl-skip-btn">Tutup &amp; Lihat Halaman</button>';
 
@@ -1000,86 +993,178 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     } else {
       var p = document.createElement('p');
       p.className = 'wpl-title';
-      p.textContent = 'Memuat data...';
+      p.textContent = defaultText || 'Memuat halaman...';
       msgSlot.appendChild(p);
     }
+    return card;
+  }
 
+  function attachProgressController(overlay, card) {
     var subEl = card.querySelector('.wpl-sub');
+    var pctEl = card.querySelector('.wpl-pct');
+    var fillEl = card.querySelector('.wpl-bar-fill');
     var skipBtn = card.querySelector('.wpl-skip-btn');
-    skipBtn.onclick = function() {
-      overlay.classList.remove('active');
-      overlay.style.display = 'none';
-      overlay.style.visibility = 'hidden';
-      overlay.style.opacity = '0';
-    };
+    var progTimer = null;
+    var currentPct = 12;
 
-    // Sembunyikan spinner lama lainnya & sisipkan kartu 3D
+    function setVisual(pct, text) {
+      currentPct = Math.max(5, Math.min(100, Math.round(pct)));
+      if (fillEl) fillEl.style.width = currentPct + '%';
+      if (pctEl) pctEl.textContent = currentPct + '%';
+      if (text && subEl) subEl.textContent = text;
+    }
+
+    function stopProgress() {
+      if (progTimer) { clearInterval(progTimer); progTimer = null; }
+      if (skipBtn) skipBtn.style.display = 'none';
+    }
+
+    function startProgress(initialSub) {
+      stopProgress();
+      setVisual(14, initialSub || 'Menyiapkan tampilan...');
+      var ticks = 0;
+      progTimer = setInterval(function() {
+        if (!isOverlayVisible(overlay)) { stopProgress(); return; }
+        ticks++;
+        if (currentPct < 45) {
+          setVisual(currentPct + 11, ticks > 2 ? 'Mengambil data terbaru...' : null);
+        } else if (currentPct < 78) {
+          setVisual(currentPct + 6, 'Menyinkronkan dari server...');
+        } else if (currentPct < 94) {
+          setVisual(currentPct + 2, 'Hampir selesai...');
+        }
+        if (ticks >= 14 && skipBtn) {
+          subEl.textContent = 'Koneksi agak lambat, bisa lanjut dulu';
+          skipBtn.style.display = 'inline-block';
+        }
+      }, 450);
+    }
+
+    if (skipBtn) {
+      skipBtn.onclick = function() {
+        stopProgress();
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+        overlay.style.visibility = 'hidden';
+        overlay.style.opacity = '0';
+      };
+    }
+
+    overlay.__wplSet = setVisual;
+    overlay.__wplStart = startProgress;
+    overlay.__wplStop = stopProgress;
+    return { setVisual: setVisual, startProgress: startProgress, stopProgress: stopProgress };
+  }
+
+  function enhanceOverlay(overlay) {
+    if (!overlay || overlay.dataset.wplReady === '1') return;
+    overlay.dataset.wplReady = '1';
+    overlay.classList.add('wpl-upgraded');
+
+    var existingMsg = overlay.querySelector('#loadingText, #loadingVeilMsg, p');
+    var card = buildCard(existingMsg, 'Memuat data...');
     var kids = overlay.children;
     for (var i = 0; i < kids.length; i++) {
       if (kids[i] !== card) kids[i].style.display = 'none';
     }
     overlay.appendChild(card);
 
-    // Status interaktif otomatis saat loading berlangsung
-    var t1 = null, t2 = null;
-    function syncTimers() {
-      if (isOverlayVisible(overlay)) {
-        if (!t1) {
-          subEl.textContent = 'Menyiapkan data...';
-          skipBtn.style.display = 'none';
-          t1 = setTimeout(function() {
-            if (isOverlayVisible(overlay)) subEl.textContent = 'Menyinkronkan dari server...';
-          }, 3000);
-          t2 = setTimeout(function() {
-            if (isOverlayVisible(overlay)) {
-              subEl.textContent = 'Koneksi agak lambat, Anda bisa lanjut dulu';
-              skipBtn.style.display = 'inline-block';
-            }
-          }, 7500);
-        }
-      } else {
-        if (t1) { clearTimeout(t1); t1 = null; }
-        if (t2) { clearTimeout(t2); t2 = null; }
-        skipBtn.style.display = 'none';
+    var ctrl = attachProgressController(overlay, card);
+    var wasVis = false;
+    function syncVis() {
+      var vis = isOverlayVisible(overlay);
+      if (vis && !wasVis) {
+        wasVis = true;
+        ctrl.startProgress('Menyiapkan data...');
+      } else if (!vis && wasVis) {
+        wasVis = false;
+        ctrl.setVisual(100, 'Selesai');
+        ctrl.stopProgress();
       }
     }
-    syncTimers();
-    new MutationObserver(syncTimers).observe(overlay, { attributes: true, attributeFilter: ['class', 'style'] });
+    syncVis();
+    new MutationObserver(syncVis).observe(overlay, { attributes: true, attributeFilter: ['class', 'style'] });
   }
 
   function initUnifiedLoader() {
     try {
       injectLoaderStyles();
 
-      // 1. Top Progress Bar saat klik pindah halaman (respons instan di HP)
+      // 1. Top Progress Bar + Global Loader Overlay (untuk pindah halaman & halaman tanpa #loadingOverlay)
       var topBar = document.createElement('div');
       topBar.id = 'webposTopProgress';
       document.body.appendChild(topBar);
 
+      var globalEl = document.createElement('div');
+      globalEl.id = 'webposGlobalLoader';
+      var globalCard = buildCard(null, 'Memuat halaman...');
+      globalEl.appendChild(globalCard);
+      document.body.appendChild(globalEl);
+      var globalTitle = globalCard.querySelector('.wpl-title');
+      var globalCtrl = attachProgressController(globalEl, globalCard);
+
+      window.WebPOSLoader = {
+        show: function(title, sub) {
+          if (globalTitle && title) globalTitle.textContent = title;
+          globalEl.style.display = 'flex';
+          globalEl.style.visibility = 'visible';
+          globalEl.style.opacity = '1';
+          globalEl.classList.add('active');
+          globalCtrl.startProgress(sub || 'Menyiapkan data...');
+          topBar.style.opacity = '1';
+          topBar.style.width = '78%';
+        },
+        setProgress: function(pct, sub) {
+          globalCtrl.setVisual(pct, sub);
+          topBar.style.width = Math.min(100, pct) + '%';
+        },
+        hide: function() {
+          globalCtrl.setVisual(100, 'Selesai');
+          globalCtrl.stopProgress();
+          topBar.style.width = '100%';
+          setTimeout(function() {
+            globalEl.classList.remove('active');
+            globalEl.style.display = 'none';
+            topBar.style.opacity = '0';
+            topBar.style.width = '0%';
+          }, 140);
+        }
+      };
+
+      // 2. Efek Transisi Progress Interaktif Saat Pindah Halaman (Klik Sidebar / Bottom Nav)
       document.addEventListener('click', function(e) {
         var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
         if (!link) return;
         var href = link.getAttribute('href') || '';
-        if (!href || href.charAt(0) === '#' || link.target === '_blank') return;
-        topBar.classList.remove('running');
-        void topBar.offsetWidth;
-        topBar.classList.add('running');
+        if (!href || href.charAt(0) === '#' || link.target === '_blank' || e.ctrlKey || e.metaKey) return;
+        var labelEl = link.querySelector('span');
+        var pageLabel = labelEl ? labelEl.textContent.trim() : 'Halaman';
+        window.WebPOSLoader.show('Membuka ' + pageLabel + '...', 'Memuat tampilan...');
       }, true);
 
-      // 2. Percantik #loadingOverlay yang sudah ada di 18 halaman
+      // Pastikan loader bersih saat user tekan tombol Back di HP (bfcache)
+      window.addEventListener('pageshow', function() {
+        if (window.WebPOSLoader) window.WebPOSLoader.hide();
+      });
+
+      // 3. Percantik #loadingOverlay & #loadingVeil yang sudah ada
       var mainOverlay = document.getElementById('loadingOverlay');
       if (mainOverlay) enhanceOverlay(mainOverlay);
+      var existingVeil = document.getElementById('loadingVeil');
+      if (existingVeil) enhanceOverlay(existingVeil);
 
-      // 3. Percantik Utils.showLoading / #loadingVeil secara otomatis
-      if (window.Utils && typeof window.Utils.showLoading === 'function' && !window.Utils.__wplWrapped) {
-        window.Utils.__wplWrapped = true;
-        var origShow = window.Utils.showLoading.bind(window.Utils);
-        window.Utils.showLoading = function(msg) {
-          origShow(msg);
-          var veil = document.getElementById('loadingVeil');
-          if (veil) enhanceOverlay(veil);
-        };
-      }
+      // 4. Pantau otomatis jika Utils.showLoading() membuat #loadingVeil baru di body
+      new MutationObserver(function(muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var nodes = muts[i].addedNodes;
+          for (var j = 0; j < nodes.length; j++) {
+            var n = nodes[j];
+            if (n && n.nodeType === 1 && (n.id === 'loadingVeil' || n.id === 'loadingOverlay')) {
+              enhanceOverlay(n);
+            }
+          }
+        }
+      }).observe(document.body, { childList: true });
     } catch (e) {}
   }
 
