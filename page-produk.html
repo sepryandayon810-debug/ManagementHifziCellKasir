@@ -2422,50 +2422,6 @@ document.getElementById("filterKategori").onchange = function() {
           ? `<span class="produk-list-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</span>`
           : "";
 
-        return `
-          <div class="produk-card">
-            <div class="produk-list-main">
-              <div class="produk-thumb" style="${thumbStyle}">${thumbEl}</div>
-              <div class="produk-info">
-                <div class="produk-name">${p.name}</div>
-                <div class="produk-code">${catName} • ${stockText}</div>
-              </div>
-            </div>
-            <div class="produk-list-meta">
-              <div class="produk-list-price-wrap">
-                <div class="produk-list-price">${formatRupiah(p.sellingPrice)}</div>
-                ${resellerBadge}
-              </div>
-              <div class="produk-actions">
-                <button type="button" class="btn btn-secondary" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i><span>Edit</span></button>
-                <button type="button" class="btn btn-danger" title="Hapus Produk" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i><span>Hapus</span></button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    } else {
-      grid.className = "produk-grid";
-      grid.innerHTML = filtered.map((p, idx) => {
-        const cat = categoriesList.find(c => c.id === p.categoryId);
-        const catName = cat ? cat.name : "Umum";
-        const vis = getAutoCategoryVisual(cat || { name: catName }, fallbackColors[idx % fallbackColors.length], "pgrid_" + idx + "_");
-        const resellerText = p.resellerPrice
-          ? `<div class="produk-reseller">Reseller: ${formatRupiah(p.resellerPrice)}</div>`
-          : `<div class="produk-reseller" style="visibility:hidden;">-</div>`;
-        const stockBadgeText = p.isUnlimited ? "Unlimited ♾️" : `Stok: ${p.stock || 0}`;
-
-        let imgEl = "";
-        let imgWrapStyle = "";
-        if (p.imageUrl) {
-          imgEl = `<img src="${p.imageUrl}" alt="${p.name}">`;
-        } else if (cat && cat.imageUrl) {
-          imgEl = `<img src="${cat.imageUrl}" alt="${p.name}" style="object-fit:contain; padding:14px;">`;
-        } else {
-          imgWrapStyle = `background:${vis.bg};`;
-          imgEl = `<div style="width:58px;height:58px;display:flex;align-items:center;justify-content:center;">${vis.html.replace(/max-width:34px;max-height:34px;/g, "width:54px;height:54px;")}</div>`;
-        }
-
         const isOff = p.status === "inactive";
         const offStyle = isOff ? "opacity:0.6; border-style:dashed;" : "";
         const offTag = isOff ? '<span style="margin-left:0.35rem;font-size:0.62rem;padding:0.1rem 0.35rem;border-radius:5px;background:var(--text-muted);color:#fff;font-weight:700;">Nonaktif</span>' : "";
