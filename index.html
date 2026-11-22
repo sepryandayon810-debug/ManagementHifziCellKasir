@@ -470,6 +470,16 @@
 
     [data-theme="dark"] .qa-transfer { background: rgba(2, 132, 199, 0.16); border-color: rgba(14, 165, 233, 0.35); color: #bae6fd; }
     [data-theme="dark"] .qa-transfer i { color: #38bdf8; }
+
+    .qa-lowstock { position: relative; background: #fff7ed; border: 1px solid rgba(234, 88, 12, 0.32); color: #9a3412; }
+    .qa-lowstock i { color: #ea580c; }
+    [data-theme="dark"] .qa-lowstock { background: rgba(234, 88, 12, 0.18); border-color: rgba(251, 146, 60, 0.4); color: #fed7aa; }
+    [data-theme="dark"] .qa-lowstock i { color: #fb923c; }
+    .qa-lowstock-badge {
+      position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; padding: 0 5px;
+      border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.68rem; font-weight: 800;
+      display: none; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(239,68,68,0.4);
+    }
     
     .table-container { overflow-x: auto; }
     .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
@@ -1108,6 +1118,11 @@
                 <i class="fas fa-exchange-alt"></i>
                 <span>Serahkan Shift</span>
               </button>
+              <button type="button" class="quick-action-btn qa-lowstock" id="btnLowStockShortcut" onclick="window.openLowStockModal()">
+                <span class="qa-lowstock-badge" id="lowStockBadge">0</span>
+                <i class="fas fa-box-open"></i>
+                <span>Stok Menipis</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1225,8 +1240,43 @@
   </div>
 </div>
 
+<!-- MODAL DETAIL STOK MENIPIS (< 5 PCS, KHUSUS PRODUK FISIK AKTIF) -->
+<div class="modal-overlay" id="modalLowStock" onclick="if(event.target===this) window.closeLowStockModal()">
+  <div class="modal-content" style="max-width: 520px; width: 94vw; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title" style="display:flex; align-items:center; gap:0.45rem;">
+          <i class="fas fa-exclamation-triangle" style="color:#ea580c;"></i> Stok Menipis (&lt; 5 pcs)
+        </h3>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Khusus produk fisik aktif (Unlimited &amp; nonaktif diabaikan)</div>
+      </div>
+      <button type="button" class="modal-close" onclick="window.closeLowStockModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:0.75rem; overflow:hidden; flex:1;">
+      <div id="lowStockSummaryBox" style="display:grid; grid-template-columns:1fr 1fr; gap:0.55rem;"></div>
+      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="lowStockSearchInput" class="form-input" placeholder="Cari nama barang / kategori..." oninput="window.renderLowStockList()" style="flex:1; min-width:160px; padding:0.48rem 0.75rem; font-size:0.82rem;">
+        <select id="lowStockFilterType" class="form-select" onchange="window.renderLowStockList()" style="width:auto; padding:0.48rem 0.65rem; font-size:0.8rem;">
+          <option value="all">Semua (&lt; 5)</option>
+          <option value="zero">Habis (0)</option>
+          <option value="low">Menipis (1–4)</option>
+        </select>
+      </div>
+      <div id="lowStockListContainer" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:0.5rem; padding-right:2px;">
+        <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.84rem;">Memuat data stok...</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex; gap:0.5rem; justify-content:space-between;">
+      <a href="page-pembelian.html" class="btn btn-primary" style="flex:1; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;">
+        <i class="fas fa-shopping-cart"></i> Ke Halaman Restock
+      </a>
+      <button type="button" class="btn btn-secondary" onclick="window.closeLowStockModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DETAIL SALDO BANK (NON-TUNAI) -->
-<div class="modal-overlay" id="modalNonTunaiDetail" onclick="if(event.target===this) closeNonTunaiModal()">
+  <div class="modal-overlay" id="modalNonTunaiDetail" onclick="if(event.target===this) closeNonTunaiModal()">
   <div class="modal-content" style="max-width: 500px;">
     <div class="modal-header">
       <div>
@@ -1532,13 +1582,15 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
     loadDashboardStats(user);
     listenShiftStatus(user);
+    loadLowStockData();
 
     // <-- TEMPATKAN DI SINI (Perintah yang dijalankan saat layar ditarik):
     refreshPageData = async () => {
       await syncStoreBrandName();
       await loadDashboardStats(user);
+      await loadLowStockData();
     };
-
+    
     document.getElementById("btnToggleShift").onclick = () => toggleShift(user);
     
     document.getElementById("btnTransferShift").onclick = async () => {
@@ -2789,6 +2841,134 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       console.error(err);
       toast("Gagal transfer shift: " + err.message, "error");
     }
+  };
+
+  let lowStockItemsCache = [];
+
+  async function loadLowStockData() {
+    try {
+      const [catSnap, prodSnap] = await Promise.all([
+        db.collection("categories").get(),
+        db.collection("products").get()
+      ]);
+
+      const catNameMap = {};
+      const hiddenCatIds = new Set();
+      catSnap.forEach(doc => {
+        const c = doc.data() || {};
+        catNameMap[doc.id] = c.name || "Umum";
+        if (c.status === "inactive") hiddenCatIds.add(doc.id);
+      });
+
+      const items = [];
+      prodSnap.forEach(doc => {
+        const p = doc.data() || {};
+        if (p.status === "inactive") return;
+        if (p.categoryId && hiddenCatIds.has(p.categoryId)) return;
+        const stok = parseInt(p.stock) || 0;
+        const isUnlimited = !!p.isUnlimited || stok >= 9999;
+        if (isUnlimited) return;
+        if (stok < 5) {
+          items.push({
+            id: doc.id,
+            name: p.name || "Tanpa Nama",
+            code: p.code || "",
+            categoryName: p.categoryId ? (catNameMap[p.categoryId] || "Umum") : "Umum",
+            stock: stok,
+            costPrice: parseInt(p.costPrice) || 0,
+            sellingPrice: parseInt(p.sellingPrice) || 0
+          });
+        }
+      });
+
+      items.sort((a, b) => (a.stock - b.stock) || a.name.localeCompare(b.name, "id", { sensitivity: "base" }));
+      lowStockItemsCache = items;
+
+      const badge = document.getElementById("lowStockBadge");
+      if (badge) {
+        if (items.length > 0) {
+          badge.textContent = items.length > 99 ? "99+" : String(items.length);
+          badge.style.display = "inline-flex";
+        } else {
+          badge.style.display = "none";
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memuat stok menipis:", err);
+    }
+  }
+
+  window.openLowStockModal = async function() {
+    const modal = document.getElementById("modalLowStock");
+    if (!modal) return;
+    modal.classList.add("active");
+    const searchEl = document.getElementById("lowStockSearchInput");
+    const filterEl = document.getElementById("lowStockFilterType");
+    if (searchEl) searchEl.value = "";
+    if (filterEl) filterEl.value = "all";
+    await loadLowStockData();
+    window.renderLowStockList();
+  };
+
+  window.closeLowStockModal = function() {
+    const modal = document.getElementById("modalLowStock");
+    if (modal) modal.classList.remove("active");
+  };
+
+  window.renderLowStockList = function() {
+    const sumEl = document.getElementById("lowStockSummaryBox");
+    const listEl = document.getElementById("lowStockListContainer");
+    if (!sumEl || !listEl) return;
+
+    const zeroCount = lowStockItemsCache.filter(x => x.stock <= 0).length;
+    const lowCount = lowStockItemsCache.filter(x => x.stock > 0 && x.stock < 5).length;
+
+    sumEl.innerHTML = `
+      <div style="padding:0.65rem 0.8rem; border-radius:12px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.28);">
+        <div style="font-size:0.68rem; font-weight:700; color:#dc2626;">STOK HABIS (0)</div>
+        <div style="font-size:1.05rem; font-weight:800; color:#dc2626; margin-top:2px;">${zeroCount} produk</div>
+      </div>
+      <div style="padding:0.65rem 0.8rem; border-radius:12px; background:rgba(234,88,12,0.1); border:1px solid rgba(234,88,12,0.28);">
+        <div style="font-size:0.68rem; font-weight:700; color:#ea580c;">MENIPIS (1–4 PCS)</div>
+        <div style="font-size:1.05rem; font-weight:800; color:#ea580c; margin-top:2px;">${lowCount} produk</div>
+      </div>
+    `;
+
+    const q = (document.getElementById("lowStockSearchInput")?.value || "").toLowerCase().trim();
+    const fType = document.getElementById("lowStockFilterType")?.value || "all";
+
+    const filtered = lowStockItemsCache.filter(item => {
+      if (fType === "zero" && item.stock > 0) return false;
+      if (fType === "low" && item.stock <= 0) return false;
+      if (q) {
+        return item.name.toLowerCase().includes(q) ||
+               item.categoryName.toLowerCase().includes(q) ||
+               item.code.toLowerCase().includes(q);
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = lowStockItemsCache.length === 0
+        ? `<div style="text-align:center; padding:2rem 1rem; color:var(--success); font-weight:700;"><i class="fas fa-check-circle" style="font-size:1.8rem; display:block; margin-bottom:0.45rem;"></i>Semua stok produk fisik aman (&ge; 5 pcs)!</div>`
+        : `<div style="text-align:center; padding:1.75rem 1rem; color:var(--text-muted); font-size:0.84rem;">Tidak ada produk yang cocok dengan filter/pencarian.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+      const isZero = item.stock <= 0;
+      const badgeBg = isZero ? "#ef4444" : "#f97316";
+      const badgeTxt = isZero ? "HABIS (0)" : `Sisa ${item.stock} pcs`;
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.65rem; padding:0.68rem 0.85rem; border-radius:12px; background:var(--bg-surface); border:1px solid var(--border); border-left:4px solid ${badgeBg};">
+          <div style="min-width:0; flex:1;">
+            <div style="font-weight:800; font-size:0.84rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">${item.categoryName} • Modal: ${formatRupiah(item.costPrice)}</div>
+          </div>
+          <span style="flex-shrink:0; padding:0.28rem 0.6rem; border-radius:8px; background:${badgeBg}; color:#fff; font-size:0.72rem; font-weight:800; white-space:nowrap;">${badgeTxt}</span>
+        </div>
+      `;
+    }).join("");
   };
 
   function toast(msg, type = "success") {
