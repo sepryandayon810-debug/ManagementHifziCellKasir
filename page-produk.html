@@ -1801,9 +1801,21 @@ document.getElementById("filterKategori").onchange = function() {
       }
     } catch (e) {}
 
-    // 2. Sinkron kategori terbaru dari server
+    // 1b. Jika localStorage kosong, coba ambil cepat dari IndexedDB Firestore (< 0.05 detik!)
+    if (categoriesList.length === 0) {
+      try {
+        const cacheSnap = await db.collection("categories").get({ source: "cache" });
+        if (!cacheSnap.empty) {
+          categoriesList = [];
+          cacheSnap.forEach(doc => categoriesList.push({ id: doc.id, ...doc.data() }));
+          applyCategoriesUI();
+        }
+      } catch (e) {}
+    }
+
+    // 2. Sinkron kategori terbaru dari server di background
     try {
-      const snap = await db.collection("categories").get();
+      const snap = await db.collection("categories").get({ source: "server" });
       categoriesList = [];
       snap.forEach(doc => {
         categoriesList.push({ id: doc.id, ...doc.data() });
@@ -2093,13 +2105,28 @@ document.getElementById("filterKategori").onchange = function() {
       }
     } catch (e) {}
 
+   // 1b. Jika localStorage kosong/penuh, baca langsung dari IndexedDB Firestore (< 0.05 detik!)
+    if (!renderedFromCache) {
+      try {
+        const cacheSnap = await db.collection("products").get({ source: "cache" });
+        if (!cacheSnap.empty) {
+          productsList = [];
+          cacheSnap.forEach(doc => productsList.push({ id: doc.id, ...doc.data() }));
+          renderProducts();
+          updateSummaryCards();
+          renderCategoriesGrid();
+          renderedFromCache = true;
+        }
+      } catch (e) {}
+    }
+
     if (!renderedFromCache && window.WebPOSLoader) {
       window.WebPOSLoader.show("Memuat daftar produk...", "Mengambil katalog dari server...");
     }
 
-    // 2. Sinkron data produk terbaru di background (atau langsung saat cache kosong)
+    // 2. Sinkron data produk terbaru dari server di background (atau langsung saat cache kosong)
     try {
-      const snap = await db.collection("products").get();
+      const snap = await db.collection("products").get({ source: "server" });
       productsList = [];
       snap.forEach(doc => {
         productsList.push({ id: doc.id, ...doc.data() });
