@@ -1484,12 +1484,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 
-// 7. JAM LIVE 3D SESUAI DEVICE (DI ATAS PROFIL SIDEBAR + CHIP RINGKAS HEADER HP)
+// 7. JAM LIVE MINIMALIS SESUAI DEVICE (MENYATU DI ATAS PROFIL SIDEBAR + CHIP RINGKAS HEADER HP)
 (function() {
   if (window.__webposLiveClockInit) return;
   window.__webposLiveClockInit = true;
 
-  var HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
@@ -1510,37 +1510,42 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         var st = document.createElement('style');
         st.id = 'webposLiveClockStyle';
         st.textContent = [
-          '.webpos-sidebar-clock{margin:0.5rem 0.85rem 0.65rem;padding:0.65rem 0.75rem;border-radius:14px;background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));display:flex;align-items:center;gap:0.65rem;flex-shrink:0;box-shadow:0 4px 12px rgba(15,23,42,0.06);transition:all .2s ease;}',
-          '.webpos-clock-icon3d{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 25%,#a5b4fc 0%,var(--primary,#6366f1) 55%,#312e81 100%);border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 4px 10px rgba(79,70,229,0.32),inset 0 2px 3px rgba(255,255,255,0.5);}',
-          '.webpos-clock-body{min-width:0;flex:1;line-height:1.2;}',
-          '.webpos-clock-time-row{display:flex;align-items:baseline;gap:5px;}',
-          '.webpos-clock-time{font-size:0.98rem;font-weight:800;letter-spacing:0.02em;color:var(--text-main,var(--text-primary,#0f172a));font-variant-numeric:tabular-nums;}',
-          '.webpos-clock-tz{font-size:0.62rem;font-weight:700;color:var(--primary,#6366f1);background:rgba(99,102,241,0.12);padding:1px 5px;border-radius:5px;}',
-          '.webpos-clock-date{font-size:0.7rem;font-weight:600;color:var(--text-muted,#64748b);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-          '.sidebar.collapsed .webpos-sidebar-clock{margin:0.4rem auto;padding:0.4rem;width:42px;justify-content:center;}',
-          '.sidebar.collapsed .webpos-clock-body{display:none;}',
-          '.webpos-mobile-clock{display:none;align-items:center;gap:5px;padding:0 9px;height:34px;border-radius:10px;background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.75rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;}',
-          '.webpos-mobile-clock-dot{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#6ee7b7,#10b981);box-shadow:0 0 6px rgba(16,185,129,0.6);flex-shrink:0;}',
+          '@keyframes wposDotPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.45;transform:scale(.85);}}',
+          '.webpos-sidebar-clock{padding:0.65rem 1rem 0.6rem;border-top:1px solid var(--border,var(--border-color,#e2e8f0));background:linear-gradient(180deg,rgba(99,102,241,0.045) 0%,transparent 100%);flex-shrink:0;transition:all .2s ease;}',
+          '.webpos-clock-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}',
+          '.webpos-clock-left{display:flex;align-items:center;gap:7px;min-width:0;}',
+          '.webpos-clock-live-dot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.18);animation:wposDotPulse 2s ease-in-out infinite;flex-shrink:0;}',
+          '.webpos-clock-hm{font-size:1.12rem;font-weight:800;letter-spacing:-0.01em;color:var(--text-main,var(--text-primary,#0f172a));font-variant-numeric:tabular-nums;line-height:1;}',
+          '.webpos-clock-sec{font-size:0.78rem;font-weight:700;color:var(--primary,#6366f1);font-variant-numeric:tabular-nums;opacity:0.85;margin-left:1px;}',
+          '.webpos-clock-tz{font-size:0.62rem;font-weight:700;letter-spacing:0.05em;color:var(--text-muted,#64748b);background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));padding:2px 6px;border-radius:6px;flex-shrink:0;}',
+          '.webpos-clock-date{font-size:0.71rem;font-weight:500;color:var(--text-muted,#64748b);margin-top:4px;padding-left:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+          '.sidebar.collapsed .webpos-sidebar-clock{padding:0.55rem 0.25rem;text-align:center;}',
+          '.sidebar.collapsed .webpos-clock-top{justify-content:center;}',
+          '.sidebar.collapsed .webpos-clock-live-dot,.sidebar.collapsed .webpos-clock-sec,.sidebar.collapsed .webpos-clock-tz,.sidebar.collapsed .webpos-clock-date{display:none !important;}',
+          '.sidebar.collapsed .webpos-clock-hm{font-size:0.76rem;}',
+          '.webpos-mobile-clock{display:none;align-items:center;gap:5px;padding:0 9px;height:34px;border-radius:10px;background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));border:1px solid var(--border,var(--border-color,#e2e8f0));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.74rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;}',
+          '.webpos-mobile-clock-dot{width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 6px rgba(16,185,129,0.55);animation:wposDotPulse 2s ease-in-out infinite;flex-shrink:0;}',
           '@media(max-width:768px){.webpos-mobile-clock{display:inline-flex;}}',
-          '@media(max-width:400px){.webpos-mobile-clock{padding:0 7px;font-size:0.7rem;height:32px;}}'
+          '@media(max-width:400px){.webpos-mobile-clock{padding:0 7px;font-size:0.69rem;height:32px;}}'
         ].join('\n');
         document.head.appendChild(st);
       }
 
-      // 1. Kartu Jam 3D di Sidebar (tepat di atas .sidebar-footer / profil SE)
+      // 1. Strip Jam Bersih & Elegan di Sidebar (menyatu tepat di atas .sidebar-footer / profil SE)
       var footer = document.querySelector('.sidebar-footer');
       if (footer && footer.parentNode && !document.getElementById('webposSidebarClock')) {
         var box = document.createElement('div');
         box.id = 'webposSidebarClock';
         box.className = 'webpos-sidebar-clock';
         box.innerHTML =
-          '<div class="webpos-clock-icon3d" aria-hidden="true">' +
-            '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>' +
+          '<div class="webpos-clock-top">' +
+            '<div class="webpos-clock-left">' +
+              '<span class="webpos-clock-live-dot" aria-hidden="true"></span>' +
+              '<span class="webpos-clock-hm" id="wposClockHm">--:--</span><span class="webpos-clock-sec" id="wposClockSec">:--</span>' +
+            '</div>' +
+            '<span class="webpos-clock-tz" id="wposClockTz"></span>' +
           '</div>' +
-          '<div class="webpos-clock-body">' +
-            '<div class="webpos-clock-time-row"><span class="webpos-clock-time" id="wposClockTime">--:--:--</span><span class="webpos-clock-tz" id="wposClockTz"></span></div>' +
-            '<div class="webpos-clock-date" id="wposClockDate">Memuat waktu...</div>' +
-          '</div>';
+          '<div class="webpos-clock-date" id="wposClockDate">Memuat waktu...</div>';
         footer.parentNode.insertBefore(box, footer);
       }
 
@@ -1559,15 +1564,18 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         var hh = pad2(now.getHours());
         var mm = pad2(now.getMinutes());
         var ss = pad2(now.getSeconds());
-        var timeStr = hh + ':' + mm + ':' + ss;
+        var hmStr = hh + ':' + mm;
+        var timeStr = hmStr + ':' + ss;
         var dateStr = HARI[now.getDay()] + ', ' + now.getDate() + ' ' + BULAN[now.getMonth()] + ' ' + now.getFullYear();
         var tzStr = getZoneLabel(now);
 
-        var elT = document.getElementById('wposClockTime');
+        var elHm = document.getElementById('wposClockHm');
+        var elSec = document.getElementById('wposClockSec');
         var elD = document.getElementById('wposClockDate');
         var elZ = document.getElementById('wposClockTz');
         var elM = document.getElementById('wposMobClockTime');
-        if (elT) elT.textContent = timeStr;
+        if (elHm) elHm.textContent = hmStr;
+        if (elSec) elSec.textContent = ':' + ss;
         if (elD) elD.textContent = dateStr;
         if (elZ) { elZ.textContent = tzStr; elZ.style.display = tzStr ? 'inline-block' : 'none'; }
         if (elM) { elM.textContent = timeStr; elM.parentNode.title = dateStr + (tzStr ? ' • ' + tzStr : ''); }
