@@ -1,5 +1,14 @@
 // Utilitas Global & Manajemen UI WebPOS
 const Utils = {
+  escapeHtml: function(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  },
+
   formatRupiah: function(num) {
     return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   },
