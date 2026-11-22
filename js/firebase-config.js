@@ -468,7 +468,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 
-// 5. TAHAP 3: AUTO-UPGRADE HEADER (DARK MODE & LOGOUT) + KARTU STATISTIK, TAB, & JUDUL KARTU DI SEMUA 29 HALAMAN
+// 5. ALL-IN-ONE 3D ICON ENGINE UNTUK SEMUA 29 HALAMAN (HEADER, STAT CARD, TAB, MODAL, AKSI, & TOMBOL)
 (function() {
   if (window.__webpos3dGlobalUiInit) return;
   window.__webpos3dGlobalUiInit = true;
@@ -479,6 +479,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     sun: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#EA580C"/></linearGradient></defs><circle cx="24" cy="24" r="11" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M24 5V10M24 38V43M5 24H10M38 24H43M10.6 10.6L14.2 14.2M33.8 33.8L37.4 37.4M37.4 10.6L33.8 14.2M14.2 33.8L10.6 37.4" stroke="#FBBF24" stroke-width="3.2" stroke-linecap="round"/></svg>',
 
     logout: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="28" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#F43F5E"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs><path d="M25 8H13C9.7 8 7 10.7 7 14V34C7 37.3 9.7 40 13 40H25C27.2 40 29 38.2 29 36V32H23V34H13V14H23V16H29V12C29 9.8 27.2 8 25 8Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.3"/><path d="M21 24H40M34 17.5L40.5 24L34 30.5" stroke="#F43F5E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    menu: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="6.5" rx="3.2" fill="#10B981"/><rect x="6" y="21" width="28" height="6.5" rx="3.2" fill="#3B82F6"/><rect x="6" y="32" width="36" height="6.5" rx="3.2" fill="#F59E0B"/></svg>',
 
     coins: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="6" x2="38" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><circle cx="20" cy="20" r="13.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="29" cy="29" r="13" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M29 23V35M25.8 26.2C25.8 24.8 27.2 24 29 24C30.8 24 32.2 24.8 32.2 26.2C32.2 27.7 30.8 28.2 29 28.6C27.2 29 25.8 29.6 25.8 31C25.8 32.5 27.2 33.4 29 33.4C30.8 33.4 32.2 32.5 32.2 31" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>',
 
@@ -504,11 +506,17 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     arrowup: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="55%" stop-color="#F43F5E"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M24 34V15M16.5 21.5L24 14L31.5 21.5" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
+    plus: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M24 14V34M14 24H34" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></svg>',
+
+    save: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><path d="M8 11C8 8.2 10.2 6 13 6H33L40 13V37C40 39.8 37.8 42 35 42H13C10.2 42 8 39.8 8 37V11Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><rect x="15" y="6" width="16" height="11" rx="2" fill="#E0F2FE"/><rect x="14" y="25" width="20" height="17" rx="2.5" fill="#FFFFFF" fill-opacity="0.92"/></svg>',
+
     clock: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A5B4FC"/><stop offset="55%" stop-color="#6366F1"/><stop offset="100%" stop-color="#3730A3"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M24 14V24.5L31.5 28.5" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="24.5" r="2.5" fill="#FEF08A"/></svg>',
 
     check: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M15.5 24.5L21.5 30.5L33 18" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
     warning: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="10" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#DC2626"/></linearGradient></defs><path d="M21.4 8.5C22.6 6.4 25.4 6.4 26.6 8.5L42.2 35.8C43.3 37.8 41.9 40.3 39.6 40.3H8.4C6.1 40.3 4.7 37.8 5.8 35.8L21.4 8.5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><rect x="22" y="17.5" width="4" height="11" rx="2" fill="#FFFFFF"/><circle cx="24" cy="33.5" r="2.4" fill="#FFFFFF"/></svg>',
+
+    trash: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="9" y1="13" x2="39" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="50%" stop-color="#F43F5E"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs><rect x="17" y="6" width="14" height="5" rx="2.5" fill="#E11D48" stroke="#FFFFFF" stroke-width="1.3"/><rect x="8" y="10" width="32" height="5.5" rx="2.7" fill="#FB7185" stroke="#FFFFFF" stroke-width="1.3"/><path d="M11 16H37L34.8 39.2C34.6 41.3 32.8 43 30.6 43H17.4C15.2 43 13.4 41.3 13.2 39.2L11 16Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.4"/><path d="M19 22V36.5M24 22V36.5M29 22V36.5" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="2.4" stroke-linecap="round"/></svg>',
 
     users: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="36" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F472B6"/><stop offset="55%" stop-color="#EC4899"/><stop offset="100%" stop-color="#9D174D"/></linearGradient></defs><circle cx="24" cy="16" r="8.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M8 38.5C8 30.8 14.5 26 24 26C33.5 26 40 30.8 40 38.5C40 40.7 38.2 42.5 36 42.5H12C9.8 42.5 8 40.7 8 38.5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/></svg>',
 
@@ -530,12 +538,18 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     bolt: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="12" y1="5" x2="36" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><path d="M27 5L10 27H23L20 43L38 20H25L27 5Z" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/></svg>',
 
-    exchange: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#C4B5FD"/><stop offset="55%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M14 19H33M28 14L33.5 19L28 24" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M34 29H15M20 24L14.5 29L20 34" stroke="#FEF08A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    exchange: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#C4B5FD"/><stop offset="55%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M14 19H33M28 14L33.5 19L28 24" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M34 29H15M20 24L14.5 29L20 34" stroke="#FEF08A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    sync: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="55%" stop-color="#10B981"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M33 20A10 10 0 0 0 15.5 17.5M15 28A10 10 0 0 0 32.5 30.5" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><path d="M33 13V20H26M15 35V28H22" stroke="#FEF08A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    lock: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="20" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FCD34D"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><path d="M15 21V15C15 10 19 6 24 6C29 6 33 10 33 15V21" stroke="#94A3B8" stroke-width="4.5" stroke-linecap="round"/><rect x="9" y="20" width="30" height="23" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="24" cy="30" r="3" fill="#FFFFFF"/><rect x="22.6" y="31" width="2.8" height="6" rx="1.4" fill="#FFFFFF"/></svg>',
+
+    info: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="55%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="24" cy="15.5" r="2.6" fill="#FEF08A"/><rect x="21.8" y="21" width="4.4" height="14" rx="2.2" fill="#FFFFFF"/></svg>'
   };
 
   function mapGlobalUiKey(el) {
     var c = el.className || '';
-    if (c.indexOf('fa-spinner') !== -1) return null;
+    if (!c || /fa-spin|fa-spinner|fa-chevron|fa-angle|fa-caret|fa-times|fa-xmark|fa-eye|fa-search/.test(c)) return null;
     if (c.indexOf('fa-coins') !== -1) return 'coins';
     if (c.indexOf('fa-wallet') !== -1) return 'wallet';
     if (c.indexOf('fa-money') !== -1 || c.indexOf('fa-piggy-bank') !== -1) return 'money';
@@ -546,23 +560,51 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-hand-holding-usd') !== -1) return 'debt';
     if (c.indexOf('fa-chart') !== -1) return 'chart';
     if (c.indexOf('fa-trophy') !== -1 || c.indexOf('fa-crown') !== -1) return 'trophy';
-    if (c.indexOf('fa-arrow-down') !== -1 || c.indexOf('fa-sign-in') !== -1) return 'arrowdown';
-    if (c.indexOf('fa-arrow-up') !== -1) return 'arrowup';
+    if (c.indexOf('fa-arrow-down') !== -1 || c.indexOf('fa-sign-in') !== -1 || c.indexOf('fa-download') !== -1 || c.indexOf('fa-file-import') !== -1) return 'arrowdown';
+    if (c.indexOf('fa-arrow-up') !== -1 || c.indexOf('fa-upload') !== -1 || c.indexOf('fa-file-export') !== -1) return 'arrowup';
+    if (c.indexOf('fa-plus') !== -1) return 'plus';
+    if (c.indexOf('fa-save') !== -1 || c.indexOf('fa-floppy') !== -1) return 'save';
     if (c.indexOf('fa-clock') !== -1 || c.indexOf('fa-history') !== -1) return 'clock';
-    if (c.indexOf('fa-check-circle') !== -1) return 'check';
-    if (c.indexOf('fa-exclamation') !== -1 || c.indexOf('fa-times-circle') !== -1) return 'warning';
+    if (c.indexOf('fa-check') !== -1) return 'check';
+    if (c.indexOf('fa-exclamation') !== -1 || c.indexOf('fa-triangle') !== -1) return 'warning';
+    if (c.indexOf('fa-trash') !== -1) return 'trash';
     if (c.indexOf('fa-user') !== -1 || c.indexOf('fa-address-book') !== -1) return 'users';
-    if (c.indexOf('fa-file-excel') !== -1 || c.indexOf('fa-file-export') !== -1 || c.indexOf('fa-table') !== -1) return 'excel';
+    if (c.indexOf('fa-file-excel') !== -1 || c.indexOf('fa-file-csv') !== -1 || c.indexOf('fa-table') !== -1) return 'excel';
     if (c.indexOf('fa-google-drive') !== -1 || c.indexOf('fa-database') !== -1 || c.indexOf('fa-cloud') !== -1) return 'cloud';
     if (c.indexOf('fa-print') !== -1 || c.indexOf('fa-bluetooth') !== -1) return 'print';
     if (c.indexOf('fa-store') !== -1 || c.indexOf('fa-cash-register') !== -1 || c.indexOf('fa-briefcase') !== -1) return 'store';
     if (c.indexOf('fa-cog') !== -1 || c.indexOf('fa-tools') !== -1 || c.indexOf('fa-palette') !== -1 || c.indexOf('fa-language') !== -1 || c.indexOf('fa-keyboard') !== -1 || c.indexOf('fa-shield') !== -1) return 'settings';
     if (c.indexOf('fa-list') !== -1 || c.indexOf('fa-filter') !== -1 || c.indexOf('fa-clipboard') !== -1) return 'list';
-    if (c.indexOf('fa-edit') !== -1 || c.indexOf('fa-pen') !== -1 || c.indexOf('fa-plus-circle') !== -1 || c.indexOf('fa-camera') !== -1) return 'edit';
+    if (c.indexOf('fa-edit') !== -1 || c.indexOf('fa-pen') !== -1 || c.indexOf('fa-camera') !== -1) return 'edit';
     if (c.indexOf('fa-telegram') !== -1) return 'telegram';
     if (c.indexOf('fa-robot') !== -1 || c.indexOf('fa-bolt') !== -1) return 'bolt';
     if (c.indexOf('fa-exchange') !== -1) return 'exchange';
+    if (c.indexOf('fa-sync') !== -1 || c.indexOf('fa-redo') !== -1 || c.indexOf('fa-undo') !== -1) return 'sync';
+    if (c.indexOf('fa-lock') !== -1 || c.indexOf('fa-key') !== -1) return 'lock';
+    if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-book') !== -1) return 'info';
     return null;
+  }
+
+  var seq = window.__webpos3dUiSeq || 0;
+
+  function upgradeNodesInDom() {
+    var nodes = document.querySelectorAll(
+      '.stat-icon > i, .summary-icon > i, .action-icon > i,' +
+      '.tab-btn > i, .card-title > i, .modal-title > i, .section-title > i, .empty-state > i,' +
+      '.btn-primary > i, .btn-success > i, .btn-danger > i, .btn-warning > i'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!el || el.id === 'shiftToggleIcon' || el.closest('#ptrIndicator,.btn-sm,.qty-btn,.cart-item-edit,.cart-item-remove')) continue;
+      var key = mapGlobalUiKey(el);
+      if (!key || !UI3D[key]) continue;
+      seq++;
+      var wrap = document.createElement('span');
+      wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
+      var svg = wrap.firstElementChild;
+      if (svg && el.parentNode) el.parentNode.replaceChild(svg, el);
+    }
+    window.__webpos3dUiSeq = seq;
   }
 
   function applyGlobalUi3D() {
@@ -571,18 +613,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       st.id = 'webpos3dGlobalUiStyle';
       st.textContent = [
         '.ui-3d-svg{display:inline-block;flex-shrink:0;vertical-align:middle;filter:drop-shadow(0 2px 4px rgba(15,23,42,0.2));transition:transform .18s ease;}',
-        '.stat-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
-        '.stat-icon > .ui-3d-svg{width:36px;height:36px;}',
+        '.stat-icon:has(> .ui-3d-svg),.summary-icon:has(> .ui-3d-svg),.action-icon:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
+        '.stat-icon > .ui-3d-svg,.summary-icon > .ui-3d-svg{width:36px;height:36px;}',
+        '.action-icon > .ui-3d-svg{width:30px;height:30px;}',
+        '.empty-state > .ui-3d-svg{width:44px;height:44px;margin-bottom:8px;}',
         '.stat-card:hover .stat-icon > .ui-3d-svg{transform:scale(1.1);}',
         '.tab-btn > .ui-3d-svg{width:19px;height:19px;margin-right:4px;}',
-        '.card-title > .ui-3d-svg{width:22px;height:22px;margin-right:5px;}',
-        '#btnThemeToggle .ui-3d-svg,#btnLogout .ui-3d-svg{width:20px;height:20px;}',
-        '#btnThemeToggle:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg{transform:scale(1.12);}'
+        '.card-title > .ui-3d-svg,.modal-title > .ui-3d-svg,.section-title > .ui-3d-svg{width:22px;height:22px;margin-right:5px;}',
+        '.btn > .ui-3d-svg{width:18px;height:18px;margin-right:4px;}',
+        '#btnThemeToggle .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;}',
+        '#btnThemeToggle:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg{transform:scale(1.12);}'
       ].join('\n');
       document.head.appendChild(st);
     }
-
-    var seq = window.__webpos3dUiSeq || 0;
 
     // 1. Tombol Header Dark Mode (Otomatis Bulan 3D <-> Matahari 3D)
     var themeBtn = document.getElementById('btnThemeToggle');
@@ -605,21 +648,24 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       logoutBtn.innerHTML = UI3D.logout.replace(/__ID__/g, 'u3d_' + seq + '_');
     }
 
-    // 3. Semua Kartu Statistik, Tab Menu, & Judul Kartu di seluruh 29 halaman
-    var icons = document.querySelectorAll('.stat-icon > i, .tab-btn > i, .card-title > i');
-    for (var i = 0; i < icons.length; i++) {
-      var el = icons[i];
-      if (!el || el.id === 'shiftToggleIcon') continue;
-      var key = mapGlobalUiKey(el);
-      if (!key || !UI3D[key]) continue;
+    // 3. Tombol Header Menu Mobile
+    var menuBtn = document.getElementById('mobileMenuToggle');
+    if (menuBtn && !menuBtn.dataset.upgraded3d) {
+      menuBtn.dataset.upgraded3d = '1';
       seq++;
-      var wrap = document.createElement('span');
-      wrap.innerHTML = UI3D[key].replace(/__ID__/g, 'u3d_' + seq + '_');
-      var svg = wrap.firstElementChild;
-      if (svg && el.parentNode) el.parentNode.replaceChild(svg, el);
+      menuBtn.innerHTML = UI3D.menu.replace(/__ID__/g, 'u3d_' + seq + '_');
     }
 
-    window.__webpos3dUiSeq = seq;
+    // 4. Upgrade semua ikon halaman + pantau modal/elemen dinamis secara ringan
+    upgradeNodesInDom();
+    var debounceTimer = null;
+    new MutationObserver(function() {
+      if (debounceTimer) return;
+      debounceTimer = setTimeout(function() {
+        debounceTimer = null;
+        upgradeNodesInDom();
+      }, 150);
+    }).observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
