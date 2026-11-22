@@ -25,7 +25,7 @@ if (!window.firebaseConfigInitialized) {
     window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch (e) {}
 
-  // 1. AKTIFKAN OFFLINE PERSISTENCE (Bisa baca data saat tanpa sinyal)
+  // 1. AKTIFKAN OFFLINE PERSISTENCE + SMART CACHE-FIRST GLOBAL (SEMUA 28 HALAMAN INSTAN DI HP!)
   if (!window.firestorePersistenceEnabled) {
     window.firestorePersistenceEnabled = true;
     window.db.enablePersistence({ synchronizeTabs: true })
@@ -35,6 +35,99 @@ if (!window.firebaseConfigInitialized) {
       .catch(function(err) {
         console.warn("Firestore Persistence warning:", err.code);
       });
+  }
+
+  if (!window.__webposSmartFirestorePatched && window.db) {
+    window.__webposSmartFirestorePatched = true;
+    try {
+      var FAST_CACHE_COLS = {
+        users: 1, settings: 1, categories: 1, products: 1,
+        saldo_tools_config: 1, customer_directory_v2: 1
+      };
+
+      function getColName(ref) {
+        try {
+          if (ref && typeof ref.path === 'string' && ref.path) {
+            return ref.path.split('/')[0];
+          }
+          var segs = ref && ref._delegate && ref._delegate._query && ref._delegate._query.path && ref._delegate._query.path.segments;
+          if (segs && segs.length) return segs[0];
+        } catch (e) {}
+        return '';
+      }
+
+      function wrapGet(proto, isDoc) {
+        if (!proto || typeof proto.get !== 'function' || proto.__wposSmartGet) return;
+        proto.__wposSmartGet = true;
+        var origGet = proto.get;
+        proto.get = function(options) {
+          // Jika caller menentukan source eksplisit (cache/server), hormati langsung
+          if (options && options.source) return origGet.call(this, options);
+          var self = this;
+          var col = getColName(self);
+
+          // 1. Data master (produk, kategori, user, setting, pelanggan) -> Cache instan (< 0.03 dtk) + refresh diam-diam di background
+          if (FAST_CACHE_COLS[col]) {
+            return origGet.call(self, { source: 'cache' }).then(function(cacheSnap) {
+              var hasData = isDoc ? (cacheSnap && cacheSnap.exists) : (cacheSnap && !cacheSnap.empty);
+              if (hasData) {
+                if (navigator.onLine) {
+                  setTimeout(function() { origGet.call(self, { source: 'server' }).catch(function() {}); }, 250);
+                }
+                return cacheSnap;
+              }
+              return origGet.call(self);
+            }).catch(function() {
+              return origGet.call(self);
+            });
+          }
+
+          // 2. Data live (transaksi, modal, hutang, kas) -> Coba server maks 1.8 detik, jika sinyal HP pelan langsung tampilkan cache lokal!
+          if (!navigator.onLine) {
+            return origGet.call(self, { source: 'cache' }).catch(function() { return origGet.call(self); });
+          }
+
+          return new Promise(function(resolve, reject) {
+            var settled = false;
+            var serverPromise = origGet.call(self);
+            var fallbackTimer = setTimeout(function() {
+              if (settled) return;
+              origGet.call(self, { source: 'cache' }).then(function(cacheSnap) {
+                var hasData = isDoc ? (cacheSnap && cacheSnap.exists) : (cacheSnap && !cacheSnap.empty);
+                if (!settled && hasData) {
+                  settled = true;
+                  resolve(cacheSnap);
+                }
+              }).catch(function() {});
+            }, 1800);
+
+            serverPromise.then(function(snap) {
+              clearTimeout(fallbackTimer);
+              if (!settled) { settled = true; resolve(snap); }
+            }).catch(function(err) {
+              clearTimeout(fallbackTimer);
+              if (settled) return;
+              origGet.call(self, { source: 'cache' }).then(function(cacheSnap) {
+                settled = true;
+                resolve(cacheSnap);
+              }).catch(function() {
+                settled = true;
+                reject(err);
+              });
+            });
+          });
+        };
+      }
+
+      var sampleDoc = window.db.collection('_wpos').doc('_wpos');
+      var sampleCol = window.db.collection('_wpos');
+      var sampleQuery = sampleCol.limit(1);
+      wrapGet(Object.getPrototypeOf(sampleDoc), true);
+      wrapGet(Object.getPrototypeOf(sampleQuery), false);
+      if (Object.getPrototypeOf(sampleCol) !== Object.getPrototypeOf(sampleQuery)) {
+        wrapGet(Object.getPrototypeOf(sampleCol), false);
+      }
+    } catch (e) {}
   }
 
   // 1b. PENJAGA SESI LOGIN SAAT OFFLINE (Untuk semua 29 halaman agar pindah menu offline tidak ke-logout)
@@ -296,13 +389,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       if (btnClose) btnClose.onclick = function() { bar.remove(); };
     }
 
-    // Cek otomatis stempel deploy terbaru dari GitHub Pages (tanpa perlu edit sw.js!)
+    // Cek otomatis stempel deploy terbaru dari GitHub Pages (maksimal 1x per 5 menit agar pindah menu bebas request online)
     function checkGithubBuildUpdate(force) {
       if (!navigator.onLine) return;
       var now = Date.now();
-      if (!force && (now - lastCheckAt) < 60000) return; // maksimal cek 1x per menit agar hemat kuota
+      var savedLastChk = 0;
+      try { savedLastChk = Number(localStorage.getItem('webpos_last_chk_ts') || 0); } catch (e) {}
+      if (!force && ((now - lastCheckAt) < 300000 || (now - savedLastChk) < 300000)) return;
       lastCheckAt = now;
-
+      try { localStorage.setItem('webpos_last_chk_ts', String(now)); } catch (e) {}
+      
       fetch('./index.html?_chk=' + now, { method: 'HEAD', cache: 'no-store' })
         .then(function(res) {
           if (!res || !res.ok) return;
@@ -1172,7 +1268,23 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         }
       };
 
-      // 2. Efek Transisi Progress Interaktif Saat Pindah Halaman (Klik Sidebar / Bottom Nav)
+      // 2. Prefetch halus saat jari menyentuh / hover menu + Transisi Mulus Tanpa Kedip Gelap
+      var prefetchedUrls = {};
+      function prefetchPage(e) {
+        var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        if (!href || href.charAt(0) === '#' || prefetchedUrls[href]) return;
+        prefetchedUrls[href] = 1;
+        var pf = document.createElement('link');
+        pf.rel = 'prefetch';
+        pf.href = href;
+        document.head.appendChild(pf);
+      }
+      document.addEventListener('touchstart', prefetchPage, { passive: true, capture: true });
+      document.addEventListener('mouseenter', prefetchPage, true);
+
+      var navDelayTimer = null;
       document.addEventListener('click', function(e) {
         var link = e.target && e.target.closest ? e.target.closest('a[href$=".html"]') : null;
         if (!link) return;
@@ -1180,7 +1292,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         if (!href || href.charAt(0) === '#' || link.target === '_blank' || e.ctrlKey || e.metaKey) return;
         var labelEl = link.querySelector('span');
         var pageLabel = labelEl ? labelEl.textContent.trim() : 'Halaman';
-        window.WebPOSLoader.show('Membuka ' + pageLabel + '...', 'Memuat tampilan...');
+
+        // Langsung jalankan garis progress atas yang mulus
+        topBar.style.opacity = '1';
+        topBar.style.width = '78%';
+
+        // Kartu progress 3D hanya muncul jika perpindahan > 350ms (kalau dari cache HP langsung mulus tanpa kedip!)
+        if (navDelayTimer) clearTimeout(navDelayTimer);
+        navDelayTimer = setTimeout(function() {
+          window.WebPOSLoader.show('Membuka ' + pageLabel + '...', 'Menyiapkan halaman...');
+        }, 350);
       }, true);
 
       // Pastikan loader bersih saat user tekan tombol Back di HP (bfcache)
