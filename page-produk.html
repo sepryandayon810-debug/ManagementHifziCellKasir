@@ -1224,7 +1224,8 @@
       <div id="tab-kategori" class="tab-content">
         <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
           <button class="btn btn-secondary" id="btnBackToAllCat" style="display:none;" onclick="resetCategoryFilter()"><i class="fas fa-arrow-left"></i> Kembali</button>
-          <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
+         <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btnToggleEmptyKat" style="display:none; font-size:0.78rem; padding:0.45rem 0.75rem;" onclick="window.toggleEmptyCategories()"></button>
             <div class="view-toggle">
               <button class="view-btn active" id="btnKatGridView" title="Grid View"><i class="fas fa-th-large"></i></button>
               <button class="view-btn" id="btnKatListView" title="List View"><i class="fas fa-list"></i></button>
@@ -1587,10 +1588,16 @@
 
   let productsList = [];
   let categoriesList = [];
-  let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
+ let currentViewMode = localStorage.getItem("webpos_product_view") || "grid";
   let currentKatViewMode = localStorage.getItem("webpos_kat_view") || "grid";
   let selectedCategoryFilter = "";
+  let hideEmptyCategories = localStorage.getItem("webpos_hide_empty_cat") !== "false";
 
+  window.toggleEmptyCategories = function() {
+    hideEmptyCategories = !hideEmptyCategories;
+    localStorage.setItem("webpos_hide_empty_cat", hideEmptyCategories ? "true" : "false");
+    renderCategoriesGrid();
+  };
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
       if (!user) {
@@ -2034,8 +2041,50 @@ document.getElementById("filterKategori").onchange = function() {
 
   function renderCategoriesGrid() {
     const grid = document.getElementById("kategoriGrid");
+    const toggleBtn = document.getElementById("btnToggleEmptyKat");
     if (categoriesList.length === 0) {
+      if (toggleBtn) toggleBtn.style.display = "none";
       grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Belum ada kategori.</div>`;
+      return;
+    }
+
+    // Hitung jumlah produk per kategori sekali jalan (jauh lebih cepat di HP)
+    const countMap = {};
+    productsList.forEach(p => {
+      if (p && p.categoryId) countMap[p.categoryId] = (countMap[p.categoryId] || 0) + 1;
+    });
+
+    const hasProductsLoaded = productsList.length > 0;
+    const emptyCount = hasProductsLoaded ? categoriesList.filter(c => (countMap[c.id] || 0) === 0).length : 0;
+
+    if (toggleBtn) {
+      if (emptyCount > 0) {
+        toggleBtn.style.display = "inline-flex";
+        toggleBtn.innerHTML = hideEmptyCategories
+          ? `<i class="fas fa-eye"></i> Tampilkan Kosong (${emptyCount})`
+          : `<i class="fas fa-eye-slash"></i> Sembunyikan Kosong (${emptyCount})`;
+      } else {
+        toggleBtn.style.display = "none";
+      }
+    }
+
+    const visibleCats = (hideEmptyCategories && hasProductsLoaded)
+      ? categoriesList.filter(c => (countMap[c.id] || 0) > 0)
+      : categoriesList;
+
+    // Sinkronkan dropdown filter Tab Produk (form Tambah/Edit Produk tetap tampil semua kategori)
+    const filterKat = document.getElementById("filterKategori");
+    if (filterKat && hasProductsLoaded) {
+      const curVal = filterKat.value;
+      let fHtml = '<option value="">Semua Kategori</option>';
+      visibleCats.forEach(c => { fHtml += `<option value="${c.id}">${c.name}</option>`; });
+      filterKat.innerHTML = fHtml;
+      if (curVal && visibleCats.some(c => c.id === curVal)) filterKat.value = curVal;
+    }
+
+    if (visibleCats.length === 0) {
+      grid.className = "kategori-grid";
+      grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Semua kategori (${emptyCount}) masih kosong (0 produk).<br><button class="btn btn-secondary" style="margin-top:0.75rem;" onclick="window.toggleEmptyCategories()"><i class="fas fa-eye"></i> Tampilkan Kategori Kosong</button></div>`;
       return;
     }
 
@@ -2043,14 +2092,15 @@ document.getElementById("filterKategori").onchange = function() {
 
     if (currentKatViewMode === "list") {
       grid.className = "kategori-list";
-      grid.innerHTML = categoriesList.map((c, idx) => {
-        const count = productsList.filter(p => p.categoryId === c.id).length;
+      grid.innerHTML = visibleCats.map((c, idx) => {
+        const count = countMap[c.id] || 0;
         const safeName = (c.name || "").replace(/'/g, "\\'");
         const vis = getAutoCategoryVisual(c, fallbackColors[idx % fallbackColors.length], "klist_" + idx + "_");
         const boxBorder = vis.hasImage ? "1px solid var(--border-color, #e2e8f0)" : "1px solid " + vis.color + "33";
+        const emptyStyle = count === 0 ? "opacity:0.72; border-style:dashed;" : "";
 
         return `
-          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="padding:0.75rem 1rem;">
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="padding:0.75rem 1rem; ${emptyStyle}">
             <div class="kategori-icon" style="background:${vis.bg}; width:42px; height:42px; padding:4px; border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:${boxBorder}; flex-shrink:0;">${vis.html}</div>
             <div class="kategori-info">
               <div class="kategori-name">${c.name}</div>
@@ -2065,14 +2115,15 @@ document.getElementById("filterKategori").onchange = function() {
       }).join("");
     } else {
       grid.className = "kategori-grid";
-      grid.innerHTML = categoriesList.map((c, idx) => {
-        const count = productsList.filter(p => p.categoryId === c.id).length;
+      grid.innerHTML = visibleCats.map((c, idx) => {
+        const count = countMap[c.id] || 0;
         const safeName = (c.name || "").replace(/'/g, "\\'");
         const vis = getAutoCategoryVisual(c, fallbackColors[idx % fallbackColors.length], "kgrid_" + idx + "_");
         const boxBorder = vis.hasImage ? "1px solid var(--border-color, #e2e8f0)" : "1px solid " + vis.color + "33";
+        const emptyStyle = count === 0 ? "opacity:0.72; border-style:dashed;" : "";
 
         return `
-          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important; max-height:none !important; flex-direction:column !important; align-items:center !important; text-align:center !important; padding:0.6rem 0.35rem 0.5rem !important; gap:0.3rem !important; display:flex !important; justify-content:flex-start !important; overflow:visible !important; border-radius:14px !important;">
+          <div class="kategori-card" onclick="window.selectCategory('${c.id}', '${safeName}')" style="box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important; max-height:none !important; flex-direction:column !important; align-items:center !important; text-align:center !important; padding:0.6rem 0.35rem 0.5rem !important; gap:0.3rem !important; display:flex !important; justify-content:flex-start !important; overflow:visible !important; border-radius:14px !important; ${emptyStyle}">
             <div class="kategori-icon" style="background:${vis.bg}; width:44px; height:44px; min-height:44px; padding:4px; flex-shrink:0; border-radius:11px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:${boxBorder};">${vis.html}</div>
             <div class="kategori-info" style="width:100%; min-width:0; padding:0; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
               <div class="kategori-name" style="white-space:normal !important; font-size:0.74rem; font-weight:700; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;">${c.name}</div>
