@@ -1377,19 +1377,15 @@
               item.isNewProduct = false;
             } else {
               const prodRef = db.collection("products").doc(item.productId);
-              const prodDoc = await prodRef.get();
-              if (prodDoc.exists) {
-                const currentStock = prodDoc.data().stock || 0;
-                const updatePayload = {
-                  stock: currentStock + item.qty,
-                  costPrice: item.harga,
-                  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                if (item.updateSelling > 0) updatePayload.sellingPrice = item.updateSelling;
-                if (item.updateReseller > 0) updatePayload.resellerPrice = item.updateReseller;
+              const updatePayload = {
+                stock: firebase.firestore.FieldValue.increment(Number(item.qty) || 0),
+                costPrice: item.harga,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              };
+              if (item.updateSelling > 0) updatePayload.sellingPrice = item.updateSelling;
+              if (item.updateReseller > 0) updatePayload.resellerPrice = item.updateReseller;
 
-                await prodRef.update(updatePayload);
-              }
+              await prodRef.update(updatePayload);
             }
           }
 
