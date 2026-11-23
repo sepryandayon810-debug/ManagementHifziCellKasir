@@ -2056,6 +2056,9 @@ itemsText + '\n' +
 
           batch.delete(db.collection('transactions').doc(id));
           await batch.commit();
+          if (restoredCount > 0) {
+            try { localStorage.removeItem('webpos_cache_timestamp'); } catch (e) {}
+          }
 
           Utils.hideLoading();
           Utils.showToast(
