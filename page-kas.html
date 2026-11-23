@@ -813,18 +813,20 @@
         if (filterType === 'custom' && dateFrom && dateTo) {
           return { startDate: dateFrom, endDate: dateTo };
         }
+        const fmtLocal = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         if (filterType === 'yesterday') {
           const yesterday = new Date(todayDate);
           yesterday.setDate(yesterday.getDate() - 1);
-          start = yesterday.toISOString().split('T')[0];
+          start = fmtLocal(yesterday);
           end = start;
         } else if (filterType === 'week') {
           const startOfWeek = new Date(todayDate);
           startOfWeek.setDate(todayDate.getDate() - todayDate.getDay());
-          start = startOfWeek.toISOString().split('T')[0];
+          start = fmtLocal(startOfWeek);
         } else if (filterType === 'month') {
           const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
-          start = startOfMonth.toISOString().split('T')[0];
+          start = fmtLocal(startOfMonth);
+        }
         } else if (filterType === 'all') {
           start = '2000-01-01';
         }
