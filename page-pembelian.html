@@ -1334,9 +1334,12 @@
         btnSimpan.disabled = false;
       }
 
+      let isSavingPembelian = false;
       async function simpanPembelian() {
+        if (isSavingPembelian) return;
         if (pembelianList.length === 0) return;
 
+        isSavingPembelian = true;
         Utils.showLoading('Menyimpan pembelian & update stok...');
         try {
           const user = auth.currentUser;
@@ -1482,6 +1485,8 @@ await db
           Utils.hideLoading();
           console.error("Error saving purchase:", error);
           Utils.showToast('Gagal menyimpan pembelian: ' + error.message, 'error');
+        } finally {
+          isSavingPembelian = false;
         }
       }
 
