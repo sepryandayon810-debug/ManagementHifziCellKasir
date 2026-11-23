@@ -1135,6 +1135,9 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       return;
     }
 
+    const escHtml = (v) => String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    const escJs = (v) => escHtml(String(v == null ? "" : v).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r|\n/g," "));
+
     tbody.innerHTML = filtered.map(u => {
       const role = (u.role || "kasir").toLowerCase();
       const status = u.status || "pending";
@@ -1142,47 +1145,54 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
 
       const canEditPassword = (currentUserRole === "developer" || currentUserRole === "owner") || 
                             (currentUserRole === "admin" && role === "kasir");
+      const safeId = escJs(u.id);
+      const safeNameHtml = escHtml(u.name || "-");
+      const safeUserHtml = escHtml(u.username || "-");
+      const safeEmailHtml = escHtml(u.email || "-");
+      const safeLabelJs = escJs(u.name || u.email || "Staf");
+      const safeRoleClass = escHtml(role.replace(/[^a-z0-9_-]/g, ""));
+      const safeStatusClass = escHtml(String(status).replace(/[^a-z0-9_-]/g, ""));
 
       return `
         <tr>
           <td>
-            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${u.id}')" title="Klik untuk edit data & hak akses">
-  <div style="font-weight:700; color:var(--text-main);">${u.name || '-'}</div>
-  <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${u.username || '-'}</div>
+            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${safeId}')" title="Klik untuk edit data & hak akses">
+  <div style="font-weight:700; color:var(--text-main);">${safeNameHtml}</div>
+  <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${safeUserHtml}</div>
             </button>
           </td>
-          <td>${u.email || '-'}</td>
+          <td>${safeEmailHtml}</td>
           <td>
-            <span class="role-tag role-${role}">${role.toUpperCase()}</span>
+            <span class="role-tag role-${safeRoleClass}">${escHtml(role.toUpperCase())}</span>
           </td>
           <td>
-            <span class="badge badge-${status}">${status}</span>
+            <span class="badge badge-${safeStatusClass}">${escHtml(status)}</span>
           </td>
           <td style="text-align:right">
             <div class="btn-action-group" style="justify-content:flex-end">
               ${status === 'pending' ? `
-                <button class="btn-action btn-approve" onclick="window.approveUser('${u.id}', '${u.name || 'Staf'}')">
+                <button class="btn-action btn-approve" onclick="window.approveUser('${safeId}', '${escJs(u.name || "Staf")}')">
                   <i class="fas fa-check"></i> Setujui
                 </button>
-                <button class="btn-action btn-reject" onclick="window.rejectUser('${u.id}')">
+                <button class="btn-action btn-reject" onclick="window.rejectUser('${safeId}')">
                   <i class="fas fa-xmark"></i> Tolak
                 </button>
               ` : `
-                <button class="btn-action btn-device" onclick="window.openDeviceHistory('${u.id}', '${u.name || u.email}')" title="Riwayat Device Login">
+                <button class="btn-action btn-device" onclick="window.openDeviceHistory('${safeId}', '${safeLabelJs}')" title="Riwayat Device Login">
                   <i class="fas fa-laptop-mobile"></i> Device
                 </button>
 
                 ${canEditPassword ? `
-                  <button class="btn-action btn-password" onclick="window.openPasswordModal('${u.id}', '${u.name || u.email}')" title="Ganti Password">
+                  <button class="btn-action btn-password" onclick="window.openPasswordModal('${safeId}', '${safeLabelJs}')" title="Ganti Password">
                     <i class="fas fa-key"></i> Password
                   </button>
                 ` : ''}
                 
                 ${(!isDevOrOwner || currentUserRole === 'developer') ? `
-                  <button class="btn-action btn-delete" onclick="window.openRoleModal('${u.id}', '${u.name || u.email}', '${role}')" title="Ubah Role">
+                  <button class="btn-action btn-delete" onclick="window.openRoleModal('${safeId}', '${safeLabelJs}', '${escJs(role)}')" title="Ubah Role">
                     <i class="fas fa-user-pen"></i> Role
                   </button>
-                  <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${u.id}')" title="Hapus User">
+                  <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${safeId}')" title="Hapus User">
                     <i class="fas fa-trash"></i> Hapus
                   </button>
                 ` : ''}
@@ -1192,8 +1202,7 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
         </tr>
       `;
     }).join("");
-  }
-
+    
   window.approveUser = function(userId, userName) {
     showCustomConfirm("Persetujuan Akun", `Setujui pengajuan akun untuk ${userName}?`, "warning", "Ya, Setujui", async () => {
       try {
