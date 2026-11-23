@@ -190,7 +190,42 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
     }
   };
 
+  var GAS_RECEIVER_SCRIPT = [
+    'function doPost(e) {',
+    '  try {',
+    '    var data = JSON.parse(e.postData.contents);',
+    '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
+    '    var tabs = [',
+    '      ["Transaksi", data.transactions],',
+    '      ["Produk", data.products],',
+    '      ["Hutang", data.debts],',
+    '      ["Kas_Shift", data.shifts],',
+    '      ["Pembelian", data.purchases],',
+    '      ["Pelanggan", data.customers],',
+    '      ["Penggajian", data.payrolls],',
+    '      ["Saldo_Tools", data.saldoHistory]',
+    '    ];',
+    '    tabs.forEach(function(item) {',
+    '      var sheet = ss.getSheetByName(item[0]) || ss.insertSheet(item[0]);',
+    '      sheet.clearContents();',
+    '      var rows = item[1] || [];',
+    '      if (!rows.length) return;',
+    '      var headers = Object.keys(rows[0]);',
+    '      var values = [headers].concat(rows.map(function(r) {',
+    '        return headers.map(function(h) { return r[h] == null ? "" : (typeof r[h] === "object" ? JSON.stringify(r[h]) : r[h]); });',
+    '      }));',
+    '      sheet.getRange(1, 1, values.length, headers.length).setValues(values);',
+    '    });',
+    '    return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);',
+    '  } catch (err) {',
+    '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
+    '  }',
+    '}'
+  ].join('\n');
+
   window.openSetupGuideModal = function () {
+    var box = document.getElementById('gasCodeDisplay');
+    if (box) box.textContent = GAS_RECEIVER_SCRIPT;
     var m = document.getElementById('setupGuideModal');
     if (m) m.classList.add('active');
   };
@@ -198,6 +233,18 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
   window.closeSetupGuideModal = function () {
     var m = document.getElementById('setupGuideModal');
     if (m) m.classList.remove('active');
+  };
+
+  window.copyGasCodeToClipboard = function () {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(GAS_RECEIVER_SCRIPT).then(function () {
+        notifyToast('Kode Google Apps Script berhasil disalin!', 'success');
+      }).catch(function () {
+        notifyToast('Gagal menyalin kode otomatis, silakan blok manual.', 'warning');
+      });
+    } else {
+      notifyToast('Browser tidak mendukung salin otomatis, silakan blok manual.', 'warning');
+    }
   };
 
   function parseDateToReadable(rawDate) {
