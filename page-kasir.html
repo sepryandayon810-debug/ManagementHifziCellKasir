@@ -6320,9 +6320,12 @@ const transaction = {
           document.querySelectorAll('.payment-method').forEach(x => x.classList.remove('active'));
           document.querySelector('.payment-method[data-method="cash"]').classList.add('active');
           document.getElementById('piutangSection').classList.remove('active');
+          document.querySelector('.quick-amounts').classList.remove('payment-mode-hidden');
           document.querySelector('.quick-amounts').style.display = 'flex';
           document.querySelector('.numpad').style.display = 'grid';
+          document.getElementById('paymentInput').parentElement.classList.remove('payment-mode-hidden');
           document.getElementById('paymentInput').parentElement.style.display = 'block';
+          document.getElementById('paymentChange').parentElement.classList.remove('payment-mode-hidden');
           document.getElementById('paymentChange').parentElement.style.display = 'block';
 
           document.getElementById('loadingOverlay').classList.remove('active');
@@ -7541,7 +7544,9 @@ if (beliSearchInput) {
 }
 
 // ===== SIMPAN SEMUA ITEM =====
+let isSavingBeli = false;
 async function saveBeliBarang() {
+  if (isSavingBeli) return;
   if (beliItems.length === 0) {
     showToast('Belum ada item yang ditambahkan', 'error');
     return;
@@ -7552,6 +7557,7 @@ async function saveBeliBarang() {
     return;
   }
 
+  isSavingBeli = true;
   document.getElementById('loadingOverlay').classList.add('active');
 
   try {
@@ -7576,19 +7582,14 @@ async function saveBeliBarang() {
       
       if (item.mode === 'existing') {
         productId = item.productId;
-        const prodRef = db.ref('products/' + productId);
-        const snap = await prodRef.once('value');
-        const prod = snap.val();
-        if (prod) {
-          const existingUpdates = {
-            stock: (prod.stock || 0) + item.qty,
-            costPrice: item.hargaBeli,
-            updatedAt: timestamp
-          };
-          if (item.normalPrice > 0) existingUpdates.sellingPrice = item.normalPrice;
-          if (item.resellerPrice > 0) existingUpdates.resellerPrice = item.resellerPrice;
-          await prodRef.update(existingUpdates);
-        }
+        const existingUpdates = {
+          stock: firebase.firestore.FieldValue.increment(Number(item.qty) || 0),
+          costPrice: item.hargaBeli,
+          updatedAt: timestamp
+        };
+        if (item.normalPrice > 0) existingUpdates.sellingPrice = item.normalPrice;
+        if (item.resellerPrice > 0) existingUpdates.resellerPrice = item.resellerPrice;
+        await firebase.firestore().collection('products').doc(productId).update(existingUpdates);
       } else {
         const newRef = db.ref('products').push();
         productId = newRef.key;
@@ -7662,10 +7663,12 @@ if (kurangiSaldo) {
       : `${beliItems.length} item berhasil! (Tidak mengurangi saldo)`;
     showToast(msg, 'success');
 
-  } catch (err) {
+ } catch (err) {
     console.error('Beli barang error:', err);
     document.getElementById('loadingOverlay').classList.remove('active');
     showToast('Gagal menyimpan: ' + err.message, 'error');
+  } finally {
+    isSavingBeli = false;
   }
 }
     
