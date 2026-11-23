@@ -112,7 +112,7 @@ window.AuditLogger = {
         userId: user ? user.uid : '',
         userRole: userRole,        // Sekarang role akan benar: 'developer' / 'owner' / 'admin'
         timestamp: Date.now(),
-        date: new Date().toISOString().split('T')[0],
+        date: Utils.getTodayString(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       console.log('🛡️ Log Audit berhasil disimpan sebagai:', userRole, action);
