@@ -180,6 +180,8 @@ if (!window.firebaseConfigInitialized) {
         localStorage.removeItem('webpos_session');
         localStorage.removeItem('webpos_user');
         localStorage.removeItem('webpos_user_role');
+        localStorage.removeItem('webpos_user_name');
+        localStorage.removeItem('webpos_user_permissions');
         localStorage.removeItem('webpos_last_uid');
         localStorage.removeItem('webpos_last_username');
         sessionStorage.removeItem('webpos_backup_cache');
