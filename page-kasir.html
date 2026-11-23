@@ -6010,7 +6010,18 @@ document.getElementById('btnConfirmPayment').addEventListener('click', processPa
 // Desktop confirm  
 document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', processPayment);
 
+   let isProcessingPayment = false;
     async function processPayment() {
+      if (isProcessingPayment) return;
+      isProcessingPayment = true;
+      try {
+        return await _runProcessPayment();
+      } finally {
+        isProcessingPayment = false;
+      }
+    }
+
+    async function _runProcessPayment() {
       const total = calculateTotal();
 
       // ⭐ Normalisasi metode pembayaran ke format KasCore
