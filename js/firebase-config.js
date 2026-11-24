@@ -381,11 +381,83 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var hadController = Boolean(navigator.serviceWorker.controller);
     var updateNotifShown = false;
     var latestDetectedBuild = '';
+    var latestSwVersion = '';
     var lastCheckAt = 0;
 
-    function showAppUpdateBanner() {
+    function extractSwVersion(text) {
+      var m = String(text || '').match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+      if (!m || !m[1]) return '';
+      var vMatch = m[1].match(/(v[0-9]+(?:\.[0-9]+)*)/i);
+      return vMatch ? vMatch[1] : m[1];
+    }
+
+    function fetchLatestSwVersion() {
+      return fetch('./sw.js?_v=' + Date.now(), { cache: 'no-store' })
+        .then(function(res) { return (res && res.ok) ? res.text() : ''; })
+        .then(function(txt) {
+          var v = extractSwVersion(txt);
+          if (v) latestSwVersion = v;
+          return v;
+        })
+        .catch(function() { return latestSwVersion || ''; });
+    }
+
+    function showUpdatedVersionToast(verLabel) {
+      if (!verLabel || document.getElementById('webposUpdatedToast')) return;
+      var el = document.createElement('div');
+      el.id = 'webposUpdatedToast';
+      el.style.cssText = [
+        'position:fixed', 'left:50%', 'bottom:82px', 'transform:translateX(-50%)',
+        'z-index:99999', 'max-width:calc(100vw - 28px)', 'box-sizing:border-box',
+        'background:linear-gradient(135deg,#065f46,#059669)', 'color:#ffffff',
+        'padding:11px 16px', 'border-radius:14px',
+        'display:flex', 'align-items:center', 'gap:9px',
+        'box-shadow:0 14px 30px rgba(5,150,105,0.38)',
+        'border:1px solid rgba(255,255,255,0.28)',
+        'font-size:12.5px', 'font-weight:700', 'font-family:inherit',
+        'transition:opacity .35s ease,transform .35s ease'
+      ].join(';');
+      el.innerHTML =
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' +
+        '<span>Aplikasi berhasil diperbarui ke versi <strong style="background:rgba(255,255,255,0.2);padding:2px 7px;border-radius:6px;">' + verLabel + '</strong></span>';
+      document.body.appendChild(el);
+      setTimeout(function() {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-50%) translateY(10px)';
+        setTimeout(function() { el.remove(); }, 360);
+      }, 4500);
+    }
+
+    // Jika halaman baru saja dimuat ulang dari tombol Refresh update, tampilkan info versi yang aktif
+    try {
+      var justUpdatedVer = sessionStorage.getItem('webpos_just_updated_ver');
+      if (justUpdatedVer) {
+        sessionStorage.removeItem('webpos_just_updated_ver');
+        setTimeout(function() {
+          fetchLatestSwVersion().then(function(liveVer) {
+            var finalVer = liveVer || justUpdatedVer;
+            try { if (finalVer) localStorage.setItem('webpos_app_version', finalVer); } catch (e) {}
+            showUpdatedVersionToast(finalVer);
+          });
+        }, 450);
+      }
+    } catch (e) {}
+
+    function showAppUpdateBanner(verHint) {
+      if (verHint) latestSwVersion = verHint;
+      var existingBadge = document.getElementById('webposUpdateVerBadge');
+      var existingDesc = document.getElementById('webposUpdateVerText');
+      if (existingBadge && latestSwVersion) {
+        existingBadge.textContent = latestSwVersion;
+        existingBadge.style.display = 'inline-block';
+      }
+      if (existingDesc && latestSwVersion) {
+        existingDesc.innerHTML = 'Versi terbaru <strong>' + latestSwVersion + '</strong> sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.';
+      }
       if (updateNotifShown || document.getElementById('webposUpdateBanner')) return;
       updateNotifShown = true;
+
+      var initialVer = latestSwVersion || '';
       var bar = document.createElement('div');
       bar.id = 'webposUpdateBanner';
       bar.style.cssText = [
@@ -403,18 +475,35 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
             '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
+            '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:3px;">' +
               '<span style="font-size:13.5px;font-weight:800;color:#ffffff;letter-spacing:0.01em;">Pembaruan Aplikasi Tersedia</span>' +
+              '<span id="webposUpdateVerBadge" style="display:' + (initialVer ? 'inline-block' : 'none') + ';background:rgba(34,197,94,0.22);color:#86efac;border:1px solid rgba(74,222,128,0.4);font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;">' + initialVer + '</span>' +
             '</div>' +
-            '<div style="font-size:12px;line-height:1.45;color:#cbd5e1;">Versi terbaru WebPOS sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.</div>' +
+            '<div id="webposUpdateVerText" style="font-size:12px;line-height:1.45;color:#cbd5e1;">' +
+              (initialVer
+                ? 'Versi terbaru <strong>' + initialVer + '</strong> sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.'
+                : 'Versi terbaru WebPOS sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.') +
+            '</div>' +
           '</div>' +
           '<button type="button" id="btnCloseWebposUpdate" aria-label="Tutup" style="background:rgba(148,163,184,0.14);color:#cbd5e1;border:none;width:26px;height:26px;border-radius:8px;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">&times;</button>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">' +
           '<button type="button" id="btnLaterWebposUpdate" style="flex:0 0 auto;background:rgba(148,163,184,0.14);color:#e2e8f0;border:1px solid rgba(148,163,184,0.22);padding:8px 14px;border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;">Nanti</button>' +
-          '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Refresh</button>' +
+          '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Refresh' + (initialVer ? ' (' + initialVer + ')' : '') + '</button>' +
         '</div>';
       document.body.appendChild(bar);
+
+      if (!initialVer) {
+        fetchLatestSwVersion().then(function(v) {
+          if (!v) return;
+          var b = document.getElementById('webposUpdateVerBadge');
+          var d = document.getElementById('webposUpdateVerText');
+          var r = document.getElementById('btnReloadWebposUpdate');
+          if (b) { b.textContent = v; b.style.display = 'inline-block'; }
+          if (d) d.innerHTML = 'Versi terbaru <strong>' + v + '</strong> sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.';
+          if (r && !r.disabled) r.textContent = 'Refresh (' + v + ')';
+        });
+      }
 
       var btnReload = document.getElementById('btnReloadWebposUpdate');
       var btnClose = document.getElementById('btnCloseWebposUpdate');
@@ -422,18 +511,28 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       if (btnReload) {
         btnReload.onclick = function() {
           btnReload.disabled = true;
-          btnReload.textContent = 'Memuat ulang...';
-          if (latestDetectedBuild) {
-            try { localStorage.setItem('webpos_last_build_ver', latestDetectedBuild); } catch (e) {}
+          var targetVer = latestSwVersion || 'terbaru';
+          btnReload.textContent = 'Memuat ' + targetVer + '...';
+          try {
+            if (latestDetectedBuild) localStorage.setItem('webpos_last_build_ver', latestDetectedBuild);
+            if (latestSwVersion) localStorage.setItem('webpos_app_version', latestSwVersion);
+            sessionStorage.setItem('webpos_just_updated_ver', targetVer);
+          } catch (e) {}
+          if (window.caches && caches.keys) {
+            caches.keys().then(function(keys) {
+              var keepKey = latestSwVersion ? ('webpos-hifzi-' + latestSwVersion) : '';
+              return Promise.all(keys.filter(function(k) { return !keepKey || k !== keepKey; }).map(function(k) { return caches.delete(k); }));
+            }).catch(function() {}).finally(function() { window.location.reload(); });
+          } else {
+            window.location.reload();
           }
-          window.location.reload();
         };
       }
       if (btnClose) btnClose.onclick = function() { bar.remove(); };
       if (btnLater) btnLater.onclick = function() { bar.remove(); };
     }
 
-    // Cek otomatis stempel deploy terbaru dari GitHub Pages (maksimal 1x per 5 menit agar pindah menu bebas request online)
+    // Cek otomatis versi sw.js & stempel deploy terbaru dari GitHub Pages (maksimal 1x per 5 menit agar pindah menu bebas request online)
     function checkGithubBuildUpdate(force) {
       if (!navigator.onLine) return;
       var now = Date.now();
@@ -442,27 +541,35 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       if (!force && ((now - lastCheckAt) < 300000 || (now - savedLastChk) < 300000)) return;
       lastCheckAt = now;
       try { localStorage.setItem('webpos_last_chk_ts', String(now)); } catch (e) {}
-      
-      fetch('./index.html?_chk=' + now, { method: 'HEAD', cache: 'no-store' })
-        .then(function(res) {
-          if (!res || !res.ok) return;
-          var serverBuild = res.headers.get('last-modified') || res.headers.get('etag') || '';
-          if (!serverBuild) return;
 
-          var savedBuild = '';
-          try { savedBuild = localStorage.getItem('webpos_last_build_ver') || ''; } catch (e) {}
+      Promise.all([
+        fetchLatestSwVersion(),
+        fetch('./index.html?_chk=' + now, { method: 'HEAD', cache: 'no-store' }).catch(function() { return null; })
+      ]).then(function(results) {
+        var swVer = results[0] || '';
+        var res = results[1];
+        var serverBuild = (res && res.ok) ? (res.headers.get('last-modified') || res.headers.get('etag') || '') : '';
 
-          if (!savedBuild) {
-            // Pertama kali simpan versi dasar tanpa munculkan popup
-            try { localStorage.setItem('webpos_last_build_ver', serverBuild); } catch (e) {}
-          } else if (savedBuild !== serverBuild) {
-            latestDetectedBuild = serverBuild;
-            showAppUpdateBanner();
-          }
-        })
-        .catch(function() {});
+        var savedVer = '';
+        var savedBuild = '';
+        try {
+          savedVer = localStorage.getItem('webpos_app_version') || '';
+          savedBuild = localStorage.getItem('webpos_last_build_ver') || '';
+        } catch (e) {}
+
+        if (swVer && !savedVer) {
+          try { localStorage.setItem('webpos_app_version', swVer); } catch (e) {}
+        }
+        if (serverBuild && !savedBuild) {
+          try { localStorage.setItem('webpos_last_build_ver', serverBuild); } catch (e) {}
+        }
+
+        if ((swVer && savedVer && savedVer !== swVer) || (serverBuild && savedBuild && savedBuild !== serverBuild)) {
+          if (serverBuild) latestDetectedBuild = serverBuild;
+          showAppUpdateBanner(swVer);
+        }
+      }).catch(function() {});
     }
-
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
       console.log('Service Worker: AKTIF');
 
