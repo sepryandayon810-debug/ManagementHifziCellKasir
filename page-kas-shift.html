@@ -1068,6 +1068,8 @@
   }
 }
       
+      let isShiftClosedToday = false;
+
       async function checkShiftStatus(user, userData) {
         const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
 
@@ -1077,12 +1079,17 @@
           
           if (docSnap.exists && docSnap.data().status === 'open') {
             isShiftOpen = true;
+            isShiftClosedToday = false;
             currentShiftId = docSnap.id;
-            updateShiftUI(true, docSnap.data().openedAt || docSnap.data().openTime);
+            if (window.KasCore && KasCore.syncShiftCache) KasCore.syncShiftCache(user.uid, today, 'open', docSnap.id);
+            updateShiftUI(true, docSnap.data().openedAt || docSnap.data().openTime, false);
           } else {
+            const closedToday = Boolean(docSnap.exists && docSnap.data().status !== 'open');
             isShiftOpen = false;
+            isShiftClosedToday = closedToday;
             currentShiftId = null;
-            updateShiftUI(false);
+            if (window.KasCore && KasCore.syncShiftCache) KasCore.syncShiftCache(user.uid, today, closedToday ? 'closed' : 'none', null);
+            updateShiftUI(false, null, closedToday);
           }
           loadKasLaciSummary(user, userData);
         } catch (error) {
@@ -1090,7 +1097,7 @@
         }
       }
 
-      function updateShiftUI(isOpen, openTime = null) {
+      function updateShiftUI(isOpen, openTime = null, isClosedToday = false) {
         const icon = document.getElementById('shiftStatusIcon');
         const text = document.getElementById('shiftStatusText');
         const time = document.getElementById('shiftStatusTime');
@@ -1105,97 +1112,72 @@
           const parsed = parseFirestoreDate(openTime);
           time.textContent = parsed ? 'Dibuka: ' + parsed.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : 'Shift Sedang Aktif';
           
+          btn.style.background = '';
           btn.className = 'btn-shift close';
           btn.innerHTML = '<i class="fas fa-lock"></i><span>Tutup Shift (Closing)</span>';
+        } else if (isClosedToday) {
+          icon.className = 'status-indicator-large closed';
+          icon.innerHTML = '<i class="fas fa-lock"></i>';
+          text.className = 'status-text closed';
+          text.textContent = 'TUTUP';
+          time.textContent = 'Shift Hari Ini Sudah Ditutup (Closing)';
+          btn.className = 'btn-shift open';
+          btn.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+          btn.innerHTML = '<i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>';
         } else {
           icon.className = 'status-indicator-large closed';
           icon.innerHTML = '<i class="fas fa-store-slash"></i>';
           text.className = 'status-text closed';
           text.textContent = 'TUTUP';
-          time.textContent = 'Shift Belum Aktif / Ditutup';
+          time.textContent = 'Shift Belum Dibuka Hari Ini';
+          btn.style.background = '';
           btn.className = 'btn-shift open';
           btn.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift Kerja</span>';
         }
       }
 
-          async function openShift(user, userData) {
-  Utils.showLoading('Membuka shift kerja...');
+      async function openShift(user, userData) {
+        if (isShiftClosedToday && window.KasCore && typeof KasCore.openShiftGuardModal === 'function') {
+          KasCore.openShiftGuardModal({
+            status: 'closed',
+            onSuccess: async () => {
+              await checkShiftStatus(user, userData);
+              loadShiftHistory('today');
+            }
+          });
+          return;
+        }
 
-  try {
-    const today = Utils.getTodayString
-      ? Utils.getTodayString()
-      : new Date().toISOString().split('T')[0];
+        Utils.showLoading('Membuka shift kerja...');
+        try {
+          if (window.KasCore && typeof KasCore.openOrReopenShift === 'function') {
+            await KasCore.openOrReopenShift({
+              user: user,
+              userName: document.getElementById('userName').textContent
+            });
+          } else {
+            const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
+            const shiftDocId = `${today}_${user.uid}`;
+            await db.collection('shifts').doc(shiftDocId).set({
+              id: shiftDocId,
+              userId: user.uid,
+              userName: document.getElementById('userName').textContent,
+              date: today,
+              status: 'open',
+              openedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
 
-    const shiftDocId = `${today}_${user.uid}`;
-
-    // Ambil modal yang sudah dialokasikan
-    let modalAmount = 0;
-
-    try {
-      let modalDoc = await db
-        .collection('modal')
-        .doc(`${today}_${user.uid}`)
-        .get();
-
-      // fallback data lama
-      if (!modalDoc.exists) {
-        modalDoc = await db
-          .collection('modal')
-          .doc(today)
-          .get();
+          Utils.hideLoading();
+          Utils.showToast('Shift kerja berhasil dibuka!', 'success');
+          await checkShiftStatus(user, userData);
+          loadShiftHistory('today');
+        } catch (error) {
+          Utils.hideLoading();
+          console.error('Error opening shift:', error);
+          Utils.showToast('Gagal membuka shift: ' + (error.message || 'Terjadi kesalahan'), 'error');
+        }
       }
-
-      if (modalDoc.exists) {
-        modalAmount = Number(modalDoc.data().amount || 0);
-      }
-
-    } catch (e) {
-      console.warn('Gagal membaca modal:', e);
-    }
-
-    // BUKA SHIFT
-    await db
-      .collection('shifts')
-      .doc(shiftDocId)
-      .set({
-        id: shiftDocId,
-        userId: user.uid,
-        userName: document.getElementById('userName').textContent,
-        date: today,
-
-        status: 'open',
-
-        modalAwal: modalAmount,
-
-        openedAt:
-          firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-    Utils.hideLoading();
-
-    Utils.showToast(
-      'Shift kerja berhasil dibuka!',
-      'success'
-    );
-
-    await checkShiftStatus(user, userData);
-
-  } catch (error) {
-
-    Utils.hideLoading();
-
-    console.error(
-      'Error opening shift:',
-      error
-    );
-
-    Utils.showToast(
-      'Gagal membuka shift: ' +
-      (error.message || 'Terjadi kesalahan'),
-      'error'
-    );
-  }
-}
       
      async function loadKasLaciSummary(user, userData) {
   const today = Utils.getTodayString
