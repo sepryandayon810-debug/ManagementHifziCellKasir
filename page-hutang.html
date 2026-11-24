@@ -996,11 +996,66 @@ name | type | amount | remaining | dueDate | note | status
 
     if (typeof Auth === 'undefined') {
       window.Auth = {
-        getCurrentUser: () => ({ uid: 'local_user', name: 'User', email: 'user@local.com' }),
-        logout: () => { localStorage.removeItem('webpos_session'); window.location.href = 'login.html'; },
-        loadUserData: (uid) => {
-          document.getElementById('userName').textContent = 'Admin';
-          document.getElementById('userRole').textContent = 'Administrator';
+        _profile: null,
+        getCurrentUser: () => {
+          if (window.Auth._profile) return window.Auth._profile;
+          const fbUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+          const cachedName = localStorage.getItem('webpos_user_name') || '';
+          const cachedRole = localStorage.getItem('webpos_user_role') || 'kasir';
+          if (fbUser) {
+            const fallbackName = cachedName || fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Kasir');
+            return { uid: fbUser.uid, name: fallbackName, email: fbUser.email || '', role: cachedRole };
+          }
+          return { uid: 'local_user', name: cachedName || 'Kasir', email: '', role: cachedRole };
+        },
+        logout: () => {
+          localStorage.removeItem('webpos_session');
+          localStorage.removeItem('webpos_user');
+          localStorage.removeItem('webpos_user_role');
+          localStorage.removeItem('webpos_user_name');
+          localStorage.removeItem('webpos_user_permissions');
+          if (typeof firebase !== 'undefined' && firebase.auth) {
+            firebase.auth().signOut().finally(() => { window.location.href = 'login.html'; });
+          } else {
+            window.location.href = 'login.html';
+          }
+        },
+        loadUserData: async (uid) => {
+          const nameEl = document.getElementById('userName');
+          const roleEl = document.getElementById('userRole');
+          const avatarEl = document.getElementById('userAvatar');
+          const fbUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+          const applyProfile = (name, role, email) => {
+            const cleanName = name || (email ? email.split('@')[0] : 'Kasir');
+            const cleanRole = String(role || 'kasir').toLowerCase();
+            window.Auth._profile = { uid: uid || (fbUser && fbUser.uid) || 'local_user', name: cleanName, email: email || (fbUser && fbUser.email) || '', role: cleanRole };
+            window.__hutangUserRole = cleanRole;
+            if (nameEl) nameEl.textContent = cleanName;
+            if (roleEl) roleEl.textContent = cleanRole.toUpperCase();
+            if (avatarEl) avatarEl.textContent = cleanName.slice(0, 2).toUpperCase();
+            try {
+              localStorage.setItem('webpos_user_name', cleanName);
+              localStorage.setItem('webpos_user_role', cleanRole);
+            } catch (e) {}
+            if (typeof RoleGuard !== 'undefined') RoleGuard.apply(cleanRole);
+          };
+
+          const cachedName = localStorage.getItem('webpos_user_name');
+          const cachedRole = localStorage.getItem('webpos_user_role');
+          if (cachedName || (fbUser && fbUser.email)) {
+            applyProfile(cachedName || fbUser?.displayName || fbUser?.email?.split('@')[0], cachedRole || 'kasir', fbUser?.email || '');
+          }
+
+          if (!uid || typeof firebase === 'undefined' || !firebase.firestore) return;
+          try {
+            const doc = await firebase.firestore().collection('users').doc(uid).get();
+            if (doc.exists) {
+              const u = doc.data() || {};
+              applyProfile(u.name || u.username || fbUser?.displayName || fbUser?.email?.split('@')[0], u.role || cachedRole || 'kasir', u.email || fbUser?.email || '');
+            }
+          } catch (e) {
+            console.warn('Gagal memuat profil user di Hutang:', e);
+          }
         }
       };
     }
@@ -1260,25 +1315,8 @@ window.kembaliKeKasir = function() {
             }
             if (user && typeof Auth !== 'undefined') {
               Auth.loadUserData(user.uid);
-              setTimeout(() => {
-                const currentUser = Auth.getCurrentUser();
-                if (currentUser) {
-                  const nameEl = document.getElementById('userName');
-                  const roleEl = document.getElementById('userRole');
-                  if (nameEl && currentUser.name) {
-                    nameEl.textContent = currentUser.name;
-                  }
-                  if (roleEl && currentUser.role) {
-                    const role = currentUser.role;
-                    window.__hutangUserRole = role.toLowerCase();
-                    roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-                    if (typeof RoleGuard !== 'undefined') {
-                      RoleGuard.apply(role.toLowerCase());
-                    }
-                  }
-                }
-              }, 1000);
             }
+            
             if (!window.__hutangInitialized) {
               window.__hutangInitialized = true;
               initHutang();
