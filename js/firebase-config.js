@@ -640,6 +640,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     chevright: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="55%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M20.5 15L29.5 24L20.5 33" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
+    chevdown: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="50%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#1E1B4B"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13.5" rx="11.5" ry="5" fill="#FFFFFF" fill-opacity="0.32"/><path d="M15 21.8L24 30.8L33 21.8" stroke="#1E1B4B" stroke-opacity="0.35" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 20L24 29L33 20" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    chevup: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="50%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#1E1B4B"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13.5" rx="11.5" ry="5" fill="#FFFFFF" fill-opacity="0.32"/><path d="M15 29.8L24 20.8L33 29.8" stroke="#1E1B4B" stroke-opacity="0.35" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 28L24 19L33 28" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     back: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="55%" stop-color="#2563EB"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M33 24H16M22.5 17L15.5 24L22.5 31" stroke="#FFFFFF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
     coins: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="6" x2="38" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FEF08A"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><circle cx="20" cy="20" r="13.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="29" cy="29" r="13" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M29 23V35M25.8 26.2C25.8 24.8 27.2 24 29 24C30.8 24 32.2 24.8 32.2 26.2C32.2 27.7 30.8 28.2 29 28.6C27.2 29 25.8 29.6 25.8 31C25.8 32.5 27.2 33.4 29 33.4C30.8 33.4 32.2 32.5 32.2 31" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>',
@@ -751,9 +754,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function mapGlobalUiKey(el) {
     var c = el.className || '';
-    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-chevron-down|fa-chevron-up|fa-angle-down|fa-angle-up|fa-caret|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
+    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-caret|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
     if (/(?:^|\s)fa-(?:times|xmark|search|arrow-right)(?:\s|$)/.test(c)) return null;
 
+    if (c.indexOf('fa-chevron-down') !== -1 || c.indexOf('fa-angle-down') !== -1) return 'chevdown';
+    if (c.indexOf('fa-chevron-up') !== -1 || c.indexOf('fa-angle-up') !== -1) return 'chevup';
     if (c.indexOf('fa-chevron-left') !== -1 || c.indexOf('fa-angle-left') !== -1) return 'chevleft';
     if (c.indexOf('fa-chevron-right') !== -1 || c.indexOf('fa-angle-right') !== -1) return 'chevright';
     if (c.indexOf('fa-arrow-left') !== -1) return 'back';
@@ -851,7 +856,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         var parent = s.parentNode;
         if (!parent) continue;
         var prev = s.previousElementSibling;
-        var hasCustom3d = parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon');
+        var hasCustom3d = !s.classList.contains('u3d-dd-arrow') && parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon');
         if (hasCustom3d || !prev || prev.tagName !== 'I' || prev.dataset.upgraded3d !== '1') {
           s.remove();
         }
@@ -861,21 +866,28 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function upgradeSingleIcon(el) {
     try {
-      if (!el || el.id === 'shiftToggleIcon' || el.classList.contains('dropdown-arrow')) return;
-      if (el.closest(SKIP_SEL)) return;
+      if (!el || el.id === 'shiftToggleIcon') return;
+      var isDropdownArrow = el.classList.contains('dropdown-arrow');
+      if (!isDropdownArrow && el.closest(SKIP_SEL)) return;
 
       var parent = el.parentNode;
       if (!parent) return;
 
-      if (parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon')) {
+      if (!isDropdownArrow && parent.querySelector(':scope > svg.dash-3d-svg, :scope > svg.nav-3d-svg, :scope > svg.prod-3d-icon')) {
         var oldDup = el.nextElementSibling;
         if (oldDup && oldDup.dataset && oldDup.dataset.u3dFor === '1') oldDup.remove();
         return;
       }
 
       var curClass = el.className || '';
-      if (el.dataset.upgraded3d === '1' && el.dataset.u3dClass === curClass) return;
-
+      if (el.dataset.upgraded3d === '1' && el.dataset.u3dClass === curClass) {
+        var exSvg = el.nextElementSibling;
+        if (exSvg && exSvg.dataset && exSvg.dataset.u3dFor === '1' && !exSvg.classList.contains('ui-3d-abs') && !exSvg.classList.contains('u3d-dd-arrow')) {
+          exSvg.style.transform = el.style.transform || '';
+        }
+        return;
+      }
+      
       var next = el.nextElementSibling;
       if (next && next.dataset && next.dataset.u3dFor === '1') {
         next.remove();
@@ -897,6 +909,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var svg = wrap.firstElementChild;
       if (svg) {
         svg.dataset.u3dFor = '1';
+        if (isDropdownArrow) svg.classList.add('u3d-dd-arrow');
+        else if (el.style && el.style.transform) svg.style.transform = el.style.transform;
         var isInlineAbs = (el.style && el.style.position === 'absolute');
         var isFieldWrap = el.classList.contains('field-icon') ||
           (parent.classList && (
@@ -995,7 +1009,20 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           '.tab-btn > .ui-3d-svg,.viewer-tab-btn > .ui-3d-svg{width:18px;height:18px;}',
           '.card-title > .ui-3d-svg,.modal-title > .ui-3d-svg,.section-title > .ui-3d-svg{width:21px;height:21px;}',
           '.menu-toggle > .ui-3d-svg{width:20px;height:20px;margin:0;}',
-          '.sidebar.collapsed .menu-toggle > .ui-3d-svg{transform:rotate(180deg);}',
+         '.sidebar.collapsed .menu-toggle > .ui-3d-svg{transform:rotate(180deg);}',
+          '.expand-btn{display:inline-flex !important;align-items:center !important;justify-content:center !important;padding:0.2rem !important;border-radius:50% !important;transition:transform .24s cubic-bezier(.22,1,.36,1) !important;}',
+          '.expand-btn > .ui-3d-svg{width:24px;height:24px;margin:0;filter:drop-shadow(0 3px 5px rgba(79,70,229,0.34));transition:transform .24s cubic-bezier(.22,1,.36,1),filter .2s ease;}',
+          '.expand-btn:hover > .ui-3d-svg{transform:scale(1.12);filter:drop-shadow(0 4px 8px rgba(79,70,229,0.48));}',
+          '.expand-btn:active > .ui-3d-svg{transform:scale(0.94);}',
+          '.expand-btn.open > .ui-3d-svg{transform:rotate(180deg);}',
+          '.cart-minimize:has(> .ui-3d-svg){background:transparent !important;box-shadow:none !important;}',
+          '.cart-minimize > .ui-3d-svg{width:26px;height:26px;margin:0;filter:drop-shadow(0 3px 5px rgba(79,70,229,0.34));}',
+          '.cart-minimize:hover > .ui-3d-svg{transform:scale(1.12);}',
+          '#ntLogicChevron + .ui-3d-svg,#paymentItemsChevron + .ui-3d-svg{width:20px;height:20px;margin:0;filter:drop-shadow(0 2px 4px rgba(79,70,229,0.32));transition:transform .24s cubic-bezier(.22,1,.36,1);}',
+          '.u3d-dd-arrow{width:19px !important;height:19px !important;margin:0 0 0 auto !important;filter:drop-shadow(0 2px 4px rgba(79,70,229,0.32));transition:transform .24s cubic-bezier(.22,1,.36,1),filter .2s ease !important;}',
+          '.nav-dropdown-toggle:hover > .u3d-dd-arrow{filter:drop-shadow(0 3px 6px rgba(79,70,229,0.48));transform:scale(1.1);}',
+          '.nav-dropdown.open .nav-dropdown-toggle > .u3d-dd-arrow{transform:rotate(180deg) !important;}',
+          '.sidebar.collapsed .u3d-dd-arrow{display:none !important;}',
           '.kas-date-btn > .ui-3d-svg,.page-btn > .ui-3d-svg,.btn-icon-box > .ui-3d-svg,.btn-icon-sm > .ui-3d-svg,.btn-icon > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{width:18px;height:18px;margin:0;}',
           '#btnThemeToggle .ui-3d-svg,#btnTheme .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;margin:0;}',
           '#btnThemeToggle:hover .ui-3d-svg,#btnTheme:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg,.menu-toggle:hover > .ui-3d-svg{transform:scale(1.12);}',
@@ -1085,7 +1112,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
               }
             }
           } else if (m.type === 'attributes' && m.target && m.target.tagName === 'I') {
-            changedIcons.push(m.target);
+            if (m.attributeName === 'style') {
+              if (m.target.dataset.upgraded3d === '1') {
+                var sibSvg = m.target.nextElementSibling;
+                if (sibSvg && sibSvg.dataset && sibSvg.dataset.u3dFor === '1' && !sibSvg.classList.contains('ui-3d-abs') && !sibSvg.classList.contains('u3d-dd-arrow')) {
+                  sibSvg.style.transform = m.target.style.transform || '';
+                }
+              }
+            } else {
+              changedIcons.push(m.target);
+            }
           }
         }
         if (!hasNewDom && !changedIcons.length) return;
@@ -1097,7 +1133,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           }
           if (hasNewDom) upgradeNodesInDom(true);
         }, 160);
-      }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     } catch (e) {}
   }
 
