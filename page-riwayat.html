@@ -930,6 +930,7 @@ const TYPE_ICONS = {
 
           const fallbackName = localStorage.getItem('webpos_user_name') || user.email.split('@')[0];
           const fallbackRole = localStorage.getItem('webpos_user_role') || 'kasir';
+          window.__riwayatUserRole = String(fallbackRole).toLowerCase();
           document.getElementById('userName').textContent = fallbackName;
           document.getElementById('userRole').textContent = fallbackRole.toUpperCase();
           const avatar = document.getElementById('userAvatar');
@@ -947,10 +948,12 @@ const TYPE_ICONS = {
             const dRole = userData.role || 'kasir';
             localStorage.setItem('webpos_user_name', dName);
             localStorage.setItem('webpos_user_role', dRole);
+            window.__riwayatUserRole = String(dRole).toLowerCase();
             document.getElementById('userName').textContent = dName;
             document.getElementById('userRole').textContent = dRole.toUpperCase();
             if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
             if (typeof RoleGuard !== 'undefined') RoleGuard.apply(dRole);
+            if (typeof filterAndRender === 'function' && allTransactions.length > 0) filterAndRender();
           }).catch(() => {});
         });
       });
@@ -1583,8 +1586,10 @@ const TYPE_ICONS = {
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
               <td style="text-align:center; white-space:nowrap;" onclick="event.stopPropagation()">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk" style="padding:0.25rem 0.45rem;"><i class="fas fa-print"></i></button>
+                ${['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase()) ? `
                 <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit" style="padding:0.25rem 0.45rem;"><i class="fas fa-pen"></i></button>
                 <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus" style="padding:0.25rem 0.45rem;"><i class="fas fa-trash"></i></button>
+                ` : ''}
               </td>
             </tr>
             <tr class="detail-row" id="detail-${t.id}">
@@ -2007,6 +2012,10 @@ itemsText + '\n' +
       }
 
       window.deleteTransaction = function(id) {
+        if (!['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
+          Utils.showToast('Hanya Admin / Owner yang boleh menghapus transaksi', 'error');
+          return;
+        }
         const transaction = allTransactions.find(item => item.id === id);
         if (!transaction) return;
 
@@ -2083,6 +2092,10 @@ itemsText + '\n' +
       };
       
       window.editTransaction = function(id) {
+        if (!['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
+          Utils.showToast('Hanya Admin / Owner yang boleh mengedit transaksi', 'error');
+          return;
+        }
         const transaction = allTransactions.find(item => item.id === id);
         if (!transaction) return;
 
@@ -2117,33 +2130,38 @@ document.getElementById('editPaymentMethod').value =
         const saveButton = document.getElementById('btnSaveTransactionEdit');
         saveButton.disabled = true;
         try {
-          const newMethod = document.getElementById('editPaymentMethod').value.toLowerCase();
+          const rawMethod = document.getElementById('editPaymentMethod').value.toLowerCase();
+const newMethod = rawMethod === 'hutang' ? 'utang' : rawMethod;
 const updates = {
   catatan: document.getElementById('editNote').value.trim(),
   metode_pembayaran: newMethod,
   updatedAt: firebase.firestore.FieldValue.serverTimestamp()
 };
 
+let finalNominal = KasCore.getNominal(transaction);
 if (KasCore.getCategory(transaction) !== 'jual') {
   const amount = Number(document.getElementById('editAmount').value);
   if (!Number.isFinite(amount) || amount < 0) {
     Utils.showToast('Nominal transaksi tidak valid', 'error');
     return;
   }
+  finalNominal = amount;
   updates.nominal = amount;
-  // hitung ulang mutasi baku lewat KasCore
-  const mut = KasCore.mapTransactionMutation({
-    ...transaction,
-    nominal: amount,
-    metode_pembayaran: newMethod
-  });
-  Object.assign(updates, {
-    cash_in: mut.cash_in, cash_out: mut.cash_out,
-    bank_in: mut.bank_in, bank_out: mut.bank_out,
-    digital_in: mut.digital_in, digital_out: mut.digital_out,
-    laba: mut.laba
-  });
 }
+
+// Hitung ulang mutasi baku lewat KasCore untuk SEMUA transaksi (termasuk penjualan agar laci & bank tidak selisih)
+const mut = KasCore.mapTransactionMutation({
+  ...transaction,
+  nominal: finalNominal,
+  metode_pembayaran: newMethod
+});
+Object.assign(updates, {
+  cash_in: mut.cash_in, cash_out: mut.cash_out,
+  bank_in: mut.bank_in, bank_out: mut.bank_out,
+  digital_in: mut.digital_in, digital_out: mut.digital_out,
+  laba: mut.laba
+});
+          
           if (KasCore.getCategory(transaction) === 'pembelian') {
   await db.collection('purchases').doc(id).update(updates);
 }
