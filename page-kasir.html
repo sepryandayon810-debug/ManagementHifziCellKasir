@@ -4753,11 +4753,21 @@ document.querySelectorAll('.nav-link').forEach(link => {
 
     // ===== BAGIAN 4: LOAD DATA GLOBAL (UANG LACI & HEADER STATS) =====
     // ===== LOAD UANG GLOBAL (KAS DI TANGAN) =====
-  async function loadUangGlobal() {
+  let __uangGlobalRetryTimer = null;
+  async function loadUangGlobal(passedUser, isRetry = false) {
   const today = new Date();
   const todayStr = today.getFullYear() + '-' +
     String(today.getMonth() + 1).padStart(2, '0') + '-' +
     String(today.getDate()).padStart(2, '0');
+  const elGlobal = document.getElementById('headerUangGlobal');
+
+  // Tampilkan nilai cache hari ini segera (0 ms) agar tidak sempat diam di Rp 0
+  try {
+    if (elGlobal && elGlobal.textContent.trim() === 'Rp 0' && localStorage.getItem('raw_header_date') === todayStr) {
+      const cachedRaw = parseInt(localStorage.getItem('raw_header_uang_global') || '0', 10) || 0;
+      if (cachedRaw > 0) elGlobal.textContent = formatRupiah(cachedRaw);
+    }
+  } catch (e) {}
 
   if (!navigator.onLine) {
     var baseLaci = 0;
@@ -4777,19 +4787,28 @@ document.querySelectorAll('.nav-link').forEach(link => {
         }
       });
     } catch (e) {}
-    document.getElementById('headerUangGlobal').textContent = formatRupiah(baseLaci);
+    if (elGlobal) elGlobal.textContent = formatRupiah(baseLaci);
+    return;
+  }
+
+  const user = passedUser || (firebase.auth && firebase.auth().currentUser);
+  if (!user || !user.uid) {
+    // Jangan panggil KasCore dengan userId null (pasti Rp 0); tunggu auth siap
+    if (!isRetry) {
+      clearTimeout(__uangGlobalRetryTimer);
+      __uangGlobalRetryTimer = setTimeout(() => loadUangGlobal(null, true), 1200);
+    }
     return;
   }
 
   try {
-    const user = firebase.auth().currentUser;
     const kas = await KasCore.getKasLaciDisplay({
       date: todayStr,
-      userId: user ? user.uid : null,
+      userId: user.uid,
       scope: 'role'   // kasir: laci sendiri; owner/admin: seluruh tim — sama seperti Dashboard
     });
 
-    document.getElementById('headerUangGlobal').textContent = formatRupiah(kas.totalLaci);
+    if (elGlobal) elGlobal.textContent = formatRupiah(kas.totalLaci);
     try {
       localStorage.setItem('header_uang_global', formatRupiah(kas.totalLaci));
       localStorage.setItem('raw_header_uang_global', String(Math.round(kas.totalLaci || 0)));
@@ -4797,12 +4816,18 @@ document.querySelectorAll('.nav-link').forEach(link => {
     } catch (e) {}
   } catch (err) {
     console.error('kasir: gagal memuat uang global', err);
-    if (!navigator.onLine) {
+    if (!isRetry && navigator.onLine) {
+      clearTimeout(__uangGlobalRetryTimer);
+      __uangGlobalRetryTimer = setTimeout(() => loadUangGlobal(user, true), 1800);
+    } else {
       const saved = localStorage.getItem('header_uang_global');
-      if (saved) document.getElementById('headerUangGlobal').textContent = saved;
+      if (saved && elGlobal && localStorage.getItem('raw_header_date') === todayStr) {
+        elGlobal.textContent = saved;
+      }
     }
   }
 }
+  
   // ===== LOAD HEADER STATS DARI FIREBASE =====
 async function loadHeaderStats() {
   const today = new Date();
@@ -7686,14 +7711,24 @@ if (kurangiSaldo) {
     
     // ===== BAGIAN 18: INISIALISASI & NAVIGASI BERLAPIS =====
     // ===== INISIALISASI =====
-    function runInit() {
-       syncStoreBrandName();
+    let __kasirInitialized = false;
+    function runInit(authUser) {
+      const activeUser = authUser || (firebase.auth && firebase.auth().currentUser) || null;
+      if (__kasirInitialized) {
+        if (activeUser) {
+          loadHeaderStats();
+          loadUangGlobal(activeUser);
+        }
+        return;
+      }
+      __kasirInitialized = true;
+      syncStoreBrandName();
       loadUserData();
       loadCategories();
       loadProducts();
       loadCart();
       loadHeaderStats();
-      loadUangGlobal();
+      loadUangGlobal(activeUser);
       applyCurrentView();
       updateCatViewIcon();
       initLongPressOnProducts();
@@ -7701,12 +7736,29 @@ if (kurangiSaldo) {
       document.getElementById('loadingOverlay').classList.remove('active');
     }
 
+    // Auto-refresh Uang Global & Header Stats saat kembali dari menu lain (Hutang/Kas/Dashboard) tanpa perlu tarik layar
+    let __lastKasirAutoRefresh = 0;
+    function refreshKasirGlobalOnReturn() {
+      const now = Date.now();
+      if (now - __lastKasirAutoRefresh < 2500) return;
+      __lastKasirAutoRefresh = now;
+      const u = firebase.auth && firebase.auth().currentUser;
+      if (u && navigator.onLine) {
+        loadHeaderStats();
+        loadUangGlobal(u);
+      }
+    }
+    window.addEventListener('pageshow', (ev) => { if (ev.persisted) refreshKasirGlobalOnReturn(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshKasirGlobalOnReturn();
+    });
+
     // ⭐ OFFLINE: jika ada sesi login di HP, jangan lempar ke login.html
     if (!navigator.onLine) {
       const user = firebase.auth().currentUser;
       const hasSession = localStorage.getItem('webpos_session') || localStorage.getItem('webpos_user') || localStorage.getItem('firebase:authUser:' + (window.firebaseConfig ? window.firebaseConfig.apiKey : '') + ':[DEFAULT]');
       if (user || hasSession) {
-        runInit();
+        runInit(user);
       } else {
         window.location.href = 'login.html';
       }
@@ -7717,7 +7769,7 @@ if (kurangiSaldo) {
           window.location.href = 'login.html';
           return;
         }
-        runInit();
+        runInit(user);
       });
     }
 
