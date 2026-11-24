@@ -1411,12 +1411,18 @@ if (category === 'kas_keluar') {
       var scope = options.scope || 'own';
       var db = getDb();
 
-      // ---------- ROLE USER LOGIN ----------
+     // ---------- ROLE USER LOGIN ----------
       var role = 'kasir';
       try {
-        var userDoc = await db.collection('users').doc(currentUserId).get();
-        if (userDoc.exists) role = String(userDoc.data().role || 'kasir').toLowerCase();
+        var cachedRole = (typeof localStorage !== 'undefined') ? localStorage.getItem('webpos_user_role') : null;
+        if (cachedRole) role = String(cachedRole).toLowerCase();
       } catch (e) {}
+      if (currentUserId) {
+        try {
+          var userDoc = await db.collection('users').doc(currentUserId).get();
+          if (userDoc.exists) role = String(userDoc.data().role || role || 'kasir').toLowerCase();
+        } catch (e) {}
+      }
 
       var isBoss = role === 'owner' || role === 'developer';
       var isAdmin = role === 'admin';
