@@ -1870,6 +1870,13 @@ document.getElementById('btnDownloadDebtTemplate')
           let hasCachedData = false;
           const cached = !forceRefresh ? localStorage.getItem('webpos_debts_cache') : null;
           if (cached) {
+            try {
+              hutangData = JSON.parse(cached);
+              hasCachedData = Object.keys(hutangData || {}).length > 0;
+              updateSummary();
+              renderHutangList();
+            } catch (e) {}
+          }
 
           // Hanya tampilkan overlay loading jika cache lokal masih kosong
           if (!hasCachedData) Utils.showLoading();
