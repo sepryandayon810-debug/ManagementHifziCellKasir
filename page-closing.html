@@ -1172,6 +1172,12 @@ document.getElementById('sistemNonTunai').textContent =
                 kasSistem: todayStats.uangGlobal
               });
 
+              isShiftOpen = false;
+              try { localStorage.removeItem('active_shift_id'); } catch (e) {}
+              if (window.KasCore && typeof KasCore.syncShiftCache === 'function') {
+                KasCore.syncShiftCache(user.uid, today, 'closed', null);
+              }
+
               Utils.hideLoading();
               Utils.showToast('Closing berhasil disimpan & shift ditutup!', 'success');
 
