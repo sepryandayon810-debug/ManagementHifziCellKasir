@@ -1654,6 +1654,22 @@ if (category === 'kas_keluar') {
       var userId = getUserId(payload) || payload.userId;
       if (!userId) throw new Error('KasCore.saveTransaction: userId wajib diisi.');
 
+      // SHIFT GUARD (Opsi 1): blokir transaksi di Kasir, Kas Masuk/Keluar, Top Up, Tarik jika shift belum dibuka / sudah closing
+      if (isGuardedShiftPage() && isGuardedShiftCategory(category)) {
+        var guardRes = await ensureShiftOpenForGuard(userId);
+        if (!guardRes.isOpen) {
+          openShiftGuardModal({ status: guardRes.status });
+          throw new Error(
+            guardRes.status === 'closed'
+              ? 'Shift hari ini sudah ditutup (Closing). Buka ulang shift terlebih dahulu untuk transaksi susulan.'
+              : 'Shift belum dibuka. Buka shift terlebih dahulu sebelum melakukan transaksi.'
+          );
+        }
+        if (!payload.shiftId && guardRes.shiftId) {
+          payload.shiftId = guardRes.shiftId;
+        }
+      }
+
       var method = getPaymentMethod(payload);
       var nominal = getNominal(payload);
       var admin = getAdmin(payload);
@@ -1902,6 +1918,563 @@ async function savePayroll(options) {
 }
 
     /* ==========================================================
+     * 30d. SHIFT GUARD & BUKA ULANG SHIFT (OPSI 1)
+     * Aktif otomatis di: Kasir, Kas Masuk, Kas Keluar, Top Up, Tarik Tunai.
+     * Bayar Hutang (page-hutang.html) & halaman lain TIDAK dikunci.
+     * ========================================================== */
+
+    var GUARDED_SHIFT_PAGES = {
+      'page-kasir.html': 'Kasir / Bayar',
+      'page-kas-masuk.html': 'Kas Masuk',
+      'page-kas-keluar.html': 'Kas Keluar',
+      'page-kas-topup.html': 'Top Up',
+      'page-kas-tarik.html': 'Tarik Tunai'
+    };
+
+    var GUARDED_SHIFT_BUTTON_IDS = {
+      'btnBayar': true,
+      'btnConfirmPayment': true,
+      'btnConfirmPaymentDesktop': true,
+      'btnSimpanKas': true,
+      'btnSimpanKeluar': true,
+      'btnSimpanTopup': true,
+      'btnSimpanTarik': true
+    };
+
+    var GUARDED_SHIFT_CATEGORIES = {
+      'jual': true,
+      'kas_masuk': true,
+      'kas_keluar': true,
+      'setor_bank': true,
+      'top_up': true,
+      'tarik_tunai': true
+    };
+
+    var SHIFT_CACHE_KEY = 'webpos_shift_status_cache';
+    var _shiftGuardState = {
+      status: 'checking',
+      isOpen: false,
+      shiftId: null,
+      uid: null,
+      date: '',
+      data: null,
+      busy: false,
+      onModalSuccess: null
+    };
+
+    function getCurrentPageName() {
+      try {
+        var path = String(window.location.pathname || '').split('?')[0].split('#')[0];
+        var parts = path.split('/').filter(Boolean);
+        return String(parts[parts.length - 1] || '').toLowerCase();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function isGuardedShiftPage() {
+      return Boolean(GUARDED_SHIFT_PAGES[getCurrentPageName()]);
+    }
+
+    function isGuardedShiftCategory(category) {
+      return Boolean(GUARDED_SHIFT_CATEGORIES[String(category || '').trim().toLowerCase()]);
+    }
+
+    function getShiftTodayKey() {
+      if (window.Utils && typeof window.Utils.getTodayString === 'function') {
+        return window.Utils.getTodayString();
+      }
+      return formatDateKey(new Date());
+    }
+
+    function syncShiftCache(uid, dateKey, status, shiftId) {
+      var safeDate = dateKey || getShiftTodayKey();
+      try {
+        if (status === 'open' && shiftId) {
+          localStorage.setItem('active_shift_id', shiftId);
+        } else {
+          localStorage.removeItem('active_shift_id');
+        }
+        if (uid) {
+          localStorage.setItem(SHIFT_CACHE_KEY, JSON.stringify({
+            uid: uid,
+            date: safeDate,
+            status: status,
+            shiftId: shiftId || null,
+            ts: Date.now()
+          }));
+        }
+      } catch (e) {}
+      if (!uid || !_shiftGuardState.uid || _shiftGuardState.uid === uid) {
+        _shiftGuardState.uid = uid || _shiftGuardState.uid;
+        _shiftGuardState.date = safeDate;
+        _shiftGuardState.status = status;
+        _shiftGuardState.isOpen = (status === 'open');
+        _shiftGuardState.shiftId = (status === 'open') ? (shiftId || null) : null;
+      }
+      updateShiftGuardUI();
+    }
+
+    function readShiftCache(uid, dateKey) {
+      try {
+        var raw = localStorage.getItem(SHIFT_CACHE_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        if (!parsed || parsed.date !== dateKey) return null;
+        if (uid && parsed.uid !== uid) return null;
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getCurrentAuthUser() {
+      try {
+        if (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) {
+          return window.firebase.auth().currentUser;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    async function getTodayShiftStatus(userId) {
+      var user = getCurrentAuthUser();
+      var uid = userId || (user && user.uid) || _shiftGuardState.uid;
+      var today = getShiftTodayKey();
+      if (!uid) {
+        return { status: 'checking', isOpen: false, shiftId: null, date: today, data: null };
+      }
+
+      var shiftDocId = today + '_' + uid;
+      try {
+        var db = getDb();
+        var snap = await db.collection('shifts').doc(shiftDocId).get();
+        if (snap.exists) {
+          var data = snap.data() || {};
+          var isOpen = String(data.status || '').toLowerCase() === 'open';
+          var status = isOpen ? 'open' : 'closed';
+          _shiftGuardState.data = data;
+          syncShiftCache(uid, today, status, isOpen ? shiftDocId : null);
+          return { status: status, isOpen: isOpen, shiftId: isOpen ? shiftDocId : null, date: today, data: data };
+        } else {
+          _shiftGuardState.data = null;
+          syncShiftCache(uid, today, 'none', null);
+          return { status: 'none', isOpen: false, shiftId: null, date: today, data: null };
+        }
+      } catch (err) {
+        console.warn('KasCore: gagal cek status shift hari ini', err);
+        var cached = readShiftCache(uid, today);
+        if (cached && cached.status) {
+          var cOpen = cached.status === 'open';
+          _shiftGuardState.uid = uid;
+          _shiftGuardState.date = today;
+          _shiftGuardState.status = cached.status;
+          _shiftGuardState.isOpen = cOpen;
+          _shiftGuardState.shiftId = cOpen ? cached.shiftId : null;
+          updateShiftGuardUI();
+          return { status: cached.status, isOpen: cOpen, shiftId: cOpen ? cached.shiftId : null, date: today, data: null };
+        }
+        return { status: 'none', isOpen: false, shiftId: null, date: today, data: null };
+      }
+    }
+
+    async function ensureShiftOpenForGuard(userId) {
+      var today = getShiftTodayKey();
+      var uid = userId || (getCurrentAuthUser() && getCurrentAuthUser().uid) || _shiftGuardState.uid;
+      if (_shiftGuardState.isOpen && _shiftGuardState.date === today && (!uid || _shiftGuardState.uid === uid)) {
+        return {
+          status: 'open',
+          isOpen: true,
+          shiftId: _shiftGuardState.shiftId || (today + '_' + uid)
+        };
+      }
+      return await getTodayShiftStatus(uid);
+    }
+
+    async function openOrReopenShift(options) {
+      options = options || {};
+      var db = getDb();
+      var authUser = options.user || getCurrentAuthUser();
+      var uid = options.userId || (authUser && authUser.uid);
+      if (!uid) throw new Error('Akun kasir belum siap. Muat ulang halaman lalu coba lagi.');
+
+      var today = getShiftTodayKey();
+      var shiftDocId = today + '_' + uid;
+      var userNameEl = (typeof document !== 'undefined') ? document.getElementById('userName') : null;
+      var userName = String(
+        options.userName ||
+        (userNameEl && userNameEl.textContent) ||
+        (function() { try { return localStorage.getItem('webpos_user_name') || ''; } catch (e) { return ''; } })() ||
+        (authUser && (authUser.displayName || authUser.email)) ||
+        'Kasir'
+      ).trim();
+
+      var modalAmount = 0;
+      try {
+        var modalEntry = await loadModalEntry(today, uid);
+        if (modalEntry) modalAmount = normalizeNumber(modalEntry.amount);
+      } catch (e) {}
+
+      var docRef = db.collection('shifts').doc(shiftDocId);
+      var existingSnap = await docRef.get();
+      var wasClosed = false;
+      var reopenCount = 0;
+
+      if (existingSnap.exists) {
+        var prev = existingSnap.data() || {};
+        if (String(prev.status || '').toLowerCase() === 'open') {
+          syncShiftCache(uid, today, 'open', shiftDocId);
+          return { shiftId: shiftDocId, reopened: false, alreadyOpen: true, modalAwal: normalizeNumber(prev.modalAwal) };
+        }
+        wasClosed = true;
+        var prevClosings = Array.isArray(prev.previousClosings) ? prev.previousClosings.slice() : [];
+        if (prev.closedAt || prev.kasAkhir !== undefined || prev.kasSistem !== undefined) {
+          prevClosings.push({
+            closedAt: prev.closedAt || Date.now(),
+            kasAkhir: normalizeNumber(prev.kasAkhir),
+            kasSistem: normalizeNumber(prev.kasSistem),
+            selisih: normalizeNumber(prev.selisih),
+            closingStatus: prev.closingStatus || ''
+          });
+        }
+        reopenCount = normalizeNumber(prev.reopenCount) + 1;
+        var finalModal = prev.modalAwal != null ? normalizeNumber(prev.modalAwal) : modalAmount;
+
+        await docRef.set({
+          id: shiftDocId,
+          userId: uid,
+          userName: userName || prev.userName || 'Kasir',
+          date: today,
+          status: 'open',
+          modalAwal: finalModal,
+          openedAt: prev.openedAt || firebase.firestore.FieldValue.serverTimestamp(),
+          reopenedAt: Date.now(),
+          reopenCount: reopenCount,
+          previousClosings: prevClosings
+        }, { merge: true });
+      } else {
+        await docRef.set({
+          id: shiftDocId,
+          userId: uid,
+          userName: userName,
+          date: today,
+          status: 'open',
+          modalAwal: modalAmount,
+          openedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          reopenCount: 0
+        });
+      }
+
+      syncShiftCache(uid, today, 'open', shiftDocId);
+
+      try {
+        if (window.Utils && typeof window.Utils.saveLog === 'function') {
+          window.Utils.saveLog(
+            wasClosed ? 'Buka Ulang Shift' : 'Buka Shift',
+            wasClosed
+              ? ('Membuka ulang shift setelah closing (ke-' + reopenCount + ') di ' + (getCurrentPageName() || 'WebPOS'))
+              : ('Membuka shift kerja harian di ' + (getCurrentPageName() || 'WebPOS'))
+          );
+        }
+      } catch (e) {}
+
+      return { shiftId: shiftDocId, reopened: wasClosed, reopenCount: reopenCount, modalAwal: modalAmount };
+    }
+
+    function injectShiftGuardStyles() {
+      if (typeof document === 'undefined' || document.getElementById('wposShiftGuardStyle')) return;
+      var st = document.createElement('style');
+      st.id = 'wposShiftGuardStyle';
+      st.textContent =
+        '#wposShiftGuardBanner{display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;margin:10px 14px 4px;border-radius:12px;font-family:inherit;font-size:12.5px;line-height:1.4;border:1px solid transparent;box-shadow:0 4px 14px rgba(15,23,42,0.06);flex-wrap:wrap;}' +
+        '#wposShiftGuardBanner.is-none{display:flex;background:linear-gradient(135deg,#fffbeb,#fef3c7);color:#92400e;border-color:#fcd34d;}' +
+        '#wposShiftGuardBanner.is-closed{display:flex;background:linear-gradient(135deg,#fff1f2,#ffe4e6);color:#9f1239;border-color:#fda4af;}' +
+        '[data-theme="dark"] #wposShiftGuardBanner.is-none{background:rgba(245,158,11,0.14);color:#fde68a;border-color:rgba(245,158,11,0.35);}' +
+        '[data-theme="dark"] #wposShiftGuardBanner.is-closed{background:rgba(244,63,94,0.16);color:#fecdd3;border-color:rgba(244,63,94,0.38);}' +
+        '.wpos-sg-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}' +
+        '.wpos-sg-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;}' +
+        '#wposShiftGuardBanner.is-none .wpos-sg-icon{background:linear-gradient(135deg,#f59e0b,#d97706);}' +
+        '#wposShiftGuardBanner.is-closed .wpos-sg-icon{background:linear-gradient(135deg,#f43f5e,#be123c);}' +
+        '.wpos-sg-text{min-width:0;}' +
+        '.wpos-sg-title{font-weight:800;font-size:13px;}' +
+        '.wpos-sg-sub{font-size:11.5px;opacity:0.9;}' +
+        '.wpos-sg-btn{border:none;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(0,0,0,0.14);}' +
+        '#wposShiftGuardBanner.is-none .wpos-sg-btn{background:linear-gradient(135deg,#10b981,#059669);}' +
+        '#wposShiftGuardBanner.is-closed .wpos-sg-btn{background:linear-gradient(135deg,#f59e0b,#d97706);}' +
+        '.wpos-shift-locked-btn{opacity:0.78 !important;filter:grayscale(0.28);}' +
+        '#wposShiftGuardModal{position:fixed;inset:0;z-index:100001;background:rgba(15,23,42,0.62);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:16px;}' +
+        '#wposShiftGuardModal.open{display:flex;}' +
+        '.wpos-sg-card{width:min(390px,100%);background:var(--bg-card,var(--bg-surface,#ffffff));color:var(--text-main,#0f172a);border-radius:18px;padding:20px;box-shadow:0 22px 48px rgba(2,6,23,0.35);border:1px solid var(--border-color,var(--border,#e2e8f0));font-family:inherit;}' +
+        '.wpos-sg-mhead{display:flex;align-items:center;gap:12px;margin-bottom:10px;}' +
+        '.wpos-sg-micon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;flex-shrink:0;}' +
+        '.wpos-sg-micon.none{background:linear-gradient(135deg,#f59e0b,#d97706);}' +
+        '.wpos-sg-micon.closed{background:linear-gradient(135deg,#f43f5e,#be123c);}' +
+        '.wpos-sg-mtitle{font-size:16px;font-weight:800;line-height:1.25;}' +
+        '.wpos-sg-mdesc{font-size:13px;line-height:1.5;color:var(--text-muted,#475569);margin:0 0 14px;}' +
+        '.wpos-sg-mnote{font-size:11.5px;line-height:1.45;padding:9px 11px;border-radius:10px;margin-bottom:16px;background:rgba(99,102,241,0.08);color:var(--text-main,#334155);border:1px solid rgba(99,102,241,0.18);}' +
+        '.wpos-sg-mactions{display:flex;align-items:center;gap:9px;}' +
+        '.wpos-sg-mbtn{border:none;border-radius:11px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;}' +
+        '.wpos-sg-mbtn.cancel{background:var(--bg-subtle,#f1f5f9);color:var(--text-main,#334155);flex:0 0 auto;}' +
+        '.wpos-sg-mbtn.primary{flex:1;color:#fff;box-shadow:0 6px 16px rgba(16,185,129,0.28);background:linear-gradient(135deg,#10b981,#059669);}' +
+        '.wpos-sg-mbtn.reopen{flex:1;color:#fff;box-shadow:0 6px 16px rgba(245,158,11,0.3);background:linear-gradient(135deg,#f59e0b,#d97706);}' +
+        '.wpos-sg-mbtn:disabled{opacity:0.65;cursor:not-allowed;}';
+      document.head.appendChild(st);
+    }
+
+    function ensureShiftGuardBanner() {
+      if (typeof document === 'undefined' || !isGuardedShiftPage()) return null;
+      injectShiftGuardStyles();
+      var banner = document.getElementById('wposShiftGuardBanner');
+      if (banner) return banner;
+      var mainEl = document.querySelector('main.main-content') || document.body;
+      var headerEl = mainEl.querySelector('header.main-header');
+      banner = document.createElement('div');
+      banner.id = 'wposShiftGuardBanner';
+      banner.innerHTML =
+        '<div class="wpos-sg-left">' +
+          '<div class="wpos-sg-icon" id="wposSgBannerIcon"><i class="fas fa-lock"></i></div>' +
+          '<div class="wpos-sg-text">' +
+            '<div class="wpos-sg-title" id="wposSgBannerTitle">Shift Belum Dibuka</div>' +
+            '<div class="wpos-sg-sub" id="wposSgBannerSub">Buka shift kerja dulu agar transaksi dapat diproses.</div>' +
+          '</div>' +
+        '</div>' +
+        '<button type="button" class="wpos-sg-btn" id="wposSgBannerAction"><i class="fas fa-store"></i><span>Buka Shift</span></button>';
+      if (headerEl && headerEl.parentNode) {
+        headerEl.parentNode.insertBefore(banner, headerEl.nextSibling);
+      } else {
+        mainEl.insertBefore(banner, mainEl.firstChild);
+      }
+      var actBtn = document.getElementById('wposSgBannerAction');
+      if (actBtn) {
+        actBtn.addEventListener('click', function() {
+          openShiftGuardModal({ status: _shiftGuardState.status });
+        });
+      }
+      return banner;
+    }
+
+    function updateShiftGuardUI() {
+      if (typeof document === 'undefined' || !isGuardedShiftPage()) return;
+      var isLocked = (_shiftGuardState.status === 'none' || _shiftGuardState.status === 'closed');
+      Object.keys(GUARDED_SHIFT_BUTTON_IDS).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('wpos-shift-locked-btn', isLocked);
+      });
+
+      var banner = ensureShiftGuardBanner();
+      if (!banner) return;
+      var iconEl = document.getElementById('wposSgBannerIcon');
+      var titleEl = document.getElementById('wposSgBannerTitle');
+      var subEl = document.getElementById('wposSgBannerSub');
+      var actBtn = document.getElementById('wposSgBannerAction');
+
+      if (_shiftGuardState.status === 'none') {
+        banner.className = 'is-none';
+        if (iconEl) iconEl.innerHTML = '<i class="fas fa-store-slash"></i>';
+        if (titleEl) titleEl.textContent = 'Shift Belum Dibuka';
+        if (subEl) subEl.textContent = 'Transaksi terkunci. Buka shift kerja dulu sebelum memproses transaksi.';
+        if (actBtn) actBtn.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift</span>';
+      } else if (_shiftGuardState.status === 'closed') {
+        banner.className = 'is-closed';
+        if (iconEl) iconEl.innerHTML = '<i class="fas fa-lock"></i>';
+        if (titleEl) titleEl.textContent = 'Shift Hari Ini Sudah Ditutup (Closing)';
+        if (subEl) subEl.textContent = 'Transaksi terkunci. Jika ada transaksi susulan, buka ulang shift lalu closing ulang setelah selesai.';
+        if (actBtn) actBtn.innerHTML = '<i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>';
+      } else {
+        banner.className = '';
+      }
+    }
+
+    function closeShiftGuardModal() {
+      var modal = (typeof document !== 'undefined') ? document.getElementById('wposShiftGuardModal') : null;
+      if (modal) modal.classList.remove('open');
+    }
+
+    function openShiftGuardModal(opts) {
+      if (typeof document === 'undefined') return;
+      opts = opts || {};
+      injectShiftGuardStyles();
+      var status = opts.status || _shiftGuardState.status;
+      if (status !== 'closed') status = 'none';
+      _shiftGuardState.onModalSuccess = (typeof opts.onSuccess === 'function') ? opts.onSuccess : null;
+
+      var modal = document.getElementById('wposShiftGuardModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'wposShiftGuardModal';
+        modal.innerHTML =
+          '<div class="wpos-sg-card" role="dialog" aria-modal="true">' +
+            '<div class="wpos-sg-mhead">' +
+              '<div class="wpos-sg-micon" id="wposSgModalIcon"></div>' +
+              '<div class="wpos-sg-mtitle" id="wposSgModalTitle"></div>' +
+            '</div>' +
+            '<p class="wpos-sg-mdesc" id="wposSgModalDesc"></p>' +
+            '<div class="wpos-sg-mnote" id="wposSgModalNote"></div>' +
+            '<div class="wpos-sg-mactions">' +
+              '<button type="button" class="wpos-sg-mbtn cancel" id="wposSgModalCancel">Nanti</button>' +
+              '<button type="button" class="wpos-sg-mbtn" id="wposSgModalConfirm"></button>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal && !_shiftGuardState.busy) closeShiftGuardModal();
+        });
+        document.getElementById('wposSgModalCancel').addEventListener('click', function() {
+          if (!_shiftGuardState.busy) closeShiftGuardModal();
+        });
+        document.getElementById('wposSgModalConfirm').addEventListener('click', async function() {
+          if (_shiftGuardState.busy) return;
+          var btn = document.getElementById('wposSgModalConfirm');
+          var isReopenMode = btn && btn.dataset.mode === 'closed';
+          _shiftGuardState.busy = true;
+          if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>' + (isReopenMode ? 'Membuka ulang...' : 'Membuka shift...') + '</span>';
+          }
+          try {
+            var res = await openOrReopenShift();
+            closeShiftGuardModal();
+            var okMsg = res.reopened
+              ? 'Shift berhasil dibuka ulang! Jangan lupa closing ulang setelah selesai.'
+              : 'Shift kerja berhasil dibuka! Transaksi sudah bisa dilakukan.';
+            if (window.Utils && typeof window.Utils.showToast === 'function') {
+              window.Utils.showToast(okMsg, 'success');
+            } else if (typeof window.showToast === 'function') {
+              window.showToast(okMsg, 'success');
+            }
+            if (typeof window.loadUangGlobal === 'function') {
+              try { window.loadUangGlobal(); } catch (e) {}
+            }
+            if (typeof _shiftGuardState.onModalSuccess === 'function') {
+              var cb = _shiftGuardState.onModalSuccess;
+              _shiftGuardState.onModalSuccess = null;
+              await cb(res);
+            }
+          } catch (err) {
+            var errMsg = 'Gagal membuka shift: ' + (err && err.message ? err.message : 'Terjadi kesalahan');
+            if (window.Utils && typeof window.Utils.showToast === 'function') {
+              window.Utils.showToast(errMsg, 'error');
+            } else if (typeof window.showToast === 'function') {
+              window.showToast(errMsg, 'error');
+            }
+          } finally {
+            _shiftGuardState.busy = false;
+            if (btn) btn.disabled = false;
+          }
+        });
+      }
+
+      var iconEl = document.getElementById('wposSgModalIcon');
+      var titleEl = document.getElementById('wposSgModalTitle');
+      var descEl = document.getElementById('wposSgModalDesc');
+      var noteEl = document.getElementById('wposSgModalNote');
+      var confirmBtn = document.getElementById('wposSgModalConfirm');
+
+      if (status === 'closed') {
+        iconEl.className = 'wpos-sg-micon closed';
+        iconEl.innerHTML = '<i class="fas fa-lock"></i>';
+        titleEl.textContent = 'Shift Hari Ini Sudah Ditutup';
+        descEl.textContent = 'Transaksi dikunci karena shift hari ini sudah di-closing. Jika tiba-tiba ada transaksi susulan, Anda dapat membuka ulang shift ini.';
+        noteEl.style.display = 'block';
+        noteEl.innerHTML = '<strong>Aman:</strong> Riwayat closing sebelumnya tetap tersimpan di arsip shift, dan Anda bisa <strong>Closing Ulang</strong> setelah transaksi susulan selesai.';
+        confirmBtn.className = 'wpos-sg-mbtn reopen';
+        confirmBtn.dataset.mode = 'closed';
+        confirmBtn.innerHTML = '<i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>';
+      } else {
+        iconEl.className = 'wpos-sg-micon none';
+        iconEl.innerHTML = '<i class="fas fa-store-slash"></i>';
+        titleEl.textContent = 'Shift Belum Dibuka';
+        descEl.textContent = 'Anda harus membuka shift kerja terlebih dahulu sebelum dapat memproses transaksi di halaman ini.';
+        noteEl.style.display = 'block';
+        noteEl.innerHTML = 'Modal harian yang sudah diinput hari ini akan otomatis terhubung saat shift dibuka.';
+        confirmBtn.className = 'wpos-sg-mbtn primary';
+        confirmBtn.dataset.mode = 'none';
+        confirmBtn.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift Sekarang</span>';
+      }
+
+      modal.classList.add('open');
+    }
+
+    async function refreshShiftGuard() {
+      var user = getCurrentAuthUser();
+      if (!user) return _shiftGuardState;
+      return await getTodayShiftStatus(user.uid);
+    }
+
+    function initAutoShiftGuard() {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+      if (!isGuardedShiftPage()) return;
+      if (window.__webposShiftGuardInit) return;
+      window.__webposShiftGuardInit = true;
+
+      var today = getShiftTodayKey();
+      var cached = readShiftCache(null, today);
+      if (cached && cached.status) {
+        _shiftGuardState.uid = cached.uid;
+        _shiftGuardState.date = today;
+        _shiftGuardState.status = cached.status;
+        _shiftGuardState.isOpen = (cached.status === 'open');
+        _shiftGuardState.shiftId = (cached.status === 'open') ? cached.shiftId : null;
+      }
+
+      function attachUI() {
+        ensureShiftGuardBanner();
+        updateShiftGuardUI();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachUI);
+      } else {
+        attachUI();
+      }
+
+      document.addEventListener('click', function(e) {
+        var target = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!target || !target.id || !GUARDED_SHIFT_BUTTON_IDS[target.id]) return;
+
+        var nowDate = getShiftTodayKey();
+        if (_shiftGuardState.isOpen && _shiftGuardState.date === nowDate) {
+          return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+
+        if (_shiftGuardState.status === 'checking' || _shiftGuardState.date !== nowDate) {
+          refreshShiftGuard().then(function(res) {
+            if (res && res.isOpen) {
+              target.click();
+            } else {
+              openShiftGuardModal({ status: (res && res.status) || 'none' });
+            }
+          });
+        } else {
+          openShiftGuardModal({ status: _shiftGuardState.status });
+        }
+      }, true);
+
+      function bindAuthCheck() {
+        if (window.firebase && window.firebase.auth) {
+          window.firebase.auth().onAuthStateChanged(function(user) {
+            if (user && user.uid) {
+              getTodayShiftStatus(user.uid);
+            }
+          });
+        }
+      }
+      bindAuthCheck();
+
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') refreshShiftGuard();
+      });
+      window.addEventListener('pageshow', function() {
+        refreshShiftGuard();
+      });
+    }
+
+    initAutoShiftGuard();
+
+    /* ==========================================================
      * 31. PUBLIC API
      * ========================================================== */
 
@@ -1960,7 +2533,14 @@ async function savePayroll(options) {
 
       // PAYROLL / HUTANG STAFF
       getActiveStaffDebts: getActiveStaffDebts,
-      savePayroll: savePayroll
+      savePayroll: savePayroll,
+
+      // SHIFT GUARD & BUKA ULANG SHIFT (OPSI 1)
+      getTodayShiftStatus: getTodayShiftStatus,
+      openOrReopenShift: openOrReopenShift,
+      syncShiftCache: syncShiftCache,
+      openShiftGuardModal: openShiftGuardModal,
+      refreshShiftGuard: refreshShiftGuard
 };
   })();
 }
