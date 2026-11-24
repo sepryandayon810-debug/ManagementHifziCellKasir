@@ -1270,6 +1270,7 @@ window.kembaliKeKasir = function() {
                   }
                   if (roleEl && currentUser.role) {
                     const role = currentUser.role;
+                    window.__hutangUserRole = role.toLowerCase();
                     roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
                     if (typeof RoleGuard !== 'undefined') {
                       RoleGuard.apply(role.toLowerCase());
@@ -1278,7 +1279,10 @@ window.kembaliKeKasir = function() {
                 }
               }, 1000);
             }
-            initHutang();
+            if (!window.__hutangInitialized) {
+              window.__hutangInitialized = true;
+              initHutang();
+            }
           });
         } else {
           initHutang();
@@ -1825,47 +1829,68 @@ document.getElementById('btnDownloadDebtTemplate')
         }
 
         async function loadAllData() {
-
+          let hasCachedData = false;
           const cached = localStorage.getItem('webpos_debts_cache');
-  if (cached) {
-    try {
-      hutangData = JSON.parse(cached);
-      updateSummary();
-      renderHutangList();
-    } catch (e) {}
-  }
-          
-          Utils.showLoading();
-          try {
-            const hutangSnapshot = await firestoreDb.ref('debts').once('value');
-            hutangData = hutangSnapshot.val() || {};
-            customerData = await CustomerStorage.getAll();
+          if (cached) {
+            try {
+              hutangData = JSON.parse(cached);
+              hasCachedData = Object.keys(hutangData || {}).length > 0;
+              updateSummary();
+              renderHutangList();
+            } catch (e) {}
+          }
 
-            await lookupMissingProductDetails(hutangData);
-            localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData));
+          // Hanya tampilkan overlay loading jika cache lokal masih kosong
+          if (!hasCachedData) Utils.showLoading();
+          try {
+            const [hutangSnapshot, custData] = await Promise.all([
+              firestoreDb.ref('debts').once('value'),
+              CustomerStorage.getAll()
+            ]);
+            hutangData = hutangSnapshot.val() || {};
+            customerData = custData || {};
+
+            try { localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData)); } catch (e) {}
 
             updateSummary();
             renderCustomerManageList();
             renderHutangList();
+            Utils.hideLoading();
+
+            // Jalankan pelengkapan detail produk di BACKGROUND (tidak menahan layar 95%)
+            lookupMissingProductDetails(hutangData).then((changed) => {
+              if (changed) {
+                try { localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData)); } catch (e) {}
+                updateSummary();
+                renderHutangList();
+              }
+            }).catch(() => {});
+            return;
           } catch (error) {
             console.error('Error loading data:', error);
-            Utils.showToast('Gagal memuat data', 'error');
+            if (!hasCachedData) Utils.showToast('Gagal memuat data', 'error');
           }
           Utils.hideLoading();
         }
 
         async function lookupMissingProductDetails(debts) {
+  let checkedIds = {};
+  try { checkedIds = JSON.parse(sessionStorage.getItem('webpos_debt_lookup_done') || '{}'); } catch (e) {}
   const itemsToLookup = Object.values(debts).filter(item => {
+    if (!item || !item.id || checkedIds[item.id]) return false;
+    if (item.status !== 'active') return false;
     const raw = (item.note || item.transactionId || '').trim();
     const hasMissingItems = (!item.items || item.items.length === 0);
     const hasMissingName = (!item.name || item.name.trim() === '');
     return (raw.includes('TRX') || raw.includes('kas_')) && (hasMissingItems || hasMissingName);
-  });
+  }).slice(0, 15);
 
-  if (itemsToLookup.length === 0) return;
+  if (itemsToLookup.length === 0) return false;
 
-  // PARALEL: semua query jalan bersamaan, bukan satu-satu
+  let anyUpdated = false;
+  // PARALEL di background: maksimal 15 hutang aktif yang belum pernah dicek
   await Promise.all(itemsToLookup.map(async (item) => {
+    checkedIds[item.id] = 1;
     try {
             let trxData = null;
 
@@ -1903,7 +1928,8 @@ document.getElementById('btnDownloadDebtTemplate')
         patch.name = foundName;
       }
 
-      if (Object.keys(patch).length > 0) {
+     if (Object.keys(patch).length > 0) {
+        anyUpdated = true;
         await firebase.firestore().collection('debts').doc(item.id)
           .set(patch, { merge: true });
       }
@@ -1911,6 +1937,8 @@ document.getElementById('btnDownloadDebtTemplate')
       console.warn('Gagal lookup nama produk:', e);
     }
   }));
+  try { sessionStorage.setItem('webpos_debt_lookup_done', JSON.stringify(checkedIds)); } catch (e) {}
+  return anyUpdated;
 }
 
         window.toggleDetail = function(id) {
@@ -2214,12 +2242,14 @@ function getDisplayDebtName(data) {
                               <i class="fas fa-undo" style="font-size:0.74rem;"></i>
                             </button>
                           `}
+                          ${['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase()) ? `
                           <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
                             <i class="fas fa-edit" style="font-size:0.74rem;"></i>
                           </button>
                           <button class="btn-icon-sm btn-delete" onclick="window.deleteHutang('${item.id}')" title="Hapus" style="width:28px; height:28px; min-width:28px;">
                             <i class="fas fa-trash" style="font-size:0.74rem;"></i>
                           </button>
+                          ` : ''}
                         </div>
                       </div>
                     </div>
@@ -2620,6 +2650,10 @@ try {
         };
 
         window.editHutang = (id) => {
+          if (!['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
+            Utils.showToast('Hanya Admin / Owner yang boleh mengedit data hutang', 'error');
+            return;
+          }
           const item = hutangData[id];
           if (!item) return;
           
@@ -2637,6 +2671,10 @@ try {
         };
 
         window.deleteHutang = (id) => {
+          if (!['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
+            Utils.showToast('Hanya Admin / Owner yang boleh menghapus data hutang', 'error');
+            return;
+          }
           Utils.confirm('Apakah Anda yakin ingin menghapus data ini?', async () => {
             Utils.showLoading();
             try {
