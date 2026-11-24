@@ -428,7 +428,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       }, 4500);
     }
 
-    // Jika halaman baru saja dimuat ulang dari tombol Refresh update, tampilkan info versi yang aktif
+    // Jika halaman baru saja dimuat ulang dari tombol Refresh update (atau versi baru baru saja aktif), tampilkan info versi yang aktif
     try {
       var justUpdatedVer = sessionStorage.getItem('webpos_just_updated_ver');
       if (justUpdatedVer) {
@@ -436,10 +436,27 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         setTimeout(function() {
           fetchLatestSwVersion().then(function(liveVer) {
             var finalVer = liveVer || justUpdatedVer;
-            try { if (finalVer) localStorage.setItem('webpos_app_version', finalVer); } catch (e) {}
+            try {
+              if (finalVer) {
+                localStorage.setItem('webpos_app_version', finalVer);
+                localStorage.setItem('webpos_seen_toast_ver', finalVer);
+              }
+            } catch (e) {}
             showUpdatedVersionToast(finalVer);
           });
         }, 450);
+      } else if (window.caches && caches.keys) {
+        caches.keys().then(function(keys) {
+          var activeKey = keys.find(function(k) { return /^webpos-hifzi-v/i.test(k); }) || '';
+          var activeVer = activeKey ? activeKey.replace(/^webpos-hifzi-/i, '') : '';
+          if (!activeVer) return;
+          var lastSeenToast = localStorage.getItem('webpos_seen_toast_ver') || '';
+          if (lastSeenToast !== activeVer) {
+            localStorage.setItem('webpos_seen_toast_ver', activeVer);
+            localStorage.setItem('webpos_app_version', activeVer);
+            setTimeout(function() { showUpdatedVersionToast(activeVer); }, 600);
+          }
+        }).catch(function() {});
       }
     } catch (e) {}
 
