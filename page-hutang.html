@@ -1866,17 +1866,10 @@ document.getElementById('btnDownloadDebtTemplate')
           document.getElementById('importFile').value = '';
         }
 
-        async function loadAllData() {
+        async function loadAllData(forceRefresh = false) {
           let hasCachedData = false;
-          const cached = localStorage.getItem('webpos_debts_cache');
+          const cached = !forceRefresh ? localStorage.getItem('webpos_debts_cache') : null;
           if (cached) {
-            try {
-              hutangData = JSON.parse(cached);
-              hasCachedData = Object.keys(hutangData || {}).length > 0;
-              updateSummary();
-              renderHutangList();
-            } catch (e) {}
-          }
 
           // Hanya tampilkan overlay loading jika cache lokal masih kosong
           if (!hasCachedData) Utils.showLoading();
@@ -2764,7 +2757,9 @@ try {
           });
         };
         
+        let isProcessingPayment = false;
         async function processPayment() {
+          if (isProcessingPayment) return;
           const affectKas = document.getElementById('affectKas').checked;
           const note = document.getElementById('paymentNote').value.trim();
           const user = Auth.getCurrentUser();
@@ -2790,15 +2785,17 @@ try {
           // PELUNASAN BATCH
           // =========================
           if (!currentPaymentId && currentBatchItems && currentBatchItems.length > 0) {
+            isProcessingPayment = true;
             Utils.showLoading();
             try {
+              let paidCount = 0;
               for (const item of currentBatchItems) {
                 const remaining = Math.max(0, Number(item.remaining ?? item.amount ?? 0));
                 if (remaining <= 0) continue;
 
                 const category = item.type === 'hutang'
-  ? 'kas_keluar'
-  : 'kas_masuk';
+                  ? 'kas_keluar'
+                  : 'kas_masuk';
 
                 const now = Date.now();
                 let kasRecord = null;
@@ -2808,14 +2805,15 @@ try {
                   kasRecord = await recordToKas(
                     item.type === 'hutang' ? 'keluar' : 'masuk',
                     remaining,
-                    item.type === 'hutang'
+                    note || (item.type === 'hutang'
                       ? `Pelunasan hutang - ${item.name}`
-                      : `Pengembalian pinjaman - ${item.name}`,
+                      : `Pelunasan piutang - ${item.name}`),
                     user,
                     category,
                     item.id,
                     {
                       affectsCashGlobal: true,
+                      customerName: item.name || '',
                       debtType: item.type === 'hutang' ? 'hutang' : 'piutang',
                       flowType: item.type === 'hutang'
                         ? 'pelunasan_hutang'
@@ -2829,37 +2827,49 @@ try {
                     remaining: 0,
                     status: 'paid',
                     paidAt: now,
-                    updatedAt: now
+                    updatedAt: now,
+                    kasRecorded: affectKas,
+                    kasTransactionId: kasRecord?.id || '',
+                    lastPaymentAmount: remaining,
+                    lastPaymentNote: note || `Pelunasan - ${item.name}`,
+                    lastPaymentBy: user.name || user.email || '',
+                    lastPaymentAt: now
                   });
 
-                  await firestoreDb.ref('debt_payments/' + item.id + '/' + now).set({
-                    category,
-                    amount: remaining,
-                    note: note || `Pelunasan - ${item.name}`,
-                    affectKas,
-                    userId: user.uid,
-                    userName: user.name || user.email,
-                    timestamp: now
-                  });
+                  // Update tampilan lokal segera agar render mulus tanpa kedip data lama
+                  if (hutangData[item.id]) {
+                    hutangData[item.id].remaining = 0;
+                    hutangData[item.id].status = 'paid';
+                    hutangData[item.id].paidAt = now;
+                    hutangData[item.id].updatedAt = now;
+                  }
+                  paidCount++;
                 } catch (itemError) {
                   if (kasRecord?.id) {
-  await firebase.firestore()
-    .collection('transactions')
-    .doc(kasRecord.id)
-    .delete()
-    .catch(() => {});
-}
+                    await firebase.firestore()
+                      .collection('transactions')
+                      .doc(kasRecord.id)
+                      .delete()
+                      .catch(() => {});
+                  }
                   throw itemError;
                 }
               }
 
+              try {
+                localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData));
+                localStorage.removeItem('raw_header_date');
+              } catch (e) {}
+
+              closePaymentModal();
+              updateSummary();
+              renderHutangList();
               Utils.showToast(
-                `${currentBatchItems.length} pembayaran berhasil` +
+                `${paidCount || currentBatchItems.length} pembayaran berhasil` +
                 (affectKas ? ' dan tercatat di kas' : ''),
                 'success'
               );
-              closePaymentModal();
-              await loadAllData();
+              await loadAllData(true);
 
               if (localStorage.getItem('fromKasir') === 'true') {
                 localStorage.removeItem('fromKasir');
@@ -2871,6 +2881,7 @@ try {
               console.error('Error batch payment:', error);
               Utils.showToast('Gagal memproses pembayaran batch: ' + error.message, 'error');
             } finally {
+              isProcessingPayment = false;
               Utils.hideLoading();
             }
             return;
@@ -2907,26 +2918,79 @@ try {
             return;
           }
 
-         Utils.showLoading();
+          isProcessingPayment = true;
+          Utils.showLoading();
           try {
-            const core = await ensureKasCore();
-            await core.saveTransaction({
-              kategori: 'bayar_hutang',
-              metode_pembayaran: 'tunai',
-              nominal: paymentAmount,
-              userId: user.uid,
-              debtId: currentPaymentId,
-              customerName: item.name || '',
-              catatan: note || '',
-              pengaruhi_kas_global: affectKas
-            });
+            const now = Date.now();
+            const newRemaining = Math.max(0, remaining - paymentAmount);
 
+            if (item.type === 'hutang') {
+              let kasRecord = null;
+              if (affectKas) {
+                kasRecord = await recordToKas(
+                  'keluar',
+                  paymentAmount,
+                  note || `Pelunasan hutang - ${item.name}`,
+                  user,
+                  'kas_keluar',
+                  currentPaymentId,
+                  { affectsCashGlobal: true, customerName: item.name || '', debtType: 'hutang' }
+                );
+              }
+              try {
+                await firestoreDb.ref('debts/' + currentPaymentId).update({
+                  remaining: newRemaining,
+                  status: newRemaining <= 0 ? 'paid' : 'active',
+                  paidAt: newRemaining <= 0 ? now : null,
+                  updatedAt: now,
+                  kasRecorded: affectKas,
+                  kasTransactionId: kasRecord?.id || '',
+                  lastPaymentAmount: paymentAmount,
+                  lastPaymentNote: note || `Pembayaran hutang - ${item.name}`,
+                  lastPaymentBy: user.name || user.email || '',
+                  lastPaymentAt: now
+                });
+              } catch (debtErr) {
+                if (kasRecord?.id) {
+                  await firebase.firestore().collection('transactions').doc(kasRecord.id).delete().catch(() => {});
+                }
+                throw debtErr;
+              }
+            } else {
+              const core = await ensureKasCore();
+              await core.saveTransaction({
+                kategori: 'bayar_hutang',
+                metode_pembayaran: 'tunai',
+                nominal: paymentAmount,
+                userId: user.uid,
+                userName: user.name || user.email || '',
+                debtId: currentPaymentId,
+                customerName: item.name || '',
+                catatan: note || `Pelunasan piutang - ${item.name || ''}`,
+                pengaruhi_kas_global: affectKas
+              });
+            }
+
+            // Update tampilan lokal segera agar render mulus tanpa kedip data lama
+            if (hutangData[currentPaymentId]) {
+              hutangData[currentPaymentId].remaining = newRemaining;
+              hutangData[currentPaymentId].status = newRemaining <= 0 ? 'paid' : 'active';
+              if (newRemaining <= 0) hutangData[currentPaymentId].paidAt = now;
+              hutangData[currentPaymentId].updatedAt = now;
+            }
+            try {
+              localStorage.setItem('webpos_debts_cache', JSON.stringify(hutangData));
+              localStorage.removeItem('raw_header_date');
+            } catch (e) {}
+
+            closePaymentModal();
+            updateSummary();
+            renderHutangList();
             Utils.showToast(
               'Pembayaran berhasil' + (affectKas ? ' dan tercatat di kas' : ''),
               'success'
             );
-            closePaymentModal();
-            await loadAllData();
+            await loadAllData(true);
 
             if (localStorage.getItem('fromKasir') === 'true') {
               localStorage.removeItem('fromKasir');
@@ -2938,6 +3002,7 @@ try {
             console.error('Error processing payment:', error);
             Utils.showToast('Gagal memproses pembayaran: ' + error.message, 'error');
           } finally {
+            isProcessingPayment = false;
             Utils.hideLoading();
           }
         }
@@ -2999,7 +3064,9 @@ try {
     nominal,
     admin: Number(extra.admin || 0),
     catatan: description,
+    customerName: extra.customerName || '',
     userId: user.uid,
+    userName: user.name || user.email || '',
     date_key: today,
     waktu: now,
     status: 'completed',
