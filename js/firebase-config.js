@@ -428,38 +428,101 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       }, 4500);
     }
 
+    function renderSidebarVersionBadge(verLabel) {
+      var v = String(verLabel || '').trim();
+      if (!v) return;
+      var roleEl = document.getElementById('userRole');
+      if (!roleEl || !roleEl.parentNode) return;
+      if (!document.getElementById('wposSidebarVerStyle')) {
+        var st = document.createElement('style');
+        st.id = 'wposSidebarVerStyle';
+        st.textContent =
+          '.wpos-role-ver-row{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin-top:1px;min-width:0;}' +
+          '.wpos-role-ver-row .user-role{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}' +
+          '.wpos-ver-badge{display:inline-flex;align-items:center;font-size:0.58rem;font-weight:700;line-height:1.25;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,0.12);color:var(--primary,#4f46e5);border:1px solid rgba(99,102,241,0.22);letter-spacing:0.02em;white-space:nowrap;flex-shrink:0;text-transform:none;}' +
+          '[data-theme="dark"] .wpos-ver-badge{background:rgba(129,140,248,0.18);color:#a5b4fc;border-color:rgba(129,140,248,0.32);}';
+        document.head.appendChild(st);
+      }
+      var badge = document.getElementById('webposSidebarVerBadge');
+      if (!badge) {
+        var row = roleEl.parentNode.classList && roleEl.parentNode.classList.contains('wpos-role-ver-row')
+          ? roleEl.parentNode
+          : null;
+        if (!row) {
+          row = document.createElement('div');
+          row.className = 'wpos-role-ver-row';
+          roleEl.parentNode.insertBefore(row, roleEl);
+          row.appendChild(roleEl);
+        }
+        badge = document.createElement('span');
+        badge.id = 'webposSidebarVerBadge';
+        badge.className = 'wpos-ver-badge';
+        row.appendChild(badge);
+      }
+      badge.textContent = v;
+      badge.title = 'Versi aplikasi aktif: ' + v;
+    }
+
+    // Tampilkan versi kecil di samping info role sidebar langsung dari cache/localStorage
+    try {
+      var cachedAppVer = localStorage.getItem('webpos_app_version') || '';
+      if (cachedAppVer) renderSidebarVersionBadge(cachedAppVer);
+    } catch (e) {}
+
     // Jika halaman baru saja dimuat ulang dari tombol Refresh update (atau versi baru baru saja aktif), tampilkan info versi yang aktif
     try {
       var justUpdatedVer = sessionStorage.getItem('webpos_just_updated_ver');
       if (justUpdatedVer) {
         sessionStorage.removeItem('webpos_just_updated_ver');
+        if (justUpdatedVer !== 'terbaru') renderSidebarVersionBadge(justUpdatedVer);
         setTimeout(function() {
           fetchLatestSwVersion().then(function(liveVer) {
             var finalVer = liveVer || justUpdatedVer;
             try {
-              if (finalVer) {
+              if (finalVer && finalVer !== 'terbaru') {
                 localStorage.setItem('webpos_app_version', finalVer);
                 localStorage.setItem('webpos_seen_toast_ver', finalVer);
               }
             } catch (e) {}
+            if (finalVer && finalVer !== 'terbaru') renderSidebarVersionBadge(finalVer);
             showUpdatedVersionToast(finalVer);
           });
         }, 450);
       } else if (window.caches && caches.keys) {
         caches.keys().then(function(keys) {
-          var activeKey = keys.find(function(k) { return /^webpos-hifzi-v/i.test(k); }) || '';
+          var verKeys = keys.filter(function(k) { return /^webpos-hifzi-v/i.test(k); });
+          verKeys.sort(function(a, b) {
+            var pa = a.replace(/^webpos-hifzi-v/i, '').split('.').map(Number);
+            var pb = b.replace(/^webpos-hifzi-v/i, '').split('.').map(Number);
+            for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+              var diff = (pb[i] || 0) - (pa[i] || 0);
+              if (diff !== 0) return diff;
+            }
+            return 0;
+          });
+          var activeKey = verKeys[0] || '';
           var activeVer = activeKey ? activeKey.replace(/^webpos-hifzi-/i, '') : '';
-          if (!activeVer) return;
+          if (!activeVer) {
+            if (!localStorage.getItem('webpos_app_version')) {
+              fetchLatestSwVersion().then(function(v) {
+                if (!v) return;
+                try { localStorage.setItem('webpos_app_version', v); } catch (e) {}
+                renderSidebarVersionBadge(v);
+              });
+            }
+            return;
+          }
+          renderSidebarVersionBadge(activeVer);
+          try { localStorage.setItem('webpos_app_version', activeVer); } catch (e) {}
           var lastSeenToast = localStorage.getItem('webpos_seen_toast_ver') || '';
           if (lastSeenToast !== activeVer) {
-            localStorage.setItem('webpos_seen_toast_ver', activeVer);
-            localStorage.setItem('webpos_app_version', activeVer);
+            try { localStorage.setItem('webpos_seen_toast_ver', activeVer); } catch (e) {}
             setTimeout(function() { showUpdatedVersionToast(activeVer); }, 600);
           }
         }).catch(function() {});
       }
     } catch (e) {}
-
+    
     function showAppUpdateBanner(verHint) {
       if (verHint) latestSwVersion = verHint;
       var existingBadge = document.getElementById('webposUpdateVerBadge');
