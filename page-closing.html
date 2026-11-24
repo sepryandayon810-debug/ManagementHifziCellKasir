@@ -436,6 +436,102 @@
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
+
+    /* Modern Shift Closed / Not Opened Banner */
+    .closing-shift-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.95rem 1.15rem;
+      margin-bottom: 1.25rem;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+      flex-wrap: wrap;
+    }
+    .closing-shift-banner.is-closed {
+      display: flex;
+      background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+      border-color: #fda4af;
+      color: #9f1239;
+    }
+    .closing-shift-banner.is-none {
+      display: flex;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+    [data-theme="dark"] .closing-shift-banner.is-closed {
+      background: rgba(244, 63, 94, 0.14);
+      border-color: rgba(244, 63, 94, 0.36);
+      color: #fecdd3;
+    }
+    [data-theme="dark"] .closing-shift-banner.is-none {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.36);
+      color: #fde68a;
+    }
+    .csb-left {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex: 1;
+      min-width: 220px;
+    }
+    .csb-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #ffffff;
+      font-size: 1.05rem;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
+    }
+    .closing-shift-banner.is-closed .csb-icon {
+      background: linear-gradient(135deg, #f43f5e, #be123c);
+    }
+    .closing-shift-banner.is-none .csb-icon {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .csb-title {
+      font-weight: 800;
+      font-size: 0.94rem;
+      line-height: 1.25;
+      margin-bottom: 2px;
+    }
+    .csb-desc {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      opacity: 0.9;
+    }
+    .csb-action-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 0.62rem 1.05rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-family: inherit;
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.15);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .csb-action-btn:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    .closing-shift-banner.is-closed .csb-action-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .closing-shift-banner.is-none .csb-action-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
   </style>
 </head>
 <body>
@@ -566,15 +662,18 @@
       </header>
 
       <div class="page-content">
-        <!-- Warning jika shift sudah tutup -->
-        <div class="card" id="warningClosed" style="display: none; margin-bottom: 1.25rem; border-left: 4px solid var(--warning);">
-          <div class="card-body" style="display: flex; align-items: center; gap: 1rem; color: var(--warning);">
-            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+       <!-- Banner status jika shift belum dibuka / sudah tutup -->
+        <div class="closing-shift-banner" id="warningClosed">
+          <div class="csb-left">
+            <div class="csb-icon" id="warningClosedIcon"><i class="fas fa-lock"></i></div>
             <div>
-              <div style="font-weight: 700;">Shift Sudah Ditutup</div>
-              <div style="font-size: 0.85rem; opacity: 0.85;">Tidak dapat melakukan closing ulang. Shift harus berstatus "Buka" untuk melakukan closing.</div>
+              <div class="csb-title" id="warningClosedTitle">Shift Hari Ini Sudah Ditutup (Closing)</div>
+              <div class="csb-desc" id="warningClosedDesc">Jika ada transaksi susulan dan perlu closing ulang, buka ulang shift terlebih dahulu — arsip closing sebelumnya tetap tersimpan aman.</div>
             </div>
           </div>
+          <button type="button" class="csb-action-btn" id="btnReopenFromClosing">
+            <i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>
+          </button>
         </div>
 
         <div class="closing-grid">
@@ -1102,18 +1201,57 @@ document.getElementById('sistemNonTunai').textContent =
           document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(todayStats.uangGlobal);
 
           const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
-          isShiftOpen = shiftDoc.exists && shiftDoc.data().status === 'open';
+          const isClosedToday = Boolean(shiftDoc.exists && shiftDoc.data().status !== 'open');
+          isShiftOpen = Boolean(shiftDoc.exists && shiftDoc.data().status === 'open');
+
+          const warnEl = document.getElementById('warningClosed');
+          const warnIcon = document.getElementById('warningClosedIcon');
+          const warnTitle = document.getElementById('warningClosedTitle');
+          const warnDesc = document.getElementById('warningClosedDesc');
+          const btnReopen = document.getElementById('btnReopenFromClosing');
+          const btnSimpan = document.getElementById('btnSimpanClosing');
 
           if (!isShiftOpen) {
-            document.getElementById('warningClosed').style.display = 'block';
+            if (warnEl) warnEl.className = 'closing-shift-banner ' + (isClosedToday ? 'is-closed' : 'is-none');
+            if (isClosedToday) {
+              if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-lock"></i>';
+              if (warnTitle) warnTitle.textContent = 'Shift Hari Ini Sudah Ditutup (Closing)';
+              if (warnDesc) warnDesc.textContent = 'Jika ada transaksi susulan dan perlu closing ulang, buka ulang shift terlebih dahulu — arsip closing sebelumnya tetap tersimpan aman.';
+              if (btnReopen) btnReopen.innerHTML = '<i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>';
+            } else {
+              if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-store-slash"></i>';
+              if (warnTitle) warnTitle.textContent = 'Shift Belum Dibuka';
+              if (warnDesc) warnDesc.textContent = 'Buka shift kerja terlebih dahulu sebelum dapat melakukan closing hari ini.';
+              if (btnReopen) btnReopen.innerHTML = '<i class="fas fa-store"></i><span>Buka Shift Sekarang</span>';
+            }
             document.getElementById('resultCard').style.opacity = '0.6';
-            const btnSimpan = document.getElementById('btnSimpanClosing');
             if (btnSimpan) {
               btnSimpan.disabled = true;
-              btnSimpan.innerHTML = '<i class="fas fa-lock"></i> Shift Sudah Ditutup';
+              btnSimpan.innerHTML = isClosedToday
+                ? '<i class="fas fa-lock"></i> Shift Sudah Ditutup'
+                : '<i class="fas fa-store-slash"></i> Shift Belum Dibuka';
+            }
+            if (btnReopen) {
+              btnReopen.onclick = () => {
+                if (window.KasCore && typeof KasCore.openShiftGuardModal === 'function') {
+                  KasCore.openShiftGuardModal({
+                    status: isClosedToday ? 'closed' : 'none',
+                    onSuccess: () => {
+                      isShiftOpen = true;
+                      if (warnEl) warnEl.className = 'closing-shift-banner';
+                      document.getElementById('resultCard').style.opacity = '1';
+                      if (btnSimpan) {
+                        btnSimpan.disabled = false;
+                        btnSimpan.innerHTML = '<i class="fas fa-save"></i> Simpan & Tutup Shift';
+                      }
+                    }
+                  });
+                } else {
+                  window.location.href = 'page-kas-shift.html';
+                }
+              };
             }
           }
-
           ClosingCalculator.updateComparison();
         } catch (error) {
           console.error("closing: gagal memuat data closing", error);
