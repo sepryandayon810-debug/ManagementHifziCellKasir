@@ -588,7 +588,10 @@
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
           setupSidebarEvents();
-          initTerlaris();
+          const _r = (userData.role || 'kasir').toLowerCase();
+     const _p = (userData.permissions && typeof userData.permissions === 'object') ? userData.permissions : {};
+     if (_r !== 'owner' && _r !== 'developer' && _r !== 'admin' && _p['laporan-terlaris'] !== true) { window.location.replace('index.html'); return; }
+     initTerlaris();
         });
       });
 
