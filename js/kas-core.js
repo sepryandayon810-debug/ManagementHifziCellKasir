@@ -2350,8 +2350,19 @@ async function savePayroll(options) {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>' + (isReopenMode ? 'Membuka ulang...' : 'Membuka shift...') + '</span>';
           }
           try {
+            try {
             var res = await openOrReopenShift();
             closeShiftGuardModal();
+            if (res && res.redirectToModal) {
+              var modalMsg = 'Silakan input Modal Harian terlebih dahulu untuk membuka shift.';
+              if (window.Utils && typeof window.Utils.showToast === 'function') {
+                window.Utils.showToast(modalMsg, 'warning');
+              } else if (typeof window.showToast === 'function') {
+                window.showToast(modalMsg, 'warning');
+              }
+              setTimeout(function() { window.location.href = 'page-modal-harian.html'; }, 700);
+              return;
+            }
             var okMsg = res.reopened
               ? 'Shift berhasil dibuka ulang! Jangan lupa closing ulang setelah selesai.'
               : 'Shift kerja berhasil dibuka! Transaksi sudah bisa dilakukan.';
