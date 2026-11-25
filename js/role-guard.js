@@ -14,6 +14,7 @@ if (typeof window.RoleGuard === 'undefined') {
         this.hideMenu('[data-menu="pengguna"]');
         this.hideMenu('[data-menu="log-aktivitas"]');
         this.hideMenu('[data-menu="backup"]');
+        this.hideMenu('[data-menu="setting"]');
         return;
       }
 
