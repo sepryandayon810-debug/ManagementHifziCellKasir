@@ -866,27 +866,35 @@
     setupSidebarEvents();
 
     try {
-      const uDoc = await db.collection("users").doc(user.uid).get();
-      if (uDoc.exists) {
-        const u = uDoc.data();
-        const role = (u.role || "kasir").toLowerCase();
-        document.getElementById("userName").textContent = u.name || user.email.split("@")[0];
-        document.getElementById("userRole").textContent = role.toUpperCase();
-        if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
-
-        if (typeof RoleGuard !== 'undefined') {
-          RoleGuard.apply(role);
-        }
-      }
-    } catch(err) {
-      console.error(err);
+    const uDoc = await db.collection("users").doc(user.uid).get();
+    if (!uDoc.exists) {
+      window.location.replace("index.html");
+      return;
     }
+    const u = uDoc.data();
+    const role = (u.role || "kasir").toLowerCase();
+    const perms = (u.permissions && typeof u.permissions === "object") ? u.permissions : {};
+    if (role !== "owner" && role !== "developer" && perms.penggajian !== true) {
+      window.location.replace("index.html");
+      return;
+    }
+    document.getElementById("userName").textContent = u.name || user.email.split("@")[0];
+    document.getElementById("userRole").textContent = role.toUpperCase();
+    if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
 
-    const now = new Date();
-    document.getElementById("payrollYear").value = now.getFullYear();
-    document.getElementById("payrollMonth").value = String(now.getMonth() + 1).padStart(2, '0');
+    if (typeof RoleGuard !== 'undefined') {
+      RoleGuard.apply(role);
+    }
+  } catch(err) {
+    console.error(err);
+    window.location.replace("index.html");
+    return;
+  }
 
-    loadStaffAndPayrolls();
+  const now = new Date();
+  document.getElementById("payrollYear").value = now.getFullYear();
+  document.getElementById("payrollMonth").value = String(now.getMonth() + 1).padStart(2, '0');
+  loadStaffAndPayrolls();
 
     document.getElementById("btnOpenAddPayroll").onclick = openAddPayrollModal;
     document.getElementById("btnOpenManageStaff").onclick = openManageStaffModal;
