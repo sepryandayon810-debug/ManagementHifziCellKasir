@@ -2005,7 +2005,8 @@ async function savePayroll(options) {
           }));
         }
       } catch (e) {}
-      if (!uid || !_shiftGuardState.uid || _shiftGuardState.uid === uid) {
+     var curUser = getCurrentAuthUser();
+      if (!uid || !curUser || curUser.uid === uid) {
         _shiftGuardState.uid = uid || _shiftGuardState.uid;
         _shiftGuardState.date = safeDate;
         _shiftGuardState.status = status;
@@ -2100,11 +2101,16 @@ async function savePayroll(options) {
 
       var today = getShiftTodayKey();
       var shiftDocId = today + '_' + uid;
-      var userNameEl = (typeof document !== 'undefined') ? document.getElementById('userName') : null;
-      var userName = String(
-        options.userName ||
-        (userNameEl && userNameEl.textContent) ||
-        (function() { try { return localStorage.getItem('webpos_user_name') || ''; } catch (e) { return ''; } })() ||
+     var userNameEl = (typeof document !== 'undefined') ? document.getElementById('userName') : null;
+      var rawDomName = String((userNameEl && userNameEl.textContent) || '').trim();
+      var isPlaceholderName = !rawDomName || /^(loading\.{0,3}|memuat\.{0,3}|-|user)$/i.test(rawDomName);
+      var rawOptName = String(options.userName || '').trim();
+      if (/^(loading\.{0,3}|memuat\.{0,3}|-|user)$/i.test(rawOptName)) rawOptName = '';
+      var cachedUserName = (function() { try { return String(localStorage.getItem('webpos_user_name') || '').trim(); } catch (e) { return ''; } })();
+      var userName = (
+        rawOptName ||
+        (!isPlaceholderName ? rawDomName : '') ||
+        cachedUserName ||
         (authUser && (authUser.displayName || authUser.email)) ||
         'Kasir'
       ).trim();
@@ -2148,6 +2154,8 @@ async function savePayroll(options) {
           status: 'open',
           modalAwal: finalModal,
           openedAt: prev.openedAt || firebase.firestore.FieldValue.serverTimestamp(),
+          closedAt: null,
+          closeTime: null,
           reopenedAt: Date.now(),
           reopenCount: reopenCount,
           previousClosings: prevClosings
