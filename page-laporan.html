@@ -221,6 +221,29 @@
   font-size: 1.05rem;
   flex-shrink: 0;
 }
+
+    .filter-input-3d { position: relative; display: flex; align-items: center; }
+    .filter-input-3d .field-icon-3d {
+      position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+      pointer-events: none; z-index: 2; display: inline-flex; align-items: center; font-size: 0.95rem;
+    }
+    .filter-input-3d .ui-3d-svg {
+      position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; pointer-events: none; z-index: 2;
+    }
+    .filter-input-3d .form-input, .filter-input-3d .form-select { padding-left: 2.35rem !important; width: 100%; }
+    .filter-input-3d .form-select { appearance: none; -webkit-appearance: none; padding-right: 2.35rem !important; }
+    .filter-input-3d .select-arrow-3d {
+      position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+      pointer-events: none; z-index: 2; display: inline-flex;
+    }
+    .filter-input-3d .select-arrow-3d .ui-3d-svg { position: static; transform: none; width: 16px; height: 16px; }
+    .tx-row-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+    .tx-row-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--bg-subtle, #f1f5f9);
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem;
+    }
   </style>
 
   <!-- Chart.js -->
@@ -380,20 +403,30 @@
           <div class="filter-grid">
             <div class="form-group">
               <label class="form-label">Dari Tanggal</label>
-              <input type="date" class="form-input" id="dateFrom">
+              <div class="filter-input-3d">
+                <i class="fas fa-calendar-alt field-icon-3d"></i>
+                <input type="date" class="form-input" id="dateFrom">
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Sampai Tanggal</label>
-              <input type="date" class="form-input" id="dateTo">
+              <div class="filter-input-3d">
+                <i class="fas fa-calendar-alt field-icon-3d"></i>
+                <input type="date" class="form-input" id="dateTo">
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Periode Cepat</label>
-              <select class="form-select" id="periodSelect">
-                <option value="custom">Kustom</option>
-                <option value="today">Hari Ini</option>
-                <option value="week">7 Hari Terakhir</option>
-                <option value="month">Bulan Ini</option>
-              </select>
+              <div class="filter-input-3d">
+                <i class="fas fa-clock field-icon-3d"></i>
+                <select class="form-select" id="periodSelect">
+                  <option value="custom">Kustom</option>
+                  <option value="today">Hari Ini</option>
+                  <option value="week">7 Hari Terakhir</option>
+                  <option value="month">Bulan Ini</option>
+                </select>
+                <span class="select-arrow-3d"><i class="fas fa-chevron-down"></i></span>
+              </div>
             </div>
           </div>
           <div class="filter-actions">
@@ -777,11 +810,13 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
             return;
           }
 
-          // Untuk tab Penjualan dan Kas biasa:
-          const summary = await KasCore.getPeriodSummary({
-            startDate: dateFrom,
-            endDate: dateTo
-          });
+          // Untuk tab Penjualan dan Kas biasa (sesuai role):
+          const curUid = (auth.currentUser && auth.currentUser.uid) || null;
+          const summaryOpts = { startDate: dateFrom, endDate: dateTo };
+          if (currentUserRole !== 'owner' && currentUserRole !== 'developer' && currentUserRole !== 'admin' && curUid) {
+            summaryOpts.userId = curUid;
+          }
+          const summary = await KasCore.getPeriodSummary(summaryOpts);
 
           currentSummary = summary;
           reportData = summary.validTransactions || [];
@@ -1085,16 +1120,36 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
     const cat = KasCore.getCategory(t);
     const isIncome = ['jual', 'top_up', 'kas_masuk'].includes(cat);
     const amount = KasCore.getNominal(t);
-    let timeStr = '-';
-    if (t.timestamp) timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const tsMs = extractLogTime(t);
+    const dateStr = t.date || (tsMs ? toLocalDateStr(new Date(tsMs)) : '');
+    const timeStr = tsMs ? new Date(tsMs).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+    const timeDisplay = [dateStr, timeStr].filter(Boolean).join(' ') || '-';
+
+    let itemTitle = t.note || t.catatan || t.supplier || '';
+    if (!itemTitle && Array.isArray(t.items) && t.items.length > 0) {
+      const names = t.items.map(i => (i && (i.name || i.productName)) || '').filter(Boolean);
+      if (names.length > 0) {
+        itemTitle = names.slice(0, 2).join(', ') + (names.length > 2 ? ` (+${names.length - 2} item)` : '');
+      }
+    }
+    if (!itemTitle) itemTitle = labels[cat] || 'Transaksi';
+
     const methodValue = KasCore.getPaymentMethod(t);
     const methodLabel = methodValue ? ` [Metode: ${methodValue.toUpperCase()}]` : '';
+    const actorRole = t.userRole ? String(t.userRole).toUpperCase() : 'Petugas';
+    const actorName = t.userName || t.cashierName || '-';
+    const iconClass = cat === 'jual'
+      ? 'fas fa-receipt'
+      : (isIncome ? 'fas fa-arrow-down' : 'fas fa-arrow-up');
 
     return `
       <div class="transaction-item">
-        <div>
-          <div class="transaction-title">${labels[cat] || cat} — ${t.note || t.supplier || '-'}${methodLabel}</div>
-          <div class="transaction-meta">${t.date || ''} ${timeStr} | Kasir: ${t.userName || '-'}</div>
+        <div class="tx-row-left">
+          <div class="tx-row-icon"><i class="${iconClass}"></i></div>
+          <div>
+            <div class="transaction-title">${labels[cat] || cat} — ${Utils.escapeHtml(itemTitle)}${Utils.escapeHtml(methodLabel)}</div>
+            <div class="transaction-meta">${Utils.escapeHtml(timeDisplay)} | ${Utils.escapeHtml(actorRole)}: ${Utils.escapeHtml(actorName)}</div>
+          </div>
         </div>
         <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
           ${isIncome ? '+' : '-'} ${Utils.formatRupiah(amount)}
