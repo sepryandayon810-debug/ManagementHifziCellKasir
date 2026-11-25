@@ -841,13 +841,22 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
       // 1. Helper Waktu (Mencegah error extractLogTime is not defined)
       function extractLogTime(l) {
         if (!l) return 0;
-        if (typeof l.timestamp === 'number') return l.timestamp;
-        if (l.timestamp && typeof l.timestamp.toMillis === 'function') return l.timestamp.toMillis();
-        if (l.timestamp && typeof l.timestamp.toDate === 'function') return l.timestamp.toDate().getTime();
-        if (l.createdAt && typeof l.createdAt.toMillis === 'function') return l.createdAt.toMillis();
-        if (l.createdAt && typeof l.createdAt.toDate === 'function') return l.createdAt.toDate().getTime();
-        if (l.date) {
-          const t = new Date(l.date).getTime();
+        const candidates = [l.waktu, l.timestamp, l.createdAt, l.updatedAt];
+        for (let i = 0; i < candidates.length; i++) {
+          const v = candidates[i];
+          if (!v) continue;
+          if (typeof v === 'number' && !isNaN(v)) return v;
+          if (typeof v.toMillis === 'function') return v.toMillis();
+          if (typeof v.toDate === 'function') return v.toDate().getTime();
+          if (typeof v.seconds === 'number') return v.seconds * 1000;
+          if (typeof v === 'string' && v.trim()) {
+            const p = new Date(v).getTime();
+            if (!isNaN(p)) return p;
+          }
+        }
+        const dRaw = l.date_key || l.date;
+        if (dRaw) {
+          const t = new Date(dRaw).getTime();
           if (!isNaN(t)) return t;
         }
         return 0;
@@ -1121,9 +1130,16 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
     const isIncome = ['jual', 'top_up', 'kas_masuk'].includes(cat);
     const amount = KasCore.getNominal(t);
     const tsMs = extractLogTime(t);
-    const dateStr = t.date || (tsMs ? toLocalDateStr(new Date(tsMs)) : '');
+    const rawDate = t.date_key || t.date || (tsMs ? toLocalDateStr(new Date(tsMs)) : '');
+    let dateLabel = '';
+    if (rawDate) {
+      const dObj = new Date(rawDate + (String(rawDate).length === 10 ? 'T00:00:00' : ''));
+      dateLabel = !isNaN(dObj.getTime())
+        ? dObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+        : rawDate;
+    }
     const timeStr = tsMs ? new Date(tsMs).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
-    const timeDisplay = [dateStr, timeStr].filter(Boolean).join(' ') || '-';
+    const timeDisplay = [dateLabel, timeStr].filter(Boolean).join(', ');
 
     let itemTitle = t.note || t.catatan || t.supplier || '';
     if (!itemTitle && Array.isArray(t.items) && t.items.length > 0) {
@@ -1148,7 +1164,7 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
           <div class="tx-row-icon"><i class="${iconClass}"></i></div>
           <div>
             <div class="transaction-title">${labels[cat] || cat} — ${Utils.escapeHtml(itemTitle)}${Utils.escapeHtml(methodLabel)}</div>
-            <div class="transaction-meta">${Utils.escapeHtml(timeDisplay)} | ${Utils.escapeHtml(actorRole)}: ${Utils.escapeHtml(actorName)}</div>
+            <div class="transaction-meta">${Utils.escapeHtml([timeDisplay, `${actorRole}: ${actorName}`].filter(Boolean).join(' | '))}</div>
           </div>
         </div>
         <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
