@@ -774,17 +774,19 @@
       const doc = await firebase.firestore().collection("users").doc(user.uid).get();
       let displayName = user.email.split("@")[0];
       let displayRole = "Kasir";
+      let userPerms = {};
 
       if (doc.exists) {
         const u = doc.data();
         displayName = u.name || u.username || displayName;
         displayRole = u.role || displayRole;
+        if (u.permissions && typeof u.permissions === 'object') userPerms = u.permissions;
       }
 
       currentUserRole = displayRole.toLowerCase();
 
-      // Hak Akses: Hanya Owner dan Developer yang boleh buka halaman ini (tanpa alert native window)
-      if (currentUserRole !== 'owner' && currentUserRole !== 'developer') {
+      // Hak Akses: Owner, Developer, atau akun yang diberi izin log-aktivitas
+      if (currentUserRole !== 'owner' && currentUserRole !== 'developer' && userPerms['log-aktivitas'] !== true) {
         toast("Akses Ditolak: Halaman ini hanya untuk Owner dan Developer.", "error");
         setTimeout(() => {
           window.location.href = "index.html";
