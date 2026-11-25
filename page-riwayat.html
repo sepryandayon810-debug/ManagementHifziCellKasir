@@ -2065,6 +2065,14 @@ itemsText + '\n' +
 
           batch.delete(db.collection('transactions').doc(id));
           await batch.commit();
+          if (window.AuditLogger) {
+            await AuditLogger.log(
+              'HAPUS_TRANSAKSI',
+              `Menghapus transaksi ${TYPE_LABELS[cat] || cat} (${Utils.formatRupiah(KasCore.getNominal(transaction))})${transaction.note || transaction.catatan ? ' - ' + (transaction.note || transaction.catatan) : ''}`,
+              'Riwayat Transaksi',
+              id
+            );
+          }
           if (restoredCount > 0) {
             try { localStorage.removeItem('webpos_cache_timestamp'); } catch (e) {}
           }
