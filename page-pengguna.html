@@ -1021,15 +1021,23 @@
           RoleGuard.apply(currentUserRole);
         }
 
-        if (currentUserRole !== "developer" && currentUserRole !== "owner" && currentUserRole !== "admin") {
-          toast("Akses Ditolak: Halaman ini hanya untuk Admin, Owner, dan Developer!", "error");
-          setTimeout(() => { window.location.href = "index.html"; }, 1200);
-          return;
-        }
+        const perms = (u.permissions && typeof u.permissions === "object") ? u.permissions : {};
+      if (currentUserRole !== "developer" && currentUserRole !== "owner" && perms.pengguna !== true) {
+        toast("Akses Ditolak: Halaman ini hanya untuk Owner dan Developer!", "error");
+        window.location.replace("index.html");
+        return;
       }
-    } catch(err) {
-      console.error(err);
+    } else {
+      window.location.replace("index.html");
+      return;
     }
+  } catch(err) {
+    console.error(err);
+    window.location.replace("index.html");
+    return;
+  }
+
+  loadUsers();
 
     loadUsers();
     document.getElementById("btnRefresh").onclick = loadUsers;
