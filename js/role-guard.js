@@ -23,7 +23,9 @@ if (typeof window.RoleGuard === 'undefined') {
         this.hideMenu('[data-menu="laporan-stok"]');
         this.hideMenu('[data-menu="laporan-terlaris"]');
         this.hideMenu('[data-menu="telegram"]');
+        this.hideMenu('[data-menu="pelanggan"]');
         this.hideMenu('[data-menu="data-pelanggan"]');
+        this.hideMenu('[data-menu="setting"]');
         this.hideMenu('[data-menu="penggajian"]');
         this.hideMenu('[data-menu="pengguna"]');
         this.hideMenu('[data-menu="backup"]');
@@ -114,7 +116,8 @@ var RoleGuard = window.RoleGuard;
         'page-reset.html': 'reset',
         'page-pengguna.html': 'pengguna',
         'page-log-aktivitas.html': 'log-aktivitas',
-        'page-backup.html': 'backup'
+        'page-backup.html': 'backup',
+        'page-setting.html': 'setting'
       };
       var KASIR_BLOCKED_PAGES = {
         'page-pembelian.html': 'pembelian',
@@ -127,7 +130,8 @@ var RoleGuard = window.RoleGuard;
         'page-pengguna.html': 'pengguna',
         'page-backup.html': 'backup',
         'page-reset.html': 'reset',
-        'page-log-aktivitas.html': 'log-aktivitas'
+        'page-log-aktivitas.html': 'log-aktivitas',
+        'page-setting.html': 'setting'
       };
 
       if (!window.__webposRouteGuardBound) {
@@ -166,6 +170,18 @@ var RoleGuard = window.RoleGuard;
             }
           }).catch(function(err) {
             console.warn("Gagal sync izin:", err);
+            try {
+              var cachedRole = String(localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase();
+              if (cachedRole === 'owner' || cachedRole === 'developer') return;
+              var cachedPerms = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
+              var restrictedMap = cachedRole === 'admin' ? ADMIN_BLOCKED_PAGES : KASIR_BLOCKED_PAGES;
+              var requiredKey = restrictedMap[pageName];
+              if (requiredKey) {
+                var allowed = cachedPerms[requiredKey] === true ||
+                  (requiredKey === 'data-pelanggan' && cachedPerms.pelanggan === true);
+                if (!allowed) window.location.replace('index.html');
+              }
+            } catch (e) {}
           });
         });
       }
