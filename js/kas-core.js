@@ -1493,29 +1493,30 @@ if (category === 'kas_keluar') {
       };
 
       transactions.forEach(function (tx) {
-        if (!isValidTransaction(tx)) return;
-        var cat = getCategory(tx);
-        var met = getPaymentMethod(tx);
+      if (!isValidTransaction(tx)) return;
+      var cat = getCategory(tx);
+      var met = getPaymentMethod(tx);
+      var mut = hasStoredMutations(tx) ? tx : mapTransactionMutation(tx);
 
-        if (cat === 'top_up') {
-          if (met === 'tunai') {
-            rincian.topupFisik += KAS_CONFIG.adminTopupMasukLaci
-              ? normalizeNumber(tx.cash_in)
-              : normalizeNumber(tx.nominal);
-            rincian.topupAdminTunai += getAdmin(tx);
-          } else if (met === 'qris' || met === 'transfer') {
-            rincian.topupNonTunai += normalizeNumber(tx.bank_in);
-          }
-        } else if (cat === 'tarik_tunai') {
-          if (met === 'tunai') rincian.tarikFisik += normalizeNumber(tx.cash_out);
-          else if (met === 'transfer') rincian.tarikNonTunai += normalizeNumber(tx.bank_out);
-        } else if (cat === 'pembelian') {
-          if (met === 'tunai') rincian.pembelianTunai += normalizeNumber(tx.cash_out);
-          else if (met === 'qris' || met === 'transfer') rincian.pembelianNonTunai += normalizeNumber(tx.bank_out);
-        } else if (cat === 'bayar_hutang' || cat === 'pengembalian_pinjaman') {
-          rincian.pelunasanMasuk += normalizeNumber(tx.cash_in);
+      if (cat === 'top_up') {
+        if (met === 'tunai') {
+          rincian.topupFisik += KAS_CONFIG.adminTopupMasukLaci
+            ? normalizeNumber(mut.cash_in)
+            : normalizeNumber(getNominal(tx));
+          rincian.topupAdminTunai += getAdmin(tx);
+        } else if (met === 'qris' || met === 'transfer') {
+          rincian.topupNonTunai += normalizeNumber(mut.bank_in);
         }
-      });
+      } else if (cat === 'tarik_tunai') {
+        if (met === 'tunai') rincian.tarikFisik += normalizeNumber(mut.cash_out);
+        else if (met === 'transfer') rincian.tarikNonTunai += normalizeNumber(mut.bank_out);
+      } else if (cat === 'pembelian') {
+        if (met === 'tunai') rincian.pembelianTunai += normalizeNumber(mut.cash_out);
+        else if (met === 'qris' || met === 'transfer') rincian.pembelianNonTunai += normalizeNumber(mut.bank_out);
+      } else if (cat === 'bayar_hutang' || cat === 'pengembalian_pinjaman') {
+        rincian.pelunasanMasuk += normalizeNumber(mut.cash_in);
+      }
+    });
 
       // ---------- PIUTANG ----------
       var piutang = 0;
