@@ -2126,6 +2126,16 @@ async function savePayroll(options) {
       var wasClosed = false;
       var reopenCount = 0;
 
+      if (!existingSnap.exists && modalAmount <= 0) {
+        try {
+          var curPage = getCurrentPageName();
+          if (curPage && curPage !== 'page-modal-harian.html' && curPage !== 'index.html') {
+            localStorage.setItem('wpos_return_after_modal', curPage + (window.location.search || ''));
+          }
+        } catch (e) {}
+        return { shiftId: null, reopened: false, redirectToModal: true, modalAwal: 0 };
+      }
+
       if (existingSnap.exists) {
         var prev = existingSnap.data() || {};
         if (String(prev.status || '').toLowerCase() === 'open') {
