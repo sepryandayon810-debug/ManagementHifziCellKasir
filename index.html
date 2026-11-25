@@ -919,7 +919,7 @@
         <div class="stat-card">
           <div class="stat-icon orange"><i class="fas fa-user"></i></div>
           <div class="stat-content">
-            <div class="stat-label">Kasir Bertugas</div>
+            <div class="stat-label" id="labelUserBertugas">Petugas Bertugas</div>
             <div class="stat-value" id="namaUserDisplay" style="font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-</div>
           </div>
         </div>
@@ -1186,7 +1186,7 @@
 <!-- MODAL PILIHAN BUKA SHIFT (TELEGRAM VS INPUT SENDIRI) -->
 <div class="custom-modal-backdrop" id="openShiftChoiceModal">
   <div class="custom-dialog-card" style="max-width: 420px; text-align: left;">
-    <h3 class="dialog-title" style="margin-bottom:2px; font-size:1.1rem;">Buka Shift Kasir</h3>
+    <h3 class="dialog-title" style="margin-bottom:2px; font-size:1.1rem;">Buka Shift Kerja</h3>
     <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">Tentukan saldo modal awal laci hari ini</p>
     
     <!-- PILIHAN 1: PANGGIL TELEGRAM -->
@@ -1567,6 +1567,10 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       const avatar = document.getElementById("userAvatar");
       if (avatar) avatar.textContent = displayName.slice(0, 2).toUpperCase();
+
+      const roleLabelMap = { developer: "Developer Bertugas", owner: "Owner Bertugas", admin: "Admin Bertugas", kasir: "Kasir Bertugas" };
+      const elUserBertugas = document.getElementById("labelUserBertugas");
+      if (elUserBertugas) elUserBertugas.textContent = roleLabelMap[currentUserRole] || "Petugas Bertugas";
 
       if (currentUserRole === "owner" || currentUserRole === "developer") {
         document.getElementById("labelCardModal").textContent = "Total Modal Toko";
@@ -2751,7 +2755,7 @@ async function healLocalUserTransactions(user, displayName, roleName) {
           modalAwal: modalData.amount
         });
 
-        showCustomAlert({ title: "Shift Berhasil Dibuka", message: "Shift kasir aktif dan siap melayani transaksi.", iconType: "success" });
+        showCustomAlert({ title: "Shift Berhasil Dibuka", message: "Shift kerja aktif dan siap melayani transaksi.", iconType: "success" });
         loadDashboardStats(user);
 
       } catch (err) {
