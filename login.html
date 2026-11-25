@@ -52,22 +52,22 @@
       margin-bottom: 1.75rem;
     }
     .logo-badge {
-      width: 54px; height: 54px;
+      width: 56px; height: 56px;
       background: linear-gradient(135deg, #ffd000, #f59e0b);
-color: #0f172a;
-box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
       border-radius: 16px; display: inline-flex;
       align-items: center; justify-content: center;
-      color: #fff; font-size: 1.4rem; margin-bottom: 0.75rem;
-      box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+      color: #0f172a; font-size: 1.45rem; margin-bottom: 0.8rem;
+      box-shadow: 0 8px 24px rgba(255, 208, 0, 0.4);
+      animation: logoFloat 3.6s ease-in-out infinite;
     }
     .brand-title {
-      font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;
+      font-size: 1.5rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;
+      text-shadow: 0 2px 14px rgba(250, 204, 21, 0.28);
     }
     .brand-desc {
-      font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; font-weight: 500;
+      font-size: 0.82rem; color: #94a3b8; margin-top: 0.25rem; font-weight: 500;
     }
-
+    
     .form-header { margin-bottom: 1.25rem; }
     .form-header h3 {
       font-size: 1.3rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;
@@ -162,128 +162,222 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
     }
     .dialog-btn:hover { background: var(--primary-hover); }
 
-   /* === CSS BENTUK LAMPU, CAHAYA & KARTU REELS === */
+   /* === TEMA ANIMASI GELAP EMAS (KONSISTEN WEB, TABLET & MOBILE) === */
     body {
-      background-color: #08090e !important;
+      background: radial-gradient(circle at top center, #13172b 0%, #08090e 70%) !important;
       overflow-x: hidden;
+      position: relative;
     }
+
+    /* Latar belakang cahaya aurora & partikel bergerak */
+    .animated-bg {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .bg-grid {
+      position: absolute;
+      inset: -40px;
+      background-image:
+        linear-gradient(rgba(250, 204, 21, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+      animation: gridDrift 18s linear infinite;
+    }
+    .aurora-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(75px);
+      opacity: 0.45;
+      animation: orbFloat 12s ease-in-out infinite alternate;
+    }
+    .orb-gold {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(250, 204, 21, 0.42), transparent 70%);
+      top: -80px; left: 10%;
+    }
+    .orb-indigo {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(79, 70, 229, 0.45), transparent 70%);
+      bottom: -110px; right: 8%;
+      animation-delay: -5s;
+    }
+    .fireflies {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+    .firefly {
+      position: absolute;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #fde047;
+      box-shadow: 0 0 10px 2px rgba(250, 204, 21, 0.7);
+      animation: floatFirefly linear infinite;
+    }
+
+    /* Kartu Glassmorphism Tengah (Tanpa margin-left yang bikin miring di Tablet) */
     .auth-container {
-      background: rgba(18, 19, 29, 0.92) !important;
-      border: 1px solid rgba(250, 204, 21, 0.35) !important;
-      box-shadow: 0 20px 50px rgba(245, 158, 11, 0.22) !important;
+      position: relative;
+      z-index: 10;
+      margin: 0 auto !important;
+      background: rgba(16, 18, 28, 0.86) !important;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(250, 204, 21, 0.3) !important;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(245, 158, 11, 0.14) !important;
       color: #fff !important;
-      margin-left: 90px;
+      animation: cardEntrance 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
+    /* Garis cahaya berjalan di atas kartu */
+    .auth-container::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 15%; right: 15%; height: 3px;
+      background: linear-gradient(90deg, transparent, #ffd000, #fef08a, #ffd000, transparent);
+      border-radius: 0 0 8px 8px;
+    }
+    .auth-container.shake {
+      animation: shakeError 0.42s ease;
+    }
+
     .form-header h3 { color: #ffffff !important; }
-    .form-label { color: #cbd5e1 !important; }
-    .form-control {
-      background: #1b1d2a !important;
-      border: 1px solid #334155 !important;
-      color: #fff !important;
+    .form-label {
+      color: #cbd5e1 !important;
+      transition: color 0.25s ease, transform 0.25s ease;
     }
-    /* Tombol Kuning Emas Cerah Khas Reels */
+
+    /* Animasi Input Bergerak */
+    .form-active .form-group {
+      animation: fieldSlideIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .form-active .form-group:nth-child(1) { animation-delay: 0.05s; }
+    .form-active .form-group:nth-child(2) { animation-delay: 0.12s; }
+    .form-active .form-group:nth-child(3) { animation-delay: 0.18s; }
+    .form-active .form-group:nth-child(4) { animation-delay: 0.24s; }
+    .form-active .form-group:nth-child(5) { animation-delay: 0.30s; }
+
+    .form-group:focus-within .form-label {
+      color: #fde047 !important;
+      transform: translateX(3px);
+    }
+    .input-wrap {
+      transition: transform 0.22s ease;
+    }
+    .input-wrap:focus-within {
+      transform: translateY(-2px);
+    }
+    .input-wrap::after {
+      content: "";
+      position: absolute;
+      bottom: 0; left: 50%;
+      width: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #ffd000, #fef08a, #ffd000, transparent);
+      transform: translateX(-50%);
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+    .input-wrap:focus-within::after {
+      width: 94%;
+    }
+    .input-wrap i.field-icon {
+      transition: color 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 2;
+    }
+    .input-wrap:focus-within i.field-icon {
+      color: #ffd000 !important;
+      transform: translateY(-50%) scale(1.18) rotate(-6deg);
+    }
+    .form-control {
+      background: rgba(27, 29, 42, 0.92) !important;
+      border: 1.5px solid #334155 !important;
+      color: #fff !important;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease !important;
+    }
+    .form-control:focus {
+      border-color: #facc15 !important;
+      background: #222536 !important;
+      box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.14), 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    /* Tombol Kuning Emas dengan Kilau Cahaya Bergerak */
     .btn-submit {
-      background: #ffd000 !important;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #ffd000, #f59e0b) !important;
       color: #0f172a !important;
       font-weight: 800 !important;
-      box-shadow: 0 0 20px rgba(255, 208, 0, 0.45) !important;
+      box-shadow: 0 0 22px rgba(255, 208, 0, 0.42) !important;
+      transition: transform 0.2s ease, box-shadow 0.25s ease !important;
+    }
+    .btn-submit::after {
+      content: "";
+      position: absolute;
+      top: 0; left: -120%;
+      width: 55%; height: 100%;
+      background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.55) 50%, transparent 80%);
+      animation: btnShimmer 3.6s infinite;
+      pointer-events: none;
     }
     .btn-submit:hover {
-      background: #facc15 !important;
-      box-shadow: 0 0 30px rgba(255, 208, 0, 0.75) !important;
+      background: linear-gradient(135deg, #fde047, #fbbf24) !important;
+      box-shadow: 0 0 32px rgba(255, 208, 0, 0.72) !important;
+      transform: translateY(-2px);
+    }
+    .btn-submit:active { transform: scale(0.98) !important; }
+    .btn-submit i { transition: transform 0.25s ease; }
+    .btn-submit:hover i { transform: translateX(4px); }
+
+    @media (max-width: 640px) {
+      .auth-container { padding: 1.85rem 1.35rem; border-radius: 20px; }
+      .orb-gold { width: 240px; height: 240px; top: -60px; left: -40px; }
+      .orb-indigo { width: 260px; height: 260px; bottom: -70px; right: -40px; }
     }
 
-   /* Tiang Lampu Lurus Rapi & Elegan */
-    .standing-lamp-container {
-      position: absolute;
-      left: 7%;
-      bottom: 0;
-      height: 85vh;
-      max-height: 580px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      z-index: 25;
-      cursor: pointer;
+    @keyframes logoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
     }
-    .lamp-base {
-      width: 140px;
-      height: 16px;
-      background: #1e293b;
-      border-radius: 50%;
-      border-top: 1px solid #475569;
+    @keyframes gridDrift {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(46px); }
     }
-    .lamp-pole {
-      width: 10px;
-      height: 500px; /* Tiang lurus kokoh ke atas */
-      background: linear-gradient(90deg, #1e293b, #475569, #1e293b);
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    @keyframes orbFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(35px, 28px) scale(1.12); }
     }
-    .lamp-head {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: -5px;
+    @keyframes floatFirefly {
+      0% { transform: translate(0, 0) scale(0.7); opacity: 0; }
+      25% { opacity: 0.85; }
+      50% { transform: translate(16px, -28px) scale(1.15); opacity: 1; }
+      75% { opacity: 0.55; }
+      100% { transform: translate(-10px, -55px) scale(0.7); opacity: 0; }
     }
-    .lamp-shade {
-      width: 130px;
-      height: 65px;
-      background: linear-gradient(180deg, #1e1b4b, #0f172a);
-      border-radius: 60px 60px 6px 6px;
-      border-bottom: 4px solid #facc15;
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    @keyframes cardEntrance {
+      0% { opacity: 0; transform: translateY(22px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
     }
-    .lamp-bulb {
-      width: 32px;
-      height: 32px;
-      background: #fef08a;
-      border-radius: 50%;
-      margin-bottom: -15px;
-      box-shadow: 0 0 25px #fde047, 0 0 50px #f59e0b;
+    @keyframes fieldSlideIn {
+      0% { opacity: 0; transform: translateY(14px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
-    .pull-cord {
-      position: absolute;
-      top: 65px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    @keyframes btnShimmer {
+      0% { left: -120%; }
+      38%, 100% { left: 140%; }
     }
-    .pull-wire { width: 2px; height: 60px; background: #fbbf24; }
-    .pull-bead { width: 12px; height: 16px; background: #d97706; border-radius: 0 0 8px 8px; }
-    
-    /* Kerucut Cahaya Serong */
-    .room-light {
-      position: fixed; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse 85% 65% at 20% 25%, rgba(254, 240, 138, 0.42) 0%, rgba(250, 204, 21, 0.24) 28%, rgba(245, 158, 11, 0.1) 55%, transparent 80%);
-      clip-path: polygon(18% 22%, 28% 20%, 98% 85%, 25% 100%);
-      filter: blur(14px); transition: opacity 0.5s ease; z-index: 10;
-    }
-    body.lamp-off .room-light { opacity: 0; }
-    body.lamp-off .lamp-bulb { background: #334155; box-shadow: none; }
-    body.lamp-off .lamp-shade { border-bottom-color: #334155; }
-
-    /* Perbaikan Khusus Layar HP (Mobile) Biar Tidak Menimpa Teks */
-    @media (max-width: 768px) {
-      .auth-container {
-        margin-left: 0 !important;
-        width: 100% !important;
-        position: relative;
-        z-index: 30 !important; /* Kartu selalu di depan */
-      }
-      .standing-lamp-container {
-        left: -20px !important; /* Geser lampu ke tepi kiri luar */
-        transform: scale(0.8); /* Ukuran lampu otomatis menyesuaikan HP */
-        transform-origin: bottom left;
-        z-index: 10 !important; /* Lampu di belakang kartu agar tidak menutupi tulisan */
-        opacity: 0.75;
-      }
+    @keyframes shakeError {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
     }
     
   </style>
@@ -296,23 +390,13 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
 </head>
 <body>
 
-  <!-- 1. Cahaya Lampu Diagonal & Kunang-kunang -->
-<div class="room-light" id="roomLight"></div>
-
-<!-- 2. Lampu Berdiri Tiang Lurus Elegan -->
-<div class="standing-lamp-container" onclick="toggleLamp()" title="Klik lampu untuk hidupkan/matikan">
-  <div class="lamp-head">
-    <div class="lamp-shade">
-      <div class="lamp-bulb" id="lampBulb"></div>
-    </div>
-    <div class="pull-cord" id="pullCord">
-      <div class="pull-wire"></div>
-      <div class="pull-bead"></div>
-    </div>
-  </div>
-  <div class="lamp-pole"></div>
-  <div class="lamp-base"></div>
+  <!-- Background Animasi Aurora, Grid & Kunang-kunang -->
+<div class="animated-bg" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="aurora-orb orb-gold"></div>
+  <div class="aurora-orb orb-indigo"></div>
 </div>
+<div class="fireflies" id="firefliesLayer" aria-hidden="true"></div>
 
 <div class="auth-container">
   <div class="brand-header">
@@ -332,7 +416,7 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
   <div class="alert-box alert-warning" id="warningBox"></div>
 
   <!-- FORM LOGIN -->
-  <form id="formLogin">
+  <form id="formLogin" class="form-active">
     <div class="form-group">
       <label class="form-label">Username atau Email</label>
       <div class="input-wrap">
@@ -479,22 +563,25 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
     clearAlerts();
     const heading = document.getElementById("formHeading");
     
-    document.getElementById("formLogin").style.display = "none";
-    document.getElementById("formRegister").style.display = "none";
-    document.getElementById("formForgot").style.display = "none";
+    ["formLogin", "formRegister", "formForgot"].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.display = "none";
+      el.classList.remove("form-active");
+    });
 
-    if (mode === 'login') {
-      heading.textContent = "Selamat Datang 👋";
-      document.getElementById("formLogin").style.display = "block";
-      document.getElementById("brandDesc").textContent = "Silakan masuk untuk melanjutkan transaksi";
-    } else if (mode === 'register') {
-      heading.textContent = "Buat Akun Baru 🚀";
-      document.getElementById("formRegister").style.display = "block";
-      document.getElementById("brandDesc").textContent = "Pendaftaran akun baru memerlukan persetujuan Owner";
-    } else if (mode === 'forgot') {
-      heading.textContent = "Reset Kata Sandi 🔑";
-      document.getElementById("formForgot").style.display = "block";
-      document.getElementById("brandDesc").textContent = "Masukkan email untuk menerima tautan pemulihan";
+    const targetMap = {
+      login: { id: "formLogin", title: "Selamat Datang 👋", desc: "Silakan masuk untuk melanjutkan transaksi" },
+      register: { id: "formRegister", title: "Buat Akun Baru 🚀", desc: "Pendaftaran akun baru memerlukan persetujuan Owner" },
+      forgot: { id: "formForgot", title: "Reset Kata Sandi 🔑", desc: "Masukkan email untuk menerima tautan pemulihan" }
+    };
+    const cfg = targetMap[mode];
+    if (cfg) {
+      heading.textContent = cfg.title;
+      document.getElementById("brandDesc").textContent = cfg.desc;
+      const activeForm = document.getElementById(cfg.id);
+      activeForm.style.display = "block";
+      void activeForm.offsetWidth;
+      activeForm.classList.add("form-active");
     }
   }
 
@@ -551,7 +638,12 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
       const userCred = await auth.signInWithEmailAndPassword(targetEmail, pass);
       const uid = userCred.user.uid;
 
-      await recordUserLogin(uid);
+      try {
+        const prevUid = localStorage.getItem("webpos_last_uid");
+        if (prevUid && prevUid !== uid) {
+          ["webpos_user_role", "webpos_user_permissions", "webpos_user_name", "webpos_shift_guard_state", "active_shift_id", "webpos_session"].forEach(k => localStorage.removeItem(k));
+        }
+      } catch (e) {}
 
       const userDoc = await db.collection("users").doc(uid).get();
       if (userDoc.exists) {
@@ -570,8 +662,16 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
           await auth.signOut();
           throw new Error("Akun Anda telah dinonaktifkan atau ditolak.");
         }
+
+        try {
+          localStorage.setItem("webpos_user_role", String(userData.role || "kasir").toLowerCase());
+          localStorage.setItem("webpos_user_name", String(userData.name || userData.username || ""));
+          localStorage.setItem("webpos_user_permissions", JSON.stringify(userData.permissions || {}));
+          localStorage.setItem("webpos_last_uid", uid);
+        } catch (e) {}
       }
 
+      await recordUserLogin(uid);
       window.location.href = "index.html";
 
     } catch (err) {
@@ -579,6 +679,10 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
       btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
       errBox.textContent = "Gagal masuk: " + (err.code === 'auth/wrong-password' ? 'Password salah.' : err.message);
       errBox.style.display = "block";
+      const card = document.querySelector(".auth-container");
+      card.classList.remove("shake");
+      void card.offsetWidth;
+      card.classList.add("shake");
     }
   };
 
@@ -652,28 +756,42 @@ box-shadow: 0 8px 20px rgba(255, 208, 0, 0.35);
     }
   };
 
-  let isLampOn = true;
-function toggleLamp() {
-  isLampOn = !isLampOn;
-  if (isLampOn) {
-    document.body.classList.remove("lamp-off");
-  } else {
-    document.body.classList.add("lamp-off");
-  }
-  // Suara klik sakelar
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.setValueAtTime(isLampOn ? 1200 : 700, ctx.currentTime);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.05);
-  } catch(e) {}
-}
+  document.getElementById("formForgot").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("forgotEmail").value.trim();
+    const btn = document.getElementById("btnSubmitForgot");
+    clearAlerts();
+    if (!email) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+    try {
+      await auth.sendPasswordResetEmail(email);
+      succBox.textContent = "Tautan reset kata sandi telah dikirim ke " + email + ". Silakan periksa inbox atau folder spam.";
+      succBox.style.display = "block";
+      document.getElementById("formForgot").reset();
+    } catch (err) {
+      errBox.textContent = "Gagal mengirim reset password: " + err.message;
+      errBox.style.display = "block";
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
+    }
+  };
+
+  (function initFireflies() {
+    const layer = document.getElementById("firefliesLayer");
+    if (!layer) return;
+    for (let i = 0; i < 16; i++) {
+      const dot = document.createElement("span");
+      dot.className = "firefly";
+      dot.style.left = (Math.random() * 100) + "%";
+      dot.style.top = (15 + Math.random() * 80) + "%";
+      dot.style.animationDuration = (4.5 + Math.random() * 5.5) + "s";
+      dot.style.animationDelay = (Math.random() * 4) + "s";
+      layer.appendChild(dot);
+    }
+  })();
 </script>
 
 </body>
