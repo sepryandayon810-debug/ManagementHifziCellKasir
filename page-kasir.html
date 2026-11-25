@@ -5180,9 +5180,11 @@ function getCartProfit() { return Math.round(cart.reduce(function(s,i){return s+
             createFirestoreCompat().ref('users/' + user.uid).once('value').then(snap => {
               const data = snap.val() || {};
               const name = data.name || user.email || 'Kasir';
-              const role = data.role || 'kasir';
+              const role = String(data.role || 'kasir').toLowerCase();
+              try { localStorage.setItem('webpos_user_role', role); } catch (e) {}
+              window.currentUserRole = role;
               document.getElementById('userName').textContent = name;
-              document.getElementById('userRole').textContent = role;
+              document.getElementById('userRole').textContent = role.toUpperCase();
               document.getElementById('userAvatar').textContent = name.slice(0, 2).toUpperCase();
               if (typeof RoleGuard !== 'undefined') RoleGuard.apply(role.toLowerCase());
             });
