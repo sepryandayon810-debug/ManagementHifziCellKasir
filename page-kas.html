@@ -677,15 +677,16 @@
           }
 
           let userData = { name: user.email, role: 'kasir' };
-          try {
-            const doc = await db.collection("users").doc(user.uid).get();
-            if (doc.exists) {
-              userData = doc.data();
-              if (typeof RoleGuard !== 'undefined') {
-                RoleGuard.apply((userData.role || 'kasir').toLowerCase());
-              }
+        try {
+          const doc = await db.collection("users").doc(user.uid).get();
+          if (doc.exists) {
+            userData = doc.data();
+            if (typeof RoleGuard !== 'undefined') {
+              RoleGuard.apply((userData.role || 'kasir').toLowerCase());
             }
-          } catch(e) {}
+          }
+        } catch(e) {}
+        window.__kasPageRole = String(userData.role || 'kasir').toLowerCase();
 
           const dName = userData.name || userData.username || user.email.split('@')[0];
           document.getElementById('userName').textContent = dName;
