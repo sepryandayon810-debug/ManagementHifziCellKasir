@@ -1027,7 +1027,7 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
         const byDate = {};
         logs.forEach(l => {
           const timeMs = extractLogTime(l);
-          const d = timeMs ? new Date(timeMs).toISOString().split('T')[0] : (l.date || 'Lainnya');
+          const d = timeMs ? toLocalDateStr(new Date(timeMs)) : (l.date_key || l.date || 'Lainnya');
           byDate[d] = (byDate[d] || 0) + 1;
         });
 
@@ -1037,7 +1037,10 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
         chartInstance = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: labels.map(d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
+            labels: labels.map(d => {
+              const dt = new Date(d + (String(d).length === 10 ? 'T00:00:00' : ''));
+              return !isNaN(dt.getTime()) ? dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : d;
+            }),
             datasets: [{
               label: 'Jumlah Log Audit',
               data: data,
@@ -1292,7 +1295,7 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
           csv = 'ID,Tanggal,Tipe,Metode Pembayaran,Jumlah,Laba,Keterangan,Kasir\n';
           reportData.forEach(t => {
             if (KasCore.isValidTransaction(t) && KasCore.getCategory(t) === 'jual') {
-              csv += `"${t.id}","${t.date || ''}","${KasCore.getCategory(t)}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},${KasCore.calculateTransactionProfit(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+              csv += `"${t.id}","${t.date_key || t.date || ''}","${KasCore.getCategory(t)}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},${KasCore.calculateTransactionProfit(t)},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         } else if (currentReport === 'kas') {
@@ -1300,7 +1303,7 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
           reportData.forEach(t => {
             const cat = KasCore.getCategory(t);
             if (KasCore.isValidTransaction(t) && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
-              csv += `"${t.id}","${t.date || ''}","${cat}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
+              csv += `"${t.id}","${t.date_key || t.date || ''}","${cat}","${KasCore.getPaymentMethod(t) || 'tunai'}",${KasCore.getNominal(t)},"${t.note || ''}","${t.userName || ''}"\n`;
             }
           });
         } else if (currentReport === 'audit') {
