@@ -1804,11 +1804,13 @@ const today = (function(){
           if (filter === 'today') {
             all = all.filter(p => (p.date || '').startsWith(today));
           } else if (filter === 'week') {
-            const past7 = new Date(); past7.setDate(past7.getDate() - 7);
-            all = all.filter(p => (p.date || '') >= past7.toISOString().split('T')[0]);
-          } else if (filter === 'month') {
-            const past30 = new Date(); past30.setDate(past30.getDate() - 30);
-            all = all.filter(p => (p.date || '') >= past30.toISOString().split('T')[0]);
+          const past7 = new Date(); past7.setDate(past7.getDate() - 7);
+          const past7Str = past7.getFullYear() + '-' + String(past7.getMonth() + 1).padStart(2, '0') + '-' + String(past7.getDate()).padStart(2, '0');
+          all = all.filter(p => (p.date || '') >= past7Str);
+        } else if (filter === 'month') {
+          const past30 = new Date(); past30.setDate(past30.getDate() - 30);
+          const past30Str = past30.getFullYear() + '-' + String(past30.getMonth() + 1).padStart(2, '0') + '-' + String(past30.getDate()).padStart(2, '0');
+          all = all.filter(p => (p.date || '') >= past30Str);
           }
 
           all.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
