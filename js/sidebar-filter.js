@@ -45,9 +45,22 @@ function applyMenuVisibility() {
     if (!user) return;
     db.collection("users").doc(user.uid).get().then(doc => {
       if (!doc.exists) return;
-      const role = (doc.data().role || "kasir").toLowerCase();
-      try { localStorage.setItem("webpos_user_role", role); } catch (e) {}
-      applyRoleRulesUI(role);
+      const uData = doc.data() || {};
+      const role = (uData.role || "kasir").toLowerCase();
+      try {
+        localStorage.setItem("webpos_user_role", role);
+        if (uData.permissions && typeof uData.permissions === "object") {
+          localStorage.setItem("webpos_user_permissions", JSON.stringify(uData.permissions));
+        }
+      } catch (e) {}
+      window.currentUserRole = role;
+      if (typeof window.RoleGuard !== "undefined" && typeof window.RoleGuard.apply === "function") {
+        const roleEl = document.getElementById("userRole");
+        if (roleEl) roleEl.textContent = role.toUpperCase();
+        window.RoleGuard.apply(role);
+      } else {
+        applyRoleRulesUI(role);
+      }
     }).catch(err => console.error("Role filter error:", err));
   });
 }
