@@ -870,7 +870,7 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
       async function fetchAuditLogs(dateFrom, dateTo) {
         try {
           const startTimestamp = new Date(dateFrom + 'T00:00:00').getTime();
-          const endTimestamp = new Date(dateTo + 'T23:59:59').getTime();
+          const endTimestamp = new Date(dateTo + 'T23:59:59.999').getTime();
 
           let logs = [];
 
@@ -885,10 +885,28 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
 
             snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
           } catch (e1) {
-            console.warn("Collection audit_logs dilewati.");
+            console.warn("Query rentang audit_logs dilewati:", e1 && e1.message);
           }
 
-          // Jika audit_logs kosong, coba tarik dari collection 'activity_logs'
+          // Cadangan jika query rentang kosong/gagal indeks: ambil 300 terbaru lalu saring di layar
+          if (logs.length === 0) {
+            try {
+              const snapAll = await db.collection('audit_logs')
+                .orderBy('timestamp', 'desc')
+                .limit(300)
+                .get();
+              snapAll.forEach(doc => {
+                const d = doc.data() || {};
+                const ms = extractLogTime(d);
+                const dateOnly = d.date_key || d.date || '';
+                const inRange = (ms && ms >= startTimestamp && ms <= endTimestamp) ||
+                  (dateOnly && dateOnly >= dateFrom && dateOnly <= dateTo);
+                if (inRange) logs.push({ id: doc.id, ...d });
+              });
+            } catch (eFallback) {}
+          }
+
+          // Jika audit_logs masih kosong, coba tarik dari collection 'activity_logs'
           if (logs.length === 0) {
             try {
               const snapAlt = await db.collection('activity_logs')
@@ -1155,8 +1173,11 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
     if (!itemTitle) itemTitle = labels[cat] || 'Transaksi';
 
     const methodValue = KasCore.getPaymentMethod(t);
-    const methodLabel = methodValue ? ` [Metode: ${methodValue.toUpperCase()}]` : '';
-    const actorRole = t.userRole ? String(t.userRole).toUpperCase() : 'Petugas';
+    const methodIcon = methodValue === 'qris'
+      ? 'fas fa-qrcode'
+      : (methodValue === 'transfer' ? 'fas fa-university'
+      : (methodValue === 'utang' ? 'fas fa-hand-holding-usd' : 'fas fa-money-bill-wave'));
+    const methodText = methodValue ? (methodValue === 'utang' ? 'Hutang' : methodValue.toUpperCase()) : '';
     const actorName = t.userName || t.cashierName || '-';
     const iconClass = cat === 'jual'
       ? 'fas fa-receipt'
@@ -1166,9 +1187,13 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
       <div class="transaction-item">
         <div class="tx-row-left">
           <div class="tx-row-icon"><i class="${iconClass}"></i></div>
-          <div>
-            <div class="transaction-title">${labels[cat] || cat} — ${Utils.escapeHtml(itemTitle)}${Utils.escapeHtml(methodLabel)}</div>
-            <div class="transaction-meta">${Utils.escapeHtml([timeDisplay, `${actorRole}: ${actorName}`].filter(Boolean).join(' | '))}</div>
+          <div style="min-width:0;flex:1;">
+            <div class="transaction-title">${labels[cat] || cat} — ${Utils.escapeHtml(itemTitle)}</div>
+            <div class="tx-meta-chips">
+              ${methodText ? `<span class="tx-chip"><i class="${methodIcon}"></i> ${Utils.escapeHtml(methodText)}</span>` : ''}
+              ${timeDisplay ? `<span class="tx-chip"><i class="fas fa-clock"></i> ${Utils.escapeHtml(timeDisplay)}</span>` : ''}
+              <span class="tx-chip"><i class="fas fa-user"></i> ${Utils.escapeHtml(actorName)}</span>
+            </div>
           </div>
         </div>
         <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
