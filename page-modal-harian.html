@@ -1443,9 +1443,10 @@ document.getElementById("btnFilterModalRange").onclick = () => {
 
 
    if (targetUid === currentUser.uid && window.KasCore && typeof KasCore.syncShiftCache === "function") {
-      KasCore.syncShiftCache(targetUid, todayStr, "open", modalId);
-    }
-
+   const finalShiftStatus = existingShift.exists ? (existingShift.data().status || "open") : "open";
+   KasCore.syncShiftCache(targetUid, todayStr, finalShiftStatus, finalShiftStatus === "open" ? modalId : null);
+ }
+    
     let nextPage = "index.html";
     try {
       const ret = localStorage.getItem("wpos_return_after_modal");
