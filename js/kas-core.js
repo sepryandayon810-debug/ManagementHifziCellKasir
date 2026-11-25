@@ -1691,6 +1691,13 @@ if (category === 'kas_keluar') {
       
       Object.assign(doc, mutation);
       doc.userId = userId;
+      var resolvedRole = String(
+        payload.userRole ||
+        (typeof window !== 'undefined' && window.currentUserRole) ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('webpos_user_role')) ||
+        ''
+      ).trim().toLowerCase();
+      if (resolvedRole) doc.userRole = resolvedRole;
       doc.date_key = dateKey;
       doc.waktu = waktuMs;
       doc.created_at = waktuMs;
