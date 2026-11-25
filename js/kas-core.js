@@ -2349,7 +2349,6 @@ async function savePayroll(options) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>' + (isReopenMode ? 'Membuka ulang...' : 'Membuka shift...') + '</span>';
           }
-          try {
             try {
             var res = await openOrReopenShift();
             closeShiftGuardModal();
