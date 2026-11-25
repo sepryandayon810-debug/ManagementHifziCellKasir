@@ -4869,16 +4869,18 @@ async function loadHeaderStats() {
     return;
   }
 
-  try {
-    const user = firebase.auth().currentUser;
-    const summary = await KasCore.getDailySummary({
-      date: todayStr,
-      userId: user ? user.uid : null
-    });
+ try {
+  const user = firebase.auth().currentUser;
+  if (!user || !user.uid) return;
+  const kas = await KasCore.getKasLaciDisplay({
+    date: todayStr,
+    userId: user.uid,
+    scope: 'role'
+  });
 
-    const totalSales = summary.totalSales || 0;
-    const totalTx = summary.transactionCount || 0;
-    const totalProfit = summary.totalProfit || 0;
+  const totalSales = kas.totalPenjualan || 0;
+  const totalTx = kas.totalTransaksi || 0;
+  const totalProfit = kas.totalLaba || 0;
 
     document.getElementById('headerPenjualan').textContent = formatRupiah(totalSales);
     document.getElementById('headerTransaksi').textContent = totalTx.toLocaleString('id-ID');
