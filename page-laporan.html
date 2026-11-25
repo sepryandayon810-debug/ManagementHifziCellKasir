@@ -238,16 +238,20 @@
       pointer-events: none; z-index: 2; display: inline-flex;
     }
     .filter-input-3d .select-arrow-3d .ui-3d-svg { position: static; transform: none; width: 16px; height: 16px; }
-    .tx-row-left { display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; flex: 1; }
+    .transaction-item.tx-compact { flex-direction: column; align-items: stretch; gap: 0.42rem; padding: 0.75rem 0.95rem; }
+    .tx-row-top { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; }
+    .tx-row-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1; }
     .tx-row-icon {
-      width: 36px; height: 36px; border-radius: 10px;
+      width: 30px; height: 30px; border-radius: 8px;
       background: var(--bg-subtle, #f1f5f9);
-      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; margin-top: 2px;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem;
     }
-    .tx-meta-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin-top: 0.35rem; font-size: 0.72rem; }
-    .tx-chip { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--bg-subtle); padding: 2px 8px; border-radius: 999px; font-weight: 600; color: var(--text-sub); }
-    .tx-chip .ui-3d-svg { width: 13px; height: 13px; }
-    .transaction-amount { flex-shrink: 0; white-space: nowrap; margin-left: 0.5rem; }
+    .tx-row-icon .ui-3d-svg { width: 18px; height: 18px; }
+    .tx-compact .transaction-title { font-weight: 700; font-size: 0.84rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tx-meta-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem; font-size: 0.69rem; }
+    .tx-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: var(--bg-subtle); padding: 2px 7px; border-radius: 999px; font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+    .tx-chip .ui-3d-svg { width: 12px; height: 12px; }
+    .transaction-amount { flex-shrink: 0; white-space: nowrap; margin-left: 0.35rem; font-size: 0.88rem; font-weight: 800; }
   </style>
 
   <!-- Chart.js -->
@@ -1112,18 +1116,18 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
     });
 
     tbody.innerHTML = `
-      <tr><td>Total Penjualan Keseluruhan</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.totalSales)}</td></tr>
-      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran Tunai (Cash)</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmTunai)}</td></tr>
-      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran QRIS</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmQris)}</td></tr>
-      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Pembayaran Transfer / Bank</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmTransfer)}</td></tr>
-      ${pmLainnya > 0 ? `<tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-muted);">&bull; Lainnya</td><td style="text-align:right;font-weight:600;font-size:0.82rem;">${Utils.formatRupiah(pmLainnya)}</td></tr>` : ''}
+      <tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem;font-weight:700;"><i class="fas fa-shopping-cart"></i> Total Penjualan</span></td><td style="text-align:right;font-weight:700;color:var(--success);white-space:nowrap;">${Utils.formatRupiah(summary.totalSales)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-sub);"><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-money-bill-wave"></i> Tunai (Cash)</span></td><td style="text-align:right;font-weight:600;font-size:0.82rem;white-space:nowrap;">${Utils.formatRupiah(pmTunai)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-sub);"><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-qrcode"></i> QRIS</span></td><td style="text-align:right;font-weight:600;font-size:0.82rem;white-space:nowrap;">${Utils.formatRupiah(pmQris)}</td></tr>
+      <tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-sub);"><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-university"></i> Transfer / Bank</span></td><td style="text-align:right;font-weight:600;font-size:0.82rem;white-space:nowrap;">${Utils.formatRupiah(pmTransfer)}</td></tr>
+      ${pmLainnya > 0 ? `<tr><td style="padding-left:1.25rem;font-size:0.82rem;color:var(--text-sub);"><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-hand-holding-usd"></i> Lainnya / Hutang</span></td><td style="text-align:right;font-weight:600;font-size:0.82rem;white-space:nowrap;">${Utils.formatRupiah(pmLainnya)}</td></tr>` : ''}
     `;
   } else {
     tbody.innerHTML = `
-      <tr><td>Layanan Top Up</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.topup)}</td></tr>
-      <tr><td>Layanan Tarik Tunai</td><td style="text-align:right;font-weight:700;color:var(--danger);">${Utils.formatRupiah(summary.withdrawal)}</td></tr>
-      <tr><td>Kas Masuk Lain</td><td style="text-align:right;font-weight:700;color:var(--success);">${Utils.formatRupiah(summary.cashIn)}</td></tr>
-      <tr><td>Kas Keluar Lain</td><td style="text-align:right;font-weight:700;color:var(--danger);">${Utils.formatRupiah(summary.cashOut)}</td></tr>
+      <tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-bolt"></i> Top Up</span></td><td style="text-align:right;font-weight:700;color:var(--success);white-space:nowrap;">${Utils.formatRupiah(summary.topup)}</td></tr>
+      <tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-wallet"></i> Tarik Tunai</span></td><td style="text-align:right;font-weight:700;color:var(--danger);white-space:nowrap;">${Utils.formatRupiah(summary.withdrawal)}</td></tr>
+      <tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-arrow-down"></i> Kas Masuk Lain</span></td><td style="text-align:right;font-weight:700;color:var(--success);white-space:nowrap;">${Utils.formatRupiah(summary.cashIn)}</td></tr>
+      <tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem;"><i class="fas fa-arrow-up"></i> Kas Keluar Lain</span></td><td style="text-align:right;font-weight:700;color:var(--danger);white-space:nowrap;">${Utils.formatRupiah(summary.cashOut)}</td></tr>
     `;
   }
 }
@@ -1157,11 +1161,11 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
     if (rawDate) {
       const dObj = new Date(rawDate + (String(rawDate).length === 10 ? 'T00:00:00' : ''));
       dateLabel = !isNaN(dObj.getTime())
-        ? dObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+        ? dObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
         : rawDate;
     }
     const timeStr = tsMs ? new Date(tsMs).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
-    const timeDisplay = [dateLabel, timeStr].filter(Boolean).join(', ');
+    const timeDisplay = [dateLabel, timeStr].filter(Boolean).join(' ');
 
     let itemTitle = t.note || t.catatan || t.supplier || '';
     if (!itemTitle && Array.isArray(t.items) && t.items.length > 0) {
@@ -1183,21 +1187,22 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
       ? 'fas fa-receipt'
       : (isIncome ? 'fas fa-arrow-down' : 'fas fa-arrow-up');
 
+    const displayTitle = cat === 'jual' ? itemTitle : `${labels[cat] || cat} — ${itemTitle}`;
     return `
-      <div class="transaction-item">
-        <div class="tx-row-left">
-          <div class="tx-row-icon"><i class="${iconClass}"></i></div>
-          <div style="min-width:0;flex:1;">
-            <div class="transaction-title">${labels[cat] || cat} — ${Utils.escapeHtml(itemTitle)}</div>
-            <div class="tx-meta-chips">
-              ${methodText ? `<span class="tx-chip"><i class="${methodIcon}"></i> ${Utils.escapeHtml(methodText)}</span>` : ''}
-              ${timeDisplay ? `<span class="tx-chip"><i class="fas fa-clock"></i> ${Utils.escapeHtml(timeDisplay)}</span>` : ''}
-              <span class="tx-chip"><i class="fas fa-user"></i> ${Utils.escapeHtml(actorName)}</span>
-            </div>
+      <div class="transaction-item tx-compact">
+        <div class="tx-row-top">
+          <div class="tx-row-left">
+            <div class="tx-row-icon"><i class="${iconClass}"></i></div>
+            <div class="transaction-title" title="${Utils.escapeHtml(displayTitle)}">${Utils.escapeHtml(displayTitle)}</div>
+          </div>
+          <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
+            ${isIncome ? '+' : '-'} ${Utils.formatRupiah(amount)}
           </div>
         </div>
-        <div class="transaction-amount ${isIncome ? 'income' : 'expense'}">
-          ${isIncome ? '+' : '-'} ${Utils.formatRupiah(amount)}
+        <div class="tx-meta-chips">
+          ${methodText ? `<span class="tx-chip"><i class="${methodIcon}"></i> ${Utils.escapeHtml(methodText)}</span>` : ''}
+          ${timeDisplay ? `<span class="tx-chip"><i class="fas fa-clock"></i> ${Utils.escapeHtml(timeDisplay)}</span>` : ''}
+          <span class="tx-chip"><i class="fas fa-user"></i> ${Utils.escapeHtml(actorName)}</span>
         </div>
       </div>
     `;
@@ -1209,30 +1214,52 @@ document.getElementById('btnStartImport').onclick = () => importCSV(importFileSe
         if (chartInstance) chartInstance.destroy();
 
         const byDate = {};
-transactions.forEach(t => {
-  if (!KasCore.isValidTransaction(t)) return;
-  const cat = KasCore.getCategory(t);
-  const d = t.date || 'Lainnya';
-  if (currentReport === 'penjualan' && cat === 'jual') {
-    byDate[d] = (byDate[d] || 0) + KasCore.getNominal(t);
-  } else if (currentReport === 'kas' && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
-    const isInc = ['top_up','kas_masuk'].includes(cat);
-    byDate[d] = (byDate[d] || 0) + (isInc ? KasCore.getNominal(t) : -KasCore.getNominal(t));
-  }
-});
+        const dateFromEl = document.getElementById('dateFrom');
+        const dateToEl = document.getElementById('dateTo');
+        if (dateFromEl && dateToEl && dateFromEl.value && dateToEl.value) {
+          const cur = new Date(dateFromEl.value + 'T00:00:00');
+          const end = new Date(dateToEl.value + 'T00:00:00');
+          const diffDays = Math.round((end - cur) / 86400000);
+          if (!isNaN(diffDays) && diffDays >= 0 && diffDays <= 90) {
+            while (cur <= end) {
+              byDate[toLocalDateStr(cur)] = 0;
+              cur.setDate(cur.getDate() + 1);
+            }
+          }
+        }
+
+        transactions.forEach(t => {
+          if (!KasCore.isValidTransaction(t)) return;
+          const cat = KasCore.getCategory(t);
+          const tsMs = extractLogTime(t);
+          const d = t.date_key || t.date || (tsMs ? toLocalDateStr(new Date(tsMs)) : 'Lainnya');
+          if (currentReport === 'penjualan' && cat === 'jual') {
+            byDate[d] = (byDate[d] || 0) + KasCore.getNominal(t);
+          } else if (currentReport === 'kas' && ['top_up','tarik_tunai','kas_masuk','kas_keluar'].includes(cat)) {
+            const isInc = ['top_up','kas_masuk'].includes(cat);
+            byDate[d] = (byDate[d] || 0) + (isInc ? KasCore.getNominal(t) : -KasCore.getNominal(t));
+          }
+        });
 
         const labels = Object.keys(byDate).sort();
         const data = labels.map(d => byDate[d]);
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#4f46e5';
 
         chartInstance = new Chart(ctx, {
           type: 'line',
           data: {
-            labels: labels.map(d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
+            labels: labels.map(d => {
+              const dt = new Date(d + (String(d).length === 10 ? 'T00:00:00' : ''));
+              return !isNaN(dt.getTime()) ? dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : d;
+            }),
             datasets: [{
               label: currentReport === 'penjualan' ? 'Penjualan' : 'Mutasi Kas Bersih',
               data: data,
-              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#4f46e5',
+              borderColor: primaryColor,
               backgroundColor: 'rgba(79, 70, 229, 0.1)',
+              pointBackgroundColor: primaryColor,
+              pointRadius: labels.length <= 15 ? 4 : 2.5,
+              pointHoverRadius: 6,
               borderWidth: 3,
               fill: true,
               tension: 0.3
@@ -1246,7 +1273,7 @@ transactions.forEach(t => {
               y: {
                 beginAtZero: true,
                 ticks: {
-                  callback: (val) => 'Rp ' + val.toLocaleString('id-ID')
+                  callback: (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID')
                 }
               }
             }
