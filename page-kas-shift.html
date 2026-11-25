@@ -1151,10 +1151,16 @@
         Utils.showLoading('Membuka shift kerja...');
         try {
           if (window.KasCore && typeof KasCore.openOrReopenShift === 'function') {
-            await KasCore.openOrReopenShift({
+            const res = await KasCore.openOrReopenShift({
               user: user,
               userName: document.getElementById('userName').textContent
             });
+            if (res && res.redirectToModal) {
+              Utils.hideLoading();
+              Utils.showToast('Silakan input Modal Harian terlebih dahulu untuk membuka shift.', 'warning');
+              setTimeout(() => { window.location.href = 'page-modal-harian.html'; }, 700);
+              return;
+            }
           } else {
             const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
             const shiftDocId = `${today}_${user.uid}`;
