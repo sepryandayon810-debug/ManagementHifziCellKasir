@@ -1395,19 +1395,27 @@
     }
     currentUser = user;
     db.collection('users').doc(user.uid).get().then(doc => {
-      const data = doc.exists ? doc.data() : {};
-      const name = data.name || user.email.split('@')[0];
-      const role = (data.role || 'admin').toUpperCase();
-      document.getElementById('userName').textContent = name;
-      document.getElementById('userRole').textContent = role;
-      const avatar = document.getElementById('userAvatar');
-      if (avatar && data.name) avatar.textContent = data.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
-      
-      if (typeof RoleGuard !== 'undefined') {
-        RoleGuard.apply((data.role || 'kasir').toLowerCase());
-      }
-    });
+    if (!doc.exists) { window.location.replace('index.html'); return; }
+    const data = doc.data() || {};
+    const lowerRole = String(data.role || 'kasir').toLowerCase();
+    const perms = (data.permissions && typeof data.permissions === 'object') ? data.permissions : {};
+    if (lowerRole !== 'owner' && lowerRole !== 'developer' && perms.backup !== true) {
+      window.location.replace('index.html');
+      return;
+    }
+    const name = data.name || user.email.split('@')[0];
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userRole').textContent = lowerRole.toUpperCase();
+    const avatar = document.getElementById('userAvatar');
+    if (avatar && data.name) avatar.textContent = data.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    
+    if (typeof RoleGuard !== 'undefined') {
+      RoleGuard.apply(lowerRole);
+    }
     loadStats();
+  }).catch(() => {
+    window.location.replace('index.html');
+  });
   });
 </script>
 </body>
