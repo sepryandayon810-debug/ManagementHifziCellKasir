@@ -862,64 +862,51 @@
      * Jangan hitung ulang aturan transaksi di page-kas.
      * =========================================================
      */
-    const periodSummary =
-      await KasCore.getPeriodSummary({
-        startDate: range.startDate,
-        endDate: range.endDate
-      });
+    const activeRole = String(window.__kasPageRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase();
+  const isTeamViewer = activeRole === 'owner' || activeRole === 'developer' || activeRole === 'admin';
+  const scopeUserId = isTeamViewer ? null : (user ? user.uid : null);
 
+  const periodSummary =
+    await KasCore.getPeriodSummary({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      userId: scopeUserId
+    });
 
-    /*
-     * =========================================================
-     * 2. KAS FISIK HARI INI
-     *
-     * "Kas di Tangan" tetap menunjukkan posisi laci hari ini.
-     * =========================================================
-     */
-    const currentKasLaci =
-      await KasCore.getKasFisikLaci({
-        date: today
-      });
+  /*
+   * 2. KAS FISIK HARI INI — Sinkron 100% dengan Dashboard, Kasir, dan Closing
+   */
+  const currentKasLaci =
+    await KasCore.getKasLaciDisplay({
+      date: today,
+      userId: user ? user.uid : null,
+      scope: 'role'
+    });
 
+  document.getElementById('kasMasuk').textContent =
+    Utils.formatRupiah(
+      periodSummary.totalCashInDrawer
+    );
 
-    /*
-     * =========================================================
-     * 3. UPDATE CARD
-     *
-     * Mengikuti KasCore:
-     *
-     * totalCashInDrawer  = cashGlobalIn
-     * totalCashOutDrawer = cashGlobalOut
-     * saldo kas fisik    = modal + saldoKasGlobal
-     * =========================================================
-     */
-    document.getElementById('kasMasuk').textContent =
-      Utils.formatRupiah(
-        periodSummary.totalCashInDrawer
-      );
+  document.getElementById('kasKeluar').textContent =
+    Utils.formatRupiah(
+      periodSummary.totalCashOutDrawer
+    );
 
-    document.getElementById('kasKeluar').textContent =
-      Utils.formatRupiah(
-        periodSummary.totalCashOutDrawer
-      );
+  document.getElementById('kasDitangan').textContent =
+    Utils.formatRupiah(
+      currentKasLaci.totalLaci
+    );
 
-    document.getElementById('kasDitangan').textContent =
-      Utils.formatRupiah(
-        currentKasLaci.total
-      );
-
-
-    /*
-     * =========================================================
-     * 4. AMBIL TRANSAKSI PERIODE
-     * =========================================================
-     */
-    const transactions =
-      await KasCore.getTransactionsByDateRange({
-        startDate: range.startDate,
-        endDate: range.endDate
-      });
-
+  /*
+   * 4. AMBIL TRANSAKSI PERIODE (sesuai role)
+   */
+  const transactions =
+    await KasCore.getTransactionsByDateRange({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      userId: scopeUserId
+    });
 
     /*
      * =========================================================
