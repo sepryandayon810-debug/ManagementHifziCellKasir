@@ -10,7 +10,8 @@ const Utils = {
   },
 
   formatRupiah: function(num) {
-    return "Rp " + (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const val = Math.round(Number(num) || 0);
+    return "Rp " + val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   },
 
   getTodayString: function() {
