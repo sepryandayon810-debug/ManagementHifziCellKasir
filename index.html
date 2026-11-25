@@ -1546,7 +1546,7 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     try {
       const doc = await db.collection("users").doc(user.uid).get();
       let displayName = user.email.split("@")[0];
-      let displayRole = "Owner";
+     let displayRole = "kasir";
 
       if (doc.exists) {
         const u = doc.data();
@@ -1555,6 +1555,8 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       }
 
       currentUserRole = displayRole.toLowerCase();
+      window.currentUserRole = currentUserRole;
+      try { localStorage.setItem("webpos_user_role", currentUserRole); } catch (e) {}
       if (typeof RoleGuard !== 'undefined') {
         RoleGuard.apply(currentUserRole);
       }
