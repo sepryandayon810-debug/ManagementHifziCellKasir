@@ -1442,16 +1442,22 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     );
 
 
-    /*
-     * Kembali ke dashboard
-     */
+   if (targetUid === currentUser.uid && window.KasCore && typeof KasCore.syncShiftCache === "function") {
+      KasCore.syncShiftCache(targetUid, todayStr, "open", modalId);
+    }
+
+    let nextPage = "index.html";
+    try {
+      const ret = localStorage.getItem("wpos_return_after_modal");
+      if (ret) {
+        localStorage.removeItem("wpos_return_after_modal");
+        if (targetUid === currentUser.uid) nextPage = ret;
+      }
+    } catch (e) {}
+
     setTimeout(() => {
-
-      window.location.href =
-        "index.html";
-
-    }, 1200);
-
+      window.location.href = nextPage;
+    }, 1000);
 
   } catch (err) {
 
