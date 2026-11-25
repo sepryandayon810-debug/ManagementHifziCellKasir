@@ -10,6 +10,7 @@ function applyRoleRulesUI(role) {
     hideMenuItem('[data-menu="pengguna"]');
     hideMenuItem('[data-menu="setting"]');
     hideMenuItem('[data-menu="log-aktivitas"]');
+    hideMenuItem('[data-menu="backup"]');
     return;
   }
   if (r === "kasir") {
