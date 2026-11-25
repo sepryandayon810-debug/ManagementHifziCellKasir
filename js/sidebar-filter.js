@@ -18,6 +18,8 @@ function applyRoleRulesUI(role) {
     hideMenuItem('[data-menu="laporan-stok"]');
     hideMenuItem('[data-menu="laporan-terlaris"]');
     hideMenuItem('[data-menu="telegram"]');
+    hideMenuItem('[data-menu="pelanggan"]');
+    hideMenuItem('[data-menu="setting"]');
     hideMenuItem('[data-menu="penggajian"]');
     hideMenuItem('[data-menu="pengguna"]');
     hideMenuItem('[data-menu="backup"]');
