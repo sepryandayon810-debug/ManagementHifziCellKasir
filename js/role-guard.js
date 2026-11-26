@@ -37,7 +37,9 @@ if (typeof window.RoleGuard === 'undefined') {
         if (btnTransfer) btnTransfer.style.display = 'none';
 
         const totalLabaCard = document.getElementById('totalLaba');
-        if (totalLabaCard) totalLabaCard.closest('.stat-card').style.display = 'none';
+        if (totalLabaCard && totalLabaCard.closest('.stat-card')) totalLabaCard.closest('.stat-card').style.display = 'none';
+        const headerLabaEl = document.getElementById('headerLaba');
+        if (headerLabaEl && headerLabaEl.closest('.stat-item')) headerLabaEl.closest('.stat-item').style.display = 'none';
         
         const modalAwalCard = document.getElementById('modalAwal');
         if (modalAwalCard) modalAwalCard.closest('.stat-card').style.display = 'none';
@@ -83,7 +85,9 @@ var RoleGuard = window.RoleGuard;
         // Widget khusus Dashboard
         if (menuKey === 'total_laba') {
           const laba = document.getElementById('totalLaba');
-          if (laba) laba.closest('.stat-card').style.display = '';
+          if (laba && laba.closest('.stat-card')) laba.closest('.stat-card').style.display = '';
+          const headerLaba = document.getElementById('headerLaba');
+          if (headerLaba && headerLaba.closest('.stat-item')) headerLaba.closest('.stat-item').style.display = '';
         }
         if (menuKey === 'modal_awal') {
           const modal = document.getElementById('modalAwal');
