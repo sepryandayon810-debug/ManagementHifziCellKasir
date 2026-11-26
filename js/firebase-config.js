@@ -1960,3 +1960,523 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     }
   };
 })();
+
+// =========================================================================
+// WEBPOS HEALTH GUARD — DETEKSI KEBOCORAN & AUTO-FIX (KHUSUS OWNER/DEVELOPER)
+// =========================================================================
+(function() {
+  if (window.WebPOSHealthGuard) return;
+  if (/login\.html|register\.html|offline\.html/i.test(window.location.pathname || '')) return;
+
+  var ERR_STORAGE_KEY = 'webpos_detected_errors_v1';
+  var DISMISSED_KEY = 'webpos_health_dismissed_v1';
+  var currentIssues = [];
+  var isOwnerOrDev = false;
+  var activeAuthUser = null;
+
+  function safeJsonParse(raw, fallback) {
+    try { return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; }
+  }
+
+  function getTodayYMD() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function escapeText(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function recordRuntimeError(source, message, detail) {
+    try {
+      var msg = String(message || 'Unknown error').slice(0, 220);
+      if (/ResizeObserver|Script error\.?$|WebSocket|NetworkError/i.test(msg)) return;
+      var list = safeJsonParse(localStorage.getItem(ERR_STORAGE_KEY), []);
+      if (!Array.isArray(list)) list = [];
+      var page = (window.location.pathname.split('/').pop() || 'index.html');
+      var key = page + '|' + msg;
+      var exists = list.find(function(x) { return x && x.key === key; });
+      if (exists) {
+        exists.count = (exists.count || 1) + 1;
+        exists.lastAt = Date.now();
+      } else {
+        list.unshift({
+          key: key,
+          page: page,
+          source: source,
+          message: msg,
+          detail: String(detail || '').slice(0, 260),
+          count: 1,
+          lastAt: Date.now()
+        });
+        if (list.length > 15) list = list.slice(0, 15);
+      }
+      localStorage.setItem(ERR_STORAGE_KEY, JSON.stringify(list));
+      if (isOwnerOrDev) {
+        runLocalHealthChecks();
+      }
+    } catch (e) {}
+  }
+
+  window.addEventListener('error', function(ev) {
+    if (!ev) return;
+    recordRuntimeError('JS Error', ev.message || 'Runtime error', (ev.filename || '') + ':' + (ev.lineno || 0));
+  });
+
+  window.addEventListener('unhandledrejection', function(ev) {
+    if (!ev) return;
+    var r = ev.reason;
+    var msg = (r && r.message) ? r.message : String(r || 'Unhandled Promise Rejection');
+    recordRuntimeError('Promise Error', msg, (r && r.code) ? String(r.code) : '');
+  });
+
+  function ensureGuardStyles() {
+    if (document.getElementById('webpos-health-guard-style')) return;
+    var st = document.createElement('style');
+    st.id = 'webpos-health-guard-style';
+    st.textContent =
+      '#btnHealthGuard{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;border:1px solid var(--border,#e2e8f0);background:var(--bg-surface,#fff);color:#059669;cursor:pointer;transition:all .15s ease;flex-shrink:0;}' +
+      '#btnHealthGuard:hover{transform:translateY(-1px);border-color:var(--primary,#4f46e5);}' +
+      '#btnHealthGuard.has-alert{color:#dc2626;border-color:rgba(220,38,38,0.45);background:rgba(239,68,68,0.08);}' +
+      '#healthGuardBadge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid var(--bg-surface,#fff);}' +
+      '#webposHealthGuardModal{position:fixed;inset:0;background:rgba(15,23,42,0.58);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem;z-index:999990;}' +
+      '#webposHealthGuardModal.open{display:flex;}' +
+      '.hg-card{width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;background:var(--bg-surface,#fff);color:var(--text-main,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:18px;box-shadow:0 24px 48px rgba(15,23,42,0.28);overflow:hidden;}' +
+      '.hg-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border,#e2e8f0);display:flex;align-items:center;justify-content:space-between;gap:.75rem;}' +
+      '.hg-body{padding:1rem 1.25rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:.75rem;}' +
+      '.hg-foot{padding:.85rem 1.25rem;border-top:1px solid var(--border,#e2e8f0);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;}' +
+      '.hg-item{border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:.85rem 1rem;background:var(--bg-subtle,#f8fafc);}' +
+      '.hg-item.critical{border-color:rgba(220,38,38,0.4);background:rgba(239,68,68,0.06);}' +
+      '.hg-item.warning{border-color:rgba(245,158,11,0.45);background:rgba(245,158,11,0.07);}' +
+      '.hg-tag{display:inline-block;font-size:.66rem;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase;margin-right:6px;}' +
+      '.hg-tag.critical{background:#fee2e2;color:#b91c1c;}' +
+      '.hg-tag.warning{background:#fef3c7;color:#b45309;}' +
+      '.hg-btn{padding:.48rem .85rem;border-radius:9px;font-size:.78rem;font-weight:700;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;gap:.35rem;}' +
+      '.hg-btn-fix{background:var(--primary,#4f46e5);color:#fff;}' +
+      '.hg-btn-sec{background:var(--bg-surface,#fff);color:var(--text-main,#334155);border-color:var(--border,#cbd5e1);}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function mountGuardUI() {
+    if (!isOwnerOrDev) return;
+    ensureGuardStyles();
+
+    if (!document.getElementById('btnHealthGuard')) {
+      var logoutBtn = document.getElementById('btnLogout');
+      if (logoutBtn && logoutBtn.parentElement) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'btnHealthGuard';
+        btn.title = 'Penjaga Sistem: Deteksi Kebocoran & Auto-Fix (Owner/Developer)';
+        btn.innerHTML = '<i class="fas fa-shield-halved"></i><span id="healthGuardBadge">0</span>';
+        btn.onclick = function() { window.WebPOSHealthGuard.open(); };
+        logoutBtn.parentElement.insertBefore(btn, logoutBtn);
+      }
+    }
+
+    if (!document.getElementById('webposHealthGuardModal') && document.body) {
+      var modal = document.createElement('div');
+      modal.id = 'webposHealthGuardModal';
+      modal.innerHTML =
+        '<div class="hg-card" role="dialog" aria-modal="true">' +
+          '<div class="hg-head">' +
+            '<div>' +
+              '<div style="font-weight:800;font-size:1rem;display:flex;align-items:center;gap:.5rem;"><i class="fas fa-shield-halved" style="color:var(--primary,#4f46e5);"></i> Penjaga Sistem &amp; Deteksi Kebocoran</div>' +
+              '<div style="font-size:.74rem;color:var(--text-muted,#64748b);margin-top:2px;">Khusus Owner/Developer — Perbaikan otomatis hanya dijalankan jika Anda menyetujui.</div>' +
+            '</div>' +
+            '<button type="button" class="hg-btn hg-btn-sec" onclick="WebPOSHealthGuard.close()" style="padding:.35rem .6rem;"><i class="fas fa-times"></i></button>' +
+          '</div>' +
+          '<div class="hg-body" id="hgIssuesList"></div>' +
+          '<div class="hg-foot">' +
+            '<button type="button" class="hg-btn hg-btn-sec" id="btnHgDeepScan" onclick="WebPOSHealthGuard.runDeepServerScan()"><i class="fas fa-magnifying-glass"></i> Scan Mendalam Server</button>' +
+            '<div style="display:flex;gap:.45rem;">' +
+              '<button type="button" class="hg-btn hg-btn-sec" onclick="WebPOSHealthGuard.copyReport()"><i class="fas fa-copy"></i> Salin Laporan</button>' +
+              '<button type="button" class="hg-btn hg-btn-sec" onclick="WebPOSHealthGuard.close()">Tutup</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      modal.onclick = function(e) { if (e.target === modal) window.WebPOSHealthGuard.close(); };
+      document.body.appendChild(modal);
+    }
+
+    updateGuardBadge();
+  }
+
+  function updateGuardBadge() {
+    var btn = document.getElementById('btnHealthGuard');
+    var badge = document.getElementById('healthGuardBadge');
+    if (!btn || !badge) return;
+    var cnt = currentIssues.length;
+    if (cnt > 0) {
+      btn.classList.add('has-alert');
+      badge.textContent = cnt > 9 ? '9+' : String(cnt);
+      badge.style.display = 'inline-flex';
+    } else {
+      btn.classList.remove('has-alert');
+      badge.style.display = 'none';
+    }
+  }
+
+  function renderGuardModal() {
+    var box = document.getElementById('hgIssuesList');
+    if (!box) return;
+    if (!currentIssues.length) {
+      box.innerHTML =
+        '<div style="text-align:center;padding:2rem 1rem;">' +
+          '<div style="width:56px;height:56px;border-radius:16px;background:rgba(16,185,129,0.12);color:#059669;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:.75rem;"><i class="fas fa-circle-check"></i></div>' +
+          '<div style="font-weight:800;font-size:.98rem;margin-bottom:.25rem;">Sistem 100% Aman &amp; Bersih</div>' +
+          '<div style="font-size:.8rem;color:var(--text-muted,#64748b);">Tidak terdeteksi kebocoran cache, harga rugi, maupun error runtime lokal.<br>Klik <strong>Scan Mendalam Server</strong> untuk mengecek shift gantung, role transaksi, &amp; konfigurasi cloud.</div>' +
+        '</div>';
+      return;
+    }
+
+    box.innerHTML = currentIssues.map(function(it, idx) {
+      return '<div class="hg-item ' + (it.severity || 'warning') + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem;">' +
+          '<div style="font-weight:800;font-size:.86rem;"><span class="hg-tag ' + (it.severity || 'warning') + '">' + (it.severity === 'critical' ? 'Kritis' : 'Peringatan') + '</span>' + escapeText(it.title) + '</div>' +
+        '</div>' +
+        '<div style="font-size:.79rem;color:var(--text-muted,#64748b);line-height:1.45;margin-bottom:.65rem;white-space:pre-line;">' + escapeText(it.description) + '</div>' +
+        '<div style="display:flex;gap:.45rem;flex-wrap:wrap;">' +
+          (it.canAutoFix ? '<button type="button" class="hg-btn hg-btn-fix" onclick="WebPOSHealthGuard.approveFix(' + idx + ')"><i class="fas fa-wand-magic-sparkles"></i> ' + escapeText(it.fixLabel || 'Setujui & Perbaiki Otomatis') + '</button>' : '') +
+          '<button type="button" class="hg-btn hg-btn-sec" onclick="WebPOSHealthGuard.dismissIssue(' + idx + ')">Abaikan</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function runLocalHealthChecks() {
+    var issues = [];
+    var dismissed = safeJsonParse(sessionStorage.getItem(DISMISSED_KEY), {});
+
+    // 1. Cek kebocoran UID / Sesi lintas akun (0 read)
+    try {
+      var lastUid = localStorage.getItem('webpos_last_uid') || '';
+      var sess = safeJsonParse(localStorage.getItem('webpos_session'), null);
+      if (activeAuthUser && activeAuthUser.uid) {
+        if ((lastUid && lastUid !== activeAuthUser.uid) || (sess && sess.uid && sess.uid !== activeAuthUser.uid)) {
+          issues.push({
+            id: 'uid_cache_mismatch',
+            severity: 'critical',
+            title: 'Terdeteksi Kebocoran Sesi / Cache Akun Lain',
+            description: 'Data cache lokal di browser masih memuat UID akun sebelumnya. Jika dibiarkan, angka header atau riwayat akun lama bisa tercampur.',
+            canAutoFix: true,
+            fixLabel: 'Setujui & Bersihkan Cache Sesi',
+            fix: async function() {
+              [
+                'webpos_shift_status_cache', 'active_shift_id', 'wpos_return_after_modal',
+                'header_uang_global', 'header_penjualan', 'header_transaksi', 'header_laba',
+                'raw_header_uang_global', 'raw_header_penjualan', 'raw_header_transaksi',
+                'raw_header_laba', 'raw_header_date', 'kasir_cart', 'kasir_note', 'kasir_reseller_name'
+              ].forEach(function(k) { localStorage.removeItem(k); });
+              localStorage.setItem('webpos_last_uid', activeAuthUser.uid);
+              if (window.indexedDB && window.indexedDB.deleteDatabase) {
+                window.indexedDB.deleteDatabase('webpos_riwayat_cache_v1');
+              }
+              return 'Cache akun lama berhasil dibersihkan & UID disinkronkan!';
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    // 2. Cek antrean transaksi offline macet saat online (0 read)
+    try {
+      var pending = safeJsonParse(localStorage.getItem('webpos_pending_transactions'), []);
+      if (Array.isArray(pending) && pending.length > 0 && navigator.onLine) {
+        issues.push({
+          id: 'offline_pending_stuck',
+          severity: 'warning',
+          title: pending.length + ' Transaksi Offline Belum Tersinkron',
+          description: 'Terdapat ' + pending.length + ' transaksi tersimpan di memori lokal padahal koneksi internet aktif.',
+          canAutoFix: true,
+          fixLabel: 'Setujui & Paksa Sinkron',
+          fix: async function() {
+            if (typeof window.syncPendingTransactions === 'function') {
+              await window.syncPendingTransactions();
+              return 'Sinkronisasi transaksi offline telah dijalankan!';
+            }
+            window.location.href = 'page-kasir.html';
+            return 'Mengarahkan ke halaman Kasir untuk sinkronisasi otomatis...';
+          }
+        });
+      }
+    } catch (e) {}
+
+    // 3. Cek cepat harga produk rugi / Rp 0 dari cache lokal (0 read)
+    try {
+      var cachedProds = safeJsonParse(localStorage.getItem('webpos_cache_products_v1'), []);
+      if (Array.isArray(cachedProds) && cachedProds.length > 0) {
+        var badProds = cachedProds.filter(function(p) {
+          if (!p || p.status === 'inactive') return false;
+          var c = Number(p.costPrice) || 0;
+          var s = Number(p.sellingPrice) || 0;
+          return s <= 0 || (c > 0 && s < c);
+        });
+        if (badProds.length > 0) {
+          var sample = badProds.slice(0, 4).map(function(p) {
+            return '• ' + (p.name || '-') + ' (Modal Rp ' + (Number(p.costPrice) || 0).toLocaleString('id-ID') + ' / Jual Rp ' + (Number(p.sellingPrice) || 0).toLocaleString('id-ID') + ')';
+          }).join('\n');
+          issues.push({
+            id: 'local_bad_prices',
+            severity: 'warning',
+            title: badProds.length + ' Produk Terdeteksi Harga Jual Rp 0 / Rugi',
+            description: 'Ditemukan produk aktif yang harga jualnya lebih rendah dari modal atau Rp 0:\n' + sample + (badProds.length > 4 ? '\n...dan ' + (badProds.length - 4) + ' lainnya.' : ''),
+            canAutoFix: true,
+            fixLabel: 'Buka Halaman Produk untuk Perbaiki',
+            fix: async function() {
+              window.location.href = 'page-produk.html';
+              return 'Membuka halaman Produk...';
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    // 4. Cek error runtime JavaScript yang terekam otomatis (0 read)
+    try {
+      var errs = safeJsonParse(localStorage.getItem(ERR_STORAGE_KEY), []);
+      if (Array.isArray(errs) && errs.length > 0) {
+        var summary = errs.slice(0, 4).map(function(x) {
+          return '• [' + x.page + '] ' + x.message + (x.count > 1 ? ' (' + x.count + 'x)' : '');
+        }).join('\n');
+        issues.push({
+          id: 'runtime_js_errors',
+          severity: 'critical',
+          title: errs.length + ' Error Program (JS) Terdeteksi Otomatis',
+          description: 'Aplikasi mendeteksi error kode berikut:\n' + summary + '\n\nKlik "Salin Laporan" untuk dikirim agar kode diperbaiki permanen, atau klik tombol di bawah untuk menyalin & membersihkan log.',
+          canAutoFix: true,
+          fixLabel: 'Salin & Bersihkan Log Error',
+          fix: async function() {
+            await window.WebPOSHealthGuard.copyReport();
+            localStorage.removeItem(ERR_STORAGE_KEY);
+            return 'Laporan error disalin ke clipboard & log dibersihkan!';
+          }
+        });
+      }
+    } catch (e) {}
+
+    currentIssues = issues.filter(function(it) { return !dismissed[it.id]; });
+    updateGuardBadge();
+    renderGuardModal();
+    return currentIssues;
+  }
+
+  async function runDeepServerScan() {
+    var btn = document.getElementById('btnHgDeepScan');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memindai Server...'; }
+    try {
+      runLocalHealthChecks();
+      if (typeof window.db === 'undefined') throw new Error('Firestore belum siap');
+
+      var todayStr = getTodayYMD();
+
+      // 5. Cek shift lama yang masih menggantung status "open"
+      try {
+        var shiftSnap = await window.db.collection('shifts').where('status', '==', 'open').get();
+        var stuckShifts = [];
+        shiftSnap.forEach(function(doc) {
+          var d = doc.data() || {};
+          var sDate = String(d.date || d.date_key || '').slice(0, 10);
+          if (sDate && sDate < todayStr) {
+            stuckShifts.push({ id: doc.id, date: sDate, userName: d.userName || d.cashierName || '-' });
+          }
+        });
+        if (stuckShifts.length > 0) {
+          currentIssues.unshift({
+            id: 'stuck_open_shifts',
+            severity: 'warning',
+            title: stuckShifts.length + ' Shift Hari Sebelumnya Masih Menggantung (Open)',
+            description: stuckShifts.slice(0, 5).map(function(s) { return '• ' + s.date + ' — ' + s.userName; }).join('\n') + '\n\nShift lama yang belum ditutup dapat membingungkan status shift aktif.',
+            canAutoFix: true,
+            fixLabel: 'Setujui & Tutup Shift Lama Otomatis',
+            fix: async function() {
+              var batch = window.db.batch();
+              stuckShifts.forEach(function(s) {
+                batch.update(window.db.collection('shifts').doc(s.id), {
+                  status: 'closed',
+                  closedAt: Date.now(),
+                  autoClosedNote: '[AUTO-FIX OWNER] Ditutup otomatis oleh Penjaga Sistem'
+                });
+              });
+              await batch.commit();
+              localStorage.removeItem('webpos_shift_status_cache');
+              return stuckShifts.length + ' shift lama berhasil ditutup rapi!';
+            }
+          });
+        }
+      } catch (e) {}
+
+      // 6. Cek transaksi hari ini tanpa userRole (perbaikan batch 1-klik)
+      try {
+        var txSnap = await window.db.collection('transactions').where('date', '==', todayStr).get();
+        var missingRoleTxs = [];
+        txSnap.forEach(function(doc) {
+          var d = doc.data() || {};
+          if (!d.userRole && d.userId) missingRoleTxs.push({ id: doc.id, userId: d.userId });
+        });
+        if (missingRoleTxs.length > 0) {
+          currentIssues.push({
+            id: 'missing_tx_user_role',
+            severity: 'warning',
+            title: missingRoleTxs.length + ' Transaksi Hari Ini Belum Memiliki Field userRole',
+            description: 'Menyebabkan filter role di Riwayat harus menebak dari nama petugas. Bisa langsung dilengkapi otomatis dari database User.',
+            canAutoFix: true,
+            fixLabel: 'Setujui & Lengkapi Role Otomatis',
+            fix: async function() {
+              var uSnap = await window.db.collection('users').get();
+              var roleMap = {};
+              uSnap.forEach(function(u) { roleMap[u.id] = String((u.data() || {}).role || 'kasir').toLowerCase(); });
+              var batch = window.db.batch();
+              missingRoleTxs.slice(0, 400).forEach(function(t) {
+                batch.update(window.db.collection('transactions').doc(t.id), { userRole: roleMap[t.userId] || 'kasir' });
+              });
+              await batch.commit();
+              return missingRoleTxs.length + ' transaksi hari ini berhasil dilengkapi field userRole!';
+            }
+          });
+        }
+      } catch (e) {}
+
+      // 7. Cek apakah URL Google Sheets lokal belum tersimpan di Cloud
+      try {
+        var localGas = (localStorage.getItem('webpos_gas_webhook_url') || '').trim();
+        var localSheet = (localStorage.getItem('webpos_spreadsheet_url') || '').trim();
+        if (localGas) {
+          var cfgDoc = await window.db.collection('backup').doc('sheetsConfig').get();
+          var cloudGas = (cfgDoc.exists && cfgDoc.data()) ? String(cfgDoc.data().scriptUrl || '').trim() : '';
+          if (!cloudGas) {
+            currentIssues.push({
+              id: 'sheets_url_not_in_cloud',
+              severity: 'warning',
+              title: 'URL Google Sheets Belum Tersinkron ke Cloud',
+              description: 'URL Apps Script sudah ada di perangkat ini tetapi belum disimpan ke Cloud Firestore, sehingga perangkat lain masih harus input ulang.',
+              canAutoFix: true,
+              fixLabel: 'Setujui & Sinkron URL ke Cloud',
+              fix: async function() {
+                await window.db.collection('backup').doc('sheetsConfig').set({
+                  scriptUrl: localGas,
+                  sheetUrl: localSheet,
+                  updatedAt: Date.now(),
+                  updatedBy: activeAuthUser ? (activeAuthUser.email || activeAuthUser.uid) : 'owner'
+                }, { merge: true });
+                return 'URL Google Sheets berhasil disimpan ke Cloud untuk semua perangkat!';
+              }
+            });
+          }
+        }
+      } catch (e) {}
+
+      updateGuardBadge();
+      renderGuardModal();
+    } catch (err) {
+      if (window.WebPOSDialog) window.WebPOSDialog.alert('Gagal melakukan scan server: ' + err.message, { title: 'Scan Server Gagal' });
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Scan Mendalam Server'; }
+    }
+  }
+
+  window.WebPOSHealthGuard = {
+    open: function() {
+      mountGuardUI();
+      runLocalHealthChecks();
+      var m = document.getElementById('webposHealthGuardModal');
+      if (m) m.classList.add('open');
+    },
+    close: function() {
+      var m = document.getElementById('webposHealthGuardModal');
+      if (m) m.classList.remove('open');
+    },
+    runDeepServerScan: runDeepServerScan,
+    approveFix: async function(idx) {
+      var item = currentIssues[idx];
+      if (!item || typeof item.fix !== 'function') return;
+      var ok = await window.WebPOSDialog.confirm(
+        'Jalankan perbaikan otomatis untuk:\n"' + item.title + '"?',
+        null,
+        { title: 'Persetujuan Perbaikan Otomatis', confirmText: 'Ya, Setujui & Perbaiki' }
+      );
+      if (!ok) return;
+      try {
+        var msg = await item.fix();
+        currentIssues.splice(idx, 1);
+        updateGuardBadge();
+        renderGuardModal();
+        if (window.WebPOSDialog) window.WebPOSDialog.alert(msg || 'Perbaikan selesai dijalankan!', { title: 'Perbaikan Berhasil' });
+      } catch (err) {
+        if (window.WebPOSDialog) window.WebPOSDialog.alert('Perbaikan gagal: ' + (err.message || err), { title: 'Gagal Memperbaiki' });
+      }
+    },
+    dismissIssue: function(idx) {
+      var item = currentIssues[idx];
+      if (!item) return;
+      var dismissed = safeJsonParse(sessionStorage.getItem(DISMISSED_KEY), {});
+      dismissed[item.id] = true;
+      sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed));
+      currentIssues.splice(idx, 1);
+      updateGuardBadge();
+      renderGuardModal();
+    },
+    copyReport: async function() {
+      var errs = safeJsonParse(localStorage.getItem(ERR_STORAGE_KEY), []);
+      var lines = ['=== LAPORAN PENJAGA SISTEM WEBPOS ===', 'Tanggal: ' + new Date().toLocaleString('id-ID'), 'Halaman: ' + window.location.pathname, ''];
+      if (currentIssues.length) {
+        lines.push('--- TEMUAN AKTIF (' + currentIssues.length + ') ---');
+        currentIssues.forEach(function(it, i) {
+          lines.push((i + 1) + '. [' + it.severity + '] ' + it.title + ' — ' + it.description.replace(/\n/g, ' | '));
+        });
+      }
+      if (errs.length) {
+        lines.push('', '--- ERROR RUNTIME (' + errs.length + ') ---');
+        errs.forEach(function(e, i) {
+          lines.push((i + 1) + '. [' + e.page + '] ' + e.source + ': ' + e.message + ' (' + e.detail + ') x' + (e.count || 1));
+        });
+      }
+      var text = lines.join('\n');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          if (window.WebPOSDialog) window.WebPOSDialog.alert('Laporan berhasil disalin! Anda bisa langsung tempel di chat untuk analisis cepat.', { title: 'Laporan Disalin' });
+        }
+      } catch (e) {}
+    }
+  };
+
+  function bootHealthGuardForUser(user) {
+    if (!user || !user.uid) return;
+    activeAuthUser = user;
+    var cachedRole = String(localStorage.getItem('webpos_user_role') || '').toLowerCase();
+    if (cachedRole === 'owner' || cachedRole === 'developer') {
+      isOwnerOrDev = true;
+      mountGuardUI();
+      runLocalHealthChecks();
+      return;
+    }
+    if (typeof window.db !== 'undefined') {
+      window.db.collection('users').doc(user.uid).get().then(function(doc) {
+        if (!doc.exists || !doc.data()) return;
+        var r = String(doc.data().role || 'kasir').toLowerCase();
+        if (r === 'owner' || r === 'developer') {
+          isOwnerOrDev = true;
+          mountGuardUI();
+          runLocalHealthChecks();
+        }
+      }).catch(function() {});
+    }
+  }
+
+  function initGuardBoot() {
+    if (window.auth && typeof window.auth.onAuthStateChanged === 'function') {
+      window.auth.onAuthStateChanged(function(user) {
+        if (user) bootHealthGuardForUser(user);
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGuardBoot);
+  } else {
+    initGuardBoot();
+  }
+})();
