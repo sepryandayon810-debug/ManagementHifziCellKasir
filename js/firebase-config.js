@@ -185,7 +185,8 @@ if (!window.firebaseConfigInitialized) {
           'raw_header_uang_global', 'raw_header_penjualan', 'raw_header_transaksi',
           'raw_header_laba', 'raw_header_date', 'kasir_cart', 'kasir_note',
           'kasir_reseller_name', 'webpos_gas_webhook_url', 'webpos_spreadsheet_url',
-          'webpos_gas_secret_key'
+          'webpos_gas_secret_key', 'webpos_latest_uang_kasir', 'webpos_debts_cache',
+          'temp_hitung_kasir'
         ].forEach(function(k) { localStorage.removeItem(k); });
         sessionStorage.removeItem('webpos_backup_cache');
         if (window.indexedDB && typeof window.indexedDB.deleteDatabase === 'function') {
