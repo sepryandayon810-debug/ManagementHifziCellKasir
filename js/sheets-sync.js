@@ -1018,7 +1018,10 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
       }
 
       // Bersihkan cache produk lokal agar halaman Produk & Kasir langsung ambil harga baru
-      try { localStorage.removeItem('webpos_cache_products_v1'); } catch (e) {}
+      try {
+        localStorage.removeItem('webpos_cache_products_v1');
+        localStorage.removeItem('webpos_cache_timestamp');
+      } catch (e) {}
 
       var totalUpdated = pendingSheetPriceDiffs.length;
       pendingSheetPriceDiffs = [];
