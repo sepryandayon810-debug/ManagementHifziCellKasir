@@ -888,6 +888,52 @@ const TYPE_ICONS = {
         select.value = 'all';
       }
 
+      function isRiwayatAdminRole() {
+        return ['admin', 'owner', 'developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase());
+      }
+
+      function canViewRiwayatProfit() {
+        if (isRiwayatAdminRole()) return true;
+        try {
+          const perms = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
+          return perms && perms.total_laba === true;
+        } catch (e) { return false; }
+      }
+
+      function getRoleScopedTransactions(list) {
+        if (isRiwayatAdminRole()) return list;
+        const curUid = (auth && auth.currentUser && auth.currentUser.uid) ? String(auth.currentUser.uid) : '';
+        const curName = String(localStorage.getItem('webpos_user_name') || '').trim().toLowerCase();
+        return list.filter(t => {
+          const cat = KasCore.getCategory(t);
+          if (cat === 'pembelian') return false;
+          if (curUid && t.userId) return String(t.userId) === curUid;
+          if (curName && (t.userName || t.cashierName)) {
+            return String(t.userName || t.cashierName).trim().toLowerCase() === curName;
+          }
+          return false;
+        });
+      }
+
+      function applyRiwayatRoleUI() {
+        const isAdmin = isRiwayatAdminRole();
+        const roleFilterEl = document.getElementById('filterRole');
+        if (roleFilterEl && roleFilterEl.parentElement && roleFilterEl.parentElement.parentElement) {
+          roleFilterEl.parentElement.parentElement.style.display = isAdmin ? 'grid' : 'none';
+        }
+        document.querySelectorAll('.category-tab[data-category="operasional"], .category-tab[data-category="all"]').forEach(tab => {
+          tab.style.display = isAdmin ? '' : 'none';
+        });
+        const btnImport = document.getElementById('btnOpenImportModal');
+        if (btnImport) btnImport.style.display = isAdmin ? '' : 'none';
+        const btnTemplate = document.querySelector('button[onclick="downloadTemplateRiwayat()"]');
+        if (btnTemplate) btnTemplate.style.display = isAdmin ? '' : 'none';
+        if (!isAdmin && (currentFilter === 'operasional' || currentFilter === 'all')) {
+          currentFilter = 'buku_kasir';
+          document.querySelectorAll('.category-tab').forEach(t => t.classList.toggle('active', t.dataset.category === 'buku_kasir'));
+        }
+      }
+
       function getTransactionRole(t) {
         if (!t) return 'kasir';
         if (t.userRole) return String(t.userRole).toLowerCase().trim();
@@ -938,6 +984,7 @@ const TYPE_ICONS = {
           const avatar = document.getElementById('userAvatar');
           if (avatar) avatar.textContent = fallbackName.slice(0, 2).toUpperCase();
           if (typeof RoleGuard !== 'undefined') RoleGuard.apply(fallbackRole);
+          applyRiwayatRoleUI();
 
           // Jalankan riwayat LANGSUNG tanpa menunggu query user selesai!
           setupSidebarEvents();
@@ -955,6 +1002,8 @@ const TYPE_ICONS = {
             document.getElementById('userRole').textContent = dRole.toUpperCase();
             if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
             if (typeof RoleGuard !== 'undefined') RoleGuard.apply(dRole);
+            applyRiwayatRoleUI();
+
             if (typeof filterAndRender === 'function' && allTransactions.length > 0) filterAndRender();
           }).catch(() => {});
         });
@@ -1278,7 +1327,8 @@ const TYPE_ICONS = {
         const endDate = document.getElementById('endDate').value;
         if (!startDate || !endDate) return;
 
-        const rangeKey = startDate + '_' + endDate;
+        const curUidForCache = (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : 'anon';
+        const rangeKey = curUidForCache + '_' + startDate + '_' + endDate;
         const todayStr = toLocalYMD(new Date());
         const includesToday = startDate <= todayStr && endDate >= todayStr;
 
@@ -1443,7 +1493,7 @@ const TYPE_ICONS = {
             '<div style="font-size:1.05rem;font-weight:800;color:#7c3aed;margin:.25rem 0 .15rem;">' + Utils.formatRupiah(g.omset) + '</div>' +
             '<div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);">' +
               '<span>' + g.itemQty + ' pcs barang</span>' +
-              '<span style="color:var(--success);font-weight:700;">Laba: ' + Utils.formatRupiah(g.profit) + '</span>' +
+              (canViewRiwayatProfit() ? '<span style="color:var(--success);font-weight:700;">Laba: ' + Utils.formatRupiah(g.profit) + '</span>' : '') +
             '</div>' +
           '</div>';
         }).join('');
@@ -1464,7 +1514,7 @@ const TYPE_ICONS = {
           activeResellerCounterKey = '';
         }
 
-        let filtered = allTransactions;
+        let filtered = getRoleScopedTransactions(allTransactions);
 
         if (currentFilter !== 'all') {
           filtered = filtered.filter(t => {
@@ -1617,8 +1667,7 @@ const TYPE_ICONS = {
             <div class="detail-panel-item"><div class="detail-panel-label">Catatan / Keterangan</div><div class="detail-panel-value">${t.note || t.catatan || '-'}</div></div>
             ${(t.discount > 0 || t.diskon > 0) ? `<div class="detail-panel-item"><div class="detail-panel-label">Potongan Diskon</div><div class="detail-panel-value" style="color:#dc2626;font-weight:700;">- ${Utils.formatRupiah(t.discount || t.diskon)}</div></div>` : ''}
             ${isOwnerTake ? `<div class="detail-panel-item"><div class="detail-panel-label">Status Ambil</div><div class="detail-panel-value" style="color:#b45309;font-weight:700;">Pengambilan Barang oleh Owner (Gratis / 100%)</div></div>` : ''}
-            <div class="detail-panel-item"><div class="detail-panel-label">${KasCore.getCategory(t) === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${KasCore.getCategory(t) === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(KasCore.calculateTransactionProfit(t))}</div></div>
-          </div>
+${(KasCore.getCategory(t) === 'pembelian' || canViewRiwayatProfit()) ? `<div class="detail-panel-item"><div class="detail-panel-label">${KasCore.getCategory(t) === 'pembelian' ? 'Total Item' : 'Laba / Profit'}</div><div class="detail-panel-value" style="color:var(--success);">${KasCore.getCategory(t) === 'pembelian' ? (t.totalItem || (t.items ? t.items.length : 1)) + ' item' : Utils.formatRupiah(KasCore.calculateTransactionProfit(t))}</div></div>` : ''}          </div>
         `;
       
         if (t.items && t.items.length > 0) {
@@ -1807,6 +1856,21 @@ if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
           card3Sub = 'restock, tarik, kas keluar';
           card3Icon = 'fa-arrow-up';
         }
+
+       if (!canViewRiwayatProfit() && ['buku_kasir', 'penjualan', 'reseller'].includes(currentFilter)) {
+          let totalQtyItems = 0;
+          transactions.forEach(t => {
+            if (Array.isArray(t.items) && t.items.length > 0) {
+              totalQtyItems += t.items.reduce((s, i) => s + (Number(i.quantity || i.qty) || 1), 0);
+            } else {
+              totalQtyItems += 1;
+            }
+          });
+          card3Title = 'TOTAL ITEM / LAYANAN';
+          card3Value = totalQtyItems.toLocaleString('id-ID') + ' item';
+          card3Sub = 'jumlah barang & layanan terjual';
+          card3Icon = 'fa-boxes';
+        }                         
 
         container.innerHTML = `
           <div class="summary-card ${card1Class}">
@@ -2199,13 +2263,14 @@ Utils.showToast('Transaksi berhasil diperbarui', 'success');
         }
       };
 
-      function exportData() {
-        if (allTransactions.length === 0) {
+     function exportData() {
+        const exportList = getRoleScopedTransactions(allTransactions);
+        if (exportList.length === 0) {
           Utils.showToast('Tidak ada data untuk diexport', 'warning');
           return;
         }
         let csv = 'No,ID,Tanggal,Tipe,Metode,Kasir,Total\n';
-        allTransactions.forEach(t => {
+        exportList.forEach(t => {
           csv += [String(t.inputSequence || '-'), t.id, formatDateTime(t.waktu || t.timestamp),
   TYPE_LABELS[KasCore.getCategory(t)] || KasCore.getCategory(t),
   (KasCore.getPaymentMethod(t) || 'tunai').toUpperCase(),
@@ -2251,6 +2316,10 @@ Utils.showToast('Transaksi berhasil diperbarui', 'success');
 
       // ================= IMPORT DENGAN CHUNKING & LOADING INTERAKTIF =================
       async function processImport() {
+        if (!isRiwayatAdminRole()) {
+          Utils.showToast('Hanya Admin / Owner yang boleh mengimpor transaksi', 'error');
+          return;
+        }
         const fileInput = document.getElementById('importFile');
         if (!fileInput.files.length) {
           Utils.showToast('Pilih file terlebih dahulu', 'warning');
