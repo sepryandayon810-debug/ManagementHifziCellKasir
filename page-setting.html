@@ -562,6 +562,53 @@
               <h3 class="card-title"><i class="fas fa-store" style="color:var(--primary);"></i> Identitas & Struk Toko</h3>
             </div>
             <div class="card-body">
+              <!-- PENGATURAN LOGO KONTER (TAMPIL DI SIDEBAR, LOGIN & FAVICON) -->
+              <div class="form-group" style="padding:.9rem;border-radius:14px;background:var(--bg-subtle);border:1px dashed var(--border);margin-bottom:1.1rem;">
+                <label class="form-label" style="display:flex;align-items:center;gap:.45rem;margin-bottom:.65rem;font-weight:800;">
+                  <i class="fas fa-image" style="color:var(--primary);"></i> Logo Konter (Sidebar &amp; Layar Login)
+                </label>
+
+                <div style="display:flex;align-items:center;gap:.85rem;flex-wrap:wrap;margin-bottom:.75rem;">
+                  <div id="storeLogoPreviewWrap" style="display:flex;align-items:center;gap:.65rem;padding:.55rem .85rem;border-radius:12px;background:var(--bg-surface);border:1px solid var(--border);min-height:56px;min-width:190px;max-width:100%;">
+                    <div id="storeLogoPreviewBox" style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#10b981,#4f46e5);color:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                      <i class="fas fa-store"></i>
+                    </div>
+                    <span id="storeLogoPreviewName" style="font-weight:800;font-size:.98rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">HIFZI CELL</span>
+                  </div>
+
+                  <div style="display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;">
+                    <input type="file" id="storeLogoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;">
+                    <button type="button" class="btn btn-primary" id="btnPickStoreLogo" style="padding:.48rem .85rem;font-size:.8rem;">
+                      <i class="fas fa-upload"></i> Pilih Logo
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btnRemoveStoreLogo" style="padding:.48rem .8rem;font-size:.8rem;display:none;">
+                      <i class="fas fa-trash-alt"></i> Reset Default
+                    </button>
+                  </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-bottom:.45rem;">
+                  <div>
+                    <label class="form-label" style="font-size:.74rem;margin-bottom:.25rem;">Mode Tampilan Sidebar</label>
+                    <select class="form-input" id="storeLogoMode" style="padding:.45rem .65rem;font-size:.82rem;">
+                      <option value="icon_text">Ikon Logo + Nama Konter</option>
+                      <option value="full_banner">Logo Lebar Penuh (Tanpa Teks)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:.74rem;margin-bottom:.25rem;">Bentuk Bingkai Logo</label>
+                    <select class="form-input" id="storeLogoShape" style="padding:.45rem .65rem;font-size:.82rem;">
+                      <option value="rounded">Kotak Melengkung</option>
+                      <option value="circle">Bulat (Lingkaran)</option>
+                      <option value="clean">Polos / Transparan (PNG)</option>
+                    </select>
+                  </div>
+                </div>
+                <small style="color:var(--text-muted);font-size:.73rem;display:block;line-height:1.4;">
+                  <i class="fas fa-info-circle"></i> Mendukung PNG transparan, JPG, &amp; WebP. Gambar otomatis diperkecil agar ringan &amp; langsung sinkron ke semua perangkat. Jangan lupa klik <strong>Simpan Informasi Toko</strong> di bawah.
+                </small>
+              </div>
+
               <div class="form-group">
                 <label class="form-label">Nama Usaha / Toko</label>
                 <input type="text" class="form-input" id="storeName" placeholder="Contoh: HIFZI CELL">
@@ -1482,7 +1529,152 @@
     });
   }
 
+  let pendingLogoDataUrl = localStorage.getItem("webpos_store_logo") || "";
+
+  function renderLogoPreview() {
+    const box = document.getElementById("storeLogoPreviewBox");
+    const nameEl = document.getElementById("storeLogoPreviewName");
+    const modeSel = document.getElementById("storeLogoMode");
+    const shapeSel = document.getElementById("storeLogoShape");
+    const btnRemove = document.getElementById("btnRemoveStoreLogo");
+    const nameInput = document.getElementById("storeName");
+    if (!box || !nameEl) return;
+
+    const mode = modeSel ? modeSel.value : "icon_text";
+    const shape = shapeSel ? shapeSel.value : "rounded";
+    const storeTitle = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (localStorage.getItem("webpos_store_name") || "HIFZI CELL");
+    nameEl.textContent = storeTitle;
+
+    const hasLogo = Boolean(pendingLogoDataUrl && pendingLogoDataUrl.indexOf("data:image/") === 0);
+    if (btnRemove) btnRemove.style.display = hasLogo ? "inline-flex" : "none";
+
+    if (hasLogo) {
+      box.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = pendingLogoDataUrl;
+      img.alt = storeTitle;
+      if (mode === "full_banner") {
+        box.style.width = "auto";
+        box.style.maxWidth = "180px";
+        box.style.height = "42px";
+        box.style.background = "transparent";
+        box.style.borderRadius = shape === "circle" ? "999px" : (shape === "clean" ? "0" : "8px");
+        img.style.cssText = "height:42px;width:auto;max-width:180px;object-fit:contain;display:block;";
+        nameEl.style.display = "none";
+      } else {
+        box.style.width = "42px";
+        box.style.maxWidth = "42px";
+        box.style.height = "42px";
+        box.style.background = shape === "clean" ? "transparent" : "var(--bg-subtle)";
+        box.style.borderRadius = shape === "circle" ? "50%" : (shape === "clean" ? "0" : "11px");
+        img.style.cssText = "width:100%;height:100%;object-fit:" + (shape === "clean" ? "contain" : "cover") + ";display:block;";
+        nameEl.style.display = "inline";
+      }
+      box.appendChild(img);
+    } else {
+      box.style.width = "40px";
+      box.style.maxWidth = "40px";
+      box.style.height = "40px";
+      box.style.borderRadius = "11px";
+      box.style.background = "linear-gradient(135deg,#10b981,#4f46e5)";
+      box.innerHTML = '<i class="fas fa-store"></i>';
+      nameEl.style.display = "inline";
+    }
+  }
+
+  function compressLogoImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Gagal membaca file gambar"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Format gambar tidak didukung"));
+        img.onload = () => {
+          const maxW = 360;
+          const maxH = 180;
+          let w = img.naturalWidth || img.width || 180;
+          let h = img.naturalHeight || img.height || 180;
+          const ratio = Math.min(maxW / w, maxH / h, 1);
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // WebP ringan & tetap mendukung transparansi, fallback PNG/JPEG
+          let out = "";
+          try { out = canvas.toDataURL("image/webp", 0.88); } catch (e) {}
+          if (!out || out.indexOf("data:image/webp") !== 0) {
+            out = canvas.toDataURL("image/png");
+          }
+          if (out.length > 140000) {
+            out = canvas.toDataURL("image/jpeg", 0.85);
+          }
+          if (out.length > 220000) {
+            reject(new Error("Ukuran logo terlalu besar. Gunakan gambar yang lebih kecil."));
+            return;
+          }
+          resolve(out);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setupLogoControls() {
+    const fileInput = document.getElementById("storeLogoFileInput");
+    const btnPick = document.getElementById("btnPickStoreLogo");
+    const btnRemove = document.getElementById("btnRemoveStoreLogo");
+    const modeSel = document.getElementById("storeLogoMode");
+    const shapeSel = document.getElementById("storeLogoShape");
+    const nameInput = document.getElementById("storeName");
+
+    if (btnPick && fileInput) {
+      btnPick.onclick = () => fileInput.click();
+      fileInput.onchange = async (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        if (!/^image\//i.test(file.type || "")) {
+          toast("Harap pilih file gambar (PNG, JPG, atau WebP)", "error");
+          fileInput.value = "";
+          return;
+        }
+        try {
+          pendingLogoDataUrl = await compressLogoImageFile(file);
+          renderLogoPreview();
+          toast("Logo siap! Klik 'Simpan Informasi Toko' untuk menerapkan ke semua halaman.", "info");
+        } catch (err) {
+          toast(err.message || "Gagal memproses logo", "error");
+        } finally {
+          fileInput.value = "";
+        }
+      };
+    }
+
+    if (btnRemove) {
+      btnRemove.onclick = () => {
+        pendingLogoDataUrl = "";
+        renderLogoPreview();
+        toast("Logo direset ke ikon default. Klik 'Simpan Informasi Toko' untuk menyimpan.", "info");
+      };
+    }
+    if (modeSel) modeSel.onchange = renderLogoPreview;
+    if (shapeSel) shapeSel.onchange = renderLogoPreview;
+    if (nameInput) nameInput.addEventListener("input", renderLogoPreview);
+  }
+
   async function loadStoreSettings() {
+    setupLogoControls();
+    const modeSel = document.getElementById("storeLogoMode");
+    const shapeSel = document.getElementById("storeLogoShape");
+    if (modeSel) modeSel.value = localStorage.getItem("webpos_store_logo_mode") || "icon_text";
+    if (shapeSel) shapeSel.value = localStorage.getItem("webpos_store_logo_shape") || "rounded";
+
     try {
       const doc = await firebase.firestore().collection("settings").doc("store").get();
       if (doc.exists) {
@@ -1491,12 +1683,21 @@
         document.getElementById("storeAddress").value = s.address || "";
         document.getElementById("storePhone").value = s.phone || "";
         document.getElementById("receiptFooterNote").value = s.footerNote || "";
+        pendingLogoDataUrl = String(s.logoDataUrl || "");
+        if (modeSel) modeSel.value = s.logoMode || "icon_text";
+        if (shapeSel) shapeSel.value = s.logoShape || "rounded";
+        if (pendingLogoDataUrl) localStorage.setItem("webpos_store_logo", pendingLogoDataUrl);
+        else localStorage.removeItem("webpos_store_logo");
+        localStorage.setItem("webpos_store_logo_mode", modeSel ? modeSel.value : "icon_text");
+        localStorage.setItem("webpos_store_logo_shape", shapeSel ? shapeSel.value : "rounded");
       } else {
         document.getElementById("storeName").value = localStorage.getItem("webpos_store_name") || "HIFZI CELL";
       }
     } catch(err) {
       console.error(err);
     }
+    renderLogoPreview();
+    if (window.WebPOSBrandLogo) window.WebPOSBrandLogo.apply();
   }
 
   async function saveStoreSettings() {
@@ -1504,6 +1705,9 @@
     const address = document.getElementById("storeAddress").value.trim();
     const phone = document.getElementById("storePhone").value.trim();
     const footerNote = document.getElementById("receiptFooterNote").value.trim();
+    const logoMode = (document.getElementById("storeLogoMode") || {}).value || "icon_text";
+    const logoShape = (document.getElementById("storeLogoShape") || {}).value || "rounded";
+    const logoDataUrl = (pendingLogoDataUrl && pendingLogoDataUrl.indexOf("data:image/") === 0) ? pendingLogoDataUrl : "";
 
     if (!name) {
       toast("Nama toko wajib diisi!", "error");
@@ -1517,15 +1721,21 @@
     try {
       await firebase.firestore().collection("settings").doc("store").set({
         name, address, phone, footerNote,
+        logoDataUrl, logoMode, logoShape,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
       localStorage.setItem("webpos_store_name", name);
       localStorage.setItem("webpos_store_address", address);
       localStorage.setItem("webpos_store_phone", phone);
+      if (logoDataUrl) localStorage.setItem("webpos_store_logo", logoDataUrl);
+      else localStorage.removeItem("webpos_store_logo");
+      localStorage.setItem("webpos_store_logo_mode", logoMode);
+      localStorage.setItem("webpos_store_logo_shape", logoShape);
 
       syncStoreBrandName();
-      toast("Pengaturan toko berhasil disimpan", "success");
+      if (window.WebPOSBrandLogo) window.WebPOSBrandLogo.apply();
+      toast("Pengaturan & logo konter berhasil disimpan ke Cloud!", "success");
     } catch(err) {
       toast("Gagal menyimpan: " + err.message, "error");
     } finally {
@@ -1533,7 +1743,7 @@
       btn.innerHTML = '<i class="fas fa-save"></i> Simpan Informasi Toko';
     }
   }
-
+  
   async function saveProfileName() {
     const newName = document.getElementById("userFullName").value.trim();
     if (!newName) {
