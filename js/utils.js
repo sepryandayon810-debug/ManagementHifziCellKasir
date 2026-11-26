@@ -54,10 +54,11 @@ const Utils = {
     if (veil) veil.style.display = "none";
   },
 
-  confirm: function(msg, callback) {
-    if (window.confirm(msg)) {
-      callback();
+  confirm: function(msg, callback, opts) {
+    if (window.WebPOSDialog && typeof window.WebPOSDialog.confirm === "function") {
+      return window.WebPOSDialog.confirm(msg, callback, opts);
     }
+    if (typeof callback === "function") callback();
   }
 };
 
