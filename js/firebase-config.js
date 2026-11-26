@@ -1840,3 +1840,123 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     initLiveClock();
   }
 })();
+
+// =========================================================================
+// GLOBAL MODERN IN-APP DIALOG (PENGGANTI POP-UP WINDOWS alert / confirm)
+// =========================================================================
+(function() {
+  if (window.WebPOSDialog) return;
+
+  function ensureDialogStyles() {
+    if (document.getElementById('webpos-global-dialog-style')) return;
+    var style = document.createElement('style');
+    style.id = 'webpos-global-dialog-style';
+    style.textContent =
+      '#webposGlobalDialogBackdrop{position:fixed;inset:0;background:rgba(15,23,42,0.58);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem;z-index:999999;animation:wpDlgFade .16s ease;}' +
+      '#webposGlobalDialogBackdrop.open{display:flex;}' +
+      '.wp-dlg-card{width:100%;max-width:390px;background:var(--bg-surface,#ffffff);color:var(--text-main,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:18px;padding:1.45rem 1.35rem 1.25rem;box-shadow:0 24px 48px rgba(15,23,42,0.28);text-align:center;animation:wpDlgPop .18s ease;}' +
+      '.wp-dlg-icon{width:54px;height:54px;border-radius:16px;margin:0 auto .9rem;display:flex;align-items:center;justify-content:center;font-size:1.45rem;}' +
+      '.wp-dlg-icon.info{background:rgba(79,70,229,0.12);color:#4f46e5;}' +
+      '.wp-dlg-icon.danger{background:rgba(239,68,68,0.12);color:#dc2626;}' +
+      '.wp-dlg-icon.warning{background:rgba(245,158,11,0.14);color:#d97706;}' +
+      '.wp-dlg-title{font-size:1.05rem;font-weight:800;margin:0 0 .45rem;color:var(--text-main,#0f172a);}' +
+      '.wp-dlg-msg{font-size:.87rem;line-height:1.5;color:var(--text-muted,#64748b);margin:0 0 1.25rem;white-space:pre-line;word-break:break-word;}' +
+      '.wp-dlg-actions{display:flex;gap:.6rem;justify-content:center;}' +
+      '.wp-dlg-btn{flex:1;padding:.68rem 1rem;border-radius:12px;font-weight:700;font-size:.85rem;cursor:pointer;border:1px solid transparent;transition:all .15s ease;}' +
+      '.wp-dlg-btn.cancel{background:var(--bg-subtle,#f1f5f9);color:var(--text-main,#334155);border-color:var(--border,#cbd5e1);}' +
+      '.wp-dlg-btn.cancel:hover{filter:brightness(0.95);}' +
+      '.wp-dlg-btn.primary{background:var(--primary,#4f46e5);color:#ffffff;}' +
+      '.wp-dlg-btn.danger{background:#dc2626;color:#ffffff;}' +
+      '.wp-dlg-btn.primary:hover,.wp-dlg-btn.danger:hover{filter:brightness(1.06);}' +
+      '@keyframes wpDlgFade{from{opacity:0}to{opacity:1}}' +
+      '@keyframes wpDlgPop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}';
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function ensureDialogDOM() {
+    ensureDialogStyles();
+    var backdrop = document.getElementById('webposGlobalDialogBackdrop');
+    if (backdrop) return backdrop;
+    backdrop = document.createElement('div');
+    backdrop.id = 'webposGlobalDialogBackdrop';
+    backdrop.innerHTML =
+      '<div class="wp-dlg-card" role="dialog" aria-modal="true">' +
+        '<div class="wp-dlg-icon info" id="wpDlgIcon"><i class="fas fa-circle-question"></i></div>' +
+        '<h3 class="wp-dlg-title" id="wpDlgTitle">Konfirmasi</h3>' +
+        '<p class="wp-dlg-msg" id="wpDlgMsg"></p>' +
+        '<div class="wp-dlg-actions">' +
+          '<button type="button" class="wp-dlg-btn cancel" id="wpDlgCancel">Batal</button>' +
+          '<button type="button" class="wp-dlg-btn primary" id="wpDlgConfirm">Ya, Lanjutkan</button>' +
+        '</div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(backdrop);
+    return backdrop;
+  }
+
+  function showDialog(mode, message, onConfirm, opts) {
+    opts = opts || {};
+    return new Promise(function(resolve) {
+      var backdrop = ensureDialogDOM();
+      var iconEl = document.getElementById('wpDlgIcon');
+      var titleEl = document.getElementById('wpDlgTitle');
+      var msgEl = document.getElementById('wpDlgMsg');
+      var cancelBtn = document.getElementById('wpDlgCancel');
+      var confirmBtn = document.getElementById('wpDlgConfirm');
+
+      var msgText = String(message == null ? '' : message);
+      var isDanger = opts.danger === true || /hapus|keluar|logout|reset|permanen/i.test(msgText);
+
+      titleEl.textContent = opts.title || (mode === 'alert' ? 'Informasi' : 'Konfirmasi');
+      msgEl.textContent = msgText;
+
+      iconEl.className = 'wp-dlg-icon ' + (mode === 'alert' ? (opts.type || 'info') : (isDanger ? 'danger' : 'warning'));
+      iconEl.innerHTML = mode === 'alert'
+        ? '<i class="fas fa-circle-info"></i>'
+        : (isDanger ? '<i class="fas fa-triangle-exclamation"></i>' : '<i class="fas fa-circle-question"></i>');
+
+      cancelBtn.style.display = mode === 'alert' ? 'none' : '';
+      cancelBtn.textContent = opts.cancelText || 'Batal';
+      confirmBtn.textContent = opts.confirmText || (mode === 'alert' ? 'Mengerti' : 'Ya, Lanjutkan');
+      confirmBtn.className = 'wp-dlg-btn ' + (mode === 'alert' ? 'primary' : (isDanger ? 'danger' : 'primary'));
+
+      function cleanup(result) {
+        backdrop.classList.remove('open');
+        backdrop.onclick = null;
+        document.removeEventListener('keydown', onKeyDown);
+        confirmBtn.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(result);
+        if (result && typeof onConfirm === 'function') {
+          try { onConfirm(); } catch (err) { console.error(err); }
+        }
+      }
+
+      function onKeyDown(e) {
+        if (e.key === 'Escape') cleanup(false);
+      }
+
+      cancelBtn.onclick = function() { cleanup(false); };
+      confirmBtn.onclick = function() { cleanup(true); };
+      backdrop.onclick = function(e) { if (e.target === backdrop) cleanup(false); };
+      document.addEventListener('keydown', onKeyDown);
+      backdrop.classList.add('open');
+      setTimeout(function() { try { confirmBtn.focus(); } catch (e) {} }, 30);
+    });
+  }
+
+  window.WebPOSDialog = {
+    alert: function(msg, opts) { return showDialog('alert', msg, null, opts); },
+    confirm: function(msg, onConfirm, opts) { return showDialog('confirm', msg, onConfirm, opts); }
+  };
+
+  // Cegah pop-up native Windows alert() muncul di halaman mana pun
+  window.alert = function(msg) {
+    if (document.body) {
+      window.WebPOSDialog.alert(msg);
+    } else {
+      document.addEventListener('DOMContentLoaded', function() {
+        window.WebPOSDialog.alert(msg);
+      }, { once: true });
+    }
+  };
+})();
