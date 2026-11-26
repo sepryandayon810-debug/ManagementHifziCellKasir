@@ -661,41 +661,86 @@
             Kumpulkan seluruh koleksi database (Transaksi, Produk, Hutang/Piutang, Kas &amp; Shift, Pembelian, Pelanggan, Penggajian, dan Saldo Tools) lalu kirim langsung ke Google Sheets dalam tab terpisah otomatis.
           </p>
 
-          <!-- Input URL Google Apps Script Webhook -->
-          <div class="form-group">
-            <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
-              <i class="fas fa-link" style="color:var(--primary)"></i> Google Apps Script Web App URL (Penerima Data)
-              <button type="button" class="btn-icon-box" style="width:26px;height:26px;margin-left:auto" onclick="toggleVisibility('scriptUrlInput','scriptUrlEye')">
-                <i class="fas fa-eye" id="scriptUrlEye"></i>
-              </button>
-            </label>
-            <input type="password" class="form-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="font-family:monospace;font-size:0.85rem">
-            <small style="color:var(--text-muted);font-size:.74rem;margin-top:.25rem;display:block">
-              <i class="fas fa-info-circle"></i> URL dari menu <strong>Extensions &gt; Apps Script &gt; Deploy as Web App</strong> di Google Sheet Anda.
-            </small>
+          <!-- Status Koneksi Tersimpan (Otomatis Menyembunyikan URL & PIN Rahasia) -->
+          <div id="sheetsConnectedBanner" style="display:none;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;padding:.75rem 1rem;border-radius:12px;background:rgba(15,157,88,.08);border:1px solid rgba(15,157,88,.28);margin-bottom:1rem;">
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+              <i class="fas fa-circle-check" style="color:#0f9d58;font-size:1.1rem"></i>
+              <div>
+                <div style="font-weight:700;font-size:.86rem;color:var(--text)">Google Sheets Terhubung (Cloud)</div>
+                <div style="font-size:.74rem;color:var(--text-muted)">URL Web App &amp; Spreadsheet disembunyikan demi keamanan.</div>
+              </div>
+              <span id="sheetsPinBadge" style="font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;background:rgba(245,158,11,.15);color:#b45309;">
+                <i class="fas fa-lock-open"></i> PIN Belum Diatur
+              </span>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="btnToggleSheetsConfig" onclick="toggleSheetsConfigPanel()">
+              <i class="fas fa-sliders"></i> Atur URL &amp; PIN
+            </button>
           </div>
 
-          <!-- Input Google Sheet URL / ID -->
-          <div class="form-group">
-            <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
-              <i class="fas fa-table" style="color:#0f9d58"></i> Tautan / ID Google Spreadsheet
-            </label>
-            <input type="text" class="form-input" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../edit" style="font-size:0.85rem">
+          <!-- Panel Pengaturan URL & PIN (Otomatis Terlipat Jika Sudah Terhubung) -->
+          <div id="sheetsConfigCollapse" style="padding:.85rem;border-radius:12px;background:var(--bg-subtle,rgba(0,0,0,.02));border:1px dashed var(--border);margin-bottom:1rem;">
+            <!-- Input URL Google Apps Script Webhook -->
+            <div class="form-group">
+              <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
+                <i class="fas fa-link" style="color:var(--primary)"></i> Google Apps Script Web App URL (Penerima Data)
+                <button type="button" class="btn-icon-box" style="width:26px;height:26px;margin-left:auto" onclick="toggleVisibility('scriptUrlInput','scriptUrlEye')" title="Tampilkan / Sembunyikan URL">
+                  <i class="fas fa-eye" id="scriptUrlEye"></i>
+                </button>
+              </label>
+              <input type="password" class="form-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="font-family:monospace;font-size:0.85rem" autocomplete="off">
+              <small style="color:var(--text-muted);font-size:.74rem;margin-top:.25rem;display:block">
+                <i class="fas fa-info-circle"></i> URL dari menu <strong>Extensions &gt; Apps Script &gt; Deploy as Web App</strong> di Google Sheet Anda.
+              </small>
+            </div>
+
+            <!-- Input Google Sheet URL / ID (Disamarkan) -->
+            <div class="form-group">
+              <label class="form-label" style="display:flex;align-items:center;gap:.5rem">
+                <i class="fas fa-table" style="color:#0f9d58"></i> Tautan / ID Google Spreadsheet
+                <button type="button" class="btn-icon-box" style="width:26px;height:26px;margin-left:auto" onclick="toggleVisibility('sheetUrlInput','sheetUrlEye')" title="Tampilkan / Sembunyikan Tautan">
+                  <i class="fas fa-eye" id="sheetUrlEye"></i>
+                </button>
+              </label>
+              <input type="password" class="form-input" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../edit" style="font-family:monospace;font-size:0.85rem" autocomplete="off">
+            </div>
+
+            <!-- Input PIN Rahasia / Kunci Akses Apps Script -->
+            <div class="form-group" style="margin-bottom:.75rem">
+              <label class="form-label" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                <i class="fas fa-key" style="color:#f59e0b"></i> PIN Rahasia Apps Script (Kunci Keamanan)
+                <span style="margin-left:auto;display:inline-flex;gap:.35rem;align-items:center;">
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:.2rem .55rem;font-size:.72rem" onclick="generateRandomSheetSecret()" title="Buat PIN acak otomatis">
+                    <i class="fas fa-dice"></i> Acak PIN
+                  </button>
+                  <button type="button" class="btn-icon-box" style="width:26px;height:26px" onclick="toggleVisibility('sheetSecretInput','sheetSecretEye')" title="Tampilkan / Sembunyikan PIN">
+                    <i class="fas fa-eye" id="sheetSecretEye"></i>
+                  </button>
+                </span>
+              </label>
+              <input type="password" class="form-input" id="sheetSecretInput" placeholder="Contoh: HFC-2026-AMAN (wajib cocok dengan script di Google Sheets)" style="font-family:monospace;font-size:0.85rem" autocomplete="off">
+              <small style="color:var(--text-muted);font-size:.74rem;margin-top:.25rem;display:block">
+                <i class="fas fa-info-circle"></i> Melindungi Web App URL agar tidak bisa diakses orang lain. Setelah ubah PIN, klik <strong>Simpan URL &amp; PIN</strong>, lalu salin ulang kode di tombol <strong>Panduan &amp; Script Sheets</strong> dan <strong>Deploy versi baru</strong>.
+              </small>
+            </div>
+
+            <div style="display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap">
+              <button type="button" class="btn btn-primary btn-sm" onclick="saveSheetSettings()">
+                <i class="fas fa-save"></i> Simpan URL &amp; PIN ke Cloud
+              </button>
+            </div>
           </div>
 
           <!-- Tombol Aksi -->
-          <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-top:1.25rem">
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-top:1rem">
             <button class="btn" id="btnSyncToSheets" onclick="syncAllToGoogleSheets()" style="flex:1;min-width:200px;background:#0f9d58;color:#fff;">
               <i class="fas fa-cloud-upload-alt"></i> Kirim Semua Data ke Google Sheets
             </button>
             <button class="btn btn-primary" onclick="exportFullWorkbookXLSX()" style="flex:1;min-width:200px">
               <i class="fas fa-file-excel"></i> Download Excel Lengkap (.xlsx Multi-Tab)
             </button>
-            <button class="btn btn-outline" onclick="saveSheetSettings()">
-              <i class="fas fa-save"></i> Simpan URL
-            </button>
           </div>
-
+          
           <!-- Tombol Khusus Update Harga Produk 2-Arah (Hemat Kuota) -->
           <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border);">
             <button class="btn btn-outline" id="btnSyncProductsOnly" onclick="syncProductsOnlyToGoogleSheets()" style="flex:1;min-width:210px;border-color:#0f9d58;color:#0f9d58;">
