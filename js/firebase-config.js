@@ -175,7 +175,8 @@ if (!window.firebaseConfigInitialized) {
 
     // Jika user klik Logout asli -> bersihkan sesi lokal
     var _origSignOut = window.auth.signOut.bind(window.auth);
-    try {
+    window.auth.signOut = function() {
+      try {
         [
           'webpos_session', 'webpos_user', 'webpos_user_role', 'webpos_user_name',
           'webpos_user_permissions', 'webpos_last_uid', 'webpos_last_username',
