@@ -142,15 +142,99 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
 
   var __sheetsCloudLoaded = false;
 
-  function applySheetUrlsToForm(scriptUrl, sheetUrl) {
+  function getSheetSecretKey() {
+    var el = document.getElementById('sheetSecretInput');
+    var val = (el && el.value) ? el.value : (localStorage.getItem('webpos_gas_secret_key') || '');
+    return String(val || '').trim();
+  }
+
+  function updateSheetsConfigUI(scriptUrl, sheetUrl, secretKey, forceOpen) {
+    var banner = document.getElementById('sheetsConnectedBanner');
+    var panel = document.getElementById('sheetsConfigCollapse');
+    var badge = document.getElementById('sheetsPinBadge');
+    var btnToggle = document.getElementById('btnToggleSheetsConfig');
+    var isConfigured = Boolean(String(scriptUrl || '').trim());
+    var hasPin = Boolean(String(secretKey || '').trim());
+
+    if (badge) {
+      if (hasPin) {
+        badge.style.background = 'rgba(15,157,88,.14)';
+        badge.style.color = '#0f9d58';
+        badge.innerHTML = '<i class="fas fa-lock"></i> PIN Aktif';
+      } else {
+        badge.style.background = 'rgba(245,158,11,.15)';
+        badge.style.color = '#b45309';
+        badge.innerHTML = '<i class="fas fa-lock-open"></i> PIN Belum Diatur';
+      }
+    }
+
+    if (banner && panel) {
+      if (isConfigured && !forceOpen) {
+        banner.style.display = 'flex';
+        panel.style.display = 'none';
+        if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-sliders"></i> Atur URL &amp; PIN';
+      } else if (isConfigured && forceOpen) {
+        banner.style.display = 'flex';
+        panel.style.display = 'block';
+        if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-chevron-up"></i> Sembunyikan';
+      } else {
+        banner.style.display = 'none';
+        panel.style.display = 'block';
+      }
+    }
+  }
+
+  window.toggleSheetsConfigPanel = function () {
+    var panel = document.getElementById('sheetsConfigCollapse');
+    var btnToggle = document.getElementById('btnToggleSheetsConfig');
+    if (!panel) return;
+    var isHidden = (panel.style.display === 'none');
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (btnToggle) {
+      btnToggle.innerHTML = isHidden
+        ? '<i class="fas fa-chevron-up"></i> Sembunyikan'
+        : '<i class="fas fa-sliders"></i> Atur URL &amp; PIN';
+    }
+  };
+
+  window.generateRandomSheetSecret = function () {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var out = 'HFC-';
+    try {
+      var arr = new Uint8Array(8);
+      window.crypto.getRandomValues(arr);
+      for (var i = 0; i < arr.length; i++) {
+        if (i === 4) out += '-';
+        out += chars[arr[i] % chars.length];
+      }
+    } catch (e) {
+      for (var j = 0; j < 8; j++) {
+        if (j === 4) out += '-';
+        out += chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    var secretInput = document.getElementById('sheetSecretInput');
+    var secretEye = document.getElementById('sheetSecretEye');
+    if (secretInput) {
+      secretInput.value = out;
+      secretInput.type = 'text';
+      if (secretEye) secretEye.className = 'fas fa-eye-slash';
+    }
+    notifyToast('PIN acak dibuat! Klik "Simpan URL & PIN ke Cloud", lalu perbarui kode Apps Script.', 'success');
+  };
+
+  function applySheetUrlsToForm(scriptUrl, sheetUrl, secretKey) {
     var scriptInput = document.getElementById('scriptUrlInput');
     var sheetInput = document.getElementById('sheetUrlInput');
+    var secretInput = document.getElementById('sheetSecretInput');
     var btnOpen = document.getElementById('btnOpenSheetTab');
     if (scriptInput && scriptUrl) scriptInput.value = scriptUrl;
     if (sheetInput && sheetUrl) {
       sheetInput.value = sheetUrl;
       if (btnOpen) btnOpen.style.display = 'inline-flex';
     }
+    if (secretInput && secretKey !== undefined) secretInput.value = secretKey || '';
+    updateSheetsConfigUI(scriptUrl, sheetUrl, secretKey !== undefined ? secretKey : getSheetSecretKey(), false);
   }
 
   function loadSheetSettingsFromCloud() {
@@ -163,9 +247,12 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
         var cfg = doc.data();
         var sUrl = String(cfg.scriptUrl || '').trim();
         var shUrl = String(cfg.sheetUrl || '').trim();
+        var sKey = String(cfg.secretKey || '').trim();
         if (sUrl) localStorage.setItem('webpos_gas_webhook_url', sUrl);
         if (shUrl) localStorage.setItem('webpos_spreadsheet_url', shUrl);
-        applySheetUrlsToForm(sUrl, shUrl);
+        if (sKey) localStorage.setItem('webpos_gas_secret_key', sKey);
+        else localStorage.removeItem('webpos_gas_secret_key');
+        applySheetUrlsToForm(sUrl, shUrl, sKey);
       }).catch(function (err) {
         console.warn('Gagal memuat konfigurasi Sheets dari cloud:', err);
       });
@@ -183,22 +270,41 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
   function initForm() {
     var savedScriptUrl = localStorage.getItem('webpos_gas_webhook_url') || '';
     var savedSheetUrl = localStorage.getItem('webpos_spreadsheet_url') || '';
-    applySheetUrlsToForm(savedScriptUrl, savedSheetUrl);
+    var savedSecretKey = localStorage.getItem('webpos_gas_secret_key') || '';
+    applySheetUrlsToForm(savedScriptUrl, savedSheetUrl, savedSecretKey);
     loadSheetSettingsFromCloud();
   }
 
   window.saveSheetSettings = async function () {
     var scriptInput = document.getElementById('scriptUrlInput');
     var sheetInput = document.getElementById('sheetUrlInput');
+    var secretInput = document.getElementById('sheetSecretInput');
     var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
     var sheetUrl = sheetInput && sheetInput.value ? sheetInput.value.trim() : '';
+    var secretKey = secretInput && secretInput.value ? secretInput.value.trim() : '';
     var btnOpen = document.getElementById('btnOpenSheetTab');
 
     if (scriptUrl) localStorage.setItem('webpos_gas_webhook_url', scriptUrl);
+    else localStorage.removeItem('webpos_gas_webhook_url');
     if (sheetUrl) {
       localStorage.setItem('webpos_spreadsheet_url', sheetUrl);
       if (btnOpen) btnOpen.style.display = 'inline-flex';
+    } else {
+      localStorage.removeItem('webpos_spreadsheet_url');
+      if (btnOpen) btnOpen.style.display = 'none';
     }
+    if (secretKey) localStorage.setItem('webpos_gas_secret_key', secretKey);
+    else localStorage.removeItem('webpos_gas_secret_key');
+
+    // Kembalikan input ke mode tersembunyi (password) & lipat panel
+    ['scriptUrlInput', 'sheetUrlInput', 'sheetSecretInput'].forEach(function (id, idx) {
+      var inp = document.getElementById(id);
+      var eyeIds = ['scriptUrlEye', 'sheetUrlEye', 'sheetSecretEye'];
+      var eye = document.getElementById(eyeIds[idx]);
+      if (inp) inp.type = 'password';
+      if (eye) eye.className = 'fas fa-eye';
+    });
+    updateSheetsConfigUI(scriptUrl, sheetUrl, secretKey, false);
 
     if (typeof window.db !== 'undefined') {
       try {
@@ -206,16 +312,17 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
         await window.db.collection('backup').doc('sheetsConfig').set({
           scriptUrl: scriptUrl,
           sheetUrl: sheetUrl,
+          secretKey: secretKey,
           updatedAt: Date.now(),
           updatedBy: curUser ? (curUser.email || curUser.uid) : 'owner'
         }, { merge: true });
-        notifyToast('URL Google Sheets tersimpan ke Cloud! Otomatis muncul di semua perangkat.', 'success');
+        notifyToast('URL & PIN Google Sheets tersimpan ke Cloud! Otomatis aman & sinkron di semua perangkat.', 'success');
         return;
       } catch (err) {
         console.warn('Gagal simpan URL Sheets ke cloud:', err);
       }
     }
-    notifyToast('Pengaturan URL Google Sheets tersimpan di perangkat ini!', 'success');
+    notifyToast('Pengaturan URL & PIN Google Sheets tersimpan di perangkat ini!', 'success');
   };
   
   window.openGoogleSheetDirect = function () {
@@ -241,78 +348,91 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
     }
   };
 
-  var GAS_RECEIVER_SCRIPT = [
-    'function doPost(e) {',
-    '  try {',
-    '    var data = JSON.parse(e.postData.contents);',
-    '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
-    '    var tabs = (data.mode === "products_only")',
-    '      ? [["Produk", data.products]]',
-    '      : [',
-    '          ["Transaksi", data.transactions],',
-    '          ["Produk", data.products],',
-    '          ["Hutang", data.debts],',
-    '          ["Kas_Shift", data.shifts],',
-    '          ["Pembelian", data.purchases],',
-    '          ["Pelanggan", data.customers],',
-    '          ["Penggajian", data.payrolls],',
-    '          ["Saldo_Tools", data.saldoHistory]',
-    '        ];',
-    '    tabs.forEach(function(item) {',
-    '      var sheet = ss.getSheetByName(item[0]) || ss.insertSheet(item[0]);',
-    '      sheet.clearContents();',
-    '      var rows = item[1] || [];',
-    '      if (!rows.length) return;',
-    '      var headers = Object.keys(rows[0]);',
-    '      var values = [headers].concat(rows.map(function(r) {',
-    '        return headers.map(function(h) { return r[h] == null ? "" : (typeof r[h] === "object" ? JSON.stringify(r[h]) : r[h]); });',
-    '      }));',
-    '      sheet.getRange(1, 1, values.length, headers.length).setValues(values);',
-    '    });',
-    '    return ContentService.createTextOutput(JSON.stringify({ ok: true, mode: data.mode || "full" })).setMimeType(ContentService.MimeType.JSON);',
-    '  } catch (err) {',
-    '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
-    '  }',
-    '}',
-    '',
-    'function doGet(e) {',
-    '  try {',
-    '    var action = (e && e.parameter && e.parameter.action) ? String(e.parameter.action) : "getProducts";',
-    '    if (action !== "getProducts") {',
-    '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Action tidak dikenal" })).setMimeType(ContentService.MimeType.JSON);',
-    '    }',
-    '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
-    '    var sheet = ss.getSheetByName("Produk");',
-    '    if (!sheet) {',
-    '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Tab Produk belum ada di Spreadsheet" })).setMimeType(ContentService.MimeType.JSON);',
-    '    }',
-    '    var values = sheet.getDataRange().getValues();',
-    '    if (!values || values.length < 2) {',
-    '      return ContentService.createTextOutput(JSON.stringify({ ok: true, products: [] })).setMimeType(ContentService.MimeType.JSON);',
-    '    }',
-    '    var headers = values[0].map(function(h) { return String(h || "").trim(); });',
-    '    var products = [];',
-    '    for (var i = 1; i < values.length; i++) {',
-    '      var row = values[i];',
-    '      var obj = {};',
-    '      var hasVal = false;',
-    '      for (var j = 0; j < headers.length; j++) {',
-    '        if (!headers[j]) continue;',
-    '        if (row[j] !== "" && row[j] !== null && row[j] !== undefined) hasVal = true;',
-    '        obj[headers[j]] = row[j];',
-    '      }',
-    '      if (hasVal) products.push(obj);',
-    '    }',
-    '    return ContentService.createTextOutput(JSON.stringify({ ok: true, products: products })).setMimeType(ContentService.MimeType.JSON);',
-    '  } catch (err) {',
-    '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
-    '  }',
-    '}'
-  ].join('\n');
+  function buildGasReceiverScript(customKey) {
+    var pinVal = customKey !== undefined ? String(customKey || '').trim() : getSheetSecretKey();
+    return [
+      '// PIN Rahasia WebPOS (kosongkan "" jika belum memakai PIN)',
+      'var SECRET_KEY = ' + JSON.stringify(pinVal) + ';',
+      '',
+      'function doPost(e) {',
+      '  try {',
+      '    var data = JSON.parse(e.postData.contents);',
+      '    if (SECRET_KEY && String(data.secretKey || "") !== SECRET_KEY) {',
+      '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Akses ditolak: PIN Rahasia tidak cocok" })).setMimeType(ContentService.MimeType.JSON);',
+      '    }',
+      '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
+      '    var tabs = (data.mode === "products_only")',
+      '      ? [["Produk", data.products]]',
+      '      : [',
+      '          ["Transaksi", data.transactions],',
+      '          ["Produk", data.products],',
+      '          ["Hutang", data.debts],',
+      '          ["Kas_Shift", data.shifts],',
+      '          ["Pembelian", data.purchases],',
+      '          ["Pelanggan", data.customers],',
+      '          ["Penggajian", data.payrolls],',
+      '          ["Saldo_Tools", data.saldoHistory]',
+      '        ];',
+      '    tabs.forEach(function(item) {',
+      '      var sheet = ss.getSheetByName(item[0]) || ss.insertSheet(item[0]);',
+      '      sheet.clearContents();',
+      '      var rows = item[1] || [];',
+      '      if (!rows.length) return;',
+      '      var headers = Object.keys(rows[0]);',
+      '      var values = [headers].concat(rows.map(function(r) {',
+      '        return headers.map(function(h) { return r[h] == null ? "" : (typeof r[h] === "object" ? JSON.stringify(r[h]) : r[h]); });',
+      '      }));',
+      '      sheet.getRange(1, 1, values.length, headers.length).setValues(values);',
+      '    });',
+      '    return ContentService.createTextOutput(JSON.stringify({ ok: true, mode: data.mode || "full" })).setMimeType(ContentService.MimeType.JSON);',
+      '  } catch (err) {',
+      '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
+      '  }',
+      '}',
+      '',
+      'function doGet(e) {',
+      '  try {',
+      '    var reqKey = (e && e.parameter && e.parameter.key) ? String(e.parameter.key) : "";',
+      '    if (SECRET_KEY && reqKey !== SECRET_KEY) {',
+      '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Akses ditolak: PIN Rahasia tidak cocok" })).setMimeType(ContentService.MimeType.JSON);',
+      '    }',
+      '    var action = (e && e.parameter && e.parameter.action) ? String(e.parameter.action) : "getProducts";',
+      '    if (action !== "getProducts") {',
+      '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Action tidak dikenal" })).setMimeType(ContentService.MimeType.JSON);',
+      '    }',
+      '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
+      '    var sheet = ss.getSheetByName("Produk");',
+      '    if (!sheet) {',
+      '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Tab Produk belum ada di Spreadsheet" })).setMimeType(ContentService.MimeType.JSON);',
+      '    }',
+      '    var values = sheet.getDataRange().getValues();',
+      '    if (!values || values.length < 2) {',
+      '      return ContentService.createTextOutput(JSON.stringify({ ok: true, products: [] })).setMimeType(ContentService.MimeType.JSON);',
+      '    }',
+      '    var headers = values[0].map(function(h) { return String(h || "").trim(); });',
+      '    var products = [];',
+      '    for (var i = 1; i < values.length; i++) {',
+      '      var row = values[i];',
+      '      var obj = {};',
+      '      var hasVal = false;',
+      '      for (var j = 0; j < headers.length; j++) {',
+      '        if (!headers[j]) continue;',
+      '        if (row[j] !== "" && row[j] !== null && row[j] !== undefined) hasVal = true;',
+      '        obj[headers[j]] = row[j];',
+      '      }',
+      '      if (hasVal) products.push(obj);',
+      '    }',
+      '    return ContentService.createTextOutput(JSON.stringify({ ok: true, products: products })).setMimeType(ContentService.MimeType.JSON);',
+      '  } catch (err) {',
+      '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
+      '  }',
+      '}'
+    ].join('\n');
+  }
 
   window.openSetupGuideModal = function () {
     var box = document.getElementById('gasCodeDisplay');
-    if (box) box.textContent = GAS_RECEIVER_SCRIPT;
+    if (box) box.textContent = buildGasReceiverScript();
     var m = document.getElementById('setupGuideModal');
     if (m) m.classList.add('active');
   };
@@ -323,9 +443,10 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
   };
 
   window.copyGasCodeToClipboard = function () {
+    var scriptText = buildGasReceiverScript();
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(GAS_RECEIVER_SCRIPT).then(function () {
-        notifyToast('Kode Google Apps Script berhasil disalin!', 'success');
+      navigator.clipboard.writeText(scriptText).then(function () {
+        notifyToast('Kode Google Apps Script (termasuk PIN Rahasia) berhasil disalin!', 'success');
       }).catch(function () {
         notifyToast('Gagal menyalin kode otomatis, silakan blok manual.', 'warning');
       });
@@ -333,7 +454,6 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
       notifyToast('Browser tidak mendukung salin otomatis, silakan blok manual.', 'warning');
     }
   };
-
   function parseDateToReadable(rawDate) {
   if (!rawDate) return "-";
   if (typeof rawDate === "number") {
@@ -771,8 +891,9 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
   // Kirim Semua Data ke Google Sheets
   window.syncAllToGoogleSheets = async function () {
   var scriptInput = document.getElementById('scriptUrlInput');
-  var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
+  var scriptUrl = (scriptInput && scriptInput.value ? scriptInput.value : localStorage.getItem('webpos_gas_webhook_url') || '').trim();
   if (!scriptUrl) {
+    updateSheetsConfigUI('', '', '', true);
     notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
     if (scriptInput) scriptInput.focus();
     return;
@@ -802,11 +923,16 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
       
       updateSyncProgress(90, '<i class="fas fa-paper-plane fa-spin"></i> Mengirim paket 8 tab ke Google Sheets...');
 
-      await fetch(scriptUrl, {
+      var postRespAll = await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(Object.assign({}, payload, { secretKey: getSheetSecretKey() }))
       });
+      var postJsonAll = null;
+      try { postJsonAll = JSON.parse(await postRespAll.text()); } catch (e) {}
+      if (postJsonAll && postJsonAll.ok === false) {
+        throw new Error(postJsonAll.error || 'Ditolak oleh Google Apps Script (cek PIN Rahasia)');
+      }
 
       updateSyncProgress(100, '<i class="fas fa-check-circle" style="color:var(--success)"></i> Sinkronisasi 8 Tab Berhasil!');
 
@@ -906,11 +1032,16 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
 
       updateSyncProgress(75, '<i class="fas fa-paper-plane fa-spin"></i> Mengirim ' + productRows.length + ' produk ke tab "Produk" Google Sheets...');
 
-      await fetch(scriptUrl, {
+      var postRespProd = await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ mode: 'products_only', products: productRows })
+        body: JSON.stringify({ mode: 'products_only', secretKey: getSheetSecretKey(), products: productRows })
       });
+      var postJsonProd = null;
+      try { postJsonProd = JSON.parse(await postRespProd.text()); } catch (e) {}
+      if (postJsonProd && postJsonProd.ok === false) {
+        throw new Error(postJsonProd.error || 'Ditolak oleh Google Apps Script (cek PIN Rahasia)');
+      }
 
       updateSyncProgress(100, '<i class="fas fa-check-circle" style="color:var(--success)"></i> Tab Produk (' + productRows.length + ' item) berhasil dikirim ke Sheets!');
       notifyToast('Tab Produk (' + productRows.length + ' produk) berhasil dikirim! Silakan edit kolom costPrice / sellingPrice / resellerPrice di Sheets.', 'success');
@@ -949,7 +1080,9 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
     try {
       updateSyncProgress(25, '<i class="fas fa-spinner fa-spin"></i> Mengambil tab Produk dari Google Sheets...');
       var sep = scriptUrl.indexOf('?') === -1 ? '?' : '&';
-      var resp = await fetch(scriptUrl + sep + 'action=getProducts', { method: 'GET' });
+      var sKey = getSheetSecretKey();
+      var getUrl = scriptUrl + sep + 'action=getProducts' + (sKey ? '&key=' + encodeURIComponent(sKey) : '');
+      var resp = await fetch(getUrl, { method: 'GET' });
       var result = await resp.json();
 
       if (!result || result.ok !== true || !Array.isArray(result.products)) {
