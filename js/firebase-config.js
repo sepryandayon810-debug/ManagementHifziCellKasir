@@ -1038,7 +1038,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     '#btnThemeToggle',
     '#btnTheme',
     '#btnLogout',
-    '#mobileMenuToggle'
+    '#mobileMenuToggle',
+    '#btnHealthGuard',
+    '.logo-icon.has-custom-logo',
+    '.logo-badge.has-custom-logo'
   ].join(',');
 
   // Hapus SVG 3D duplikat jika halaman (seperti Dashboard index.html) sudah punya SVG 3D sendiri
@@ -2520,5 +2523,145 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     document.addEventListener('DOMContentLoaded', initGuardBoot);
   } else {
     initGuardBoot();
+  }
+})();
+
+// =========================================================================
+// WEBPOS CUSTOM BRAND LOGO ENGINE (SIDEBAR, LOGIN & FAVICON — GLOBAL)
+// =========================================================================
+(function() {
+  if (window.WebPOSBrandLogo) return;
+
+  function ensureBrandLogoStyles() {
+    if (document.getElementById('webpos-brand-logo-style')) return;
+    var st = document.createElement('style');
+    st.id = 'webpos-brand-logo-style';
+    st.textContent =
+      '.logo-icon.has-custom-logo{padding:0 !important;overflow:hidden !important;display:flex !important;align-items:center !important;justify-content:center !important;flex-shrink:0 !important;}' +
+      '.logo-icon.has-custom-logo.logo-shape-rounded{border-radius:11px !important;background:transparent !important;box-shadow:0 2px 8px rgba(15,23,42,0.12) !important;}' +
+      '.logo-icon.has-custom-logo.logo-shape-circle{border-radius:50% !important;background:transparent !important;box-shadow:0 2px 8px rgba(15,23,42,0.12) !important;}' +
+      '.logo-icon.has-custom-logo.logo-shape-clean{border-radius:0 !important;background:transparent !important;box-shadow:none !important;border:none !important;}' +
+      '.logo-icon.has-custom-logo img.webpos-custom-logo-img{width:100%;height:100%;display:block;object-fit:cover;}' +
+      '.logo-icon.has-custom-logo.logo-shape-clean img.webpos-custom-logo-img{object-fit:contain;}' +
+      '.logo-container.logo-banner-mode{gap:0 !important;min-width:0;flex:1;}' +
+      '.logo-container.logo-banner-mode .logo-text{display:none !important;}' +
+      '.logo-container.logo-banner-mode .logo-icon.has-custom-logo{width:auto !important;max-width:176px !important;height:40px !important;background:transparent !important;box-shadow:none !important;}' +
+      '.logo-container.logo-banner-mode .logo-icon.has-custom-logo img.webpos-custom-logo-img{height:40px;width:auto;max-width:176px;object-fit:contain;}' +
+      '.sidebar.collapsed .logo-container.logo-banner-mode .logo-icon.has-custom-logo{max-width:40px !important;height:36px !important;}' +
+      '.sidebar.collapsed .logo-container.logo-banner-mode .logo-icon.has-custom-logo img.webpos-custom-logo-img{max-width:40px;height:36px;}' +
+      '.logo-badge.has-custom-logo{padding:0 !important;overflow:hidden !important;background:transparent !important;}' +
+      '.logo-badge.has-custom-logo img.webpos-custom-logo-img{width:100%;height:100%;object-fit:contain;display:block;}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function applyFavicon(dataUrl) {
+    if (!dataUrl || dataUrl.indexOf('data:image/') !== 0) return;
+    try {
+      var link = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        (document.head || document.documentElement).appendChild(link);
+      }
+      link.href = dataUrl;
+    } catch (e) {}
+  }
+
+  function applyBrandLogo() {
+    ensureBrandLogoStyles();
+    var logoUrl = String(localStorage.getItem('webpos_store_logo') || '').trim();
+    var mode = localStorage.getItem('webpos_store_logo_mode') || 'icon_text';
+    var shape = localStorage.getItem('webpos_store_logo_shape') || 'rounded';
+    var storeName = String(localStorage.getItem('webpos_store_name') || '').trim();
+    var hasValidLogo = logoUrl.indexOf('data:image/') === 0;
+
+    // 1. Sidebar Logo (semua 27 halaman aktif)
+    var containers = document.querySelectorAll('.sidebar-header .logo-container');
+    for (var i = 0; i < containers.length; i++) {
+      var container = containers[i];
+      var iconBox = container.querySelector('.logo-icon');
+      var textEl = container.querySelector('.logo-text');
+      if (textEl && storeName) textEl.textContent = storeName;
+      if (!iconBox) continue;
+
+      iconBox.classList.remove('has-custom-logo', 'logo-shape-rounded', 'logo-shape-circle', 'logo-shape-clean');
+      container.classList.remove('logo-banner-mode');
+
+      if (hasValidLogo) {
+        iconBox.classList.add('has-custom-logo', 'logo-shape-' + (shape === 'circle' || shape === 'clean' ? shape : 'rounded'));
+        if (mode === 'full_banner') container.classList.add('logo-banner-mode');
+        iconBox.innerHTML = '';
+        var img = document.createElement('img');
+        img.className = 'webpos-custom-logo-img';
+        img.alt = storeName || 'Logo Konter';
+        img.src = logoUrl;
+        iconBox.appendChild(img);
+      } else {
+        if (!iconBox.querySelector('i, svg')) {
+          iconBox.innerHTML = '<i class="fas fa-store"></i>';
+        }
+      }
+    }
+
+    // 2. Halaman Login (.logo-badge & .brand-title)
+    var loginBadge = document.querySelector('.logo-badge');
+    if (loginBadge) {
+      loginBadge.classList.remove('has-custom-logo');
+      if (hasValidLogo) {
+        loginBadge.classList.add('has-custom-logo');
+        loginBadge.innerHTML = '';
+        var lImg = document.createElement('img');
+        lImg.className = 'webpos-custom-logo-img';
+        lImg.alt = storeName || 'Logo Konter';
+        lImg.src = logoUrl;
+        loginBadge.appendChild(lImg);
+      }
+      var bTitle = document.querySelector('.brand-title');
+      if (bTitle && storeName) bTitle.textContent = storeName;
+    }
+
+    // 3. Favicon browser
+    if (hasValidLogo) applyFavicon(logoUrl);
+  }
+
+  function syncBrandFromCloud() {
+    if (typeof window.db === 'undefined') return;
+    try {
+      if (sessionStorage.getItem('webpos_brand_synced_v1') === '1') return;
+    } catch (e) {}
+    window.db.collection('settings').doc('store').get().then(function(doc) {
+      try { sessionStorage.setItem('webpos_brand_synced_v1', '1'); } catch (e) {}
+      if (!doc.exists || !doc.data()) return;
+      var s = doc.data();
+      if (s.name) localStorage.setItem('webpos_store_name', String(s.name).trim());
+      if (s.logoDataUrl && String(s.logoDataUrl).indexOf('data:image/') === 0) {
+        localStorage.setItem('webpos_store_logo', String(s.logoDataUrl));
+      } else if (s.logoDataUrl === '') {
+        localStorage.removeItem('webpos_store_logo');
+      }
+      if (s.logoMode) localStorage.setItem('webpos_store_logo_mode', String(s.logoMode));
+      if (s.logoShape) localStorage.setItem('webpos_store_logo_shape', String(s.logoShape));
+      applyBrandLogo();
+    }).catch(function() {});
+  }
+
+  window.WebPOSBrandLogo = {
+    apply: applyBrandLogo,
+    sync: syncBrandFromCloud
+  };
+
+  function bootBrandLogo() {
+    applyBrandLogo();
+    if (window.auth && typeof window.auth.onAuthStateChanged === 'function') {
+      window.auth.onAuthStateChanged(function(user) {
+        if (user) syncBrandFromCloud();
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootBrandLogo);
+  } else {
+    bootBrandLogo();
   }
 })();
