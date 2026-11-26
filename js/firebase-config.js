@@ -2624,8 +2624,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       if (bTitle && storeName) bTitle.textContent = storeName;
     }
 
-    // 3. Favicon browser
+    // 3. Favicon browser & Sinkron Splash Screen APK Android
     if (hasValidLogo) applyFavicon(logoUrl);
+    if (window.AndroidBrand && typeof window.AndroidBrand.saveBrand === 'function') {
+      try { window.AndroidBrand.saveBrand(hasValidLogo ? logoUrl : '', storeName || 'HIFZI CELL'); } catch (e) {}
+    }
   }
 
   function syncBrandFromCloud() {
