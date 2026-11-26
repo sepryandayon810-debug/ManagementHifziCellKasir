@@ -577,14 +577,19 @@
                   </div>
 
                   <div style="display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;">
-                    <input type="file" id="storeLogoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;">
-                    <button type="button" class="btn btn-primary" id="btnPickStoreLogo" style="padding:.48rem .85rem;font-size:.8rem;">
-                      <i class="fas fa-upload"></i> Pilih Logo
-                    </button>
+                    <label class="btn btn-primary" id="btnPickStoreLogo" style="position:relative;overflow:hidden;padding:.48rem .85rem;font-size:.8rem;cursor:pointer;margin:0;display:inline-flex;align-items:center;gap:.4rem;">
+                      <i class="fas fa-upload"></i> Pilih Logo dari Galeri
+                      <input type="file" id="storeLogoFileInput" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;">
+                    </label>
                     <button type="button" class="btn btn-secondary" id="btnRemoveStoreLogo" style="padding:.48rem .8rem;font-size:.8rem;display:none;">
                       <i class="fas fa-trash-alt"></i> Reset Default
                     </button>
                   </div>
+                </div>
+
+                <div style="margin-bottom:.6rem;">
+                  <label class="form-label" style="font-size:.74rem;margin-bottom:.25rem;">Atau Tempel Link Gambar Logo (Opsional — jika galeri APK diblokir)</label>
+                  <input type="url" class="form-input" id="storeLogoUrlInput" placeholder="https://... atau ./logo.png" style="padding:.45rem .65rem;font-size:.82rem;">
                 </div>
 
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-bottom:.45rem;">
@@ -1545,7 +1550,8 @@
     const storeTitle = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (localStorage.getItem("webpos_store_name") || "HIFZI CELL");
     nameEl.textContent = storeTitle;
 
-    const hasLogo = Boolean(pendingLogoDataUrl && pendingLogoDataUrl.indexOf("data:image/") === 0);
+    const hasLogo = Boolean(pendingLogoDataUrl && (/^(data:image\/|https?:\/\/|\.?\/)/i.test(pendingLogoDataUrl)));
+
     if (btnRemove) btnRemove.style.display = hasLogo ? "inline-flex" : "none";
 
     if (hasLogo) {
@@ -1628,24 +1634,24 @@
 
   function setupLogoControls() {
     const fileInput = document.getElementById("storeLogoFileInput");
-    const btnPick = document.getElementById("btnPickStoreLogo");
+    const urlInput = document.getElementById("storeLogoUrlInput");
     const btnRemove = document.getElementById("btnRemoveStoreLogo");
     const modeSel = document.getElementById("storeLogoMode");
     const shapeSel = document.getElementById("storeLogoShape");
     const nameInput = document.getElementById("storeName");
 
-    if (btnPick && fileInput) {
-      btnPick.onclick = () => fileInput.click();
+    if (fileInput) {
       fileInput.onchange = async (ev) => {
         const file = ev.target.files && ev.target.files[0];
         if (!file) return;
-        if (!/^image\//i.test(file.type || "")) {
+        if (file.type && !/^image\//i.test(file.type)) {
           toast("Harap pilih file gambar (PNG, JPG, atau WebP)", "error");
           fileInput.value = "";
           return;
         }
         try {
           pendingLogoDataUrl = await compressLogoImageFile(file);
+          if (urlInput) urlInput.value = "";
           renderLogoPreview();
           toast("Logo siap! Klik 'Simpan Informasi Toko' untuk menerapkan ke semua halaman.", "info");
         } catch (err) {
@@ -1656,9 +1662,25 @@
       };
     }
 
+    if (urlInput) {
+      if (pendingLogoDataUrl && pendingLogoDataUrl.indexOf("data:image/") !== 0) {
+        urlInput.value = pendingLogoDataUrl;
+      }
+      urlInput.addEventListener("input", () => {
+        const val = urlInput.value.trim();
+        if (!val) {
+          if (pendingLogoDataUrl.indexOf("data:image/") !== 0) pendingLogoDataUrl = "";
+        } else if (/^(https?:\/\/|\.?\/)/i.test(val)) {
+          pendingLogoDataUrl = val;
+        }
+        renderLogoPreview();
+      });
+    }
+
     if (btnRemove) {
       btnRemove.onclick = () => {
         pendingLogoDataUrl = "";
+        if (urlInput) urlInput.value = "";
         renderLogoPreview();
         toast("Logo direset ke ikon default. Klik 'Simpan Informasi Toko' untuk menyimpan.", "info");
       };
@@ -1667,7 +1689,6 @@
     if (shapeSel) shapeSel.onchange = renderLogoPreview;
     if (nameInput) nameInput.addEventListener("input", renderLogoPreview);
   }
-
   async function loadStoreSettings() {
     setupLogoControls();
     const modeSel = document.getElementById("storeLogoMode");
@@ -1707,7 +1728,7 @@
     const footerNote = document.getElementById("receiptFooterNote").value.trim();
     const logoMode = (document.getElementById("storeLogoMode") || {}).value || "icon_text";
     const logoShape = (document.getElementById("storeLogoShape") || {}).value || "rounded";
-    const logoDataUrl = (pendingLogoDataUrl && pendingLogoDataUrl.indexOf("data:image/") === 0) ? pendingLogoDataUrl : "";
+    const logoDataUrl = (pendingLogoDataUrl && /^(data:image\/|https?:\/\/|\.?\/)/i.test(pendingLogoDataUrl)) ? pendingLogoDataUrl : "";
 
     if (!name) {
       toast("Nama toko wajib diisi!", "error");
