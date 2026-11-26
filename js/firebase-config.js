@@ -2554,8 +2554,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     (document.head || document.documentElement).appendChild(st);
   }
 
+  function isValidLogoSrc(src) {
+    return Boolean(src && /^(data:image\/|https?:\/\/|\.?\/)/i.test(String(src).trim()));
+  }
+
   function applyFavicon(dataUrl) {
-    if (!dataUrl || dataUrl.indexOf('data:image/') !== 0) return;
+    if (!isValidLogoSrc(dataUrl)) return;
     try {
       var link = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
       if (!link) {
@@ -2573,7 +2577,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var mode = localStorage.getItem('webpos_store_logo_mode') || 'icon_text';
     var shape = localStorage.getItem('webpos_store_logo_shape') || 'rounded';
     var storeName = String(localStorage.getItem('webpos_store_name') || '').trim();
-    var hasValidLogo = logoUrl.indexOf('data:image/') === 0;
+    var hasValidLogo = isValidLogoSrc(logoUrl);
 
     // 1. Sidebar Logo (semua 27 halaman aktif)
     var containers = document.querySelectorAll('.sidebar-header .logo-container');
@@ -2634,7 +2638,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       if (!doc.exists || !doc.data()) return;
       var s = doc.data();
       if (s.name) localStorage.setItem('webpos_store_name', String(s.name).trim());
-      if (s.logoDataUrl && String(s.logoDataUrl).indexOf('data:image/') === 0) {
+      if (isValidLogoSrc(s.logoDataUrl)) {
         localStorage.setItem('webpos_store_logo', String(s.logoDataUrl));
       } else if (s.logoDataUrl === '') {
         localStorage.removeItem('webpos_store_logo');
