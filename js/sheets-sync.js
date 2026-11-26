@@ -195,16 +195,18 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
     '  try {',
     '    var data = JSON.parse(e.postData.contents);',
     '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
-    '    var tabs = [',
-    '      ["Transaksi", data.transactions],',
-    '      ["Produk", data.products],',
-    '      ["Hutang", data.debts],',
-    '      ["Kas_Shift", data.shifts],',
-    '      ["Pembelian", data.purchases],',
-    '      ["Pelanggan", data.customers],',
-    '      ["Penggajian", data.payrolls],',
-    '      ["Saldo_Tools", data.saldoHistory]',
-    '    ];',
+    '    var tabs = (data.mode === "products_only")',
+    '      ? [["Produk", data.products]]',
+    '      : [',
+    '          ["Transaksi", data.transactions],',
+    '          ["Produk", data.products],',
+    '          ["Hutang", data.debts],',
+    '          ["Kas_Shift", data.shifts],',
+    '          ["Pembelian", data.purchases],',
+    '          ["Pelanggan", data.customers],',
+    '          ["Penggajian", data.payrolls],',
+    '          ["Saldo_Tools", data.saldoHistory]',
+    '        ];',
     '    tabs.forEach(function(item) {',
     '      var sheet = ss.getSheetByName(item[0]) || ss.insertSheet(item[0]);',
     '      sheet.clearContents();',
@@ -216,7 +218,41 @@ var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage
     '      }));',
     '      sheet.getRange(1, 1, values.length, headers.length).setValues(values);',
     '    });',
-    '    return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);',
+    '    return ContentService.createTextOutput(JSON.stringify({ ok: true, mode: data.mode || "full" })).setMimeType(ContentService.MimeType.JSON);',
+    '  } catch (err) {',
+    '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
+    '  }',
+    '}',
+    '',
+    'function doGet(e) {',
+    '  try {',
+    '    var action = (e && e.parameter && e.parameter.action) ? String(e.parameter.action) : "getProducts";',
+    '    if (action !== "getProducts") {',
+    '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Action tidak dikenal" })).setMimeType(ContentService.MimeType.JSON);',
+    '    }',
+    '    var ss = SpreadsheetApp.getActiveSpreadsheet();',
+    '    var sheet = ss.getSheetByName("Produk");',
+    '    if (!sheet) {',
+    '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Tab Produk belum ada di Spreadsheet" })).setMimeType(ContentService.MimeType.JSON);',
+    '    }',
+    '    var values = sheet.getDataRange().getValues();',
+    '    if (!values || values.length < 2) {',
+    '      return ContentService.createTextOutput(JSON.stringify({ ok: true, products: [] })).setMimeType(ContentService.MimeType.JSON);',
+    '    }',
+    '    var headers = values[0].map(function(h) { return String(h || "").trim(); });',
+    '    var products = [];',
+    '    for (var i = 1; i < values.length; i++) {',
+    '      var row = values[i];',
+    '      var obj = {};',
+    '      var hasVal = false;',
+    '      for (var j = 0; j < headers.length; j++) {',
+    '        if (!headers[j]) continue;',
+    '        if (row[j] !== "" && row[j] !== null && row[j] !== undefined) hasVal = true;',
+    '        obj[headers[j]] = row[j];',
+    '      }',
+    '      if (hasVal) products.push(obj);',
+    '    }',
+    '    return ContentService.createTextOutput(JSON.stringify({ ok: true, products: products })).setMimeType(ContentService.MimeType.JSON);',
     '  } catch (err) {',
     '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);',
     '  }',
@@ -743,6 +779,258 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Kirim Semua Data ke Google Sheets';
+      }
+    }
+  };
+
+  // ================= CARA 3: SYNC & TARIK HARGA PRODUK 2-ARAH VIA GOOGLE SHEETS =================
+  var pendingSheetPriceDiffs = [];
+
+  window.syncProductsOnlyToGoogleSheets = async function () {
+    var scriptInput = document.getElementById('scriptUrlInput');
+    var scriptUrl = (scriptInput && scriptInput.value ? scriptInput.value : localStorage.getItem('webpos_gas_webhook_url') || '').trim();
+    if (!scriptUrl) {
+      notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
+      if (scriptInput) scriptInput.focus();
+      return;
+    }
+
+    var btn = document.getElementById('btnSyncProductsOnly');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim Tab Produk...';
+    }
+
+    try {
+      updateSyncProgress(25, '<i class="fas fa-spinner fa-spin"></i> Membaca koleksi Produk saja (hemat kuota)...');
+      if (typeof window.db === 'undefined') throw new Error('Database Firestore belum siap');
+
+      var catMap = {};
+      try {
+        var catSnap = await window.db.collection('categories').get();
+        catSnap.forEach(function (c) { catMap[c.id] = (c.data() || {}).name || 'Umum'; });
+      } catch (e) {}
+
+      var prodSnap = await window.db.collection('products').get();
+      var productRows = [];
+      prodSnap.forEach(function (d) {
+        var p = d.data() || {};
+        var modal = Math.round(cleanNumber(p.costPrice != null ? p.costPrice : (p.buyPrice != null ? p.buyPrice : (p.hargaBeli || 0))));
+        var jual = Math.round(cleanNumber(p.sellingPrice != null ? p.sellingPrice : (p.hargaJual != null ? p.hargaJual : (p.price || 0))));
+        var reseller = Math.round(cleanNumber(p.resellerPrice != null ? p.resellerPrice : (p.hargaReseller || 0)));
+        var stok = p.isUnlimited === true ? 0 : Math.round(cleanNumber(p.stock != null ? p.stock : (p.stok || 0)));
+        productRows.push({
+          id: d.id,
+          code: p.code || p.barcode || p.sku || '',
+          name: p.name || p.nama || '-',
+          category: (p.categoryId && catMap[p.categoryId]) ? catMap[p.categoryId] : (p.category || p.kategori || 'Umum'),
+          isUnlimited: p.isUnlimited === true ? 'Ya' : 'Tidak',
+          costPrice: modal,
+          sellingPrice: jual,
+          resellerPrice: reseller,
+          stock: stok,
+          status: p.status || 'active'
+        });
+      });
+
+      productRows.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'id'); });
+
+      updateSyncProgress(75, '<i class="fas fa-paper-plane fa-spin"></i> Mengirim ' + productRows.length + ' produk ke tab "Produk" Google Sheets...');
+
+      await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ mode: 'products_only', products: productRows })
+      });
+
+      updateSyncProgress(100, '<i class="fas fa-check-circle" style="color:var(--success)"></i> Tab Produk (' + productRows.length + ' item) berhasil dikirim ke Sheets!');
+      notifyToast('Tab Produk (' + productRows.length + ' produk) berhasil dikirim! Silakan edit kolom costPrice / sellingPrice / resellerPrice di Sheets.', 'success');
+    } catch (err) {
+      console.error(err);
+      notifyToast('Gagal kirim tab Produk: ' + err.message, 'error');
+      updateSyncProgress(0, '<i class="fas fa-exclamation-circle" style="color:var(--danger)"></i> Gagal mengirim tab Produk');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-box"></i> Kirim Tab Produk Saja ke Sheets';
+      }
+    }
+  };
+
+  window.closeSheetPricePreviewModal = function () {
+    var m = document.getElementById('sheetPricePreviewModal');
+    if (m) m.classList.remove('active');
+  };
+
+  window.pullProductPricesFromGoogleSheets = async function () {
+    var scriptInput = document.getElementById('scriptUrlInput');
+    var scriptUrl = (scriptInput && scriptInput.value ? scriptInput.value : localStorage.getItem('webpos_gas_webhook_url') || '').trim();
+    if (!scriptUrl) {
+      notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
+      if (scriptInput) scriptInput.focus();
+      return;
+    }
+
+    var btn = document.getElementById('btnPullProductPrices');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek Harga di Sheets...';
+    }
+
+    try {
+      updateSyncProgress(25, '<i class="fas fa-spinner fa-spin"></i> Mengambil tab Produk dari Google Sheets...');
+      var sep = scriptUrl.indexOf('?') === -1 ? '?' : '&';
+      var resp = await fetch(scriptUrl + sep + 'action=getProducts', { method: 'GET' });
+      var result = await resp.json();
+
+      if (!result || result.ok !== true || !Array.isArray(result.products)) {
+        throw new Error((result && result.error) ? result.error : 'Apps Script belum mendukung doGet. Update kode Apps Script lewat tombol Panduan Setup lalu Deploy versi baru.');
+      }
+
+      updateSyncProgress(65, '<i class="fas fa-spinner fa-spin"></i> Membandingkan harga dengan database (Diff Check)...');
+      if (typeof window.db === 'undefined') throw new Error('Database Firestore belum siap');
+
+      var snap = await window.db.collection('products').get();
+      var byId = {};
+      var byCode = {};
+      var byName = {};
+      snap.forEach(function (d) {
+        var data = Object.assign({ id: d.id }, d.data() || {});
+        byId[String(d.id).trim()] = data;
+        var cd = String(data.code || data.barcode || data.sku || '').trim().toLowerCase();
+        if (cd) byCode[cd] = data;
+        var nm = String(data.name || data.nama || '').trim().toLowerCase();
+        if (nm) byName[nm] = data;
+      });
+
+      var diffs = [];
+      var unchanged = 0;
+
+      result.products.forEach(function (row) {
+        var rId = String(row.id || row['ID Produk'] || row.ID || '').trim();
+        var rCode = String(row.code || row['Kode SKU'] || row.barcode || row.Barcode || '').trim().toLowerCase();
+        var rName = String(row.name || row['Nama Produk'] || row.nama || row.Nama || '').trim().toLowerCase();
+
+        var existing = (rId && byId[rId]) || (rCode && byCode[rCode]) || (rName && byName[rName]) || null;
+        if (!existing) return;
+
+        var oldCost = Math.round(cleanNumber(existing.costPrice != null ? existing.costPrice : (existing.buyPrice || 0)));
+        var oldSell = Math.round(cleanNumber(existing.sellingPrice != null ? existing.sellingPrice : (existing.price || 0)));
+        var oldRes = Math.round(cleanNumber(existing.resellerPrice != null ? existing.resellerPrice : 0));
+
+        var rawCost = row.costPrice !== undefined ? row.costPrice : (row['Harga Modal'] !== undefined ? row['Harga Modal'] : (row.buyPrice !== undefined ? row.buyPrice : (row.hargaBeli !== undefined ? row.hargaBeli : oldCost)));
+        var rawSell = row.sellingPrice !== undefined ? row.sellingPrice : (row['Harga Jual'] !== undefined ? row['Harga Jual'] : (row.hargaJual !== undefined ? row.hargaJual : oldSell));
+        var rawRes = row.resellerPrice !== undefined ? row.resellerPrice : (row['Harga Reseller'] !== undefined ? row['Harga Reseller'] : (row.hargaReseller !== undefined ? row.hargaReseller : oldRes));
+
+        var newCost = Math.max(0, Math.round(cleanNumber(rawCost)));
+        var newSell = Math.max(0, Math.round(cleanNumber(rawSell)));
+        var newRes = Math.max(0, Math.round(cleanNumber(rawRes)));
+
+        if (newCost !== oldCost || newSell !== oldSell || newRes !== oldRes) {
+          diffs.push({
+            id: existing.id,
+            name: existing.name || existing.nama || '-',
+            isUnlimited: existing.isUnlimited === true,
+            oldCost: oldCost, newCost: newCost,
+            oldSell: oldSell, newSell: newSell,
+            oldRes: oldRes, newRes: newRes
+          });
+        } else {
+          unchanged++;
+        }
+      });
+
+      pendingSheetPriceDiffs = diffs;
+      updateSyncProgress(100, '<i class="fas fa-check-circle" style="color:var(--success)"></i> Pengecekan selesai: ' + diffs.length + ' berubah, ' + unchanged + ' tetap sama.');
+
+      var summaryEl = document.getElementById('sheetPriceDiffSummary');
+      var tbody = document.getElementById('sheetPriceDiffBody');
+      var confirmBtn = document.getElementById('btnConfirmApplySheetPrices');
+
+      if (summaryEl) {
+        summaryEl.innerHTML = 'Ditemukan <strong style="color:var(--primary)">' + diffs.length + ' produk berubah</strong> dari total ' + (diffs.length + unchanged) + ' produk cocok (' + unchanged + ' tidak berubah akan dilewati agar hemat kuota).';
+      }
+      if (tbody) {
+        if (!diffs.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-muted);">Semua harga di Google Sheets sudah sama persis dengan database WebPOS. Tidak ada yang perlu diupdate.</td></tr>';
+        } else {
+          tbody.innerHTML = diffs.map(function (d) {
+            var fmtDiff = function (o, n) {
+              if (o === n) return '<span style="color:var(--text-muted)">' + formatRupiah(n) + '</span>';
+              var clr = n > o ? '#dc2626' : '#059669';
+              return '<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.72rem;">' + formatRupiah(o) + '</span><br><strong style="color:' + clr + '">' + formatRupiah(n) + '</strong>';
+            };
+            return '<tr>' +
+              '<td><strong>' + d.name + '</strong>' + (d.isUnlimited ? ' <span class="badge badge-success" style="font-size:0.62rem;">UNLIMITED</span>' : '') + '</td>' +
+              '<td style="text-align:right;">' + fmtDiff(d.oldCost, d.newCost) + '</td>' +
+              '<td style="text-align:right;">' + fmtDiff(d.oldSell, d.newSell) + '</td>' +
+              '<td style="text-align:right;">' + fmtDiff(d.oldRes, d.newRes) + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+      if (confirmBtn) {
+        confirmBtn.style.display = diffs.length > 0 ? 'inline-flex' : 'none';
+        confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Terapkan ' + diffs.length + ' Perubahan Harga';
+      }
+
+      var modal = document.getElementById('sheetPricePreviewModal');
+      if (modal) modal.classList.add('active');
+    } catch (err) {
+      console.error(err);
+      notifyToast('Gagal menarik harga dari Sheets: ' + err.message, 'error');
+      updateSyncProgress(0, '<i class="fas fa-exclamation-circle" style="color:var(--danger)"></i> Gagal membaca Google Sheets');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Tarik &amp; Update Harga dari Sheets';
+      }
+    }
+  };
+
+  window.confirmApplySheetPriceUpdates = async function () {
+    if (!pendingSheetPriceDiffs.length) {
+      window.closeSheetPricePreviewModal();
+      return;
+    }
+
+    var btn = document.getElementById('btnConfirmApplySheetPrices');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    }
+
+    try {
+      var CHUNK = 400;
+      for (var i = 0; i < pendingSheetPriceDiffs.length; i += CHUNK) {
+        var batch = window.db.batch();
+        var chunk = pendingSheetPriceDiffs.slice(i, i + CHUNK);
+        chunk.forEach(function (d) {
+          var ref = window.db.collection('products').doc(d.id);
+          batch.update(ref, {
+            costPrice: d.newCost,
+            sellingPrice: d.newSell,
+            resellerPrice: d.newRes,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await batch.commit();
+      }
+
+      // Bersihkan cache produk lokal agar halaman Produk & Kasir langsung ambil harga baru
+      try { localStorage.removeItem('webpos_cache_products_v1'); } catch (e) {}
+
+      var totalUpdated = pendingSheetPriceDiffs.length;
+      pendingSheetPriceDiffs = [];
+      window.closeSheetPricePreviewModal();
+      notifyToast('Berhasil memperbarui harga ' + totalUpdated + ' produk dari Google Sheets!', 'success');
+    } catch (err) {
+      console.error(err);
+      notifyToast('Gagal menyimpan update harga: ' + err.message, 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Terapkan Perubahan Harga';
       }
     }
   };
