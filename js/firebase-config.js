@@ -2039,10 +2039,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var st = document.createElement('style');
     st.id = 'webpos-health-guard-style';
     st.textContent =
-      '#btnHealthGuard{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;border:1px solid var(--border,#e2e8f0);background:var(--bg-surface,#fff);color:#059669;cursor:pointer;transition:all .15s ease;flex-shrink:0;}' +
-      '#btnHealthGuard:hover{transform:translateY(-1px);border-color:var(--primary,#4f46e5);}' +
-      '#btnHealthGuard.has-alert{color:#dc2626;border-color:rgba(220,38,38,0.45);background:rgba(239,68,68,0.08);}' +
+      '.sidebar-footer .user-profile{display:flex;align-items:center;gap:.65rem;width:100%;}' +
+      '.sidebar-footer .user-info{min-width:0;flex:1;}' +
+      '#btnHealthGuard{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-left:auto;border-radius:11px;border:1px solid var(--border,#e2e8f0);background:var(--bg-subtle,#f8fafc);color:#059669;cursor:pointer;transition:all .15s ease;flex-shrink:0;}' +
+      '#btnHealthGuard:hover{transform:translateY(-1px);border-color:var(--primary,#4f46e5);background:var(--bg-surface,#fff);}' +
+      '#btnHealthGuard.has-alert{color:#dc2626;border-color:rgba(220,38,38,0.45);background:rgba(239,68,68,0.1);}' +
+      '.sidebar.collapsed .sidebar-footer .user-profile{flex-direction:column;gap:.45rem;justify-content:center;}' +
+      '.sidebar.collapsed #btnHealthGuard{margin-left:0;width:34px;height:34px;}' +
       '#healthGuardBadge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid var(--bg-surface,#fff);}' +
+      '#mobileMenuToggle{position:relative;}' +
+      '#healthGuardMenuDot{position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:999px;background:#dc2626;border:2px solid var(--bg-surface,#fff);display:none;pointer-events:none;}' +
       '#webposHealthGuardModal{position:fixed;inset:0;background:rgba(15,23,42,0.58);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem;z-index:999990;}' +
       '#webposHealthGuardModal.open{display:flex;}' +
       '.hg-card{width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;background:var(--bg-surface,#fff);color:var(--text-main,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:18px;box-shadow:0 24px 48px rgba(15,23,42,0.28);overflow:hidden;}' +
@@ -2066,16 +2072,30 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     ensureGuardStyles();
 
     if (!document.getElementById('btnHealthGuard')) {
-      var logoutBtn = document.getElementById('btnLogout');
-      if (logoutBtn && logoutBtn.parentElement) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.id = 'btnHealthGuard';
-        btn.title = 'Penjaga Sistem: Deteksi Kebocoran & Auto-Fix (Owner/Developer)';
-        btn.innerHTML = '<i class="fas fa-shield-halved"></i><span id="healthGuardBadge">0</span>';
-        btn.onclick = function() { window.WebPOSHealthGuard.open(); };
-        logoutBtn.parentElement.insertBefore(btn, logoutBtn);
+      var profileBox = document.querySelector('.sidebar-footer .user-profile') || document.querySelector('.sidebar-footer');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'btnHealthGuard';
+      btn.title = 'Penjaga Sistem: Deteksi Kebocoran & Auto-Fix (Owner/Developer)';
+      btn.innerHTML = '<i class="fas fa-shield-halved"></i><span id="healthGuardBadge">0</span>';
+      btn.onclick = function(ev) {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        window.WebPOSHealthGuard.open();
+      };
+      if (profileBox) {
+        profileBox.appendChild(btn);
+      } else {
+        var logoutBtn = document.getElementById('btnLogout');
+        if (logoutBtn && logoutBtn.parentElement) logoutBtn.parentElement.insertBefore(btn, logoutBtn);
       }
+    }
+
+    var mobToggle = document.getElementById('mobileMenuToggle');
+    if (mobToggle && !document.getElementById('healthGuardMenuDot')) {
+      var dot = document.createElement('span');
+      dot.id = 'healthGuardMenuDot';
+      dot.title = 'Ada peringatan Penjaga Sistem di sidebar';
+      mobToggle.appendChild(dot);
     }
 
     if (!document.getElementById('webposHealthGuardModal') && document.body) {
@@ -2109,15 +2129,20 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   function updateGuardBadge() {
     var btn = document.getElementById('btnHealthGuard');
     var badge = document.getElementById('healthGuardBadge');
-    if (!btn || !badge) return;
+    var mobDot = document.getElementById('healthGuardMenuDot');
     var cnt = currentIssues.length;
-    if (cnt > 0) {
-      btn.classList.add('has-alert');
-      badge.textContent = cnt > 9 ? '9+' : String(cnt);
-      badge.style.display = 'inline-flex';
-    } else {
-      btn.classList.remove('has-alert');
-      badge.style.display = 'none';
+    if (btn && badge) {
+      if (cnt > 0) {
+        btn.classList.add('has-alert');
+        badge.textContent = cnt > 9 ? '9+' : String(cnt);
+        badge.style.display = 'inline-flex';
+      } else {
+        btn.classList.remove('has-alert');
+        badge.style.display = 'none';
+      }
+    }
+    if (mobDot) {
+      mobDot.style.display = cnt > 0 ? 'block' : 'none';
     }
   }
 
@@ -2251,7 +2276,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           canAutoFix: true,
           fixLabel: 'Salin & Bersihkan Log Error',
           fix: async function() {
-            await window.WebPOSHealthGuard.copyReport();
+            await window.WebPOSHealthGuard.copyReport(true);
             localStorage.removeItem(ERR_STORAGE_KEY);
             return 'Laporan error disalin ke clipboard & log dibersihkan!';
           }
@@ -2341,32 +2366,47 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         }
       } catch (e) {}
 
-      // 7. Cek apakah URL Google Sheets lokal belum tersimpan di Cloud
+      // 7 & 8. Cek sinkronisasi URL Google Sheets & status PIN Rahasia di Cloud
       try {
         var localGas = (localStorage.getItem('webpos_gas_webhook_url') || '').trim();
         var localSheet = (localStorage.getItem('webpos_spreadsheet_url') || '').trim();
-        if (localGas) {
-          var cfgDoc = await window.db.collection('backup').doc('sheetsConfig').get();
-          var cloudGas = (cfgDoc.exists && cfgDoc.data()) ? String(cfgDoc.data().scriptUrl || '').trim() : '';
-          if (!cloudGas) {
-            currentIssues.push({
-              id: 'sheets_url_not_in_cloud',
-              severity: 'warning',
-              title: 'URL Google Sheets Belum Tersinkron ke Cloud',
-              description: 'URL Apps Script sudah ada di perangkat ini tetapi belum disimpan ke Cloud Firestore, sehingga perangkat lain masih harus input ulang.',
-              canAutoFix: true,
-              fixLabel: 'Setujui & Sinkron URL ke Cloud',
-              fix: async function() {
-                await window.db.collection('backup').doc('sheetsConfig').set({
-                  scriptUrl: localGas,
-                  sheetUrl: localSheet,
-                  updatedAt: Date.now(),
-                  updatedBy: activeAuthUser ? (activeAuthUser.email || activeAuthUser.uid) : 'owner'
-                }, { merge: true });
-                return 'URL Google Sheets berhasil disimpan ke Cloud untuk semua perangkat!';
-              }
-            });
-          }
+        var localSecret = (localStorage.getItem('webpos_gas_secret_key') || '').trim();
+        var cfgDoc = await window.db.collection('backup').doc('sheetsConfig').get();
+        var cfgData = (cfgDoc.exists && cfgDoc.data()) ? cfgDoc.data() : {};
+        var cloudGas = String(cfgData.scriptUrl || '').trim();
+        var cloudSecret = String(cfgData.secretKey || '').trim();
+        if (localGas && !cloudGas) {
+          currentIssues.push({
+            id: 'sheets_url_not_in_cloud',
+            severity: 'warning',
+            title: 'URL Google Sheets Belum Tersinkron ke Cloud',
+            description: 'URL Apps Script sudah ada di perangkat ini tetapi belum disimpan ke Cloud Firestore, sehingga perangkat lain masih harus input ulang.',
+            canAutoFix: true,
+            fixLabel: 'Setujui & Sinkron URL ke Cloud',
+            fix: async function() {
+              await window.db.collection('backup').doc('sheetsConfig').set({
+                scriptUrl: localGas,
+                sheetUrl: localSheet,
+                secretKey: localSecret,
+                updatedAt: Date.now(),
+                updatedBy: activeAuthUser ? (activeAuthUser.email || activeAuthUser.uid) : 'owner'
+              }, { merge: true });
+              return 'URL & PIN Google Sheets berhasil disimpan ke Cloud untuk semua perangkat!';
+            }
+          });
+        } else if (cloudGas && !cloudSecret) {
+          currentIssues.push({
+            id: 'sheets_pin_not_set',
+            severity: 'warning',
+            title: 'Koneksi Google Sheets Belum Dilindungi PIN Rahasia',
+            description: 'URL Apps Script sudah aktif di Cloud, tetapi PIN Rahasia (SECRET_KEY) masih kosong. Disarankan atur PIN agar link Web App tidak bisa diakses pihak lain.',
+            canAutoFix: true,
+            fixLabel: 'Buka Halaman Backup untuk Atur PIN',
+            fix: async function() {
+              window.location.href = 'page-backup.html';
+              return 'Membuka halaman Backup...';
+            }
+          });
         }
       } catch (e) {}
 
@@ -2420,7 +2460,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       updateGuardBadge();
       renderGuardModal();
     },
-    copyReport: async function() {
+    copyReport: async function(silent) {
       var errs = safeJsonParse(localStorage.getItem(ERR_STORAGE_KEY), []);
       var lines = ['=== LAPORAN PENJAGA SISTEM WEBPOS ===', 'Tanggal: ' + new Date().toLocaleString('id-ID'), 'Halaman: ' + window.location.pathname, ''];
       if (currentIssues.length) {
@@ -2439,7 +2479,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(text);
-          if (window.WebPOSDialog) window.WebPOSDialog.alert('Laporan berhasil disalin! Anda bisa langsung tempel di chat untuk analisis cepat.', { title: 'Laporan Disalin' });
+          if (!silent && window.WebPOSDialog) window.WebPOSDialog.alert('Laporan berhasil disalin! Anda bisa langsung tempel di chat untuk analisis cepat.', { title: 'Laporan Disalin' });
         }
       } catch (e) {}
     }
