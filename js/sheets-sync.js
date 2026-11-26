@@ -140,32 +140,83 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
     }
   }
 
-  function initForm() {
-    var savedScriptUrl = localStorage.getItem('webpos_gas_webhook_url') || '';
-    var savedSheetUrl = localStorage.getItem('webpos_spreadsheet_url') || '';
+  var __sheetsCloudLoaded = false;
+
+  function applySheetUrlsToForm(scriptUrl, sheetUrl) {
     var scriptInput = document.getElementById('scriptUrlInput');
     var sheetInput = document.getElementById('sheetUrlInput');
     var btnOpen = document.getElementById('btnOpenSheetTab');
-    if (scriptInput && savedScriptUrl) scriptInput.value = savedScriptUrl;
-    if (sheetInput && savedSheetUrl) {
-      sheetInput.value = savedSheetUrl;
+    if (scriptInput && scriptUrl) scriptInput.value = scriptUrl;
+    if (sheetInput && sheetUrl) {
+      sheetInput.value = sheetUrl;
       if (btnOpen) btnOpen.style.display = 'inline-flex';
     }
   }
 
-  window.saveSheetSettings = function () {
-  var scriptInput = document.getElementById('scriptUrlInput');
-  var sheetInput = document.getElementById('sheetUrlInput');
-  var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
-  var sheetUrl = sheetInput && sheetInput.value ? sheetInput.value.trim() : '';
-  var btnOpen = document.getElementById('btnOpenSheetTab');
-  if (scriptUrl) localStorage.setItem('webpos_gas_webhook_url', scriptUrl);
-  if (sheetUrl) {
-    localStorage.setItem('webpos_spreadsheet_url', sheetUrl);
-    if (btnOpen) btnOpen.style.display = 'inline-flex';
+  function loadSheetSettingsFromCloud() {
+    if (__sheetsCloudLoaded || typeof window.db === 'undefined') return;
+    var doRead = function () {
+      if (__sheetsCloudLoaded) return;
+      __sheetsCloudLoaded = true;
+      window.db.collection('backup').doc('sheetsConfig').get().then(function (doc) {
+        if (!doc.exists || !doc.data()) return;
+        var cfg = doc.data();
+        var sUrl = String(cfg.scriptUrl || '').trim();
+        var shUrl = String(cfg.sheetUrl || '').trim();
+        if (sUrl) localStorage.setItem('webpos_gas_webhook_url', sUrl);
+        if (shUrl) localStorage.setItem('webpos_spreadsheet_url', shUrl);
+        applySheetUrlsToForm(sUrl, shUrl);
+      }).catch(function (err) {
+        console.warn('Gagal memuat konfigurasi Sheets dari cloud:', err);
+      });
+    };
+
+    if (window.auth && typeof window.auth.onAuthStateChanged === 'function') {
+      window.auth.onAuthStateChanged(function (user) {
+        if (user) doRead();
+      });
+    } else {
+      doRead();
+    }
   }
-  notifyToast('Pengaturan URL Google Sheets berhasil disimpan!', 'success');
-};
+
+  function initForm() {
+    var savedScriptUrl = localStorage.getItem('webpos_gas_webhook_url') || '';
+    var savedSheetUrl = localStorage.getItem('webpos_spreadsheet_url') || '';
+    applySheetUrlsToForm(savedScriptUrl, savedSheetUrl);
+    loadSheetSettingsFromCloud();
+  }
+
+  window.saveSheetSettings = async function () {
+    var scriptInput = document.getElementById('scriptUrlInput');
+    var sheetInput = document.getElementById('sheetUrlInput');
+    var scriptUrl = scriptInput && scriptInput.value ? scriptInput.value.trim() : '';
+    var sheetUrl = sheetInput && sheetInput.value ? sheetInput.value.trim() : '';
+    var btnOpen = document.getElementById('btnOpenSheetTab');
+
+    if (scriptUrl) localStorage.setItem('webpos_gas_webhook_url', scriptUrl);
+    if (sheetUrl) {
+      localStorage.setItem('webpos_spreadsheet_url', sheetUrl);
+      if (btnOpen) btnOpen.style.display = 'inline-flex';
+    }
+
+    if (typeof window.db !== 'undefined') {
+      try {
+        var curUser = (window.auth && window.auth.currentUser) ? window.auth.currentUser : null;
+        await window.db.collection('backup').doc('sheetsConfig').set({
+          scriptUrl: scriptUrl,
+          sheetUrl: sheetUrl,
+          updatedAt: Date.now(),
+          updatedBy: curUser ? (curUser.email || curUser.uid) : 'owner'
+        }, { merge: true });
+        notifyToast('URL Google Sheets tersimpan ke Cloud! Otomatis muncul di semua perangkat.', 'success');
+        return;
+      } catch (err) {
+        console.warn('Gagal simpan URL Sheets ke cloud:', err);
+      }
+    }
+    notifyToast('Pengaturan URL Google Sheets tersimpan di perangkat ini!', 'success');
+  };
   
   window.openGoogleSheetDirect = function () {
     var sheetInput = document.getElementById('sheetUrlInput');
@@ -726,6 +777,15 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
     if (scriptInput) scriptInput.focus();
     return;
   }
+
+  if (window.WebPOSDialog && typeof window.WebPOSDialog.confirm === 'function') {
+      var okAll = await window.WebPOSDialog.confirm(
+        'Kirim seluruh 8 tab database (Transaksi, Produk, Hutang, Shift, dll) ke Google Sheets?\n\nData lama di 8 tab Spreadsheet akan ditimpa dengan data terbaru.',
+        null,
+        { title: 'Kirim Semua Data ke Sheets?', confirmText: 'Ya, Kirim 8 Tab' }
+      );
+      if (!okAll) return;
+    }
     
     var btn = document.getElementById('btnSyncToSheets');
     if (btn) {
@@ -793,6 +853,15 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
       notifyToast('Masukkan Google Apps Script Web App URL terlebih dahulu!', 'warning');
       if (scriptInput) scriptInput.focus();
       return;
+    }
+
+    if (window.WebPOSDialog && typeof window.WebPOSDialog.confirm === 'function') {
+      var okProd = await window.WebPOSDialog.confirm(
+        'Kirim daftar Produk terbaru ke tab "Produk" di Google Sheets?\n\nHanya tab "Produk" yang diperbarui (tab Transaksi & lainnya tetap aman).',
+        null,
+        { title: 'Kirim Tab Produk Saja?', confirmText: 'Ya, Kirim Produk' }
+      );
+      if (!okProd) return;
     }
 
     var btn = document.getElementById('btnSyncProductsOnly');
@@ -946,22 +1015,29 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
       var summaryEl = document.getElementById('sheetPriceDiffSummary');
       var tbody = document.getElementById('sheetPriceDiffBody');
       var confirmBtn = document.getElementById('btnConfirmApplySheetPrices');
+      
+      var warningCount = diffs.filter(function (d) { return d.newSell <= 0 || (d.newCost > 0 && d.newSell < d.newCost); }).length;
 
       if (summaryEl) {
-        summaryEl.innerHTML = 'Ditemukan <strong style="color:var(--primary)">' + diffs.length + ' produk berubah</strong> dari total ' + (diffs.length + unchanged) + ' produk cocok (' + unchanged + ' tidak berubah akan dilewati agar hemat kuota).';
+        summaryEl.innerHTML = 'Ditemukan <strong style="color:var(--primary)">' + diffs.length + ' produk berubah</strong> dari total ' + (diffs.length + unchanged) + ' produk cocok (' + unchanged + ' tidak berubah akan dilewati agar hemat kuota).' +
+          (warningCount > 0 ? '<div style="margin-top:0.5rem;padding:0.45rem 0.65rem;border-radius:8px;background:rgba(239,68,68,0.12);color:#dc2626;font-weight:700;font-size:0.78rem;"><i class="fas fa-triangle-exclamation"></i> Peringatan: ' + warningCount + ' produk punya Harga Jual Rp 0 atau lebih kecil dari Harga Modal (Rugi)! Periksa kembali di Google Sheets sebelum menerapkan.</div>' : '');
       }
       if (tbody) {
         if (!diffs.length) {
           tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-muted);">Semua harga di Google Sheets sudah sama persis dengan database WebPOS. Tidak ada yang perlu diupdate.</td></tr>';
         } else {
           tbody.innerHTML = diffs.map(function (d) {
+            var isRisk = d.newSell <= 0 || (d.newCost > 0 && d.newSell < d.newCost);
             var fmtDiff = function (o, n) {
               if (o === n) return '<span style="color:var(--text-muted)">' + formatRupiah(n) + '</span>';
               var clr = n > o ? '#dc2626' : '#059669';
               return '<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.72rem;">' + formatRupiah(o) + '</span><br><strong style="color:' + clr + '">' + formatRupiah(n) + '</strong>';
             };
-            return '<tr>' +
-              '<td><strong>' + d.name + '</strong>' + (d.isUnlimited ? ' <span class="badge badge-success" style="font-size:0.62rem;">UNLIMITED</span>' : '') + '</td>' +
+            return '<tr' + (isRisk ? ' style="background:rgba(239,68,68,0.08);"' : '') + '>' +
+              '<td><strong>' + d.name + '</strong>' +
+                (d.isUnlimited ? ' <span class="badge badge-success" style="font-size:0.62rem;">UNLIMITED</span>' : '') +
+                (isRisk ? ' <span class="badge badge-danger" style="font-size:0.62rem;">⚠ CEK HARGA</span>' : '') +
+              '</td>' +
               '<td style="text-align:right;">' + fmtDiff(d.oldCost, d.newCost) + '</td>' +
               '<td style="text-align:right;">' + fmtDiff(d.oldSell, d.newSell) + '</td>' +
               '<td style="text-align:right;">' + fmtDiff(d.oldRes, d.newRes) + '</td>' +
@@ -969,6 +1045,7 @@ rawSaldo.concat(rawTele).forEach(function (sl) {
           }).join('');
         }
       }
+      
       if (confirmBtn) {
         confirmBtn.style.display = diffs.length > 0 ? 'inline-flex' : 'none';
         confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Terapkan ' + diffs.length + ' Perubahan Harga';
