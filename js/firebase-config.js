@@ -175,16 +175,20 @@ if (!window.firebaseConfigInitialized) {
 
     // Jika user klik Logout asli -> bersihkan sesi lokal
     var _origSignOut = window.auth.signOut.bind(window.auth);
-    window.auth.signOut = function() {
-      try {
-        localStorage.removeItem('webpos_session');
-        localStorage.removeItem('webpos_user');
-        localStorage.removeItem('webpos_user_role');
-        localStorage.removeItem('webpos_user_name');
-        localStorage.removeItem('webpos_user_permissions');
-        localStorage.removeItem('webpos_last_uid');
-        localStorage.removeItem('webpos_last_username');
+    try {
+        [
+          'webpos_session', 'webpos_user', 'webpos_user_role', 'webpos_user_name',
+          'webpos_user_permissions', 'webpos_last_uid', 'webpos_last_username',
+          'webpos_shift_status_cache', 'active_shift_id', 'wpos_return_after_modal',
+          'header_uang_global', 'header_penjualan', 'header_transaksi', 'header_laba',
+          'raw_header_uang_global', 'raw_header_penjualan', 'raw_header_transaksi',
+          'raw_header_laba', 'raw_header_date', 'kasir_cart', 'kasir_note',
+          'kasir_reseller_name'
+        ].forEach(function(k) { localStorage.removeItem(k); });
         sessionStorage.removeItem('webpos_backup_cache');
+        if (window.indexedDB && typeof window.indexedDB.deleteDatabase === 'function') {
+          window.indexedDB.deleteDatabase('webpos_riwayat_cache_v1');
+        }
       } catch (e) {}
       return _origSignOut.apply(window.auth, arguments);
     };
