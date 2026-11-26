@@ -1284,6 +1284,7 @@
               <button class="view-btn" id="btnListView" title="List View"><i class="fas fa-list"></i></button>
             </div>
           </div>
+          <button class="btn btn-secondary" id="btnOpenBulkPrice" onclick="openBulkPriceModal()" style="border-color:var(--primary);color:var(--primary);font-weight:700;"><i class="fas fa-tags"></i> Edit Harga Massal</button>
           <button class="btn btn-primary" id="btnAddProduk"><i class="fas fa-plus"></i> Tambah Produk</button>
         </div>
 
@@ -1310,8 +1311,23 @@
           </div>
           <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 1.5rem;">
           <div>
+            <div style="text-align:left; margin-bottom:1rem;">
+            <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--text-main); margin-bottom:0.35rem;">
+              <i class="fas fa-sliders-h" style="color:var(--primary);"></i> Mode Impor Excel:
+            </label>
+            <select id="importExcelMode" class="filter-select" style="width:100%; padding:0.65rem 0.8rem; font-size:0.84rem; font-weight:600;">
+              <option value="update_only">Update Harga / Produk yang Ada Saja (Anti Duplikat — Hemat Kuota)</option>
+              <option value="upsert">Update Produk yang Ada + Tambah Produk Baru</option>
+              <option value="add_only">Tambah Semua Sebagai Produk Baru (Mode Lama)</option>
+            </select>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.4;">
+              Tips cepat: Klik <strong>Export Data Produk</strong> dulu, edit kolom <strong>Harga Modal / Jual / Reseller</strong> di Excel, lalu upload balik dengan mode <strong>Update</strong> (hanya produk yang berubah yang disimpan ke server).
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.6rem;">
             <input type="file" id="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importProductsExcel(event)">
-            <button class="btn btn-primary" onclick="document.getElementById('importExcelInput').click()" style="padding: 0.8rem 1.75rem; width: 100%;"><i class="fas fa-upload"></i> Upload & Impor Excel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('importExcelInput').click()" style="padding: 0.8rem 1.75rem; width: 100%;"><i class="fas fa-upload"></i> Upload &amp; Proses Excel</button>
+            <button class="btn btn-secondary" onclick="openBulkPriceModal()" style="padding: 0.7rem 1.25rem; width: 100%;"><i class="fas fa-tags" style="color:var(--primary);"></i> Atau Edit Harga Massal Langsung di Aplikasi</button>
           </div>
         </div>
       </div>
@@ -1328,6 +1344,70 @@
   <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
+
+<!-- MODAL EDIT HARGA MASSAL (CARA 1 — KHUSUS UNLIMITED / SEMUA PRODUK) -->
+<div class="modal-overlay" id="bulkPriceModal">
+  <div class="modal-content" style="max-width: 960px; width: 96%; max-height: 92vh; display:flex; flex-direction:column;">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title" style="display:flex;align-items:center;gap:0.5rem;"><i class="fas fa-tags" style="color:var(--primary);"></i> Edit Harga &amp; Modal Massal</h3>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Cocok untuk update cepat produk Unlimited (voucher/kuota) maupun produk biasa. Hanya baris yang berubah yang dikirim ke server.</div>
+      </div>
+      <button class="modal-close" onclick="closeBulkPriceModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto; flex:1; padding:1rem 1.25rem;">
+      <!-- Baris Filter -->
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+        <select id="bulkFilterType" class="filter-select" onchange="renderBulkPriceTable()" style="min-width:170px; font-weight:700;">
+          <option value="unlimited">Khusus Stok Unlimited</option>
+          <option value="all">Semua Produk</option>
+          <option value="limited">Khusus Stok Terbatas</option>
+        </select>
+        <select id="bulkFilterCategory" class="filter-select" onchange="renderBulkPriceTable()" style="min-width:160px;">
+          <option value="">Semua Kategori</option>
+        </select>
+        <input type="text" id="bulkSearchInput" class="form-input" placeholder="Cari nama / SKU..." oninput="renderBulkPriceTable()" style="flex:1; min-width:170px; padding:0.5rem 0.75rem;">
+      </div>
+
+      <!-- Baris Aksi Cepat +/- Massal -->
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.65rem 0.75rem; margin-bottom:0.85rem;">
+        <span style="font-size:0.76rem; font-weight:800; color:var(--text-main);"><i class="fas fa-bolt" style="color:var(--warning);"></i> Ubah Cepat Semua yg Tampil:</span>
+        <select id="bulkAdjustField" class="filter-select" style="padding:0.4rem 0.55rem; font-size:0.78rem;">
+          <option value="cost">Harga Modal</option>
+          <option value="sell">Harga Jual</option>
+          <option value="reseller">Harga Reseller</option>
+          <option value="cost_and_sell">Modal &amp; Jual Sekaligus</option>
+        </select>
+        <input type="number" id="bulkAdjustDelta" class="form-input" placeholder="cth: 500 atau -500" style="width:145px; padding:0.4rem 0.6rem; font-size:0.8rem;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyBulkDeltaAdjustment()" style="padding:0.42rem 0.75rem; font-size:0.78rem;"><i class="fas fa-check"></i> Terapkan</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetBulkPriceEdits()" style="padding:0.42rem 0.75rem; font-size:0.78rem; margin-left:auto;"><i class="fas fa-undo"></i> Reset</button>
+      </div>
+
+      <!-- Tabel Edit Langsung -->
+      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-md); max-height:46vh; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+          <thead style="position:sticky; top:0; background:var(--bg-surface); z-index:2; border-bottom:2px solid var(--border);">
+            <tr>
+              <th style="text-align:left; padding:0.6rem 0.65rem;">Produk</th>
+              <th style="text-align:right; padding:0.6rem 0.5rem; width:130px;">Harga Modal</th>
+              <th style="text-align:right; padding:0.6rem 0.5rem; width:130px;">Harga Jual</th>
+              <th style="text-align:right; padding:0.6rem 0.5rem; width:130px;">Harga Reseller</th>
+              <th style="text-align:right; padding:0.6rem 0.65rem; width:105px;">Laba</th>
+            </tr>
+          </thead>
+          <tbody id="bulkPriceTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+      <div id="bulkChangedCounter" style="font-size:0.82rem; font-weight:700; color:var(--text-muted);">0 produk berubah</div>
+      <div style="display:flex; gap:0.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeBulkPriceModal()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSaveBulkPrices" onclick="saveBulkPriceChanges()"><i class="fas fa-save"></i> Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL TAMBAH/EDIT PRODUK -->
 <div class="modal-overlay" id="produkModal">
@@ -3097,6 +3177,262 @@ document.getElementById("filterKategori").onchange = function() {
     toast("Template Excel berhasil didownload!", "success");
   };
 
+  // ================= CARA 1: EDIT HARGA & MODAL MASSAL DI HALAMAN PRODUK =================
+  const bulkPriceDrafts = {};
+
+  function parseCleanInt(v) {
+    if (typeof v === "number") return isNaN(v) ? 0 : Math.max(0, Math.round(v));
+    const cleaned = String(v || "").replace(/[^0-9-]/g, "");
+    const n = parseInt(cleaned, 10);
+    return isNaN(n) ? 0 : Math.max(0, n);
+  }
+
+  function persistProductsLocalCache() {
+    try {
+      const lightCache = productsList.map(p => {
+        const copy = { ...p };
+        if (copy.imageUrl && copy.imageUrl.length > 4000) delete copy.imageUrl;
+        return copy;
+      });
+      localStorage.setItem("webpos_cache_products_v1", JSON.stringify(lightCache));
+    } catch (e) {}
+  }
+
+  function getFilteredBulkProducts() {
+    const typeFilter = (document.getElementById("bulkFilterType")?.value || "unlimited");
+    const catFilter = (document.getElementById("bulkFilterCategory")?.value || "");
+    const q = (document.getElementById("bulkSearchInput")?.value || "").toLowerCase().trim();
+
+    return productsList.filter(p => {
+      if (typeFilter === "unlimited" && p.isUnlimited !== true) return false;
+      if (typeFilter === "limited" && p.isUnlimited === true) return false;
+      if (catFilter && p.categoryId !== catFilter) return false;
+      if (q) {
+        const nm = String(p.name || "").toLowerCase();
+        const cd = String(p.code || "").toLowerCase();
+        if (!nm.includes(q) && !cd.includes(q)) return false;
+      }
+      return true;
+    }).sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "id"));
+  }
+
+  function updateBulkChangedCounter() {
+    let changed = 0;
+    Object.keys(bulkPriceDrafts).forEach(id => {
+      const p = productsList.find(x => x.id === id);
+      const d = bulkPriceDrafts[id];
+      if (!p || !d) return;
+      if (d.costPrice !== (Number(p.costPrice) || 0) ||
+          d.sellingPrice !== (Number(p.sellingPrice) || 0) ||
+          d.resellerPrice !== (Number(p.resellerPrice) || 0)) {
+        changed++;
+      }
+    });
+    const el = document.getElementById("bulkChangedCounter");
+    if (el) {
+      el.textContent = changed > 0
+        ? `${changed} produk berubah (siap disimpan hemat kuota)`
+        : "0 produk berubah";
+      el.style.color = changed > 0 ? "var(--success)" : "var(--text-muted)";
+    }
+    return changed;
+  }
+
+  window.openBulkPriceModal = function() {
+    Object.keys(bulkPriceDrafts).forEach(k => delete bulkPriceDrafts[k]);
+    const catSelect = document.getElementById("bulkFilterCategory");
+    if (catSelect) {
+      catSelect.innerHTML = '<option value="">Semua Kategori</option>' +
+        categoriesList.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    }
+    const hasUnlimited = productsList.some(p => p.isUnlimited === true);
+    const typeSelect = document.getElementById("bulkFilterType");
+    if (typeSelect) typeSelect.value = hasUnlimited ? "unlimited" : "all";
+    const searchEl = document.getElementById("bulkSearchInput");
+    if (searchEl) searchEl.value = "";
+    const deltaEl = document.getElementById("bulkAdjustDelta");
+    if (deltaEl) deltaEl.value = "";
+
+    renderBulkPriceTable();
+    document.getElementById("bulkPriceModal")?.classList.add("active");
+  };
+
+  window.closeBulkPriceModal = function() {
+    document.getElementById("bulkPriceModal")?.classList.remove("active");
+  };
+
+  window.onBulkPriceInput = function(id, field, val) {
+    const p = productsList.find(x => x.id === id);
+    if (!p) return;
+    if (!bulkPriceDrafts[id]) {
+      bulkPriceDrafts[id] = {
+        costPrice: Number(p.costPrice) || 0,
+        sellingPrice: Number(p.sellingPrice) || 0,
+        resellerPrice: Number(p.resellerPrice) || 0
+      };
+    }
+    bulkPriceDrafts[id][field] = parseCleanInt(val);
+    const d = bulkPriceDrafts[id];
+    const isChanged =
+      d.costPrice !== (Number(p.costPrice) || 0) ||
+      d.sellingPrice !== (Number(p.sellingPrice) || 0) ||
+      d.resellerPrice !== (Number(p.resellerPrice) || 0);
+
+    const row = document.getElementById("bulk-row-" + id);
+    if (row) row.style.background = isChanged ? "rgba(16, 185, 129, 0.12)" : "";
+    const profitEl = document.getElementById("bulk-profit-" + id);
+    if (profitEl) {
+      const laba = d.sellingPrice - d.costPrice;
+      profitEl.textContent = "Rp " + laba.toLocaleString("id-ID");
+      profitEl.style.color = laba < 0 ? "var(--danger)" : "var(--success)";
+    }
+    updateBulkChangedCounter();
+  };
+
+  window.applyBulkDeltaAdjustment = function() {
+    const field = document.getElementById("bulkAdjustField")?.value || "cost";
+    const delta = parseInt(document.getElementById("bulkAdjustDelta")?.value || "0", 10);
+    if (!delta || isNaN(delta)) {
+      toast("Masukkan nominal perubahan (contoh: 500 atau -500)", "error");
+      return;
+    }
+    const list = getFilteredBulkProducts();
+    if (!list.length) {
+      toast("Tidak ada produk pada filter saat ini", "error");
+      return;
+    }
+    list.forEach(p => {
+      if (!bulkPriceDrafts[p.id]) {
+        bulkPriceDrafts[p.id] = {
+          costPrice: Number(p.costPrice) || 0,
+          sellingPrice: Number(p.sellingPrice) || 0,
+          resellerPrice: Number(p.resellerPrice) || 0
+        };
+      }
+      const d = bulkPriceDrafts[p.id];
+      if (field === "cost" || field === "cost_and_sell") d.costPrice = Math.max(0, d.costPrice + delta);
+      if (field === "sell" || field === "cost_and_sell") d.sellingPrice = Math.max(0, d.sellingPrice + delta);
+      if (field === "reseller") d.resellerPrice = Math.max(0, d.resellerPrice + delta);
+    });
+    renderBulkPriceTable();
+    toast(`Penyesuaian ${delta > 0 ? "+" : ""}Rp ${delta.toLocaleString("id-ID")} diterapkan ke ${list.length} produk (belum disimpan)`, "success");
+  };
+
+  window.resetBulkPriceEdits = function() {
+    Object.keys(bulkPriceDrafts).forEach(k => delete bulkPriceDrafts[k]);
+    renderBulkPriceTable();
+    toast("Perubahan sementara direset", "success");
+  };
+
+  window.renderBulkPriceTable = function() {
+    const tbody = document.getElementById("bulkPriceTableBody");
+    if (!tbody) return;
+    const list = getFilteredBulkProducts();
+
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">Tidak ada produk yang cocok dengan filter ini.</td></tr>';
+      updateBulkChangedCounter();
+      return;
+    }
+
+    tbody.innerHTML = list.map(p => {
+      const cat = categoriesList.find(c => c.id === p.categoryId);
+      const d = bulkPriceDrafts[p.id] || {
+        costPrice: Number(p.costPrice) || 0,
+        sellingPrice: Number(p.sellingPrice) || 0,
+        resellerPrice: Number(p.resellerPrice) || 0
+      };
+      const isChanged =
+        d.costPrice !== (Number(p.costPrice) || 0) ||
+        d.sellingPrice !== (Number(p.sellingPrice) || 0) ||
+        d.resellerPrice !== (Number(p.resellerPrice) || 0);
+      const laba = d.sellingPrice - d.costPrice;
+      const badgeUnl = p.isUnlimited
+        ? '<span style="font-size:0.65rem;padding:1px 6px;border-radius:4px;background:rgba(16,185,129,0.15);color:var(--success);font-weight:800;margin-left:4px;">UNLIMITED</span>'
+        : '';
+
+      return `<tr id="bulk-row-${p.id}" style="border-bottom:1px solid var(--border);${isChanged ? 'background:rgba(16,185,129,0.12);' : ''}">
+        <td style="padding:0.5rem 0.65rem;">
+          <div style="font-weight:700;color:var(--text-main);">${p.name || "-"}${badgeUnl}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">${cat ? cat.name : "Umum"} ${p.code ? "• " + p.code : ""}</div>
+        </td>
+        <td style="padding:0.4rem 0.5rem;text-align:right;">
+          <input type="number" class="form-input" value="${d.costPrice}" min="0" oninput="onBulkPriceInput('${p.id}','costPrice',this.value)" style="width:115px;padding:0.35rem 0.45rem;text-align:right;font-weight:700;">
+        </td>
+        <td style="padding:0.4rem 0.5rem;text-align:right;">
+          <input type="number" class="form-input" value="${d.sellingPrice}" min="0" oninput="onBulkPriceInput('${p.id}','sellingPrice',this.value)" style="width:115px;padding:0.35rem 0.45rem;text-align:right;font-weight:700;">
+        </td>
+        <td style="padding:0.4rem 0.5rem;text-align:right;">
+          <input type="number" class="form-input" value="${d.resellerPrice}" min="0" oninput="onBulkPriceInput('${p.id}','resellerPrice',this.value)" style="width:115px;padding:0.35rem 0.45rem;text-align:right;font-weight:700;">
+        </td>
+        <td id="bulk-profit-${p.id}" style="padding:0.5rem 0.65rem;text-align:right;font-weight:800;color:${laba < 0 ? 'var(--danger)' : 'var(--success)'};white-space:nowrap;">
+          Rp ${laba.toLocaleString("id-ID")}
+        </td>
+      </tr>`;
+    }).join("");
+
+    updateBulkChangedCounter();
+  };
+
+  window.saveBulkPriceChanges = async function() {
+    const changes = [];
+    Object.keys(bulkPriceDrafts).forEach(id => {
+      const p = productsList.find(x => x.id === id);
+      const d = bulkPriceDrafts[id];
+      if (!p || !d) return;
+      if (d.costPrice !== (Number(p.costPrice) || 0) ||
+          d.sellingPrice !== (Number(p.sellingPrice) || 0) ||
+          d.resellerPrice !== (Number(p.resellerPrice) || 0)) {
+        changes.push({ id, product: p, draft: d });
+      }
+    });
+
+    if (changes.length === 0) {
+      toast("Belum ada perubahan harga yang perlu disimpan", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btnSaveBulkPrices");
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+
+    try {
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < changes.length; i += CHUNK_SIZE) {
+        const batch = db.batch();
+        const chunk = changes.slice(i, i + CHUNK_SIZE);
+        chunk.forEach(item => {
+          const ref = db.collection("products").doc(item.id);
+          batch.update(ref, {
+            costPrice: item.draft.costPrice,
+            sellingPrice: item.draft.sellingPrice,
+            resellerPrice: item.draft.resellerPrice,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await batch.commit();
+      }
+
+      changes.forEach(item => {
+        item.product.costPrice = item.draft.costPrice;
+        item.product.sellingPrice = item.draft.sellingPrice;
+        item.product.resellerPrice = item.draft.resellerPrice;
+      });
+
+      persistProductsLocalCache();
+      renderProducts();
+      updateSummaryCards();
+      renderCategoriesGrid();
+      Object.keys(bulkPriceDrafts).forEach(k => delete bulkPriceDrafts[k]);
+      closeBulkPriceModal();
+      toast(`Berhasil memperbarui harga ${changes.length} produk!`, "success");
+    } catch (err) {
+      console.error("Gagal simpan harga massal:", err);
+      toast("Gagal menyimpan perubahan harga: " + (err.message || err), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Simpan Perubahan'; }
+    }
+  };
+
   window.exportProductsExcel = function() {
     if (productsList.length === 0) {
       toast("Tidak ada data produk untuk diexport", "error");
@@ -3106,6 +3442,7 @@ document.getElementById("filterKategori").onchange = function() {
     const exportData = productsList.map(p => {
       const cat = categoriesList.find(c => c.id === p.categoryId);
       return {
+        "ID Produk": p.id || "",
         "Kode SKU": p.code || "",
         "Nama Produk": p.name || "",
         "Kategori": cat ? cat.name : "Umum",
@@ -3122,15 +3459,16 @@ document.getElementById("filterKategori").onchange = function() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data Produk");
     XLSX.writeFile(workbook, "AndPOS_Data_Produk.xlsx");
-    toast("Data produk berhasil diexport ke Excel!", "success");
+    toast("Data produk berhasil diexport ke Excel (termasuk ID untuk Mode Update)!", "success");
   };
 
-  // ================= IMPORT EXCEL DENGAN PEMISAHAN KATEGORI OTOMATIS =================
+  // ================= CARA 2: IMPORT EXCEL MODE UPDATE (ANTI DUPLIKAT & HEMAT KUOTA) =================
   window.importProductsExcel = function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    showProgressModal("Membaca File...", "Mempersiapkan data impor produk.");
+    const importMode = (document.getElementById("importExcelMode")?.value || "update_only");
+    showProgressModal("Membaca File...", "Mempersiapkan proses Excel (" + importMode + ").");
 
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -3147,69 +3485,145 @@ document.getElementById("filterKategori").onchange = function() {
           return;
         }
 
+        const byId = new Map();
+        const byCode = new Map();
+        const byName = new Map();
+        productsList.forEach(p => {
+          if (p.id) byId.set(String(p.id).trim(), p);
+          if (p.code) byCode.set(String(p.code).trim().toLowerCase(), p);
+          if (p.name) byName.set(String(p.name).trim().toLowerCase(), p);
+        });
+
         let totalRows = rows.length;
-        let importedCount = 0;
+        let updatedCount = 0;
+        let addedCount = 0;
+        let skippedCount = 0;
+        const pendingUpdates = [];
 
         for (let i = 0; i < totalRows; i++) {
           let row = rows[i];
-          const name = row["Nama Produk"] || row["nama produk"] || row["name"] || "";
-          if (!name) continue;
+          const rowId = String(row["ID Produk"] || row["ID"] || row["id"] || "").trim();
+          const name = String(row["Nama Produk"] || row["nama produk"] || row["Nama"] || row["name"] || "").trim();
+          const rawCode = String(row["Kode SKU"] || row["kode sku"] || row["Barcode"] || row["code"] || "").trim();
+          if (!name && !rowId) continue;
 
-          const sellPrice = parseInt(row["Harga Jual"] || row["harga jual"] || row["sellingPrice"] || 0);
-          const costPrice = parseInt(row["Harga Modal"] || row["harga modal"] || row["costPrice"] || 0);
-          const resellerPrice = parseInt(row["Harga Reseller"] || row["harga reseller"] || row["resellerPrice"] || 0);
-          
-          const isUnlimitedRaw = String(row["Unlimited (Ya/Tidak)"] || row["unlimited"] || row["isUnlimited"] || "").toLowerCase();
-          const isUnlimited = isUnlimitedRaw.includes("ya") || isUnlimitedRaw === "true" || isUnlimitedRaw === "1";
-          
-          const stock = isUnlimited ? 0 : (parseInt(row["Stok"] || row["stok"] || row["stock"] || 0));
-          const code = row["Kode SKU"] || row["kode sku"] || row["code"] || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
-          
-          // Deteksi kategori & buat otomatis jika belum ada di database
-          const katNameExcel = String(row["Kategori"] || row["kategori"] || row["category"] || "Umum").trim();
-          let targetCatId = "";
+          const matched = (importMode !== "add_only")
+            ? ((rowId && byId.get(rowId)) ||
+               (rawCode && byCode.get(rawCode.toLowerCase())) ||
+               (name && byName.get(name.toLowerCase())) || null)
+            : null;
 
-          if (katNameExcel) {
-            let foundKat = categoriesList.find(c => c.name.toLowerCase() === katNameExcel.toLowerCase());
-            if (foundKat) {
-              targetCatId = foundKat.id;
-            } else {
-              const newKatRef = await db.collection("categories").add({
-                name: katNameExcel,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          const hasCostCol = row["Harga Modal"] !== undefined || row["harga modal"] !== undefined || row["Harga Beli"] !== undefined || row["costPrice"] !== undefined;
+          const hasSellCol = row["Harga Jual"] !== undefined || row["harga jual"] !== undefined || row["sellingPrice"] !== undefined;
+          const hasResellerCol = row["Harga Reseller"] !== undefined || row["harga reseller"] !== undefined || row["resellerPrice"] !== undefined;
+
+          const costPrice = parseCleanInt(row["Harga Modal"] ?? row["harga modal"] ?? row["Harga Beli"] ?? row["costPrice"] ?? (matched ? matched.costPrice : 0));
+          const sellPrice = parseCleanInt(row["Harga Jual"] ?? row["harga jual"] ?? row["sellingPrice"] ?? (matched ? matched.sellingPrice : 0));
+          const resellerPrice = parseCleanInt(row["Harga Reseller"] ?? row["harga reseller"] ?? row["resellerPrice"] ?? (matched ? matched.resellerPrice : 0));
+
+          if (matched) {
+            const nextCost = hasCostCol ? costPrice : (Number(matched.costPrice) || 0);
+            const nextSell = hasSellCol ? sellPrice : (Number(matched.sellingPrice) || 0);
+            const nextReseller = hasResellerCol ? resellerPrice : (Number(matched.resellerPrice) || 0);
+
+            const isChanged =
+              nextCost !== (Number(matched.costPrice) || 0) ||
+              nextSell !== (Number(matched.sellingPrice) || 0) ||
+              nextReseller !== (Number(matched.resellerPrice) || 0);
+
+            if (isChanged) {
+              pendingUpdates.push({
+                id: matched.id,
+                product: matched,
+                payload: {
+                  costPrice: nextCost,
+                  sellingPrice: nextSell,
+                  resellerPrice: nextReseller,
+                  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }
               });
-              targetCatId = newKatRef.id;
-              categoriesList.push({ id: targetCatId, name: katNameExcel });
+              updatedCount++;
+            } else {
+              skippedCount++;
             }
+          } else if (importMode === "update_only") {
+            skippedCount++;
+          } else {
+            const isUnlimitedRaw = String(row["Unlimited (Ya/Tidak)"] || row["unlimited"] || row["isUnlimited"] || "").toLowerCase();
+            const isUnlimited = isUnlimitedRaw.includes("ya") || isUnlimitedRaw === "true" || isUnlimitedRaw === "1";
+            const stock = isUnlimited ? 0 : parseCleanInt(row["Stok"] || row["stok"] || row["stock"] || 0);
+            const code = rawCode || ("PRD-" + Math.floor(1000 + Math.random() * 9000));
+
+            const katNameExcel = String(row["Kategori"] || row["kategori"] || row["category"] || "Umum").trim();
+            let targetCatId = "";
+            if (katNameExcel) {
+              let foundKat = categoriesList.find(c => c.name.toLowerCase() === katNameExcel.toLowerCase());
+              if (foundKat) {
+                targetCatId = foundKat.id;
+              } else {
+                const newKatRef = await db.collection("categories").add({
+                  name: katNameExcel,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                targetCatId = newKatRef.id;
+                categoriesList.push({ id: targetCatId, name: katNameExcel });
+              }
+            }
+
+            await db.collection("products").add({
+              name: name || ("Produk " + code),
+              code,
+              costPrice,
+              sellingPrice: sellPrice,
+              resellerPrice,
+              stock,
+              isUnlimited,
+              status: "active",
+              categoryId: targetCatId,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            addedCount++;
           }
 
-          await db.collection("products").add({
-            name,
-            code,
-            costPrice,
-            sellingPrice: sellPrice,
-            resellerPrice,
-            stock,
-            isUnlimited,
-            status: "active", // Dipaksa aktif agar langsung muncul di Kasir
-            categoryId: targetCatId, // Terhubung ke kategori masing-masing
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          importedCount++;
-          let percent = Math.round(((i + 1) / totalRows) * 100);
-          updateProgressModal(percent, `Mengimpor: ${name} (${i + 1}/${totalRows})`);
+          let percent = Math.round(((i + 1) / totalRows) * 85);
+          updateProgressModal(percent, `Memproses: ${name || rowId} (${i + 1}/${totalRows})`);
         }
+
+        // Commit semua update dengan db.batch() (hemat kuota & cepat)
+        const CHUNK_SIZE = 400;
+        for (let c = 0; c < pendingUpdates.length; c += CHUNK_SIZE) {
+          const batch = db.batch();
+          const chunk = pendingUpdates.slice(c, c + CHUNK_SIZE);
+          chunk.forEach(item => {
+            batch.update(db.collection("products").doc(item.id), item.payload);
+          });
+          await batch.commit();
+          chunk.forEach(item => {
+            item.product.costPrice = item.payload.costPrice;
+            item.product.sellingPrice = item.payload.sellingPrice;
+            item.product.resellerPrice = item.payload.resellerPrice;
+          });
+          updateProgressModal(95, `Menyimpan batch update (${Math.min(c + CHUNK_SIZE, pendingUpdates.length)}/${pendingUpdates.length})...`);
+        }
+
+        updateProgressModal(100, "Selesai!");
+        persistProductsLocalCache();
 
         setTimeout(() => {
           hideProgressModal();
-          toast(`Berhasil mengimpor ${importedCount} produk & kategori!`, "success");
+          toast(`Selesai! ${updatedCount} diupdate, ${addedCount} ditambah baru, ${skippedCount} dilewati (tidak berubah).`, "success");
           document.getElementById("importExcelInput").value = "";
-          loadCategories();
-          loadProducts();
-        }, 500);
+          if (addedCount > 0) {
+            loadCategories();
+            loadProducts();
+          } else {
+            renderProducts();
+            updateSummaryCards();
+            renderCategoriesGrid();
+          }
+        }, 400);
 
       } catch (err) {
         hideProgressModal();
@@ -3220,8 +3634,6 @@ document.getElementById("filterKategori").onchange = function() {
     };
     reader.readAsArrayBuffer(file);
   };
-
-})();
 </script>
 </body>
 </html>
