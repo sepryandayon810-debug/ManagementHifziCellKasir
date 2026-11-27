@@ -106,10 +106,13 @@ var RoleGuard = window.RoleGuard;
     const role = (userRole || 'kasir').toLowerCase();
     if (role === 'owner' || role === 'developer') return;
 
-    // 2. Buka menu dari cache lokal langsung
+    // 2. Buka menu dari cache lokal langsung (lewati jika Developer sedang simulasi role)
     try {
-      const cached = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
-      unhideAllowedMenus(cached);
+      const isSimNow = (typeof window.isDevRoleSimActive === 'function' && window.isDevRoleSimActive());
+      if (!isSimNow) {
+        const cached = JSON.parse(localStorage.getItem('webpos_user_permissions') || '{}');
+        unhideAllowedMenus(cached);
+      }
     } catch (e) {}
 
     // 3. Tarik izin & validasi akses URL langsung dari Firestore secara real-time
@@ -152,9 +155,13 @@ var RoleGuard = window.RoleGuard;
               return;
             }
 
-            var liveRole = (uData.role || 'kasir').toLowerCase();
-            var livePerms = (uData.permissions && typeof uData.permissions === 'object') ? uData.permissions : {};
-            try { localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms)); } catch (e) {}
+           var realRole = (uData.role || 'kasir').toLowerCase();
+            var isSim = (realRole === 'developer' && typeof window.isDevRoleSimActive === 'function' && window.isDevRoleSimActive());
+            var liveRole = (typeof window.getEffectiveUserRole === 'function') ? window.getEffectiveUserRole(realRole) : realRole;
+            var livePerms = isSim ? {} : ((uData.permissions && typeof uData.permissions === 'object') ? uData.permissions : {});
+            if (!isSim) {
+              try { localStorage.setItem('webpos_user_permissions', JSON.stringify(livePerms)); } catch (e) {}
+            }
 
             if (liveRole === 'owner' || liveRole === 'developer') return;
 
