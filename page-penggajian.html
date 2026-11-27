@@ -1236,7 +1236,14 @@
         return;
       }
 
-      let html = "";
+      let html = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.55rem; padding-bottom:0.45rem; border-bottom:1px dashed var(--border);">
+          <span id="staffDebtsCountInfo" style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">Dipilih: ${activeStaffDebts.length} / ${activeStaffDebts.length}</span>
+          <button type="button" id="btnToggleAllStaffDebts" class="btn btn-secondary btn-sm" onclick="toggleAllStaffDebts()" style="padding:0.28rem 0.65rem; font-size:0.74rem; display:inline-flex; align-items:center; gap:0.35rem;">
+            <i class="fas fa-times"></i><span>Uncentang Semua</span>
+          </button>
+        </div>
+      `;
       activeStaffDebts.forEach(d => {
         const sisa = d.remaining || d.amount || 0;
         html += `
@@ -1257,6 +1264,28 @@
     }
   }
 
+  function syncStaffDebtToggleBtn() {
+    const all = document.querySelectorAll(".debt-checkbox");
+    const checked = document.querySelectorAll(".debt-checkbox:checked");
+    const info = document.getElementById("staffDebtsCountInfo");
+    const btn = document.getElementById("btnToggleAllStaffDebts");
+    if (info) info.textContent = `Dipilih: ${checked.length} / ${all.length}`;
+    if (btn) {
+      const hasAnyChecked = checked.length > 0;
+      btn.innerHTML = hasAnyChecked
+        ? '<i class="fas fa-times"></i><span>Uncentang Semua</span>'
+        : '<i class="fas fa-check-circle"></i><span>Centang Semua</span>';
+    }
+  }
+
+  window.toggleAllStaffDebts = function() {
+    const all = document.querySelectorAll(".debt-checkbox");
+    if (!all.length) return;
+    const anyChecked = Array.from(all).some(c => c.checked);
+    all.forEach(c => { c.checked = !anyChecked; });
+    calculateTakeHomePay();
+  };
+
   window.calculateTakeHomePay = function() {
     const base = parseFloat(document.getElementById("baseSalary").value) || 0;
     const prev = parseFloat(document.getElementById("prevUnpaidSalary").value) || 0;
@@ -1270,6 +1299,7 @@
 
     const net = (base + prev) - totalDeduction;
     document.getElementById("netSalaryLabel").textContent = formatRupiah(net);
+    syncStaffDebtToggleBtn();
   };
   
   async function savePayrollRecord() {
@@ -1385,7 +1415,15 @@
         return;
       }
 
-      container.innerHTML = currentPayActiveDebts.map(d => {
+      const payToolbar = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.55rem; padding-bottom:0.45rem; border-bottom:1px dashed var(--border);">
+          <span id="payDebtsCountInfo" style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">Dipilih: ${currentPayActiveDebts.length} / ${currentPayActiveDebts.length}</span>
+          <button type="button" id="btnToggleAllPayDebts" class="btn btn-secondary btn-sm" onclick="toggleAllPayDebts()" style="padding:0.28rem 0.65rem; font-size:0.74rem; display:inline-flex; align-items:center; gap:0.35rem;">
+            <i class="fas fa-times"></i><span>Uncentang Semua</span>
+          </button>
+        </div>
+      `;
+      container.innerHTML = payToolbar + currentPayActiveDebts.map(d => {
         const sisa = d.remaining || d.amount || 0;
         const tgl = d.date ? ` • ${d.date}` : "";
         return `
@@ -1407,6 +1445,28 @@
       console.error(err);
       container.innerHTML = '<span style="color:var(--danger);">Gagal memeriksa hutang staf.</span>';
     }
+  };
+
+  function syncPayDebtToggleBtn() {
+    const all = document.querySelectorAll(".pay-debt-checkbox");
+    const checked = document.querySelectorAll(".pay-debt-checkbox:checked");
+    const info = document.getElementById("payDebtsCountInfo");
+    const btn = document.getElementById("btnToggleAllPayDebts");
+    if (info) info.textContent = `Dipilih: ${checked.length} / ${all.length}`;
+    if (btn) {
+      const hasAnyChecked = checked.length > 0;
+      btn.innerHTML = hasAnyChecked
+        ? '<i class="fas fa-times"></i><span>Uncentang Semua</span>'
+        : '<i class="fas fa-check-circle"></i><span>Centang Semua</span>';
+    }
+  }
+
+  window.toggleAllPayDebts = function() {
+    const all = document.querySelectorAll(".pay-debt-checkbox");
+    if (!all.length) return;
+    const anyChecked = Array.from(all).some(c => c.checked);
+    all.forEach(c => { c.checked = !anyChecked; });
+    recalcPayPayroll();
   };
 
   window.closePayPayrollModal = function() {
@@ -1431,8 +1491,8 @@
 
     const warnBox = document.getElementById("payWarningBox");
     if (warnBox) warnBox.style.display = finalPay < 0 ? "block" : "none";
+    syncPayDebtToggleBtn();
   };
-
   window.confirmPayPayroll = async function() {
     if (!currentPayRecord) return;
     const btn = document.getElementById("btnConfirmPayPayroll");
