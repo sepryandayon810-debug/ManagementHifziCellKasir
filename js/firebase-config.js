@@ -3615,15 +3615,54 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return c;
   }
 
+  var cachedLogoSrc = '';
+  var cachedLogoImg = null;
+
+  function testImageClean(img) {
+    try {
+      var tc = document.createElement('canvas');
+      tc.width = 2; tc.height = 2;
+      tc.getContext('2d').drawImage(img, 0, 0, 2, 2);
+      tc.toDataURL('image/png');
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function preloadStoreLogo(src) {
+    var cleanSrc = String(src || '').trim();
+    if (!cleanSrc) { cachedLogoSrc = ''; cachedLogoImg = null; return; }
+    if (cleanSrc === cachedLogoSrc && cachedLogoImg) return;
+    cachedLogoSrc = cleanSrc;
+    cachedLogoImg = null;
+    try {
+      var img = new Image();
+      if (cleanSrc.indexOf('data:') !== 0) img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        if (cachedLogoSrc === cleanSrc && testImageClean(img)) cachedLogoImg = img;
+      };
+      img.onerror = function() {
+        if (cachedLogoSrc === cleanSrc) cachedLogoImg = null;
+      };
+      img.src = cleanSrc;
+    } catch (e) {}
+  }
+
+  try { preloadStoreLogo(loadStoreHeader().logo); } catch (e) {}
+
   function loadImageSafe(src) {
     return new Promise(function(resolve) {
       if (!src) { resolve(null); return; }
+      if (src === cachedLogoSrc && cachedLogoImg) { resolve(cachedLogoImg); return; }
       var done = false;
       function finish(val) { if (!done) { done = true; resolve(val); } }
-      var timer = setTimeout(function() { finish(null); }, 2500);
+      var timer = setTimeout(function() { finish(null); }, 2000);
       var img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = function() { clearTimeout(timer); finish(img); };
+      if (String(src).indexOf('data:') !== 0) img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        clearTimeout(timer);
+        if (testImageClean(img)) { cachedLogoSrc = String(src); cachedLogoImg = img; finish(img); }
+        else finish(null);
+      };
       img.onerror = function() { clearTimeout(timer); finish(null); };
       img.src = src;
     });
@@ -3655,12 +3694,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     ctx.closePath();
   }
 
-  async function renderCanvasPng(txOrText, customTitle) {
+  function renderReceiptSync(txOrText, customTitle, forceNoLogo) {
     var isStruct = txOrText && typeof txOrText === 'object';
     var n = isStruct ? normalizeTx(txOrText) : null;
     var hdr = n ? n.store : loadStoreHeader();
-    var logoImg = await loadImageSafe(hdr.logo);
-
+    if (hdr.logo && hdr.logo !== cachedLogoSrc) preloadStoreLogo(hdr.logo);
+    var logoImg = (!forceNoLogo && cachedLogoImg && cachedLogoSrc === hdr.logo) ? cachedLogoImg : null;
+    
     var W = 760;
     var CARD_X = 28;
     var CARD_W = W - CARD_X * 2;
@@ -3996,6 +4036,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       pngUrl = canvas.toDataURL('image/png');
     } catch (e) {
       console.error('WebPOSReceipt canvas export error:', e);
+      if (!forceNoLogo && logoImg) {
+        cachedLogoImg = null;
+        return renderReceiptSync(txOrText, customTitle, true);
+      }
     }
     return {
       dataUrl: jpgUrl || pngUrl,
@@ -4009,11 +4053,50 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     };
   }
 
+  async function renderCanvasPng(txOrText, customTitle) {
+    var hdr = loadStoreHeader();
+    if (hdr.logo && (!cachedLogoImg || cachedLogoSrc !== hdr.logo)) {
+      await loadImageSafe(hdr.logo);
+    }
+    return renderReceiptSync(txOrText, customTitle, false);
+  }
+
   function rcptToast(msg, type) {
     try {
       if (typeof window.showToast === 'function') { window.showToast(msg, type || 'success'); return; }
       if (window.Utils && typeof window.Utils.showToast === 'function') { window.Utils.showToast(msg, type || 'success'); return; }
     } catch (e) {}
+  }
+
+  function isAndroidWebView() {
+    if (window.AndroidBT || window.AndroidBridge || window.AndroidShare || window.AndroidBrand) return true;
+    return /;\s*wv\)/i.test(navigator.userAgent || '');
+  }
+
+  function isMobileDevice() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+  }
+
+  function copyTextSafe(text) {
+    var str = String(text || '');
+    if (!str) return false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(str).catch(function() {});
+      }
+    } catch (e) {}
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = str;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+      (document.body || document.documentElement).appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, str.length);
+      var ok = document.execCommand('copy');
+      ta.remove();
+      return !!ok;
+    } catch (e) { return false; }
   }
 
   function base64ToUint8(b64) {
@@ -4026,9 +4109,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function uint8ToBase64(u8) {
     var parts = [];
-    var chunk = 0x8000;
+    var chunk = 0x2000;
     for (var i = 0; i < u8.length; i += chunk) {
-      parts.push(String.fromCharCode.apply(null, u8.subarray(i, i + chunk)));
+      var end = Math.min(i + chunk, u8.length);
+      var s = '';
+      for (var j = i; j < end; j++) s += String.fromCharCode(u8[j]);
+      parts.push(s);
     }
     return btoa(parts.join(''));
   }
@@ -4041,7 +4127,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
   function dataUrlToFile(dataUrl, fileName) {
     var blob = dataUrlToBlob(dataUrl, 'image/jpeg');
-    return new File([blob], fileName || 'Nota-WebPOS.jpg', { type: blob.type });
+    try { return new File([blob], fileName || 'Nota-WebPOS.jpg', { type: blob.type }); }
+    catch (e) { return blob; }
   }
 
   function triggerBlobDownload(blob, fileName) {
@@ -4049,18 +4136,22 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var a = document.createElement('a');
     a.href = url;
     a.download = fileName || 'Nota-WebPOS.jpg';
-    a.style.display = 'none';
+    a.rel = 'noopener';
+    a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
     (document.body || document.documentElement).appendChild(a);
     a.click();
     setTimeout(function() {
       try { a.remove(); } catch (e) {}
       try { URL.revokeObjectURL(url); } catch (e) {}
-    }, 1500);
+    }, 60000);
   }
 
   function buildRealPdfFromJpeg(jpegDataUrl, imgW, imgH) {
     var b64 = String(jpegDataUrl || '').split(',')[1] || '';
     var jpgBytes = base64ToUint8(b64);
+    if (jpgBytes.length < 4 || jpgBytes[0] !== 0xFF || jpgBytes[1] !== 0xD8) {
+      throw new Error('Format gambar JPG tidak valid untuk PDF');
+    }
     var w = Math.max(1, Math.round(imgW || 760));
     var h = Math.max(1, Math.round(imgH || 1000));
     var drawW = 320;
@@ -4082,21 +4173,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     pushStr('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
     var offsets = [0];
-
     offsets.push(offset);
     pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-
     offsets.push(offset);
     pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
-
     offsets.push(offset);
-    pushStr('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
-
+    pushStr('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /ProcSet [/PDF /ImageC] /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
     offsets.push(offset);
     pushStr('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpgBytes.length + ' >>\nstream\n');
     pushBytes(jpgBytes);
     pushStr('\nendstream\nendobj\n');
-
     offsets.push(offset);
     pushStr('5 0 obj\n<< /Length ' + contentStr.length + ' >>\nstream\n' + contentStr + 'endstream\nendobj\n');
 
@@ -4131,6 +4217,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           '<button type="button" class="wp-pop-close" id="wpRcptImgClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
         '</div>' +
         '<div class="wp-pop-body">' +
+          '<div id="wpRcptImgHint" style="display:none;margin-bottom:0.65rem;padding:0.55rem 0.75rem;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:0.76rem;font-weight:600;line-height:1.4;"></div>' +
           '<div class="wp-rcpt-img-stage"><img id="wpRcptImgPreview" alt="Nota Digital"></div>' +
         '</div>' +
         '<div class="wp-pop-foot wp-rcpt-actions-bar">' +
@@ -4142,10 +4229,89 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     (document.body || document.documentElement).appendChild(bd);
     bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
     document.getElementById('wpRcptImgClose').onclick = function() { bd.classList.remove('open'); };
-    document.getElementById('wpRcptImgDownload').onclick = function() { saveJpg(); };
+    document.getElementById('wpRcptImgDownload').onclick = function() { saveJpg(null, null, true); };
     document.getElementById('wpRcptImgPdf').onclick = function() { exportPdf(); };
     document.getElementById('wpRcptImgWa').onclick = function() { shareWhatsApp(); };
     return bd;
+  }
+
+  function openReceiptImagePreview(rendered, hintText) {
+    var bd = ensureReceiptImgModal();
+    var imgEl = document.getElementById('wpRcptImgPreview');
+    var hintEl = document.getElementById('wpRcptImgHint');
+    if (imgEl && rendered && rendered.jpegDataUrl) imgEl.src = rendered.jpegDataUrl;
+    if (hintEl) {
+      hintEl.textContent = hintText || '';
+      hintEl.style.display = hintText ? 'block' : 'none';
+    }
+    bd.classList.add('open');
+  }
+
+  function ensureWaShareSheet() {
+    ensureUnifiedStyles();
+    var bd = document.getElementById('webposWaSheet');
+    if (bd) return bd;
+    bd = document.createElement('div');
+    bd.id = 'webposWaSheet';
+    bd.className = 'wp-pop-backdrop';
+    bd.innerHTML =
+      '<div class="wp-pop-card" style="max-width:420px;" role="dialog" aria-modal="true">' +
+        '<div class="wp-pop-head">' +
+          '<h3 class="wp-pop-title">' + ICONS_3D.whatsapp() + '<span>Kirim Nota ke WhatsApp</span></h3>' +
+          '<button type="button" class="wp-pop-close" id="wpWaClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
+        '</div>' +
+        '<div class="wp-pop-body" style="display:flex;flex-direction:column;gap:0.65rem;">' +
+          '<div style="font-size:0.78rem;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:0.5rem 0.7rem;border-radius:10px;font-weight:600;">Teks nota sudah disalin otomatis! Pilih cara kirim di bawah atau langsung tempel (Paste) di WhatsApp.</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:0.74rem;font-weight:700;color:#475569;margin-bottom:0.25rem;">Nomor WhatsApp Tujuan (Opsional)</label>' +
+            '<input type="tel" id="wpWaPhoneInput" placeholder="Contoh: 081234567890" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:10px;font-size:0.86rem;box-sizing:border-box;">' +
+          '</div>' +
+          '<pre id="wpWaTextPreview" style="margin:0;max-height:175px;overflow:auto;padding:0.65rem;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;font-family:\'Courier New\',monospace;font-size:0.72rem;line-height:1.4;white-space:pre-wrap;color:#0f172a;"></pre>' +
+        '</div>' +
+        '<div class="wp-pop-foot" style="display:flex;flex-wrap:wrap;gap:0.45rem;justify-content:stretch;">' +
+          '<a id="wpWaAppLink" href="#" rel="noopener" class="wp-pop-btn wa" style="flex:1 1 46%;text-decoration:none;justify-content:center;">' + ICONS_3D.whatsapp() + '<span>Buka App WA</span></a>' +
+          '<a id="wpWaWebLink" href="#" target="_blank" rel="noopener noreferrer" class="wp-pop-btn emerald" style="flex:1 1 46%;text-decoration:none;justify-content:center;"><span>Link wa.me</span></a>' +
+          '<button type="button" id="wpWaCopyBtn" class="wp-pop-btn" style="flex:1 1 46%;background:#e2e8f0;color:#0f172a;"><span>Salin Teks Nota</span></button>' +
+          '<button type="button" id="wpWaShowImgBtn" class="wp-pop-btn rose" style="flex:1 1 46%;">' + ICONS_3D.image() + '<span>Lihat Gambar</span></button>' +
+        '</div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(bd);
+    bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
+    document.getElementById('wpWaClose').onclick = function() { bd.classList.remove('open'); };
+    return bd;
+  }
+
+  function openWaShareSheet(plainText, waPhone, rendered) {
+    var bd = ensureWaShareSheet();
+    var phoneInp = document.getElementById('wpWaPhoneInput');
+    var prevEl = document.getElementById('wpWaTextPreview');
+    var appLink = document.getElementById('wpWaAppLink');
+    var webLink = document.getElementById('wpWaWebLink');
+    var copyBtn = document.getElementById('wpWaCopyBtn');
+    var imgBtn = document.getElementById('wpWaShowImgBtn');
+    var safeText = String(plainText || '').slice(0, 3200);
+    if (prevEl) prevEl.textContent = safeText;
+    if (phoneInp) phoneInp.value = waPhone || '';
+
+    function syncLinks() {
+      var ph = normalizeWaPhone(phoneInp ? phoneInp.value : waPhone);
+      var enc = encodeURIComponent(safeText);
+      if (appLink) appLink.href = 'whatsapp://send?' + (ph ? ('phone=' + ph + '&') : '') + 'text=' + enc;
+      if (webLink) webLink.href = 'https://wa.me/' + (ph || '') + '?text=' + enc;
+    }
+    syncLinks();
+    if (phoneInp) phoneInp.oninput = syncLinks;
+    if (copyBtn) copyBtn.onclick = function() {
+      copyTextSafe(safeText);
+      rcptToast('Teks nota berhasil disalin! Tinggal tempel di WhatsApp.', 'success');
+    };
+    if (imgBtn) imgBtn.onclick = function() {
+      bd.classList.remove('open');
+      if (rendered && rendered.jpegDataUrl) {
+        openReceiptImagePreview(rendered, 'Tekan & tahan gambar nota untuk simpan/kirim ke WhatsApp.');
+      }
+    };
+    bd.classList.add('open');
   }
 
   function getActiveReceiptSource() {
@@ -4159,12 +4325,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var titleTxt = titleEl ? titleEl.textContent.trim().toUpperCase() : 'BUKTI TRANSAKSI';
       return { src: paperText, title: titleTxt, plain: paperText };
     }
-    if (currentReceiptTx) {
-      return { src: currentReceiptTx, title: null, plain: buildPlain(currentReceiptTx) };
-    }
-    if (currentReceiptText) {
-      return { src: currentReceiptText, title: 'BUKTI TRANSAKSI', plain: currentReceiptText };
-    }
+    if (currentReceiptTx) return { src: currentReceiptTx, title: null, plain: buildPlain(currentReceiptTx) };
+    if (currentReceiptText) return { src: currentReceiptText, title: 'BUKTI TRANSAKSI', plain: currentReceiptText };
     return null;
   }
 
@@ -4182,77 +4344,135 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return d.length >= 10 ? d : '';
   }
 
-  async function saveJpg(txOrText, customTitle) {
+  function isBridgeSuccess(res) {
+    if (res === true || res === 'OK' || res === undefined) return true;
+    if (res === false) return false;
+    var s = String(res).trim().toUpperCase();
+    return s === 'OK' || s.indexOf('OK') === 0 || s === 'SUCCESS' || s === 'TRUE';
+  }
+
+  function saveJpg(txOrText, customTitle, forceDirectDownload) {
     var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
     if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
     try {
-      var rendered = await renderCanvasPng(target.src, target.title);
+      var rendered = renderReceiptSync(target.src, target.title, false);
       lastRenderedPng = rendered.jpegDataUrl;
       lastRenderedName = rendered.jpgFileName;
       lastRenderedMeta = rendered;
-
-      if (!rendered.jpegDataUrl) {
-        rcptToast('Gagal membuat gambar JPG nota', 'error');
-        return;
-      }
+      if (!rendered.jpegDataUrl) { rcptToast('Gagal membuat gambar JPG nota', 'error'); return; }
 
       var b64 = rendered.jpegDataUrl.split(',')[1] || '';
       if (window.AndroidBT && typeof window.AndroidBT.saveImage === 'function') {
-        window.AndroidBT.saveImage(b64, rendered.jpgFileName);
-        rcptToast('Nota JPG berhasil disimpan!', 'success');
-        return;
+        if (isBridgeSuccess(window.AndroidBT.saveImage(b64, rendered.jpgFileName))) {
+          rcptToast('Nota JPG tersimpan di HP (' + rendered.jpgFileName + ')', 'success');
+          return;
+        }
       }
-      if (window.AndroidBT && window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
+      if (window.AndroidBT && typeof window.AndroidBT.saveFile === 'function') {
+        if (isBridgeSuccess(window.AndroidBT.saveFile(b64, rendered.jpgFileName, 'image/jpeg'))) {
+          rcptToast('Nota JPG tersimpan di HP (' + rendered.jpgFileName + ')', 'success');
+          return;
+        }
+      }
+      if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
         window.AndroidShare.shareImage(rendered.jpegDataUrl, rendered.jpgFileName);
         rcptToast('Membuka penyimpanan / share JPG...', 'success');
         return;
       }
 
       var blob = dataUrlToBlob(rendered.jpegDataUrl, 'image/jpeg');
+      if (isAndroidWebView() && !forceDirectDownload) {
+        if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+          var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
+          if (navigator.canShare({ files: [jpgFile] })) {
+            navigator.share({ files: [jpgFile], title: rendered.jpgFileName }).catch(function(err) {
+              if (!err || err.name !== 'AbortError') {
+                openReceiptImagePreview(rendered, 'Di APK Android, tekan & tahan gambar untuk Simpan ke Galeri HP — atau klik Simpan PDF untuk langsung masuk folder Downloads.');
+              }
+            });
+            return;
+          }
+        }
+        openReceiptImagePreview(rendered, 'Di APK Android, tekan & tahan gambar untuk Simpan ke Galeri HP — atau klik Simpan PDF untuk langsung masuk folder Downloads.');
+        return;
+      }
+
       triggerBlobDownload(blob, rendered.jpgFileName);
-      rcptToast('Nota JPG berhasil disimpan!', 'success');
+      rcptToast('Mengunduh ' + rendered.jpgFileName + '...', 'success');
     } catch (err) {
       console.error('saveJpg error:', err);
-      rcptToast('Gagal menyimpan nota JPG', 'error');
+      rcptToast('Gagal menyimpan JPG: ' + (err && err.message ? err.message : 'Error'), 'error');
     }
   }
 
-  async function shareImage(txOrText, customTitle) {
+  function shareImage(txOrText, customTitle) {
     return saveJpg(txOrText, customTitle);
   }
 
-  async function exportPdf(txOrText, customTitle) {
+  function exportPdf(txOrText, customTitle) {
     var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
     if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
     try {
-      var rendered = await renderCanvasPng(target.src, target.title);
+      var rendered = renderReceiptSync(target.src, target.title, false);
       lastRenderedPng = rendered.jpegDataUrl;
       lastRenderedName = rendered.pdfFileName;
       lastRenderedMeta = rendered;
-
-      if (!rendered.jpegDataUrl) {
-        rcptToast('Gagal membuat file PDF nota', 'error');
-        return;
-      }
+      if (!rendered.jpegDataUrl) { rcptToast('Gagal membuat file PDF nota', 'error'); return; }
 
       var pdfBytes = buildRealPdfFromJpeg(rendered.jpegDataUrl, rendered.width, rendered.height);
       if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
         var pdfB64 = uint8ToBase64(pdfBytes);
-        window.AndroidBT.savePdf(pdfB64, rendered.pdfFileName);
-        rcptToast('Nota PDF berhasil disimpan ke HP!', 'success');
-        return;
+        var res = window.AndroidBT.savePdf(pdfB64, rendered.pdfFileName);
+        if (isBridgeSuccess(res)) {
+          rcptToast('Nota PDF tersimpan di folder Downloads HP (' + rendered.pdfFileName + ')', 'success');
+          return;
+        }
+        rcptToast('Gagal simpan PDF di APK: ' + String(res), 'error');
       }
 
       var pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      if (isAndroidWebView() && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+        try {
+          var pdfFile = new File([pdfBlob], rendered.pdfFileName, { type: 'application/pdf' });
+          if (navigator.canShare({ files: [pdfFile] })) {
+            navigator.share({ files: [pdfFile], title: rendered.pdfFileName }).catch(function() {});
+            return;
+          }
+        } catch (e) {}
+      }
+
       triggerBlobDownload(pdfBlob, rendered.pdfFileName);
-      rcptToast('Nota PDF berhasil disimpan!', 'success');
+      rcptToast('Mengunduh ' + rendered.pdfFileName + '...', 'success');
     } catch (err) {
       console.error('exportPdf error:', err);
-      rcptToast('Gagal menyimpan nota PDF', 'error');
+      rcptToast('Gagal menyimpan PDF: ' + (err && err.message ? err.message : 'Error'), 'error');
     }
   }
 
-  async function shareWhatsApp(txOrText, customTitle) {
+  function openWhatsAppFallback(plainText, waPhone, rendered) {
+    var safeText = String(plainText || '').slice(0, 3200);
+    copyTextSafe(safeText);
+    if (isAndroidWebView()) { openWaShareSheet(safeText, waPhone, rendered); return; }
+
+    var waMeUrl = 'https://wa.me/' + (waPhone || '') + '?text=' + encodeURIComponent(safeText);
+    if (isMobileDevice()) {
+      window.location.href = waMeUrl;
+      rcptToast('Membuka WhatsApp...', 'success');
+      return;
+    }
+
+    var a = document.createElement('a');
+    a.href = waMeUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    (document.body || document.documentElement).appendChild(a);
+    a.click();
+    setTimeout(function() { try { a.remove(); } catch (e) {} }, 1000);
+    rcptToast('Membuka WhatsApp dengan rincian nota...', 'success');
+  }
+
+  function shareWhatsApp(txOrText, customTitle) {
     var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
     if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
     var plainText = buildReceiptPlainText(target);
@@ -4260,59 +4480,47 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       ? (target.src.customerPhone || target.src.phone || target.src.noHp || target.src.whatsapp || '')
       : '';
     var waPhone = normalizeWaPhone(rawPhone);
+    copyTextSafe(plainText);
 
+    var rendered = null;
     try {
-      var rendered = await renderCanvasPng(target.src, target.title);
+      rendered = renderReceiptSync(target.src, target.title, false);
       lastRenderedPng = rendered.jpegDataUrl;
       lastRenderedName = rendered.jpgFileName;
       lastRenderedMeta = rendered;
+    } catch (e) { console.error('shareWhatsApp render error:', e); }
 
-      // 1. APK Android native share (langsung kirim gambar JPG ke WhatsApp)
-      if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function' && rendered.jpegDataUrl) {
-        try {
-          window.AndroidShare.shareImage(rendered.jpegDataUrl, rendered.jpgFileName);
-          rcptToast('Pilih WhatsApp untuk kirim nota JPG', 'success');
-          return;
-        } catch (e) {}
+    if (rendered && rendered.jpegDataUrl) {
+      var b64 = rendered.jpegDataUrl.split(',')[1] || '';
+      if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
+        try { window.AndroidShare.shareImage(rendered.jpegDataUrl, rendered.jpgFileName); rcptToast('Pilih WhatsApp untuk kirim nota JPG', 'success'); return; } catch (e) {}
       }
+      if (window.AndroidBT && typeof window.AndroidBT.shareImage === 'function') {
+        try { window.AndroidBT.shareImage(b64, rendered.jpgFileName); rcptToast('Pilih WhatsApp untuk kirim nota JPG', 'success'); return; } catch (e) {}
+      }
+    }
+    if (window.AndroidBT && typeof window.AndroidBT.shareWhatsApp === 'function') {
+      try { window.AndroidBT.shareWhatsApp(plainText, waPhone); return; } catch (e) {}
+    }
 
-      // 2. HP / Browser modern dengan Web Share Files (langsung kirim gambar JPG + teks ke WA)
-      if (rendered.jpegDataUrl && navigator.canShare && typeof navigator.share === 'function') {
-        try {
-          var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
-          if (navigator.canShare({ files: [jpgFile] })) {
-            await navigator.share({
-              files: [jpgFile],
-              title: 'Nota Transaksi',
-              text: plainText
+    if (rendered && rendered.jpegDataUrl && typeof navigator.share === 'function') {
+      try {
+        var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
+        if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [jpgFile] })) {
+          navigator.share({ files: [jpgFile], title: 'Nota Transaksi' })
+            .then(function() { rcptToast('Nota JPG berhasil dibagikan!', 'success'); })
+            .catch(function(err) {
+              if (err && err.name === 'AbortError') return;
+              openWhatsAppFallback(plainText, waPhone, rendered);
             });
-            return;
-          }
-        } catch (err) {
-          if (err && err.name === 'AbortError') return;
+          return;
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
-    // 3. Fallback universal (Desktop / WebView): salin teks + buka WhatsApp dengan rincian nota lengkap
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(plainText).catch(function() {});
-      }
-    } catch (e) {}
-
-    var waUrl = 'https://api.whatsapp.com/send?' + (waPhone ? ('phone=' + waPhone + '&') : '') + 'text=' + encodeURIComponent(plainText);
-    var a = document.createElement('a');
-    a.href = waUrl;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.style.display = 'none';
-    (document.body || document.documentElement).appendChild(a);
-    a.click();
-    setTimeout(function() { try { a.remove(); } catch (e) {} }, 200);
-    rcptToast('Membuka WhatsApp dengan rincian nota...', 'success');
+    openWhatsAppFallback(plainText, waPhone, rendered);
   }
-
+  
   function openPreview(txOrText, titleText) {
     ensureUnifiedStyles();
     var isObj = txOrText && typeof txOrText === 'object';
