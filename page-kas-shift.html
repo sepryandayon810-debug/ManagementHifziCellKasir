@@ -1872,24 +1872,10 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           return;
         }
 
-        // Browser biasa: print lewat jendela baru
-        const isi = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const win = window.open('', '_blank', 'width=420,height=640');
-        if (!win) {
-          Utils.showToast('Popup diblokir browser. Izinkan popup untuk print.', 'error');
-          return;
+        // Tampilkan di Modal Struk In-App (Nota Gambar PNG / Simpan PDF — tanpa pop-up window!)
+        if (window.WebPOSReceipt && typeof window.WebPOSReceipt.openPreview === 'function') {
+          window.WebPOSReceipt.openPreview(text, 'BERITA ACARA CLOSING');
         }
-        win.document.write(
-          '<html><head><title>Berita Acara Closing</title>' +
-          '<style>@page{size:80mm auto;margin:4mm}body{font-family:"Courier New",monospace;font-size:12px;line-height:1.5;margin:0;white-space:pre-wrap;}</style>' +
-          '</head><body>' + isi + '</body></html>'
-        );
-        win.document.close();
-setTimeout(() => {
-  if (win.closed) return;
-  win.focus();
-  win.print();
-}, 300);
       };
     })();
   </script>
