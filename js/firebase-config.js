@@ -2849,6 +2849,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         cls
       );
     },
+    
     rounding: function(cls) {
       return mk3d(
         '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="50%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs>' +
@@ -2857,8 +2858,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         '<text x="24" y="29.5" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="14" fill="#FFFFFF">Rp</text>',
         cls
       );
+    },
+    whatsapp: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ADE80"/><stop offset="55%" stop-color="#16A34A"/><stop offset="100%" stop-color="#15803D"/></linearGradient></defs>' +
+        '<path d="M24 6C14.1 6 6 14 6 23.8C6 27.3 7 30.6 8.8 33.4L6.2 42L15.1 39.5C17.8 41 20.8 41.8 24 41.8C33.9 41.8 42 33.8 42 23.9C42 14 33.9 6 24 6Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/>' +
+        '<path d="M18.2 16.5C17.5 16.5 16.3 17.2 16.1 18.6C15.9 20.1 16.6 23.1 19.6 26.3C22.6 29.5 26 30.8 28.2 31C29.7 31.1 31.1 29.9 31.4 28.8C31.6 28.1 31.4 27.6 30.9 27.3L28 25.9C27.5 25.6 27 25.7 26.6 26.1L25.5 27.3C24.2 26.7 21.8 24.6 20.8 22.7L21.9 21.5C22.3 21.1 22.4 20.5 22.1 20L20.8 17.2C20.5 16.7 19.9 16.5 18.2 16.5Z" fill="#FFFFFF"/>',
+        cls
+      );
     }
-  };
 
   window.WebPOS3DIcons = ICONS_3D;
 
@@ -2922,6 +2930,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       '.wp-rcpt-actions-bar > button,.wp-rcpt-actions-bar > .btn{flex:1 1 44% !important;min-width:120px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;gap:0.4rem !important;border-radius:11px !important;font-weight:700 !important;padding:0.55rem 0.7rem !important;font-size:0.78rem !important;cursor:pointer !important;}',
       '.wp-rcpt-btn-img{background:linear-gradient(135deg,#059669,#10b981) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(5,150,105,0.28) !important;}',
       '.wp-rcpt-btn-pdf{background:linear-gradient(135deg,#e11d48,#f43f5e) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(225,29,72,0.26) !important;}',
+      '.wp-rcpt-btn-wa,.wp-pop-btn.wa{background:linear-gradient(135deg,#16a34a,#22c55e) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(22,163,74,0.28) !important;}',
       '.wp-rcpt-img-stage{background:#e2e8f0;border-radius:14px;padding:0.75rem;display:flex;justify-content:center;align-items:flex-start;max-height:60vh;overflow:auto;}',
       '[data-theme="dark"] .wp-rcpt-img-stage,[data-theme="midnight"] .wp-rcpt-img-stage,[data-theme="oled"] .wp-rcpt-img-stage{background:#0f172a;}',
       '.wp-rcpt-img-stage img{max-width:100%;height:auto;border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,0.26);}',
@@ -3608,10 +3617,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   function loadImageSafe(src) {
     return new Promise(function(resolve) {
       if (!src) { resolve(null); return; }
+      var done = false;
+      function finish(val) { if (!done) { done = true; resolve(val); } }
+      var timer = setTimeout(function() { finish(null); }, 2500);
       var img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = function() { resolve(img); };
-      img.onerror = function() { resolve(null); };
+      img.onload = function() { clearTimeout(timer); finish(img); };
+      img.onerror = function() { clearTimeout(timer); finish(null); };
       img.src = src;
     });
   }
@@ -3976,30 +3988,133 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     ctx.fillText(n ? n.noteText : hdr.note, W / 2, y);
 
     var safeId = n ? n.id.replace(/[^a-zA-Z0-9_-]/g, '') : ('Nota_' + Date.now());
+    var pngUrl = '';
+    var jpgUrl = '';
+    try {
+      jpgUrl = canvas.toDataURL('image/jpeg', 0.94);
+      pngUrl = canvas.toDataURL('image/png');
+    } catch (e) {
+      console.error('WebPOSReceipt canvas export error:', e);
+    }
     return {
-      dataUrl: canvas.toDataURL('image/png'),
-      fileName: 'Nota-' + safeId + '.png'
+      dataUrl: jpgUrl || pngUrl,
+      pngDataUrl: pngUrl || jpgUrl,
+      jpegDataUrl: jpgUrl || pngUrl,
+      width: canvas.width,
+      height: canvas.height,
+      fileName: 'Nota-' + safeId + '.jpg',
+      jpgFileName: 'Nota-' + safeId + '.jpg',
+      pdfFileName: 'Nota-' + safeId + '.pdf'
     };
   }
 
-  function dataUrlToFile(dataUrl, fileName) {
-    var arr = dataUrl.split(',');
-    var mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
-    var bstr = atob(arr[1]);
-    var n = bstr.length;
-    var u8 = new Uint8Array(n);
-    while (n--) u8[n] = bstr.charCodeAt(n);
-    return new File([u8], fileName, { type: mime });
+  function rcptToast(msg, type) {
+    try {
+      if (typeof window.showToast === 'function') { window.showToast(msg, type || 'success'); return; }
+      if (window.Utils && typeof window.Utils.showToast === 'function') { window.Utils.showToast(msg, type || 'success'); return; }
+    } catch (e) {}
   }
 
-  function downloadDataUrl(dataUrl, fileName) {
-    var a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = fileName || 'Nota-WebPOS.png';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function() { try { a.remove(); } catch (e) {} }, 120);
+  function base64ToUint8(b64) {
+    var bstr = atob(b64 || '');
+    var len = bstr.length;
+    var u8 = new Uint8Array(len);
+    for (var i = 0; i < len; i++) u8[i] = bstr.charCodeAt(i);
+    return u8;
   }
+
+  function uint8ToBase64(u8) {
+    var parts = [];
+    var chunk = 0x8000;
+    for (var i = 0; i < u8.length; i += chunk) {
+      parts.push(String.fromCharCode.apply(null, u8.subarray(i, i + chunk)));
+    }
+    return btoa(parts.join(''));
+  }
+
+  function dataUrlToBlob(dataUrl, fallbackMime) {
+    var arr = String(dataUrl || '').split(',');
+    var mime = (arr[0].match(/:(.*?);/) || [])[1] || fallbackMime || 'image/jpeg';
+    return new Blob([base64ToUint8(arr[1] || '')], { type: mime });
+  }
+
+  function dataUrlToFile(dataUrl, fileName) {
+    var blob = dataUrlToBlob(dataUrl, 'image/jpeg');
+    return new File([blob], fileName || 'Nota-WebPOS.jpg', { type: blob.type });
+  }
+
+  function triggerBlobDownload(blob, fileName) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'Nota-WebPOS.jpg';
+    a.style.display = 'none';
+    (document.body || document.documentElement).appendChild(a);
+    a.click();
+    setTimeout(function() {
+      try { a.remove(); } catch (e) {}
+      try { URL.revokeObjectURL(url); } catch (e) {}
+    }, 1500);
+  }
+
+  function buildRealPdfFromJpeg(jpegDataUrl, imgW, imgH) {
+    var b64 = String(jpegDataUrl || '').split(',')[1] || '';
+    var jpgBytes = base64ToUint8(b64);
+    var w = Math.max(1, Math.round(imgW || 760));
+    var h = Math.max(1, Math.round(imgH || 1000));
+    var drawW = 320;
+    var drawH = Math.max(120, Math.round(drawW * (h / w)));
+    var margin = 20;
+    var pageW = drawW + margin * 2;
+    var pageH = drawH + margin * 2;
+    var contentStr = 'q\n' + drawW + ' 0 0 ' + drawH + ' ' + margin + ' ' + margin + ' cm\n/Im0 Do\nQ\n';
+
+    function strU8(str) {
+      var out = new Uint8Array(str.length);
+      for (var i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 0xff;
+      return out;
+    }
+    var chunks = [];
+    var offset = 0;
+    function pushBytes(u8) { chunks.push(u8); offset += u8.length; }
+    function pushStr(s) { pushBytes(strU8(s)); }
+
+    pushStr('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+    var offsets = [0];
+
+    offsets.push(offset);
+    pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+    offsets.push(offset);
+    pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+
+    offsets.push(offset);
+    pushStr('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
+
+    offsets.push(offset);
+    pushStr('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpgBytes.length + ' >>\nstream\n');
+    pushBytes(jpgBytes);
+    pushStr('\nendstream\nendobj\n');
+
+    offsets.push(offset);
+    pushStr('5 0 obj\n<< /Length ' + contentStr.length + ' >>\nstream\n' + contentStr + 'endstream\nendobj\n');
+
+    var xrefPos = offset;
+    pushStr('xref\n0 6\n0000000000 65535 f \n');
+    for (var idx = 1; idx <= 5; idx++) {
+      var offStr = String(offsets[idx]);
+      while (offStr.length < 10) offStr = '0' + offStr;
+      pushStr(offStr + ' 00000 n \n');
+    }
+    pushStr('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF\n');
+
+    var total = new Uint8Array(offset);
+    var p = 0;
+    for (var k = 0; k < chunks.length; k++) { total.set(chunks[k], p); p += chunks[k].length; }
+    return total;
+  }
+
+  var lastRenderedMeta = null;
 
   function ensureReceiptImgModal() {
     ensureUnifiedStyles();
@@ -4011,114 +4126,190 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     bd.innerHTML =
       '<div class="wp-pop-card" style="max-width:430px;" role="dialog" aria-modal="true">' +
         '<div class="wp-pop-head">' +
-          '<h3 class="wp-pop-title">' + ICONS_3D.image() + '<span>Nota Digital (Gambar PNG)</span></h3>' +
+          '<h3 class="wp-pop-title">' + ICONS_3D.image() + '<span>Nota Digital (JPG / PDF / WA)</span></h3>' +
           '<button type="button" class="wp-pop-close" id="wpRcptImgClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
         '</div>' +
         '<div class="wp-pop-body">' +
           '<div class="wp-rcpt-img-stage"><img id="wpRcptImgPreview" alt="Nota Digital"></div>' +
         '</div>' +
-        '<div class="wp-pop-foot">' +
-          '<button type="button" class="wp-pop-btn emerald" id="wpRcptImgDownload">' + ICONS_3D.download() + '<span>Unduh PNG</span></button>' +
+        '<div class="wp-pop-foot wp-rcpt-actions-bar">' +
+          '<button type="button" class="wp-pop-btn emerald" id="wpRcptImgDownload">' + ICONS_3D.download() + '<span>Simpan JPG</span></button>' +
           '<button type="button" class="wp-pop-btn rose" id="wpRcptImgPdf">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+          '<button type="button" class="wp-pop-btn wa" id="wpRcptImgWa">' + ICONS_3D.whatsapp() + '<span>Share WA</span></button>' +
         '</div>' +
       '</div>';
     (document.body || document.documentElement).appendChild(bd);
     bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
     document.getElementById('wpRcptImgClose').onclick = function() { bd.classList.remove('open'); };
-    document.getElementById('wpRcptImgDownload').onclick = function() {
-      if (lastRenderedPng) downloadDataUrl(lastRenderedPng, lastRenderedName);
-    };
-    document.getElementById('wpRcptImgPdf').onclick = function() {
-      if (lastRenderedPng) printImageAsPdf(lastRenderedPng, lastRenderedName);
-    };
+    document.getElementById('wpRcptImgDownload').onclick = function() { saveJpg(); };
+    document.getElementById('wpRcptImgPdf').onclick = function() { exportPdf(); };
+    document.getElementById('wpRcptImgWa').onclick = function() { shareWhatsApp(); };
     return bd;
-  }
-
-  function printImageAsPdf(dataUrl, titleName) {
-    var oldFrame = document.getElementById('webposPdfPrintFrame');
-    if (oldFrame) oldFrame.remove();
-    var iframe = document.createElement('iframe');
-    iframe.id = 'webposPdfPrintFrame';
-    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
-    document.body.appendChild(iframe);
-    var doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + (titleName || 'Nota').replace(/</g, '') + '</title>' +
-      '<style>@page{size:auto;margin:6mm;}body{margin:0;display:flex;justify-content:center;background:#fff;}img{max-width:100%;width:110mm;height:auto;display:block;}</style>' +
-      '</head><body><img id="pImg" src="' + dataUrl + '"></body></html>'
-    );
-    doc.close();
-    var imgEl = doc.getElementById('pImg');
-    function doPrint() {
-      setTimeout(function() {
-        try {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } catch (e) {}
-        setTimeout(function() { try { iframe.remove(); } catch (e) {} }, 2500);
-      }, 150);
-    }
-    if (imgEl && !imgEl.complete) {
-      imgEl.onload = doPrint;
-      imgEl.onerror = doPrint;
-    } else {
-      doPrint();
-    }
   }
 
   function getActiveReceiptSource() {
     var paper = document.getElementById('strukPaper');
     var paperText = paper ? (paper.textContent || '').trim() : '';
     if (currentReceiptTx && (!paperText || paperText === currentReceiptText)) {
-      return { src: currentReceiptTx, title: null };
+      return { src: currentReceiptTx, title: null, plain: currentReceiptText || buildPlain(currentReceiptTx) };
     }
     if (paperText) {
       var titleEl = document.querySelector('#strukModal .struk-modal-title, #strukModal .modal-title, #strukModal .struk-header h3');
       var titleTxt = titleEl ? titleEl.textContent.trim().toUpperCase() : 'BUKTI TRANSAKSI';
-      return { src: paperText, title: titleTxt };
+      return { src: paperText, title: titleTxt, plain: paperText };
     }
-    if (currentReceiptTx) return { src: currentReceiptTx, title: null };
+    if (currentReceiptTx) {
+      return { src: currentReceiptTx, title: null, plain: buildPlain(currentReceiptTx) };
+    }
+    if (currentReceiptText) {
+      return { src: currentReceiptText, title: 'BUKTI TRANSAKSI', plain: currentReceiptText };
+    }
     return null;
   }
 
-  async function shareImage(txOrText, customTitle) {
+  function buildReceiptPlainText(target) {
+    if (!target) return '';
+    if (target.plain) return target.plain;
+    if (target.src && typeof target.src === 'object') return buildPlain(target.src);
+    return String(target.src || '');
+  }
+
+  function normalizeWaPhone(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.indexOf('0') === 0) d = '62' + d.slice(1);
+    return d.length >= 10 ? d : '';
+  }
+
+  async function saveJpg(txOrText, customTitle) {
     var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
-    if (!target) return;
-    var rendered = await renderCanvasPng(target.src, target.title);
-    lastRenderedPng = rendered.dataUrl;
-    lastRenderedName = rendered.fileName;
-
-    if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
-      try {
-        window.AndroidShare.shareImage(rendered.dataUrl, rendered.fileName);
-        return;
-      } catch (e) {}
-    }
-
+    if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
     try {
-      var file = dataUrlToFile(rendered.dataUrl, rendered.fileName);
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
+      var rendered = await renderCanvasPng(target.src, target.title);
+      lastRenderedPng = rendered.jpegDataUrl;
+      lastRenderedName = rendered.jpgFileName;
+      lastRenderedMeta = rendered;
+
+      if (!rendered.jpegDataUrl) {
+        rcptToast('Gagal membuat gambar JPG nota', 'error');
         return;
       }
-    } catch (err) {
-      if (err && err.name === 'AbortError') return;
-    }
 
-    var bd = ensureReceiptImgModal();
-    var img = document.getElementById('wpRcptImgPreview');
-    if (img) img.src = rendered.dataUrl;
-    bd.classList.add('open');
+      var b64 = rendered.jpegDataUrl.split(',')[1] || '';
+      if (window.AndroidBT && typeof window.AndroidBT.saveImage === 'function') {
+        window.AndroidBT.saveImage(b64, rendered.jpgFileName);
+        rcptToast('Nota JPG berhasil disimpan!', 'success');
+        return;
+      }
+      if (window.AndroidBT && window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
+        window.AndroidShare.shareImage(rendered.jpegDataUrl, rendered.jpgFileName);
+        rcptToast('Membuka penyimpanan / share JPG...', 'success');
+        return;
+      }
+
+      var blob = dataUrlToBlob(rendered.jpegDataUrl, 'image/jpeg');
+      triggerBlobDownload(blob, rendered.jpgFileName);
+      rcptToast('Nota JPG berhasil disimpan!', 'success');
+    } catch (err) {
+      console.error('saveJpg error:', err);
+      rcptToast('Gagal menyimpan nota JPG', 'error');
+    }
+  }
+
+  async function shareImage(txOrText, customTitle) {
+    return saveJpg(txOrText, customTitle);
   }
 
   async function exportPdf(txOrText, customTitle) {
     var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
-    if (!target) return;
-    var rendered = await renderCanvasPng(target.src, target.title);
-    lastRenderedPng = rendered.dataUrl;
-    lastRenderedName = rendered.fileName;
-    printImageAsPdf(rendered.dataUrl, rendered.fileName.replace(/\.png$/i, ''));
+    if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
+    try {
+      var rendered = await renderCanvasPng(target.src, target.title);
+      lastRenderedPng = rendered.jpegDataUrl;
+      lastRenderedName = rendered.pdfFileName;
+      lastRenderedMeta = rendered;
+
+      if (!rendered.jpegDataUrl) {
+        rcptToast('Gagal membuat file PDF nota', 'error');
+        return;
+      }
+
+      var pdfBytes = buildRealPdfFromJpeg(rendered.jpegDataUrl, rendered.width, rendered.height);
+      if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
+        var pdfB64 = uint8ToBase64(pdfBytes);
+        window.AndroidBT.savePdf(pdfB64, rendered.pdfFileName);
+        rcptToast('Nota PDF berhasil disimpan ke HP!', 'success');
+        return;
+      }
+
+      var pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      triggerBlobDownload(pdfBlob, rendered.pdfFileName);
+      rcptToast('Nota PDF berhasil disimpan!', 'success');
+    } catch (err) {
+      console.error('exportPdf error:', err);
+      rcptToast('Gagal menyimpan nota PDF', 'error');
+    }
+  }
+
+  async function shareWhatsApp(txOrText, customTitle) {
+    var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
+    if (!target) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
+    var plainText = buildReceiptPlainText(target);
+    var rawPhone = (target.src && typeof target.src === 'object')
+      ? (target.src.customerPhone || target.src.phone || target.src.noHp || target.src.whatsapp || '')
+      : '';
+    var waPhone = normalizeWaPhone(rawPhone);
+
+    try {
+      var rendered = await renderCanvasPng(target.src, target.title);
+      lastRenderedPng = rendered.jpegDataUrl;
+      lastRenderedName = rendered.jpgFileName;
+      lastRenderedMeta = rendered;
+
+      // 1. APK Android native share (langsung kirim gambar JPG ke WhatsApp)
+      if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function' && rendered.jpegDataUrl) {
+        try {
+          window.AndroidShare.shareImage(rendered.jpegDataUrl, rendered.jpgFileName);
+          rcptToast('Pilih WhatsApp untuk kirim nota JPG', 'success');
+          return;
+        } catch (e) {}
+      }
+
+      // 2. HP / Browser modern dengan Web Share Files (langsung kirim gambar JPG + teks ke WA)
+      if (rendered.jpegDataUrl && navigator.canShare && typeof navigator.share === 'function') {
+        try {
+          var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
+          if (navigator.canShare({ files: [jpgFile] })) {
+            await navigator.share({
+              files: [jpgFile],
+              title: 'Nota Transaksi',
+              text: plainText
+            });
+            return;
+          }
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+    } catch (e) {}
+
+    // 3. Fallback universal (Desktop / WebView): salin teks + buka WhatsApp dengan rincian nota lengkap
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(plainText).catch(function() {});
+      }
+    } catch (e) {}
+
+    var waUrl = 'https://api.whatsapp.com/send?' + (waPhone ? ('phone=' + waPhone + '&') : '') + 'text=' + encodeURIComponent(plainText);
+    var a = document.createElement('a');
+    a.href = waUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    (document.body || document.documentElement).appendChild(a);
+    a.click();
+    setTimeout(function() { try { a.remove(); } catch (e) {} }, 200);
+    rcptToast('Membuka WhatsApp dengan rincian nota...', 'success');
   }
 
   function openPreview(txOrText, titleText) {
@@ -4148,20 +4339,25 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
             '<pre id="wpPrevPaper" style="margin:0;padding:1rem;background:#fff;color:#0f172a;border-radius:12px;border:1px dashed #cbd5e1;font-family:\'Courier New\',monospace;font-size:0.78rem;line-height:1.45;white-space:pre-wrap;overflow-x:auto;"></pre>' +
           '</div>' +
           '<div class="wp-pop-foot wp-rcpt-actions-bar">' +
-            '<button type="button" class="wp-pop-btn emerald" id="wpPrevImgBtn">' + ICONS_3D.image() + '<span>Nota Gambar</span></button>' +
+            '<button type="button" class="wp-pop-btn emerald" id="wpPrevImgBtn">' + ICONS_3D.image() + '<span>Simpan JPG</span></button>' +
             '<button type="button" class="wp-pop-btn rose" id="wpPrevPdfBtn">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+            '<button type="button" class="wp-pop-btn wa" id="wpPrevWaBtn">' + ICONS_3D.whatsapp() + '<span>Share WA</span></button>' +
           '</div>' +
         '</div>';
       (document.body || document.documentElement).appendChild(bd);
       bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
       document.getElementById('wpPrevClose').onclick = function() { bd.classList.remove('open'); };
       document.getElementById('wpPrevImgBtn').onclick = function() {
-        shareImage(currentReceiptTx || currentReceiptText, titleText || 'BUKTI TRANSAKSI');
+        saveJpg(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
       };
       document.getElementById('wpPrevPdfBtn').onclick = function() {
-        exportPdf(currentReceiptTx || currentReceiptText, titleText || 'BUKTI TRANSAKSI');
+        exportPdf(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
+      };
+      document.getElementById('wpPrevWaBtn').onclick = function() {
+        shareWhatsApp(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
       };
     }
+    bd.dataset.rcptTitle = titleText || 'BUKTI TRANSAKSI';
     var tSpan = document.querySelector('#wpPrevTitle span');
     if (tSpan) tSpan.textContent = titleText || 'Preview Struk';
     var paperEl = document.getElementById('wpPrevPaper');
@@ -4182,8 +4378,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     btnImg.type = 'button';
     btnImg.className = 'btn btn-sm wp-rcpt-btn-img';
     btnImg.id = 'btnWpShareNotaImg';
-    btnImg.innerHTML = ICONS_3D.image() + '<span>Nota Gambar</span>';
-    btnImg.onclick = function() { shareImage(); };
+    btnImg.innerHTML = ICONS_3D.image() + '<span>Simpan JPG</span>';
+    btnImg.onclick = function() { saveJpg(); };
 
     var btnPdf = document.createElement('button');
     btnPdf.type = 'button';
@@ -4192,8 +4388,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     btnPdf.innerHTML = ICONS_3D.pdf() + '<span>Simpan PDF</span>';
     btnPdf.onclick = function() { exportPdf(); };
 
+    var btnWa = document.createElement('button');
+    btnWa.type = 'button';
+    btnWa.className = 'btn btn-sm wp-rcpt-btn-wa';
+    btnWa.id = 'btnWpShareNotaWa';
+    btnWa.innerHTML = ICONS_3D.whatsapp() + '<span>Share WA</span>';
+    btnWa.onclick = function() { shareWhatsApp(); };
+
     footer.appendChild(btnImg);
     footer.appendChild(btnPdf);
+    footer.appendChild(btnWa);
   }
 
   window.WebPOSReceipt = {
@@ -4209,8 +4413,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     buildPlain: buildPlain,
     buildEscPos: buildEscPos,
     renderCanvasPng: renderCanvasPng,
+    saveJpg: saveJpg,
     shareImage: shareImage,
     exportPdf: exportPdf,
+    shareWhatsApp: shareWhatsApp,
     openPreview: openPreview,
     enhanceStrukModals: enhanceStrukModals
   };
