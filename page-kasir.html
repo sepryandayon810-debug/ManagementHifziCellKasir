@@ -5969,18 +5969,19 @@ function renderCart() {
       paymentModal.classList.add('active');
     });
 
-    document.getElementById('closePaymentModal').addEventListener('click', () => {
+    function closeAndCancelPaymentModal() {
+      kasirRoundingMode = '0';
+      const rndSel = document.getElementById('kasirRoundingMode');
+      if (rndSel) rndSel.value = '0';
+      updateKasirRoundingUI();
+      updateSummary();
       paymentModal.classList.remove('active');
-    });
+    }
 
-   // Mobile cancel
-document.getElementById('btnCancelPayment').addEventListener('click', () => {
-  paymentModal.classList.remove('active');
-});
-// Desktop cancel
-document.getElementById('btnCancelPaymentDesktop').addEventListener('click', () => {
-  paymentModal.classList.remove('active');
-});
+    document.getElementById('closePaymentModal').addEventListener('click', closeAndCancelPaymentModal);
+    document.getElementById('btnCancelPayment').addEventListener('click', closeAndCancelPaymentModal);
+    document.getElementById('btnCancelPaymentDesktop').addEventListener('click', closeAndCancelPaymentModal);
+  
         // Payment method selection
     document.querySelectorAll('.payment-method').forEach(m => {
       m.addEventListener('click', () => {
@@ -6264,6 +6265,7 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
           discountType = 'nominal';
           discountPercent = 0;
           discountNote = '';
+          kasirRoundingMode = '0';
           localStorage.removeItem('kasir_note');
           saveCart(); renderCart(); updateSummary();
           paymentModal.classList.remove('active');
@@ -6340,6 +6342,11 @@ const result = await KasCore.saveTransaction({
   kategori: 'jual',
   metode_pembayaran: 'utang',
   nominal: total,
+  subtotal: subtotal,
+  diskon: discount,
+  discount: discount,
+  rounding: getKasirRoundingAmount(),
+  pembulatan: getKasirRoundingAmount(),
   modal_produk: getCartModal(),
   bayar_sekarang: piutangPayment,
   metode_bayar_sekarang: 'tunai',
@@ -6430,6 +6437,7 @@ const transaction = {
           // 4. Reset kasir
           cart = [];
           discount = 0;
+          kasirRoundingMode = '0';
           localStorage.removeItem('kasir_note');
           saveCart();
           renderCart();
@@ -6511,6 +6519,8 @@ const baseNote = localStorage.getItem('kasir_note') || '';
           subtotal: subtotal,
           diskon: discount,
           discount: discount,
+          rounding: getKasirRoundingAmount(),
+          pembulatan: getKasirRoundingAmount(),
           modal_produk: getCartModal(),
           userId: user ? user.uid : 'unknown',
           shiftId: localStorage.getItem('active_shift_id') || null,
@@ -6588,6 +6598,7 @@ const transaction = {
         discountType = 'nominal';
         discountPercent = 0;
         discountNote = '';
+        kasirRoundingMode = '0';
         localStorage.removeItem('kasir_note');
         saveCart();
         renderCart();
