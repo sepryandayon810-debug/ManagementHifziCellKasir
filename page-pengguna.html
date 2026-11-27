@@ -827,7 +827,7 @@
           <input type="tel" class="form-control" id="editUserPhone" placeholder="0812xxxxxxxx">
         </div>
       </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+      <div id="editRoleStatusWrap" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
           <div class="input-wrap">
@@ -1048,12 +1048,7 @@
           RoleGuard.apply(currentUserRole);
         }
 
-        const perms = (u.permissions && typeof u.permissions === "object") ? u.permissions : {};
-      if (currentUserRole !== "developer" && currentUserRole !== "owner" && perms.pengguna !== true) {
-        toast("Akses Ditolak: Halaman ini hanya untuk Owner dan Developer!", "error");
-        window.location.replace("index.html");
-        return;
-      }
+        // Semua role aktif boleh masuk dengan tampilan berjenjang sesuai jabatan
     } else {
       window.location.replace("index.html");
       return;
@@ -1064,14 +1059,26 @@
     return;
   }
 
+    // Sesuaikan tampilan berjenjang untuk Kasir (Mode Akun Saya)
+    if (currentUserRole === "kasir") {
+      const pendingTab = document.querySelector('.tab-item[data-tab="pending"]');
+      if (pendingTab) pendingTab.style.display = "none";
+      const activeTab = document.querySelector('.tab-item[data-tab="active"]');
+      if (activeTab) activeTab.innerHTML = '<i class="fas fa-user-circle" style="color:var(--primary)"></i> Akun Saya <span class="counter-badge" id="countActive">0</span>';
+      const hdrTitle = document.querySelector(".header-title");
+      if (hdrTitle) hdrTitle.textContent = "Akun Saya";
+    }
+
     loadUsers();
     document.getElementById("btnRefresh").onclick = loadUsers;
-// Tampilkan tombol tambah hanya untuk owner/developer/admin
-if (currentUserRole === "owner" || currentUserRole === "developer" || currentUserRole === "admin") {
-  document.getElementById("btnCreateUser").style.display = "inline-flex";
-}
-document.getElementById("btnCreateUser").onclick = openCreateUserModal;
-
+    // Tampilkan tombol tambah hanya untuk developer/owner/admin
+    if (currentUserRole === "owner" || currentUserRole === "developer" || currentUserRole === "admin") {
+      document.getElementById("btnCreateUser").style.display = "inline-flex";
+    } else {
+      document.getElementById("btnCreateUser").style.display = "none";
+    }
+    document.getElementById("btnCreateUser").onclick = openCreateUserModal;
+    
     document.querySelectorAll(".tab-item").forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll(".tab-item").forEach(b => b.classList.remove("active"));
@@ -1132,30 +1139,53 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     });
   }
 
+  function canViewUser(u) {
+    if (!u) return false;
+    const targetRole = (u.role || "kasir").toLowerCase();
+    if (currentUserRole === "developer") return true;
+    if (currentUserRole === "owner") return targetRole !== "developer";
+    if (currentUserRole === "admin") return u.id === currentUserId || targetRole === "kasir";
+    return u.id === currentUserId;
+  }
+
   async function loadUsers() {
     const tbody = document.getElementById("userTableBody");
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
 
     try {
-      const snap = await db.collection("users").get();
       allUsers = [];
-     const emptyStatusIds = [];
-      snap.forEach(doc => {
-        const d = doc.data() || {};
-        if (!d.status || !String(d.status).trim()) {
-          d.status = "active";
-          emptyStatusIds.push(doc.id);
+      if (currentUserRole === "kasir") {
+        const myDoc = await db.collection("users").doc(currentUserId).get();
+        if (myDoc.exists) {
+          const d = myDoc.data() || {};
+          if (!d.status || !String(d.status).trim()) d.status = "active";
+          allUsers.push({ id: myDoc.id, ...d });
         }
-        allUsers.push({ id: doc.id, ...d });
-      });
-      if (emptyStatusIds.length && (currentUserRole === "developer" || currentUserRole === "owner")) {
-        Promise.all(emptyStatusIds.map(id => db.collection("users").doc(id).update({ status: "active" }).catch(() => {})));
+      } else {
+        const snap = await db.collection("users").get();
+        const emptyStatusIds = [];
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          if (!d.status || !String(d.status).trim()) {
+            d.status = "active";
+            emptyStatusIds.push(doc.id);
+          }
+          const item = { id: doc.id, ...d };
+          if (canViewUser(item)) {
+            allUsers.push(item);
+          }
+        });
+        if (emptyStatusIds.length && (currentUserRole === "developer" || currentUserRole === "owner")) {
+          Promise.all(emptyStatusIds.map(id => db.collection("users").doc(id).update({ status: "active" }).catch(() => {})));
+        }
       }
 
       const activeCount = allUsers.filter(u => u.status === "active").length;
       const pendingCount = allUsers.filter(u => u.status === "pending").length;
-      document.getElementById("countActive").textContent = activeCount;
-      document.getElementById("countPending").textContent = pendingCount;
+      const elAct = document.getElementById("countActive");
+      const elPen = document.getElementById("countPending");
+      if (elAct) elAct.textContent = activeCount;
+      if (elPen) elPen.textContent = pendingCount;
 
       renderTable();
     } catch(err) {
@@ -1167,8 +1197,8 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
   function renderTable() {
     const tbody = document.getElementById("userTableBody");
     const filtered = allUsers.filter(u => {
+      if (!canViewUser(u)) return false;
       if (u.status !== currentActiveTab) return false;
-      if (currentUserRole === "admin" && (u.role || "").toLowerCase() !== "kasir") return false;
       return true;
     });
 
@@ -1183,10 +1213,22 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     tbody.innerHTML = filtered.map(u => {
       const role = (u.role || "kasir").toLowerCase();
       const status = u.status || "pending";
+      const isSelf = (u.id === currentUserId);
       const isDevOrOwner = role === "developer" || role === "owner";
 
-      const canEditPassword = (currentUserRole === "developer" || currentUserRole === "owner") || 
+      const canEditPassword = isSelf || currentUserRole === "developer" ||
+                            (currentUserRole === "owner" && role !== "developer") ||
                             (currentUserRole === "admin" && role === "kasir");
+      const canChangeRole = !isSelf && (currentUserRole === "developer" || (currentUserRole === "owner" && !isDevOrOwner));
+      const canDeleteUser = !isSelf && (
+                            currentUserRole === "developer" ||
+                            (currentUserRole === "owner" && !isDevOrOwner) ||
+                            (currentUserRole === "admin" && role === "kasir")
+                          );
+      const canApprovePending = currentUserRole === "developer" ||
+                            (currentUserRole === "owner" && role !== "developer") ||
+                            (currentUserRole === "admin" && role === "kasir");
+
       const safeId = escJs(u.id);
       const safeNameHtml = escHtml(u.name || "-");
       const safeUserHtml = escHtml(u.username || "-");
@@ -1200,9 +1242,9 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       return `
         <tr>
           <td>
-            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${safeId}')" title="Klik untuk edit data & hak akses">
-  <div style="font-weight:700; color:var(--text-main);">${safeNameHtml}</div>
-  <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${safeUserHtml}</div>
+            <button type="button" class="user-edit-trigger" onclick="window.openEditUserModal('${safeId}')" title="${isSelf ? 'Klik untuk edit profil Anda' : 'Klik untuk edit data & hak akses'}">
+              <div style="font-weight:700; color:var(--text-main);">${safeNameHtml}${isSelf ? ' <span style="font-size:0.68rem; color:var(--primary); font-weight:800;">(Anda)</span>' : ''}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${safeUserHtml}</div>
             </button>
           </td>
           <td>
@@ -1217,28 +1259,31 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
           </td>
           <td style="text-align:right">
             <div class="btn-action-group" style="justify-content:flex-end">
-              ${status === 'pending' ? `
+              ${status === 'pending' ? (canApprovePending ? `
                 <button class="btn-action btn-approve" onclick="window.approveUser('${safeId}', '${escJs(u.name || "Staf")}')">
                   <i class="fas fa-check"></i> Setujui
                 </button>
                 <button class="btn-action btn-reject" onclick="window.rejectUser('${safeId}')">
                   <i class="fas fa-xmark"></i> Tolak
                 </button>
-              ` : `
+              ` : '') : `
                 <button class="btn-action btn-device" onclick="window.openDeviceHistory('${safeId}', '${safeLabelJs}')" title="Riwayat Device Login">
                   <i class="fas fa-laptop-mobile"></i> Device
                 </button>
 
                 ${canEditPassword ? `
-                  <button class="btn-action btn-password" onclick="window.openPasswordModal('${safeId}', '${safeLabelJs}')" title="Ganti Password">
+                  <button class="btn-action btn-password" onclick="window.openPasswordModal('${safeId}', '${safeLabelJs}')" title="Reset Password">
                     <i class="fas fa-key"></i> Password
                   </button>
                 ` : ''}
-                
-                ${(!isDevOrOwner || currentUserRole === 'developer') ? `
+
+                ${canChangeRole ? `
                   <button class="btn-action btn-delete" onclick="window.openRoleModal('${safeId}', '${safeLabelJs}', '${escJs(role)}')" title="Ubah Role">
                     <i class="fas fa-user-pen"></i> Role
                   </button>
+                ` : ''}
+
+                ${canDeleteUser ? `
                   <button class="btn-action btn-delete" onclick="window.deleteUserRecord('${safeId}')" title="Hapus User">
                     <i class="fas fa-trash"></i> Hapus
                   </button>
@@ -1250,7 +1295,7 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       `;
     }).join("");
   }
-
+  
   window.approveUser = function(userId, userName) {
     showCustomConfirm("Persetujuan Akun", `Setujui pengajuan akun untuk ${userName}?`, "warning", "Ya, Setujui", async () => {
       try {
@@ -1325,9 +1370,13 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
   };
 
   window.openRoleModal = function(uid, name, currentRole) {
+    if (currentUserRole !== "developer" && currentUserRole !== "owner") return;
+    const sel = document.getElementById("newRoleSelect");
+    const allowed = currentUserRole === "developer" ? ["kasir", "admin", "owner", "developer"] : ["kasir", "admin", "owner"];
+    sel.innerHTML = allowed.map(r => `<option value="${r}">${r.charAt(0).toUpperCase() + r.slice(1)}</option>`).join("");
     document.getElementById("targetRoleUserId").value = uid;
     document.getElementById("targetRoleUserName").textContent = name;
-    document.getElementById("newRoleSelect").value = currentRole;
+    sel.value = allowed.includes(currentRole) ? currentRole : "kasir";
     document.getElementById("modalEditRole").classList.add("active");
   };
 
@@ -1381,15 +1430,22 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
 
   window.openEditUserModal = function(uid) {
     const u = allUsers.find(x => x.id === uid);
-    if (!u) return;
+    if (!u || !canViewUser(u)) return;
+
+    const isSelf = (uid === currentUserId);
+    const isKasirMode = (currentUserRole === "kasir");
+    const targetRole = (u.role || "kasir").toLowerCase();
 
     const roleSelect = document.getElementById("editUserRole");
-    let allowedRoles = [];
-    if (currentUserRole === "owner" || currentUserRole === "developer") {
+    let allowedRoles = ["kasir"];
+    if (currentUserRole === "developer") {
       allowedRoles = ["kasir", "admin", "owner", "developer"];
+    } else if (currentUserRole === "owner") {
+      allowedRoles = ["kasir", "admin", "owner"];
     } else if (currentUserRole === "admin") {
       allowedRoles = ["kasir"];
     }
+    if (!allowedRoles.includes(targetRole)) allowedRoles.push(targetRole);
     roleSelect.innerHTML = allowedRoles.map(r =>
       `<option value="${r}">${r.charAt(0).toUpperCase() + r.slice(1)}</option>`
     ).join("");
@@ -1397,31 +1453,35 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("editUserId").value = uid;
     document.getElementById("editUserName").value = u.name || "";
     document.getElementById("editUserUsername").value = u.username || "";
-   document.getElementById("editUserEmail").value = u.email || "";
+    const emailInput = document.getElementById("editUserEmail");
+    emailInput.value = u.email || "";
+    emailInput.readOnly = isKasirMode;
+    emailInput.style.opacity = isKasirMode ? "0.7" : "1";
     document.getElementById("editUserPhone").value = u.phone || u.noHp || u.no_hp || u.hp || u.whatsapp || "";
     const statusSelect = document.getElementById("editUserStatus");
     if (statusSelect) {
       statusSelect.value = (u.status || "active").toLowerCase() === "active" ? "active" : "pending";
-      statusSelect.disabled = (uid === currentUserId);
+      statusSelect.disabled = (isSelf || isKasirMode);
     }
-    const targetRole = (u.role || "kasir").toLowerCase();
     roleSelect.value = targetRole;
 
-   // Tampilkan centang izin lengkap (19 Menu + 8 Submenu Kas)
+    // Sembunyikan Role & Status saat Kasir atau saat edit akun sendiri
+    const roleStatusWrap = document.getElementById("editRoleStatusWrap");
+    if (roleStatusWrap) {
+      roleStatusWrap.style.display = (isKasirMode || isSelf) ? "none" : "grid";
+    }
+
     const perms = u.permissions || {};
 
-    // 1. Menu Utama (Default True untuk kasir jika belum diset)
     document.getElementById("perm_dashboard").checked = perms.dashboard !== undefined ? !!perms.dashboard : true;
     document.getElementById("perm_kasir").checked = perms.kasir !== undefined ? !!perms.kasir : true;
     document.getElementById("perm_produk").checked = perms.produk !== undefined ? !!perms.produk : true;
 
-    // 2. Transaksi
     document.getElementById("perm_riwayat").checked = perms.riwayat !== undefined ? !!perms.riwayat : true;
     document.getElementById("perm_pembelian").checked = !!perms.pembelian;
     document.getElementById("perm_hutang").checked = perms.hutang !== undefined ? !!perms.hutang : true;
     document.getElementById("perm_transfer_shift").checked = !!perms.transfer_shift;
 
-    // 3. Submenu Kas Management (8 Submenu)
     document.getElementById("perm_kas_ringkasan").checked = perms.kas_ringkasan !== undefined ? !!perms.kas_ringkasan : true;
     document.getElementById("perm_kas_modal").checked = perms.kas_modal !== undefined ? !!perms.kas_modal : true;
     document.getElementById("perm_kas_masuk").checked = perms.kas_masuk !== undefined ? !!perms.kas_masuk : true;
@@ -1431,17 +1491,14 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("perm_kas_topup").checked = perms.kas_topup !== undefined ? !!perms.kas_topup : true;
     document.getElementById("perm_kas_tarik").checked = perms.kas_tarik !== undefined ? !!perms.kas_tarik : true;
 
-    // 4. Laporan
     document.getElementById("perm_laporan").checked = !!perms.laporan;
     document.getElementById("perm_laporan_stok").checked = !!perms['laporan-stok'];
     document.getElementById("perm_laporan_terlaris").checked = !!perms['laporan-terlaris'];
 
-    // 5. Integrasi & Penggajian
     document.getElementById("perm_telegram").checked = !!perms.telegram;
     document.getElementById("perm_pelanggan").checked = !!(perms.pelanggan || perms['data-pelanggan']);
     document.getElementById("perm_penggajian").checked = !!perms.penggajian;
 
-    // 6. Sistem
     document.getElementById("perm_pengguna").checked = !!perms.pengguna;
     document.getElementById("perm_setting").checked = perms.setting !== undefined ? !!perms.setting : true;
     document.getElementById("perm_backup").checked = !!perms.backup;
@@ -1449,18 +1506,18 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("perm_printer").checked = perms.printer !== undefined ? !!perms.printer : true;
     document.getElementById("perm_reset").checked = !!perms.reset;
 
-    // 7. Dashboard
     document.getElementById("perm_total_laba").checked = !!perms.total_laba;
     document.getElementById("perm_modal_awal").checked = !!perms.modal_awal;
 
-    // Sembunyikan checklist jika yang diedit adalah Owner / Developer
+    // Sembunyikan checklist jika Kasir, edit akun sendiri, atau target Owner/Developer
     const permWrap = document.getElementById("userPermissionsWrap");
     if (permWrap) {
-      permWrap.style.display = (targetRole === "owner" || targetRole === "developer") ? "none" : "block";
+      permWrap.style.display = (isKasirMode || isSelf || targetRole === "owner" || targetRole === "developer") ? "none" : "block";
     }
 
     document.getElementById("modalEditUser").classList.add("active");
-    };
+  };
+
   window.closeEditUserModal = function() {
     document.getElementById("modalEditUser").classList.remove("active");
   };
@@ -1476,82 +1533,101 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     const user = allUsers.find(x => x.id === uid);
     if (!user) return;
 
-    if (!name || !email) { toast("Nama dan email wajib diisi!", "error"); return; }
-    if (currentUserRole === "admin" && role !== "kasir") {
+    const isSelf = (uid === currentUserId);
+    const isKasirMode = (currentUserRole === "kasir");
+    const existingRole = (user.role || "kasir").toLowerCase();
+
+    if (isKasirMode && !isSelf) {
+      toast("Anda hanya dapat mengedit profil Anda sendiri!", "error");
+      return;
+    }
+    if (!name || (!isKasirMode && !email)) {
+      toast("Nama dan email wajib diisi!", "error");
+      return;
+    }
+    if (!isSelf && currentUserRole === "owner" && (existingRole === "developer" || role === "developer")) {
+      toast("Owner tidak memiliki izin mengubah role Developer!", "error");
+      return;
+    }
+    if (!isSelf && currentUserRole === "admin" && (existingRole !== "kasir" || role !== "kasir")) {
       toast("Admin hanya bisa mengatur pengguna dengan role Kasir!", "error");
       return;
     }
-    // Username tidak boleh bentrok (dipakai untuk cek login)
     if (username) {
       const dup = allUsers.find(x => x.id !== uid && (x.username || "").toLowerCase() === username);
       if (dup) { toast(`Username @${username} sudah dipakai pengguna lain!`, "error"); return; }
     }
 
     try {
-      // Ambil status centang hak akses
-      // Ambil status 27 menu & submenu lengkap
-      const permissions = {
-        // Utama
-        dashboard: document.getElementById("perm_dashboard").checked,
-        kasir: document.getElementById("perm_kasir").checked,
-        produk: document.getElementById("perm_produk").checked,
-        // Transaksi
-        riwayat: document.getElementById("perm_riwayat").checked,
-        pembelian: document.getElementById("perm_pembelian").checked,
-        hutang: document.getElementById("perm_hutang").checked,
-        transfer_shift: document.getElementById("perm_transfer_shift").checked,
-        // 8 Submenu Kas Management
-        kas_ringkasan: document.getElementById("perm_kas_ringkasan").checked,
-        kas_modal: document.getElementById("perm_kas_modal").checked,
-        kas_masuk: document.getElementById("perm_kas_masuk").checked,
-        kas_keluar: document.getElementById("perm_kas_keluar").checked,
-        kas_shift: document.getElementById("perm_kas_shift").checked,
-        kas_closing: document.getElementById("perm_kas_closing").checked,
-        kas_topup: document.getElementById("perm_kas_topup").checked,
-        kas_tarik: document.getElementById("perm_kas_tarik").checked,
-        // Laporan
-        laporan: document.getElementById("perm_laporan").checked,
-        'laporan-stok': document.getElementById("perm_laporan_stok").checked,
-        'laporan-terlaris': document.getElementById("perm_laporan_terlaris").checked,
-        // Integrasi & Penggajian
-        telegram: document.getElementById("perm_telegram").checked,
-        pelanggan: document.getElementById("perm_pelanggan").checked,
-        'data-pelanggan': document.getElementById("perm_pelanggan").checked,
-        penggajian: document.getElementById("perm_penggajian").checked,
-        // Sistem
-        pengguna: document.getElementById("perm_pengguna").checked,
-        setting: document.getElementById("perm_setting").checked,
-        backup: document.getElementById("perm_backup").checked,
-        'log-aktivitas': document.getElementById("perm_log_aktivitas").checked,
-        printer: document.getElementById("perm_printer").checked,
-        reset: document.getElementById("perm_reset").checked,
-        // Dashboard
-        total_laba: document.getElementById("perm_total_laba").checked,
-        modal_awal: document.getElementById("perm_modal_awal").checked
-      };
-
-      const data = {
-        name: name,
-        username: username,
-        phone: phone,
-        noHp: phone,
-        role: role,
-        permissions: permissions, // <-- Ikut disimpan ke Firebase
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (uid !== currentUserId && (userStatus === "active" || userStatus === "pending")) {
-        data.status = userStatus;
-      }
-
-      // Email di Firestore ikut diubah. Email login (Firebase Auth) TIDAK bisa
-      // diubah dari klien untuk akun orang lain -> butuh Cloud Function (bagian 5).
-      if (email.toLowerCase() !== (user.email || "").toLowerCase()) {
-        data.email = email;
-        data.emailSyncPending = true;
+      let data;
+      if (isKasirMode || isSelf) {
+        // Edit profil diri sendiri: Role, Status, dan Hak Akses dikunci aman
+        data = {
+          name: name,
+          username: username,
+          phone: phone,
+          noHp: phone,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+      } else {
+        const permissions = {
+          dashboard: document.getElementById("perm_dashboard").checked,
+          kasir: document.getElementById("perm_kasir").checked,
+          produk: document.getElementById("perm_produk").checked,
+          riwayat: document.getElementById("perm_riwayat").checked,
+          pembelian: document.getElementById("perm_pembelian").checked,
+          hutang: document.getElementById("perm_hutang").checked,
+          transfer_shift: document.getElementById("perm_transfer_shift").checked,
+          kas_ringkasan: document.getElementById("perm_kas_ringkasan").checked,
+          kas_modal: document.getElementById("perm_kas_modal").checked,
+          kas_masuk: document.getElementById("perm_kas_masuk").checked,
+          kas_keluar: document.getElementById("perm_kas_keluar").checked,
+          kas_shift: document.getElementById("perm_kas_shift").checked,
+          kas_closing: document.getElementById("perm_kas_closing").checked,
+          kas_topup: document.getElementById("perm_kas_topup").checked,
+          kas_tarik: document.getElementById("perm_kas_tarik").checked,
+          laporan: document.getElementById("perm_laporan").checked,
+          'laporan-stok': document.getElementById("perm_laporan_stok").checked,
+          'laporan-terlaris': document.getElementById("perm_laporan_terlaris").checked,
+          telegram: document.getElementById("perm_telegram").checked,
+          pelanggan: document.getElementById("perm_pelanggan").checked,
+          'data-pelanggan': document.getElementById("perm_pelanggan").checked,
+          penggajian: document.getElementById("perm_penggajian").checked,
+          pengguna: document.getElementById("perm_pengguna").checked,
+          setting: document.getElementById("perm_setting").checked,
+          backup: document.getElementById("perm_backup").checked,
+          'log-aktivitas': document.getElementById("perm_log_aktivitas").checked,
+          printer: document.getElementById("perm_printer").checked,
+          reset: document.getElementById("perm_reset").checked,
+          total_laba: document.getElementById("perm_total_laba").checked,
+          modal_awal: document.getElementById("perm_modal_awal").checked
+        };
+        data = {
+          name: name,
+          username: username,
+          phone: phone,
+          noHp: phone,
+          role: role,
+          permissions: permissions,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (userStatus === "active" || userStatus === "pending") {
+          data.status = userStatus;
+        }
+        if (email.toLowerCase() !== (user.email || "").toLowerCase()) {
+          data.email = email;
+          data.emailSyncPending = true;
+        }
       }
 
       await db.collection("users").doc(uid).update(data);
-      toast(`Data ${name} berhasil diperbarui & langsung aktif!`, "success");
+      if (isSelf) {
+        const unEl = document.getElementById("userName");
+        const avEl = document.getElementById("userAvatar");
+        if (unEl) unEl.textContent = name;
+        if (avEl && name) avEl.textContent = name.slice(0, 2).toUpperCase();
+      }
+      toast(`Data ${name} berhasil diperbarui!`, "success");
       if (data.emailSyncPending) {
         toast("Email login perlu disinkronkan via Cloud Function (bagian 5).", "info");
       }
@@ -1578,8 +1654,10 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
   const roleSelect = document.getElementById("newUserRole");
   roleSelect.innerHTML = "";
   let allowedRoles = [];
-  if (currentUserRole === "owner" || currentUserRole === "developer") {
+  if (currentUserRole === "developer") {
     allowedRoles = ["kasir", "admin", "owner", "developer"];
+  } else if (currentUserRole === "owner") {
+    allowedRoles = ["kasir", "admin", "owner"];
   } else if (currentUserRole === "admin") {
     allowedRoles = ["kasir"];
   }
