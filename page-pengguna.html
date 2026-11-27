@@ -1139,9 +1139,18 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     try {
       const snap = await db.collection("users").get();
       allUsers = [];
+     const emptyStatusIds = [];
       snap.forEach(doc => {
-        allUsers.push({ id: doc.id, ...doc.data() });
+        const d = doc.data() || {};
+        if (!d.status || !String(d.status).trim()) {
+          d.status = "active";
+          emptyStatusIds.push(doc.id);
+        }
+        allUsers.push({ id: doc.id, ...d });
       });
+      if (emptyStatusIds.length && (currentUserRole === "developer" || currentUserRole === "owner")) {
+        Promise.all(emptyStatusIds.map(id => db.collection("users").doc(id).update({ status: "active" }).catch(() => {})));
+      }
 
       const activeCount = allUsers.filter(u => u.status === "active").length;
       const pendingCount = allUsers.filter(u => u.status === "pending").length;
@@ -1462,6 +1471,7 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     const username = document.getElementById("editUserUsername").value.trim().toLowerCase().replace(/\s+/g, "");
     const email = document.getElementById("editUserEmail").value.trim();
     const phone = (document.getElementById("editUserPhone")?.value || "").trim();
+    const userStatus = document.getElementById("editUserStatus")?.value || "active";
     const role = document.getElementById("editUserRole").value;
     const user = allUsers.find(x => x.id === uid);
     if (!user) return;
@@ -1529,8 +1539,8 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
         permissions: permissions, // <-- Ikut disimpan ke Firebase
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (uid !== currentUserId) {
-        data.status = status;
+      if (uid !== currentUserId && (userStatus === "active" || userStatus === "pending")) {
+        data.status = userStatus;
       }
 
       // Email di Firestore ikut diubah. Email login (Firebase Auth) TIDAK bisa
