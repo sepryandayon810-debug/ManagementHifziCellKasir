@@ -2868,6 +2868,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       );
     }
 
+ );
+    }
+  };
+
   window.WebPOS3DIcons = ICONS_3D;
 
   function ensureUnifiedStyles() {
