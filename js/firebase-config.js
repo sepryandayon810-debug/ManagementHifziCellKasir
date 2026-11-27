@@ -4429,3 +4429,138 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     bindSidebarProfileClick();
   }
 })();
+
+// 12. SIMULASI ROLE KHUSUS DEVELOPER (CEK TAMPILAN OWNER / ADMIN / KASIR TANPA LOGOUT)
+(function() {
+  if (window.__webposDevRoleSimInit) return;
+  window.__webposDevRoleSimInit = true;
+
+  var SIM_KEY = 'webpos_dev_sim_role';
+  var VALID_SIM = { owner: 1, admin: 1, kasir: 1 };
+
+  window.getDevSimRole = function() {
+    try {
+      var r = String(sessionStorage.getItem(SIM_KEY) || '').toLowerCase();
+      return VALID_SIM[r] ? r : '';
+    } catch (e) { return ''; }
+  };
+
+  window.isDevRoleSimActive = function() {
+    return !!window.getDevSimRole();
+  };
+
+  window.getEffectiveUserRole = function(realRole) {
+    var rr = String(realRole || 'kasir').toLowerCase();
+    if (rr !== 'developer') {
+      try { sessionStorage.removeItem(SIM_KEY); } catch (e) {}
+      return rr;
+    }
+    var sim = window.getDevSimRole();
+    return sim || 'developer';
+  };
+
+  window.setDevSimRole = function(targetRole) {
+    if (window.__webposRealRole !== 'developer') return;
+    var r = String(targetRole || '').toLowerCase();
+    try {
+      if (VALID_SIM[r]) {
+        sessionStorage.setItem(SIM_KEY, r);
+      } else {
+        sessionStorage.removeItem(SIM_KEY);
+      }
+    } catch (e) {}
+    window.location.reload();
+  };
+
+  function injectSimStyles() {
+    if (document.getElementById('webpos-dev-sim-style')) return;
+    var st = document.createElement('style');
+    st.id = 'webpos-dev-sim-style';
+    st.textContent = [
+      '#webposDevRoleSimBar{position:fixed;right:14px;bottom:14px;z-index:99980;font-family:inherit;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}',
+      '@media(max-width:1024px){#webposDevRoleSimBar{bottom:70px;right:10px;}}',
+      '.wds-toggle{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--primary,#4f46e5);background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.74rem;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(15,23,42,0.22);transition:transform .16s ease;}',
+      '.wds-toggle:hover{transform:translateY(-1px);}',
+      '.wds-toggle.sim-on{background:linear-gradient(135deg,var(--primary,#4f46e5),var(--primary-hover,var(--primary-dark,#4338ca)));color:#fff;border-color:rgba(255,255,255,0.45);}',
+      '.wds-panel{display:none;flex-direction:column;gap:7px;padding:10px 11px;border-radius:16px;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));border:1.5px solid var(--border,var(--border-color,rgba(148,163,184,0.32)));box-shadow:0 16px 38px rgba(15,23,42,0.28);min-width:228px;}',
+      '.wds-panel.open{display:flex;}',
+      '.wds-title{font-size:0.7rem;font-weight:800;color:var(--text-muted,#64748b);display:flex;align-items:center;justify-content:space-between;gap:8px;}',
+      '.wds-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
+      '.wds-role-btn{border:1px solid var(--border,var(--border-color,#cbd5e1));background:var(--bg-subtle,var(--bg-secondary,#f8fafc));color:var(--text-main,var(--text-primary,#0f172a));border-radius:10px;padding:7px 9px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .14s ease;}',
+      '.wds-role-btn:hover{border-color:var(--primary,#4f46e5);}',
+      '.wds-role-btn.active{background:linear-gradient(135deg,var(--primary,#4f46e5),var(--primary-hover,var(--primary-dark,#4338ca)));color:#fff;border-color:transparent;box-shadow:0 4px 10px rgba(15,23,42,0.2);}',
+      '[data-theme="dark"] .wds-panel,[data-theme="midnight"] .wds-panel,[data-theme="oled"] .wds-panel{background:var(--bg-surface,var(--bg-card,#111827));color:var(--text-main,#f8fafc);}',
+      '[data-theme="dark"] .wds-role-btn:not(.active){background:var(--bg-subtle,var(--bg-secondary,#1e293b));color:#f8fafc;}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function renderDevSimWidget() {
+    if (window.__webposRealRole !== 'developer') return;
+    if (/login\.html$/i.test(window.location.pathname || '')) return;
+    injectSimStyles();
+
+    var old = document.getElementById('webposDevRoleSimBar');
+    if (old) old.remove();
+
+    var activeSim = window.getDevSimRole();
+    var currentEffective = activeSim || 'developer';
+    var shieldSvg = '<svg style="width:17px;height:17px;flex-shrink:0;" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="wdsG" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs><path d="M24 5L39 11V23C39 33 32.5 40 24 43C15.5 40 9 33 9 23V11L24 5Z" fill="url(#wdsG)" stroke="#FFFFFF" stroke-width="1.8"/><path d="M17 24L22 29L32 18.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    var wrap = document.createElement('div');
+    wrap.id = 'webposDevRoleSimBar';
+    wrap.innerHTML =
+      '<div class="wds-panel' + (activeSim ? ' open' : '') + '" id="wdsPanel">' +
+        '<div class="wds-title"><span>Simulasi Role (Developer)</span><span style="color:var(--primary,#4f46e5);">' + currentEffective.toUpperCase() + '</span></div>' +
+        '<div class="wds-grid">' +
+          '<button type="button" class="wds-role-btn' + (currentEffective === 'developer' ? ' active' : '') + '" data-sim-role="developer">Developer</button>' +
+          '<button type="button" class="wds-role-btn' + (currentEffective === 'owner' ? ' active' : '') + '" data-sim-role="owner">Owner</button>' +
+          '<button type="button" class="wds-role-btn' + (currentEffective === 'admin' ? ' active' : '') + '" data-sim-role="admin">Admin</button>' +
+          '<button type="button" class="wds-role-btn' + (currentEffective === 'kasir' ? ' active' : '') + '" data-sim-role="kasir">Kasir</button>' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="wds-toggle' + (activeSim ? ' sim-on' : '') + '" id="wdsToggleBtn" title="Ganti tampilan role tanpa logout">' +
+        shieldSvg + '<span>' + (activeSim ? 'Simulasi: ' + activeSim.toUpperCase() : 'Simulasi Role') + '</span>' +
+      '</button>';
+
+    document.body.appendChild(wrap);
+
+    var tBtn = document.getElementById('wdsToggleBtn');
+    var panel = document.getElementById('wdsPanel');
+    if (tBtn && panel) {
+      tBtn.onclick = function() { panel.classList.toggle('open'); };
+    }
+    wrap.querySelectorAll('[data-sim-role]').forEach(function(btn) {
+      btn.onclick = function() { window.setDevSimRole(btn.getAttribute('data-sim-role')); };
+    });
+  }
+
+  function initDevSimAuthCheck() {
+    if (!window.firebase || !firebase.auth || !firebase.firestore) return;
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (!user) {
+        window.__webposRealRole = '';
+        var bar = document.getElementById('webposDevRoleSimBar');
+        if (bar) bar.remove();
+        return;
+      }
+      firebase.firestore().collection('users').doc(user.uid).get().then(function(snap) {
+        var r = (snap.exists && snap.data() && snap.data().role) ? String(snap.data().role).toLowerCase() : 'kasir';
+        window.__webposRealRole = r;
+        if (r === 'developer') {
+          renderDevSimWidget();
+        } else {
+          try { sessionStorage.removeItem(SIM_KEY); } catch (e) {}
+          var bar = document.getElementById('webposDevRoleSimBar');
+          if (bar) bar.remove();
+        }
+      }).catch(function() {});
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDevSimAuthCheck);
+  } else {
+    initDevSimAuthCheck();
+  }
+})();
