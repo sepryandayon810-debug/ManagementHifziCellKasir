@@ -2653,13 +2653,26 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   function syncBrandFromCloud() {
     if (typeof window.db === 'undefined') return;
     try {
-      if (sessionStorage.getItem('webpos_brand_synced_v1') === '1') return;
+      if (sessionStorage.getItem('webpos_brand_synced_v2') === '1' && localStorage.getItem('webpos_store_address')) return;
     } catch (e) {}
     window.db.collection('settings').doc('store').get().then(function(doc) {
-      try { sessionStorage.setItem('webpos_brand_synced_v1', '1'); } catch (e) {}
+      try { sessionStorage.setItem('webpos_brand_synced_v2', '1'); } catch (e) {}
       if (!doc.exists || !doc.data()) return;
       var s = doc.data();
       if (s.name) localStorage.setItem('webpos_store_name', String(s.name).trim());
+      if (typeof s.address === 'string') localStorage.setItem('webpos_store_address', s.address.trim());
+      if (typeof s.phone === 'string') localStorage.setItem('webpos_store_phone', s.phone.trim());
+      if (typeof s.footerNote === 'string' && s.footerNote.trim()) {
+        localStorage.setItem('webpos_store_footer_note', s.footerNote.trim());
+      }
+      try {
+        var hdr = JSON.parse(localStorage.getItem('receiptHeader') || '{}') || {};
+        if (s.name) hdr.storeName = String(s.name).trim();
+        if (typeof s.address === 'string') hdr.address = s.address.trim();
+        if (typeof s.phone === 'string') hdr.phone = s.phone.trim();
+        if (typeof s.footerNote === 'string' && s.footerNote.trim()) hdr.note = s.footerNote.trim();
+        localStorage.setItem('receiptHeader', JSON.stringify(hdr));
+      } catch (e) {}
       if (isValidLogoSrc(s.logoDataUrl)) {
         localStorage.setItem('webpos_store_logo', String(s.logoDataUrl));
       } else if (s.logoDataUrl === '') {
@@ -3731,193 +3744,248 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     ctx.closePath();
   }
 
+  function drawZigzagPaper(ctx, x, y, w, h, toothW, toothH) {
+    var count = Math.max(8, Math.floor(w / toothW));
+    var step = w / count;
+    ctx.beginPath();
+    ctx.moveTo(x, y + toothH);
+    for (var i = 0; i < count; i++) {
+      ctx.lineTo(x + i * step + step / 2, y);
+      ctx.lineTo(x + (i + 1) * step, y + toothH);
+    }
+    ctx.lineTo(x + w, y + h - toothH);
+    for (var j = count; j > 0; j--) {
+      ctx.lineTo(x + j * step - step / 2, y + h);
+      ctx.lineTo(x + (j - 1) * step, y + h - toothH);
+    }
+    ctx.closePath();
+  }
+
   function renderReceiptSync(txOrText, customTitle, forceNoLogo) {
     var isStruct = txOrText && typeof txOrText === 'object';
     var n = isStruct ? normalizeTx(txOrText) : null;
     var hdr = n ? n.store : loadStoreHeader();
     if (hdr.logo && hdr.logo !== cachedLogoSrc) preloadStoreLogo(hdr.logo);
     var logoImg = (!forceNoLogo && cachedLogoImg && cachedLogoSrc === hdr.logo) ? cachedLogoImg : null;
-    
-    var W = 760;
-    var CARD_X = 28;
-    var CARD_W = W - CARD_X * 2;
-    var INNER_X = CARD_X + 34;
-    var INNER_W = CARD_W - 68;
+
+    var W = 580;
+    var PAPER_X = 24;
+    var PAPER_W = W - PAPER_X * 2;
+    var INNER_X = PAPER_X + 28;
+    var INNER_W = PAPER_W - 56;
+    var FONT_SANS = '"Segoe UI", Roboto, Arial, sans-serif';
+    var FONT_MONO = '"Courier New", Consolas, monospace';
 
     var measureCanvas = document.createElement('canvas');
     measureCanvas.width = W;
     measureCanvas.height = 100;
     var mctx = measureCanvas.getContext('2d');
 
+    mctx.font = '500 15px ' + FONT_SANS;
+    var addrLines = hdr.address ? wrapLines(mctx, hdr.address, INNER_W - 12) : [];
+
     var rows = [];
     var plainLines = [];
     if (n) {
-      mctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+      mctx.font = '700 16px ' + FONT_SANS;
       n.items.forEach(function(it) {
-        var wrapped = wrapLines(mctx, it.name, INNER_W - 200);
+        var wrapped = wrapLines(mctx, it.name, INNER_W - 145);
         rows.push({ item: it, wrapped: wrapped });
       });
     } else {
       var raw = String(txOrText || '').replace(/\r/g, '').split('\n');
+      var normStore = String(hdr.storeName || '').toUpperCase().trim();
+      var normAddr = String(hdr.address || '').toUpperCase().trim();
+      var normPhone = String(hdr.phone || '').replace(/\D/g, '');
+      var inTopHeader = true;
       for (var r = 0; r < raw.length; r++) {
         var ln = raw[r].trim();
         if (!ln) continue;
         if (/^[=\-_*]{4,}$/.test(ln)) {
-          plainLines.push({ type: 'div' });
-        } else {
-          plainLines.push({ type: 'text', text: ln });
+          if (plainLines.length > 0 && plainLines[plainLines.length - 1].type !== 'div') {
+            plainLines.push({ type: 'div' });
+          }
+          continue;
         }
+        var upperLn = ln.toUpperCase();
+        var digitsLn = ln.replace(/\D/g, '');
+        if (inTopHeader) {
+          if (normStore && upperLn === normStore) continue;
+          if (normAddr && upperLn === normAddr) continue;
+          if (normPhone && digitsLn && digitsLn === normPhone && /^(HP|TELP|WA)/i.test(ln)) continue;
+          if (/^(HP|TELP|WA)\s*:/i.test(ln) && !hdr.phone) {
+            hdr = Object.assign({}, hdr, { phone: ln.replace(/^(HP|TELP|WA)\s*:/i, '').trim() });
+            continue;
+          }
+          inTopHeader = false;
+        }
+        var colonIdx = ln.indexOf(':');
+        if (colonIdx > 0 && colonIdx < 24 && !/^https?:/i.test(ln)) {
+          var pk = ln.slice(0, colonIdx).trim();
+          var pv = ln.slice(colonIdx + 1).trim();
+          mctx.font = '700 15px ' + FONT_MONO;
+          var valLines = wrapLines(mctx, pv || '-', INNER_W - 155);
+          plainLines.push({ type: 'kv', k: pk, vLines: valLines });
+        } else {
+          mctx.font = '600 15px ' + FONT_MONO;
+          var tLines = wrapLines(mctx, ln, INNER_W - 4);
+          plainLines.push({ type: 'text', lines: tLines });
+        }
+      }
+      while (plainLines.length > 0 && plainLines[plainLines.length - 1].type === 'div') {
+        plainLines.pop();
       }
     }
 
-    var H = 56;
-    H += logoImg ? 104 : 68;
-    H += 36;
-    if (hdr.address) H += 26;
-    if (hdr.phone) H += 24;
-    H += 66;
+    var H = 44;
+    H += logoImg ? 76 : 6;
+    H += 28;
+    if (addrLines.length) H += addrLines.length * 20 + 2;
+    if (hdr.phone) H += 22;
+    H += 28 + 36;
 
     if (n) {
-      var metaCount = 3 + (n.seqNo ? 1 : 0) + ((n.isReseller || n.customer) ? 1 : 0) + (n.isReseller ? 1 : 0) + 1;
-      H += metaCount * 30 + 28;
-      H += 44;
+      var metaCount = 4 + (n.seqNo ? 1 : 0) + ((n.isReseller || n.customer) ? 1 : 0) + (n.isReseller ? 1 : 0);
+      H += metaCount * 24 + 18 + 28;
       rows.forEach(function(row) {
-        H += (row.wrapped.length * 26) + 34;
+        H += (row.wrapped.length * 21) + 22;
       });
-      H += 24 + 34 + 32;
-      if (n.discount > 0) H += 32;
-      if (n.tax > 0) H += 32;
-      if (n.rounding !== 0) H += 32;
-      H += 74 + (34 * 3 + 22) + 74 + 72;
+      H += 18 + (n.totalQty > 0 ? 24 : 0) + 24;
+      if (n.discount > 0) H += 24;
+      if (n.tax > 0) H += 24;
+      if (n.rounding !== 0) H += 24;
+      H += 58 + 74 + 54;
     } else {
       plainLines.forEach(function(pl) {
-        H += pl.type === 'div' ? 20 : 30;
+        if (pl.type === 'div') H += 17;
+        else if (pl.type === 'kv') H += Math.max(1, pl.vLines.length) * 22 + 3;
+        else H += Math.max(1, pl.lines.length) * 22 + 3;
       });
-      H += 110;
+      H += 8;
     }
+
+    mctx.font = '600 14px ' + FONT_SANS;
+    var noteLines = wrapLines(mctx, n ? n.noteText : hdr.note, INNER_W - 12);
+    H += 22 + noteLines.length * 20 + 40;
 
     var canvas = document.createElement('canvas');
     canvas.width = W;
-    canvas.height = Math.max(540, H);
+    canvas.height = Math.max(420, H);
     var ctx = canvas.getContext('2d');
 
-    var bgGrad = ctx.createLinearGradient(0, 0, W, canvas.height);
-    bgGrad.addColorStop(0, '#eef2ff');
-    bgGrad.addColorStop(1, '#e2e8f0');
-    ctx.fillStyle = bgGrad;
+    ctx.fillStyle = '#e5e7eb';
     ctx.fillRect(0, 0, W, canvas.height);
 
+    var paperY = 18;
+    var paperH = canvas.height - 36;
     ctx.save();
-    ctx.shadowColor = 'rgba(15, 23, 42, 0.14)';
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 10;
-    drawRoundRect(ctx, CARD_X, 24, CARD_W, canvas.height - 54, 22);
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.16)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    drawZigzagPaper(ctx, PAPER_X, paperY, PAPER_W, paperH, 14, 7);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.restore();
 
-    var accentA = n && n.isReseller ? '#4f46e5' : (n && n.isHutang ? '#d97706' : '#2563eb');
-    var accentB = n && n.isReseller ? '#7c3aed' : (n && n.isHutang ? '#f59e0b' : '#4f46e5');
-    ctx.save();
-    drawRoundRect(ctx, CARD_X, 24, CARD_W, 12, 6);
-    var topGrad = ctx.createLinearGradient(CARD_X, 24, CARD_X + CARD_W, 24);
-    topGrad.addColorStop(0, accentA);
-    topGrad.addColorStop(1, accentB);
-    ctx.fillStyle = topGrad;
-    ctx.fill();
-    ctx.restore();
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 1;
+    drawZigzagPaper(ctx, PAPER_X, paperY, PAPER_W, paperH, 14, 7);
+    ctx.stroke();
 
-    var y = 60;
-    if (logoImg) {
-      var sz = 78;
-      var lx = (W - sz) / 2;
+    function drawDoubleRule(padTop, padBot) {
+      y += padTop || 6;
       ctx.save();
-      drawRoundRect(ctx, lx, y, sz, sz, 18);
-      ctx.clip();
-      ctx.drawImage(logoImg, lx, y, sz, sz);
-      ctx.restore();
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 2;
-      drawRoundRect(ctx, lx, y, sz, sz, 18);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(INNER_X, y);
+      ctx.lineTo(INNER_X + INNER_W, y);
+      ctx.moveTo(INNER_X, y + 3.5);
+      ctx.lineTo(INNER_X + INNER_W, y + 3.5);
       ctx.stroke();
-      y += sz + 18;
-    } else {
-      var msz = 52;
-      var mx = (W - msz) / 2;
-      var mGrad = ctx.createLinearGradient(mx, y, mx + msz, y + msz);
-      mGrad.addColorStop(0, accentA);
-      mGrad.addColorStop(1, accentB);
-      drawRoundRect(ctx, mx, y, msz, msz, 14);
-      ctx.fillStyle = mGrad;
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '800 24px "Segoe UI", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText((hdr.storeName || 'H').slice(0, 2).toUpperCase(), W / 2, y + msz / 2 + 1);
-      y += msz + 16;
-    }
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#0f172a';
-    ctx.font = '800 28px "Segoe UI", Arial, sans-serif';
-    ctx.fillText(hdr.storeName.toUpperCase(), W / 2, y + 18);
-    y += 32;
-
-    ctx.fillStyle = '#475569';
-    ctx.font = '500 17px "Segoe UI", Arial, sans-serif';
-    if (hdr.address) {
-      ctx.fillText(hdr.address, W / 2, y + 14);
-      y += 24;
-    }
-    if (hdr.phone) {
-      ctx.fillText('Telp / WA: ' + hdr.phone, W / 2, y + 14);
-      y += 24;
-    }
-
-    y += 10;
-    var bannerTitle = n ? n.docTitle : (customTitle || 'BUKTI TRANSAKSI');
-    var banW = Math.min(INNER_W, Math.max(320, bannerTitle.length * 14 + 64));
-    var banX = (W - banW) / 2;
-    var bGrad = ctx.createLinearGradient(banX, y, banX + banW, y);
-    bGrad.addColorStop(0, accentA);
-    bGrad.addColorStop(1, accentB);
-    drawRoundRect(ctx, banX, y, banW, 40, 20);
-    ctx.fillStyle = bGrad;
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '800 17px "Segoe UI", Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(bannerTitle, W / 2, y + 26);
-    y += 58;
-
-    function drawKV(label, value, opts) {
-      opts = opts || {};
-      ctx.textAlign = 'left';
-      ctx.fillStyle = opts.labelColor || '#64748b';
-      ctx.font = (opts.bold ? '700 ' : '600 ') + (opts.size || 18) + 'px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(label, INNER_X, y);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = opts.valColor || '#0f172a';
-      ctx.font = (opts.valBold !== false ? '700 ' : '600 ') + (opts.size || 18) + 'px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(String(value || '-'), INNER_X + INNER_W, y);
-      y += opts.step || 29;
+      ctx.restore();
+      y += (padBot || 18);
     }
 
     function drawDash(padTop, padBot) {
-      y += padTop || 6;
+      y += padTop || 4;
       ctx.save();
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([5, 4]);
       ctx.beginPath();
       ctx.moveTo(INNER_X, y);
       ctx.lineTo(INNER_X + INNER_W, y);
       ctx.stroke();
       ctx.restore();
-      y += padBot || 18;
+      y += (padBot || 16);
     }
+
+    function drawKV(label, value, opts) {
+      opts = opts || {};
+      var sz = opts.size || 15;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = opts.labelColor || '#475569';
+      ctx.font = (opts.bold ? '700 ' : '600 ') + sz + 'px ' + FONT_MONO;
+      ctx.fillText(label, INNER_X, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = opts.valColor || '#0f172a';
+      ctx.font = (opts.valBold !== false ? '700 ' : '500 ') + sz + 'px ' + FONT_MONO;
+      ctx.fillText(String(value || '-'), INNER_X + INNER_W, y);
+      y += opts.step || 24;
+    }
+
+    var y = paperY + 26;
+
+    if (logoImg) {
+      var sz = 62;
+      var lx = (W - sz) / 2;
+      ctx.save();
+      drawRoundRect(ctx, lx, y, sz, sz, 12);
+      ctx.clip();
+      ctx.drawImage(logoImg, lx, y, sz, sz);
+      ctx.restore();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.2;
+      drawRoundRect(ctx, lx, y, sz, sz, 12);
+      ctx.stroke();
+      y += sz + 14;
+    } else {
+      y += 6;
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 24px ' + FONT_SANS;
+    ctx.fillText(hdr.storeName.toUpperCase(), W / 2, y + 18);
+    y += 28;
+
+    ctx.fillStyle = '#334155';
+    ctx.font = '500 15px ' + FONT_SANS;
+    if (addrLines.length) {
+      addrLines.forEach(function(al) {
+        ctx.fillText(al, W / 2, y + 12);
+        y += 20;
+      });
+      y += 2;
+    }
+    if (hdr.phone) {
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 15px ' + FONT_SANS;
+      ctx.fillText('HP / WA : ' + hdr.phone, W / 2, y + 12);
+      y += 22;
+    }
+
+    drawDoubleRule(6, 22);
+
+    var bannerTitle = n ? n.docTitle : (customTitle || 'BUKTI TRANSAKSI');
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 17px ' + FONT_MONO;
+    ctx.fillText(bannerTitle, W / 2, y + 4);
+    y += 14;
+    drawDash(4, 18);
 
     if (n) {
       drawKV('No. Nota', n.id);
@@ -3925,151 +3993,154 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       drawKV('Tanggal', n.dateTime);
       drawKV('Kasir', n.cashier);
       if (n.isReseller) {
-        drawKV('Konter Reseller', n.konter, { valColor: '#4f46e5', bold: true });
-        drawKV('Tipe Harga', 'RESELLER', { valColor: '#7c3aed' });
+        drawKV('Konter', n.konter, { valColor: '#1e293b', bold: true });
+        drawKV('Tipe', 'RESELLER', { valColor: '#3730a3' });
       } else if (n.customer) {
         drawKV('Pelanggan', n.customer);
       }
-      drawKV('Metode Bayar', n.methodLabel);
+      drawKV('Status', n.statusLabel, { valColor: n.statusLabel === 'LUNAS' ? '#047857' : '#b45309' });
 
-      y += 4;
-      drawRoundRect(ctx, INNER_X, y, INNER_W, 36, 10);
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fill();
-      ctx.fillStyle = '#334155';
-      ctx.font = '800 15px "Segoe UI", Arial, sans-serif';
+      drawDash(2, 16);
+
+      ctx.fillStyle = '#475569';
+      ctx.font = '700 13px ' + FONT_MONO;
       ctx.textAlign = 'left';
-      ctx.fillText('NAMA BARANG / QTY', INNER_X + 14, y + 23);
+      ctx.fillText('ITEM / QTY', INNER_X, y);
       ctx.textAlign = 'right';
-      ctx.fillText('SUBTOTAL', INNER_X + INNER_W - 14, y + 23);
-      y += 54;
+      ctx.fillText('TOTAL', INNER_X + INNER_W, y);
+      y += 10;
+      drawDash(2, 16);
 
-      rows.forEach(function(row, idx) {
+      rows.forEach(function(row) {
         var it = row.item;
         ctx.textAlign = 'left';
         ctx.fillStyle = '#0f172a';
-        ctx.font = '700 20px "Segoe UI", Arial, sans-serif';
+        ctx.font = '700 16px ' + FONT_SANS;
         row.wrapped.forEach(function(wline, wi) {
-          ctx.fillText(wline, INNER_X + 6, y);
+          ctx.fillText(wline, INNER_X, y);
           if (wi === 0) {
             ctx.textAlign = 'right';
             ctx.fillStyle = '#0f172a';
-            ctx.font = '800 20px "Segoe UI", Arial, sans-serif';
-            ctx.fillText(fmtRp(it.total), INNER_X + INNER_W - 6, y);
+            ctx.font = '700 16px ' + FONT_MONO;
+            ctx.fillText(fmtRp(it.total), INNER_X + INNER_W, y);
             ctx.textAlign = 'left';
-            ctx.font = '700 20px "Segoe UI", Arial, sans-serif';
+            ctx.font = '700 16px ' + FONT_SANS;
           }
-          y += 25;
+          y += 21;
         });
-        ctx.fillStyle = '#64748b';
-        ctx.font = '500 16px "Segoe UI", Arial, sans-serif';
-        ctx.fillText(it.quantity + ' x ' + fmtRp(it.price), INNER_X + 6, y);
-        y += 14;
-        if (idx < rows.length - 1) {
-          ctx.strokeStyle = '#f1f5f9';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(INNER_X, y);
-          ctx.lineTo(INNER_X + INNER_W, y);
-          ctx.stroke();
-        }
+        ctx.fillStyle = '#475569';
+        ctx.font = '500 14px ' + FONT_MONO;
+        ctx.fillText('  ' + it.quantity + ' x ' + fmtRp(it.price), INNER_X, y);
         y += 22;
       });
 
-      drawDash(2, 22);
+      drawDash(2, 16);
 
-      if (n.totalQty > 0) drawKV('Total Item', n.totalQty + ' pcs', { step: 30 });
-      drawKV('Subtotal', fmtRp(n.subtotal), { step: 30 });
-      if (n.discount > 0) drawKV('Diskon', '-' + fmtRp(n.discount), { valColor: '#e11d48', step: 30 });
-      if (n.tax > 0) drawKV('PPN', fmtRp(n.tax), { step: 30 });
+      if (n.totalQty > 0) drawKV('Total Item', n.totalQty + ' pcs', { step: 24 });
+      drawKV('Subtotal', fmtRp(n.subtotal), { step: 24 });
+      if (n.discount > 0) drawKV('Diskon', '-' + fmtRp(n.discount), { valColor: '#be123c', step: 24 });
+      if (n.tax > 0) drawKV('PPN', fmtRp(n.tax), { step: 24 });
       if (n.rounding !== 0) {
         drawKV('Pembulatan', fmtSignedRp(n.rounding), {
-          valColor: n.rounding > 0 ? '#059669' : '#d97706',
-          step: 30
+          valColor: n.rounding > 0 ? '#047857' : '#b45309',
+          step: 24
         });
       }
 
       y += 4;
-      drawRoundRect(ctx, INNER_X, y, INNER_W, 56, 14);
-      var totGrad = ctx.createLinearGradient(INNER_X, y, INNER_X + INNER_W, y);
-      totGrad.addColorStop(0, '#0f172a');
-      totGrad.addColorStop(1, '#1e293b');
-      ctx.fillStyle = totGrad;
-      ctx.fill();
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = '800 18px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(INNER_X - 4, y - 6, INNER_W + 8, 42);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(INNER_X - 4, y - 6);
+      ctx.lineTo(INNER_X + INNER_W + 4, y - 6);
+      ctx.moveTo(INNER_X - 4, y + 36);
+      ctx.lineTo(INNER_X + INNER_W + 4, y + 36);
+      ctx.stroke();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 18px ' + FONT_MONO;
       ctx.textAlign = 'left';
-      ctx.fillText('TOTAL TAGIHAN', INNER_X + 20, y + 34);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 26px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('TOTAL', INNER_X + 2, y + 21);
+      ctx.font = '900 22px ' + FONT_MONO;
       ctx.textAlign = 'right';
-      ctx.fillText(fmtRp(n.total), INNER_X + INNER_W - 20, y + 36);
-      y += 80;
+      ctx.fillText(fmtRp(n.total), INNER_X + INNER_W - 2, y + 22);
+      y += 54;
 
       if (n.isHutang) {
-        drawKV('Bayar Awal', fmtRp(n.paid), { step: 30 });
-        drawKV('Sisa Hutang', fmtRp(n.remaining), { valColor: '#d97706', bold: true, step: 30 });
+        drawKV('Bayar Awal', fmtRp(n.paid), { step: 24 });
+        drawKV('Sisa Hutang', fmtRp(n.remaining), { valColor: '#b45309', bold: true, step: 24 });
       } else {
-        drawKV('Jumlah Diterima', fmtRp(n.paid), { step: 30 });
-        drawKV('Kembalian', fmtRp(n.change), { valColor: '#059669', bold: true, step: 30 });
+        drawKV('Bayar', fmtRp(n.paid), { step: 24 });
+        drawKV('Kembali', fmtRp(n.change), { valColor: '#047857', bold: true, step: 24 });
       }
+      drawKV('Metode', n.methodLabel, { step: 26 });
 
-      y += 8;
+      y += 6;
       var stOk = n.statusLabel === 'LUNAS';
-      var stText = stOk ? 'LUNAS' : 'BELUM LUNAS (HUTANG)';
-      var stW = stOk ? 180 : 280;
+      var stText = stOk ? 'LUNAS' : 'BELUM LUNAS';
+      var stW = stOk ? 140 : 196;
       var stX = (W - stW) / 2;
-      drawRoundRect(ctx, stX, y, stW, 40, 20);
-      ctx.fillStyle = stOk ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.14)';
+      drawRoundRect(ctx, stX, y, stW, 34, 6);
+      ctx.fillStyle = stOk ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.1)';
       ctx.fill();
-      ctx.strokeStyle = stOk ? '#10b981' : '#f59e0b';
+      ctx.strokeStyle = stOk ? '#059669' : '#d97706';
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = stOk ? '#047857' : '#b45309';
-      ctx.font = '900 17px "Segoe UI", Arial, sans-serif';
+      ctx.font = '900 16px ' + FONT_MONO;
       ctx.textAlign = 'center';
-      ctx.fillText(stText, W / 2, y + 26);
-      y += 62;
+      ctx.fillText(stText, W / 2, y + 22);
+      y += 48;
     } else {
       plainLines.forEach(function(pl) {
         if (pl.type === 'div') {
-          drawDash(4, 14);
+          drawDash(3, 14);
           return;
         }
-        var line = pl.text;
-        var colonIdx = line.indexOf(':');
-        if (colonIdx > 0 && colonIdx < 24 && !/^https?:/i.test(line)) {
-          var k = line.slice(0, colonIdx).trim();
-          var v = line.slice(colonIdx + 1).trim();
-          var isBig = /total|grand|nominal|selisih|saldo akhir/i.test(k);
-          drawKV(k, v, {
-            bold: isBig,
-            size: isBig ? 20 : 17,
-            valColor: isBig ? '#4f46e5' : '#0f172a',
-            step: isBig ? 34 : 28
+        if (pl.type === 'kv') {
+          var isBig = /total|grand|nominal|selisih|saldo akhir|sisa/i.test(pl.k);
+          ctx.textAlign = 'left';
+          ctx.fillStyle = isBig ? '#0f172a' : '#475569';
+          ctx.font = (isBig ? '800 ' : '600 ') + (isBig ? 16 : 15) + 'px ' + FONT_MONO;
+          ctx.fillText(pl.k, INNER_X, y);
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#0f172a';
+          ctx.font = (isBig ? '800 ' : '700 ') + (isBig ? 16 : 15) + 'px ' + FONT_MONO;
+          pl.vLines.forEach(function(vl) {
+            ctx.fillText(vl, INNER_X + INNER_W, y);
+            y += 22;
           });
+          y += 3;
         } else {
           ctx.textAlign = 'center';
-          ctx.fillStyle = '#1e293b';
-          ctx.font = '700 18px "Segoe UI", Arial, sans-serif';
-          ctx.fillText(line, W / 2, y);
-          y += 28;
+          ctx.fillStyle = '#0f172a';
+          ctx.font = '700 15px ' + FONT_MONO;
+          pl.lines.forEach(function(tl) {
+            ctx.fillText(tl, W / 2, y);
+            y += 22;
+          });
+          y += 3;
         }
       });
-      y += 16;
+      y += 8;
     }
 
-    drawDash(2, 22);
+    drawDoubleRule(2, 20);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#475569';
-    ctx.font = '600 16px "Segoe UI", Arial, sans-serif';
-    ctx.fillText(n ? n.noteText : hdr.note, W / 2, y);
+    ctx.fillStyle = '#334155';
+    ctx.font = '600 14px ' + FONT_SANS;
+    noteLines.forEach(function(nl) {
+      ctx.fillText(nl, W / 2, y);
+      y += 20;
+    });
 
     var safeId = n ? n.id.replace(/[^a-zA-Z0-9_-]/g, '') : ('Nota_' + Date.now());
     var pngUrl = '';
     var jpgUrl = '';
     try {
-      jpgUrl = canvas.toDataURL('image/jpeg', 0.84);
+      jpgUrl = canvas.toDataURL('image/jpeg', 0.88);
       pngUrl = jpgUrl || canvas.toDataURL('image/png');
     } catch (e) {
       console.error('WebPOSReceipt canvas export error:', e);
@@ -4089,7 +4160,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       pdfFileName: 'Nota-' + safeId + '.pdf'
     };
   }
-
   async function renderCanvasPng(txOrText, customTitle) {
     var hdr = loadStoreHeader();
     if (hdr.logo && (!cachedLogoImg || cachedLogoSrc !== hdr.logo)) {
