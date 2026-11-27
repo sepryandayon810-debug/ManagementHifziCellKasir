@@ -2927,8 +2927,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       '[data-theme="dark"] .wp-sel-opt.selected,[data-theme="midnight"] .wp-sel-opt.selected,[data-theme="oled"] .wp-sel-opt.selected{color:#a5b4fc;}',
       '.wp-sel-opt:disabled{opacity:0.4;cursor:not-allowed;}',
       '.wp-sel-empty{text-align:center;padding:1.5rem 0.75rem;font-size:0.84rem;color:var(--text-muted,#64748b);}',
-      '.wp-rcpt-actions-bar{display:flex !important;flex-wrap:wrap !important;gap:0.45rem !important;align-items:center !important;justify-content:stretch !important;}',
-      '.wp-rcpt-actions-bar > button,.wp-rcpt-actions-bar > .btn{flex:1 1 44% !important;min-width:120px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;gap:0.4rem !important;border-radius:11px !important;font-weight:700 !important;padding:0.55rem 0.7rem !important;font-size:0.78rem !important;cursor:pointer !important;}',
+      '.wp-rcpt-actions-bar{display:flex !important;flex-wrap:nowrap !important;gap:0.45rem !important;align-items:center !important;justify-content:stretch !important;}',
+      '.wp-rcpt-actions-bar > button:not(.wp-rcpt-more-btn),.wp-rcpt-actions-bar > .btn:not(.wp-rcpt-more-btn){flex:1 1 auto !important;min-width:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;gap:0.4rem !important;border-radius:11px !important;font-weight:700 !important;padding:0.56rem 0.72rem !important;font-size:0.8rem !important;cursor:pointer !important;white-space:nowrap !important;}',
+      '.wp-rcpt-more-btn{flex:0 0 42px !important;width:42px !important;min-width:42px !important;height:40px !important;padding:0 !important;border-radius:11px !important;border:1px solid var(--border,var(--border-color,#cbd5e1)) !important;background:var(--bg-surface,var(--bg-card,#ffffff)) !important;color:var(--text-main,var(--text-primary,#334155)) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;transition:all .15s ease !important;box-shadow:0 2px 6px rgba(15,23,42,0.08) !important;}',
+      '.wp-rcpt-more-btn:hover,.wp-rcpt-more-btn.open{background:var(--bg-subtle,#f1f5f9) !important;border-color:var(--primary,#6366f1) !important;color:var(--primary,#4f46e5) !important;}',
+      '.wp-rcpt-more-menu{position:fixed;z-index:100035;min-width:205px;padding:0.38rem;border-radius:14px;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));border:1px solid var(--border,var(--border-color,#e2e8f0));box-shadow:0 18px 42px rgba(15,23,42,0.28);display:none;flex-direction:column;gap:0.2rem;animation:wpPopIn .14s cubic-bezier(.16,1,.3,1);}',
+      '[data-theme="dark"] .wp-rcpt-more-menu,[data-theme="midnight"] .wp-rcpt-more-menu,[data-theme="oled"] .wp-rcpt-more-menu,[data-theme="emerald"] .wp-rcpt-more-menu{background:var(--bg-surface,#1e293b);color:#f8fafc;border-color:rgba(148,163,184,0.24);}',
+      '.wp-rcpt-more-menu.open{display:flex;}',
+      '.wp-rcpt-more-item{width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.62rem 0.78rem;border:none;border-radius:10px;background:transparent;color:inherit;font-size:0.83rem;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;transition:background .12s ease;}',
+      '.wp-rcpt-more-item:hover,.wp-rcpt-more-item:active{background:rgba(99,102,241,0.12);}',
+      '.wp-rcpt-more-item .wp-3d-native-icon{width:20px;height:20px;}',
       '.wp-rcpt-btn-img{background:linear-gradient(135deg,#059669,#10b981) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(5,150,105,0.28) !important;}',
       '.wp-rcpt-btn-pdf{background:linear-gradient(135deg,#e11d48,#f43f5e) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(225,29,72,0.26) !important;}',
       '.wp-rcpt-btn-wa,.wp-pop-btn.wa{background:linear-gradient(135deg,#16a34a,#22c55e) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(22,163,74,0.28) !important;}',
@@ -4032,8 +4040,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var pngUrl = '';
     var jpgUrl = '';
     try {
-      jpgUrl = canvas.toDataURL('image/jpeg', 0.94);
-      pngUrl = canvas.toDataURL('image/png');
+      jpgUrl = canvas.toDataURL('image/jpeg', 0.84);
+      pngUrl = jpgUrl || canvas.toDataURL('image/png');
     } catch (e) {
       console.error('WebPOSReceipt canvas export error:', e);
       if (!forceNoLogo && logoImg) {
@@ -4136,7 +4144,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var a = document.createElement('a');
     a.href = url;
     a.download = fileName || 'Nota-WebPOS.jpg';
-    a.rel = 'noopener';
     a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
     (document.body || document.documentElement).appendChild(a);
     a.click();
@@ -4281,6 +4288,21 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return bd;
   }
 
+  function buildWaUrl(waPhone, text) {
+    var enc = encodeURIComponent(String(text || '').slice(0, 3200));
+    return waPhone
+      ? ('https://wa.me/' + waPhone + '?text=' + enc)
+      : ('https://api.whatsapp.com/send?text=' + enc);
+  }
+
+  function isInIframe() {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  }
+
+  function isIOSDevice() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  }
+
   function openWaShareSheet(plainText, waPhone, rendered) {
     var bd = ensureWaShareSheet();
     var phoneInp = document.getElementById('wpWaPhoneInput');
@@ -4297,7 +4319,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       var ph = normalizeWaPhone(phoneInp ? phoneInp.value : waPhone);
       var enc = encodeURIComponent(safeText);
       if (appLink) appLink.href = 'whatsapp://send?' + (ph ? ('phone=' + ph + '&') : '') + 'text=' + enc;
-      if (webLink) webLink.href = 'https://wa.me/' + (ph || '') + '?text=' + enc;
+      if (webLink) webLink.href = buildWaUrl(ph, safeText);
     }
     syncLinks();
     if (phoneInp) phoneInp.oninput = syncLinks;
@@ -4381,20 +4403,22 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       }
 
       var blob = dataUrlToBlob(rendered.jpegDataUrl, 'image/jpeg');
-      if (isAndroidWebView() && !forceDirectDownload) {
+      if ((isAndroidWebView() || isIOSDevice()) && !forceDirectDownload) {
         if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
           var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
           if (navigator.canShare({ files: [jpgFile] })) {
             navigator.share({ files: [jpgFile], title: rendered.jpgFileName }).catch(function(err) {
               if (!err || err.name !== 'AbortError') {
-                openReceiptImagePreview(rendered, 'Di APK Android, tekan & tahan gambar untuk Simpan ke Galeri HP — atau klik Simpan PDF untuk langsung masuk folder Downloads.');
+                openReceiptImagePreview(rendered, 'Tekan & tahan gambar untuk Simpan ke Galeri HP, atau pilih Simpan PDF.');
               }
             });
             return;
           }
         }
-        openReceiptImagePreview(rendered, 'Di APK Android, tekan & tahan gambar untuk Simpan ke Galeri HP — atau klik Simpan PDF untuk langsung masuk folder Downloads.');
-        return;
+        if (isAndroidWebView()) {
+          openReceiptImagePreview(rendered, 'Di APK Android, tekan & tahan gambar untuk Simpan ke Galeri HP — atau klik Simpan PDF untuk langsung masuk folder Downloads.');
+          return;
+        }
       }
 
       triggerBlobDownload(blob, rendered.jpgFileName);
@@ -4431,11 +4455,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       }
 
       var pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-      if (isAndroidWebView() && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+      if ((isAndroidWebView() || isIOSDevice()) && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
         try {
           var pdfFile = new File([pdfBlob], rendered.pdfFileName, { type: 'application/pdf' });
           if (navigator.canShare({ files: [pdfFile] })) {
-            navigator.share({ files: [pdfFile], title: rendered.pdfFileName }).catch(function() {});
+            navigator.share({ files: [pdfFile], title: rendered.pdfFileName }).catch(function(err) {
+              if (!err || err.name !== 'AbortError') triggerBlobDownload(pdfBlob, rendered.pdfFileName);
+            });
             return;
           }
         } catch (e) {}
@@ -4454,15 +4480,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     copyTextSafe(safeText);
     if (isAndroidWebView()) { openWaShareSheet(safeText, waPhone, rendered); return; }
 
-    var waMeUrl = 'https://wa.me/' + (waPhone || '') + '?text=' + encodeURIComponent(safeText);
-    if (isMobileDevice()) {
-      window.location.href = waMeUrl;
+    var waUrl = buildWaUrl(waPhone, safeText);
+    if (isMobileDevice() && !isInIframe()) {
+      window.location.href = waUrl;
       rcptToast('Membuka WhatsApp...', 'success');
       return;
     }
 
     var a = document.createElement('a');
-    a.href = waMeUrl;
+    a.href = waUrl;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.style.display = 'none';
@@ -4480,7 +4506,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       ? (target.src.customerPhone || target.src.phone || target.src.noHp || target.src.whatsapp || '')
       : '';
     var waPhone = normalizeWaPhone(rawPhone);
-    copyTextSafe(plainText);
 
     var rendered = null;
     try {
@@ -4503,24 +4528,138 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       try { window.AndroidBT.shareWhatsApp(plainText, waPhone); return; } catch (e) {}
     }
 
-    if (rendered && rendered.jpegDataUrl && typeof navigator.share === 'function') {
+    if (typeof navigator.share === 'function' && !isInIframe()) {
       try {
-        var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
-        if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [jpgFile] })) {
-          navigator.share({ files: [jpgFile], title: 'Nota Transaksi' })
-            .then(function() { rcptToast('Nota JPG berhasil dibagikan!', 'success'); })
-            .catch(function(err) {
-              if (err && err.name === 'AbortError') return;
-              openWhatsAppFallback(plainText, waPhone, rendered);
-            });
-          return;
+        if (rendered && rendered.jpegDataUrl && typeof navigator.canShare === 'function') {
+          var jpgFile = dataUrlToFile(rendered.jpegDataUrl, rendered.jpgFileName);
+          if (navigator.canShare({ files: [jpgFile] })) {
+            navigator.share({ files: [jpgFile], title: 'Nota Transaksi' })
+              .then(function() { rcptToast('Nota JPG berhasil dibagikan!', 'success'); })
+              .catch(function(err) {
+                if (err && err.name === 'AbortError') return;
+                openWhatsAppFallback(plainText, waPhone, rendered);
+              });
+            return;
+          }
         }
+        navigator.share({ title: 'Nota Transaksi', text: String(plainText || '').slice(0, 3200) })
+          .then(function() { rcptToast('Nota berhasil dibagikan!', 'success'); })
+          .catch(function(err) {
+            if (err && err.name === 'AbortError') return;
+            openWhatsAppFallback(plainText, waPhone, rendered);
+          });
+        return;
       } catch (e) {}
     }
 
     openWhatsAppFallback(plainText, waPhone, rendered);
   }
-  
+
+  var activeMoreAnchor = null;
+  var activeMoreCtx = null;
+
+  function closeReceiptMoreMenu() {
+    var menu = document.getElementById('wpRcptMoreMenu');
+    if (menu) menu.classList.remove('open');
+    if (activeMoreAnchor) {
+      activeMoreAnchor.classList.remove('open');
+      activeMoreAnchor = null;
+    }
+  }
+
+  function ensureReceiptMoreMenu() {
+    ensureUnifiedStyles();
+    var menu = document.getElementById('wpRcptMoreMenu');
+    if (menu) return menu;
+    menu = document.createElement('div');
+    menu.id = 'wpRcptMoreMenu';
+    menu.className = 'wp-rcpt-more-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML =
+      '<button type="button" class="wp-rcpt-more-item" id="wpMoreJpg">' + ICONS_3D.image() + '<span>Simpan JPG</span></button>' +
+      '<button type="button" class="wp-rcpt-more-item" id="wpMorePdf">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+      '<button type="button" class="wp-rcpt-more-item" id="wpMoreWa">' + ICONS_3D.whatsapp() + '<span>Share ke WhatsApp</span></button>' +
+      '<button type="button" class="wp-rcpt-more-item" id="wpMoreCopy">' + ICONS_3D.receipt() + '<span>Salin Teks Nota</span></button>';
+    (document.body || document.documentElement).appendChild(menu);
+
+    document.getElementById('wpMoreJpg').onclick = function(e) {
+      e.stopPropagation();
+      var ctx = activeMoreCtx;
+      closeReceiptMoreMenu();
+      if (ctx) saveJpg(ctx.src, ctx.title);
+      else saveJpg();
+    };
+    document.getElementById('wpMorePdf').onclick = function(e) {
+      e.stopPropagation();
+      var ctx = activeMoreCtx;
+      closeReceiptMoreMenu();
+      if (ctx) exportPdf(ctx.src, ctx.title);
+      else exportPdf();
+    };
+    document.getElementById('wpMoreWa').onclick = function(e) {
+      e.stopPropagation();
+      var ctx = activeMoreCtx;
+      closeReceiptMoreMenu();
+      if (ctx) shareWhatsApp(ctx.src, ctx.title);
+      else shareWhatsApp();
+    };
+    document.getElementById('wpMoreCopy').onclick = function(e) {
+      e.stopPropagation();
+      var ctx = activeMoreCtx;
+      closeReceiptMoreMenu();
+      var target = ctx ? { src: ctx.src, title: ctx.title } : getActiveReceiptSource();
+      var txt = buildReceiptPlainText(target);
+      if (!txt) { rcptToast('Data nota tidak ditemukan', 'error'); return; }
+      copyTextSafe(txt);
+      rcptToast('Teks nota berhasil disalin!', 'success');
+    };
+
+    document.addEventListener('click', function(e) {
+      if (!menu.classList.contains('open')) return;
+      if (menu.contains(e.target) || (activeMoreAnchor && activeMoreAnchor.contains(e.target))) return;
+      closeReceiptMoreMenu();
+    });
+    window.addEventListener('resize', closeReceiptMoreMenu);
+    return menu;
+  }
+
+  function toggleReceiptMoreMenu(anchorBtn, customCtx) {
+    var menu = ensureReceiptMoreMenu();
+    if (menu.classList.contains('open') && activeMoreAnchor === anchorBtn) {
+      closeReceiptMoreMenu();
+      return;
+    }
+    closeReceiptMoreMenu();
+    activeMoreAnchor = anchorBtn;
+    activeMoreCtx = customCtx || null;
+    anchorBtn.classList.add('open');
+    menu.classList.add('open');
+
+    var r = anchorBtn.getBoundingClientRect();
+    var mw = menu.offsetWidth || 210;
+    var mh = menu.offsetHeight || 195;
+    var left = Math.max(10, Math.min(window.innerWidth - mw - 10, r.right - mw));
+    var top = r.top - mh - 8;
+    if (top < 10) top = Math.min(window.innerHeight - mh - 10, r.bottom + 8);
+    menu.style.left = left + 'px';
+    menu.style.top = Math.max(10, top) + 'px';
+  }
+
+  function createMoreDotsBtn(id, onToggle) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'wp-rcpt-more-btn';
+    if (id) btn.id = id;
+    btn.title = 'Opsi Nota (JPG / PDF / Share WA)';
+    btn.setAttribute('aria-label', 'Opsi Nota');
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="19" r="2.2"/></svg>';
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      onToggle(btn);
+    };
+    return btn;
+  }
+
   function openPreview(txOrText, titleText) {
     ensureUnifiedStyles();
     var isObj = txOrText && typeof txOrText === 'object';
@@ -4547,24 +4686,27 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           '<div class="wp-pop-body" style="background:var(--bg-subtle,#f8fafc);">' +
             '<pre id="wpPrevPaper" style="margin:0;padding:1rem;background:#fff;color:#0f172a;border-radius:12px;border:1px dashed #cbd5e1;font-family:\'Courier New\',monospace;font-size:0.78rem;line-height:1.45;white-space:pre-wrap;overflow-x:auto;"></pre>' +
           '</div>' +
-          '<div class="wp-pop-foot wp-rcpt-actions-bar">' +
-            '<button type="button" class="wp-pop-btn emerald" id="wpPrevImgBtn">' + ICONS_3D.image() + '<span>Simpan JPG</span></button>' +
-            '<button type="button" class="wp-pop-btn rose" id="wpPrevPdfBtn">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+          '<div class="wp-pop-foot wp-rcpt-actions-bar" id="wpPrevFoot">' +
+            '<button type="button" class="wp-pop-btn" id="wpPrevCloseBtn"><span>Tutup</span></button>' +
             '<button type="button" class="wp-pop-btn wa" id="wpPrevWaBtn">' + ICONS_3D.whatsapp() + '<span>Share WA</span></button>' +
           '</div>' +
         '</div>';
       (document.body || document.documentElement).appendChild(bd);
-      bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
-      document.getElementById('wpPrevClose').onclick = function() { bd.classList.remove('open'); };
-      document.getElementById('wpPrevImgBtn').onclick = function() {
-        saveJpg(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
-      };
-      document.getElementById('wpPrevPdfBtn').onclick = function() {
-        exportPdf(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
-      };
+      bd.addEventListener('click', function(e) { if (e.target === bd) { closeReceiptMoreMenu(); bd.classList.remove('open'); } });
+      document.getElementById('wpPrevClose').onclick = function() { closeReceiptMoreMenu(); bd.classList.remove('open'); };
+      document.getElementById('wpPrevCloseBtn').onclick = function() { closeReceiptMoreMenu(); bd.classList.remove('open'); };
       document.getElementById('wpPrevWaBtn').onclick = function() {
         shareWhatsApp(currentReceiptTx || currentReceiptText, bd.dataset.rcptTitle || 'BUKTI TRANSAKSI');
       };
+      var prevFoot = document.getElementById('wpPrevFoot');
+      if (prevFoot) {
+        prevFoot.appendChild(createMoreDotsBtn('wpPrevMoreBtn', function(btn) {
+          toggleReceiptMoreMenu(btn, {
+            src: currentReceiptTx || currentReceiptText,
+            title: bd.dataset.rcptTitle || 'BUKTI TRANSAKSI'
+          });
+        }));
+      }
     }
     bd.dataset.rcptTitle = titleText || 'BUKTI TRANSAKSI';
     var tSpan = document.querySelector('#wpPrevTitle span');
@@ -4583,30 +4725,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     modal.dataset.wpReceiptEnhanced = '1';
     footer.classList.add('wp-rcpt-actions-bar');
 
-    var btnImg = document.createElement('button');
-    btnImg.type = 'button';
-    btnImg.className = 'btn btn-sm wp-rcpt-btn-img';
-    btnImg.id = 'btnWpShareNotaImg';
-    btnImg.innerHTML = ICONS_3D.image() + '<span>Simpan JPG</span>';
-    btnImg.onclick = function() { saveJpg(); };
-
-    var btnPdf = document.createElement('button');
-    btnPdf.type = 'button';
-    btnPdf.className = 'btn btn-sm wp-rcpt-btn-pdf';
-    btnPdf.id = 'btnWpSaveNotaPdf';
-    btnPdf.innerHTML = ICONS_3D.pdf() + '<span>Simpan PDF</span>';
-    btnPdf.onclick = function() { exportPdf(); };
-
-    var btnWa = document.createElement('button');
-    btnWa.type = 'button';
-    btnWa.className = 'btn btn-sm wp-rcpt-btn-wa';
-    btnWa.id = 'btnWpShareNotaWa';
-    btnWa.innerHTML = ICONS_3D.whatsapp() + '<span>Share WA</span>';
-    btnWa.onclick = function() { shareWhatsApp(); };
-
-    footer.appendChild(btnImg);
-    footer.appendChild(btnPdf);
-    footer.appendChild(btnWa);
+    footer.appendChild(createMoreDotsBtn('btnWpReceiptMore', function(btn) {
+      toggleReceiptMoreMenu(btn, null);
+    }));
   }
 
   window.WebPOSReceipt = {
