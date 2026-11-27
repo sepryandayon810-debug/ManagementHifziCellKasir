@@ -4477,18 +4477,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var st = document.createElement('style');
     st.id = 'webpos-dev-sim-style';
     st.textContent = [
-      '#webposDevRoleSimBar{position:fixed;right:14px;bottom:14px;z-index:99980;font-family:inherit;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}',
-      '@media(max-width:1024px){#webposDevRoleSimBar{bottom:70px;right:10px;}}',
-      '.wds-toggle{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--primary,#4f46e5);background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.74rem;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(15,23,42,0.22);transition:transform .16s ease;}',
-      '.wds-toggle:hover{transform:translateY(-1px);}',
-      '.wds-toggle.sim-on{background:linear-gradient(135deg,var(--primary,#4f46e5),var(--primary-hover,var(--primary-dark,#4338ca)));color:#fff;border-color:rgba(255,255,255,0.45);}',
-      '.wds-panel{display:none;flex-direction:column;gap:7px;padding:10px 11px;border-radius:16px;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));border:1.5px solid var(--border,var(--border-color,rgba(148,163,184,0.32)));box-shadow:0 16px 38px rgba(15,23,42,0.28);min-width:228px;}',
+      '#webposDevRoleSimBar{position:fixed;right:0;top:42%;transform:translateY(-50%);z-index:950;font-family:inherit;display:flex;align-items:center;gap:8px;touch-action:none;}',
+      '.wds-toggle{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 6px 7px 8px;border-radius:14px 0 0 14px;border:1.5px solid var(--primary,#4f46e5);border-right:none;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));font-size:0.62rem;font-weight:800;letter-spacing:0.03em;cursor:pointer;box-shadow:-4px 4px 16px rgba(15,23,42,0.18);opacity:0.86;transition:opacity .16s ease,padding .16s ease;user-select:none;}',
+      '.wds-toggle:hover{opacity:1;padding-right:9px;}',
+      '.wds-toggle.sim-on{opacity:1;background:linear-gradient(135deg,var(--primary,#4f46e5),var(--primary-hover,var(--primary-dark,#4338ca)));color:#fff;border-color:rgba(255,255,255,0.45);}',
+      '.wds-badge-mini{font-size:0.56rem;line-height:1;font-weight:900;letter-spacing:0.04em;}',
+      '.wds-panel{display:none;flex-direction:column;gap:7px;padding:10px 11px;border-radius:16px;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));border:1.5px solid var(--border,var(--border-color,rgba(148,163,184,0.32)));box-shadow:0 16px 38px rgba(15,23,42,0.28);min-width:214px;}',
       '.wds-panel.open{display:flex;}',
       '.wds-title{font-size:0.7rem;font-weight:800;color:var(--text-muted,#64748b);display:flex;align-items:center;justify-content:space-between;gap:8px;}',
       '.wds-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
       '.wds-role-btn{border:1px solid var(--border,var(--border-color,#cbd5e1));background:var(--bg-subtle,var(--bg-secondary,#f8fafc));color:var(--text-main,var(--text-primary,#0f172a));border-radius:10px;padding:7px 9px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .14s ease;}',
       '.wds-role-btn:hover{border-color:var(--primary,#4f46e5);}',
       '.wds-role-btn.active{background:linear-gradient(135deg,var(--primary,#4f46e5),var(--primary-hover,var(--primary-dark,#4338ca)));color:#fff;border-color:transparent;box-shadow:0 4px 10px rgba(15,23,42,0.2);}',
+      '.wds-hint{font-size:0.62rem;color:var(--text-muted,#64748b);text-align:center;opacity:0.85;}',
       '[data-theme="dark"] .wds-panel,[data-theme="midnight"] .wds-panel,[data-theme="oled"] .wds-panel{background:var(--bg-surface,var(--bg-card,#111827));color:var(--text-main,#f8fafc);}',
       '[data-theme="dark"] .wds-role-btn:not(.active){background:var(--bg-subtle,var(--bg-secondary,#1e293b));color:#f8fafc;}'
     ].join('\n');
@@ -4500,27 +4501,38 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (/login\.html$/i.test(window.location.pathname || '')) return;
     injectSimStyles();
 
+    if (typeof window.__webposDevSimDragCleanup === 'function') {
+      window.__webposDevSimDragCleanup();
+    }
     var old = document.getElementById('webposDevRoleSimBar');
     if (old) old.remove();
 
     var activeSim = window.getDevSimRole();
     var currentEffective = activeSim || 'developer';
-    var shieldSvg = '<svg style="width:17px;height:17px;flex-shrink:0;" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="wdsG" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs><path d="M24 5L39 11V23C39 33 32.5 40 24 43C15.5 40 9 33 9 23V11L24 5Z" fill="url(#wdsG)" stroke="#FFFFFF" stroke-width="1.8"/><path d="M17 24L22 29L32 18.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var shortTag = activeSim ? ({ owner: 'OWN', admin: 'ADM', kasir: 'KSR' }[activeSim] || 'SIM') : '';
+    var shieldSvg = '<svg style="width:18px;height:18px;flex-shrink:0;" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="wdsG" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs><path d="M24 5L39 11V23C39 33 32.5 40 24 43C15.5 40 9 33 9 23V11L24 5Z" fill="url(#wdsG)" stroke="#FFFFFF" stroke-width="1.8"/><path d="M17 24L22 29L32 18.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     var wrap = document.createElement('div');
     wrap.id = 'webposDevRoleSimBar';
+    try {
+      var savedTop = parseFloat(localStorage.getItem('webpos_dev_sim_top'));
+      if (!isNaN(savedTop) && savedTop >= 12 && savedTop <= 84) {
+        wrap.style.top = savedTop + '%';
+      }
+    } catch (e) {}
     wrap.innerHTML =
       '<div class="wds-panel" id="wdsPanel">' +
-        '<div class="wds-title"><span>Simulasi Role (Developer)</span><span style="color:var(--primary,#4f46e5);">' + currentEffective.toUpperCase() + '</span></div>' +
+        '<div class="wds-title"><span>Simulasi Role</span><span style="color:var(--primary,#4f46e5);">' + currentEffective.toUpperCase() + '</span></div>' +
         '<div class="wds-grid">' +
           '<button type="button" class="wds-role-btn' + (currentEffective === 'developer' ? ' active' : '') + '" data-sim-role="developer">Developer</button>' +
           '<button type="button" class="wds-role-btn' + (currentEffective === 'owner' ? ' active' : '') + '" data-sim-role="owner">Owner</button>' +
           '<button type="button" class="wds-role-btn' + (currentEffective === 'admin' ? ' active' : '') + '" data-sim-role="admin">Admin</button>' +
           '<button type="button" class="wds-role-btn' + (currentEffective === 'kasir' ? ' active' : '') + '" data-sim-role="kasir">Kasir</button>' +
         '</div>' +
+        '<div class="wds-hint">Tahan & geser tombol ke atas/bawah bila perlu</div>' +
       '</div>' +
-      '<button type="button" class="wds-toggle' + (activeSim ? ' sim-on' : '') + '" id="wdsToggleBtn" title="Ganti tampilan role tanpa logout">' +
-        shieldSvg + '<span>' + (activeSim ? 'Simulasi: ' + activeSim.toUpperCase() : 'Simulasi Role') + '</span>' +
+      '<button type="button" class="wds-toggle' + (activeSim ? ' sim-on' : '') + '" id="wdsToggleBtn" title="Simulasi Role (klik untuk buka, geser atas/bawah untuk pindah posisi)">' +
+        shieldSvg + (shortTag ? '<span class="wds-badge-mini">' + shortTag + '</span>' : '') +
       '</button>';
 
     document.body.appendChild(wrap);
@@ -4528,11 +4540,42 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var tBtn = document.getElementById('wdsToggleBtn');
     var panel = document.getElementById('wdsPanel');
     if (tBtn && panel) {
+      var dragging = false, moved = false, startY = 0;
+      function onDragStart(clientY) { dragging = true; moved = false; startY = clientY; }
+      function onDragMove(clientY) {
+        if (!dragging) return;
+        if (Math.abs(clientY - startY) > 6) moved = true;
+        if (!moved) return;
+        var pct = Math.max(14, Math.min(82, (clientY / Math.max(window.innerHeight, 1)) * 100));
+        wrap.style.top = pct.toFixed(1) + '%';
+        try { localStorage.setItem('webpos_dev_sim_top', pct.toFixed(1)); } catch (e) {}
+      }
+      function onDragEnd() { dragging = false; }
+      function onDocMouseMove(e) { if (dragging) onDragMove(e.clientY); }
+
+      tBtn.addEventListener('mousedown', function(e) { onDragStart(e.clientY); });
+      document.addEventListener('mousemove', onDocMouseMove);
+      document.addEventListener('mouseup', onDragEnd);
+      tBtn.addEventListener('touchstart', function(e) {
+        if (e.touches && e.touches[0]) onDragStart(e.touches[0].clientY);
+      }, { passive: true });
+      tBtn.addEventListener('touchmove', function(e) {
+        if (e.touches && e.touches[0]) onDragMove(e.touches[0].clientY);
+      }, { passive: true });
+      tBtn.addEventListener('touchend', onDragEnd);
+
+      window.__webposDevSimDragCleanup = function() {
+        document.removeEventListener('mousemove', onDocMouseMove);
+        document.removeEventListener('mouseup', onDragEnd);
+      };
+
       tBtn.onclick = function(e) {
         if (e && e.stopPropagation) e.stopPropagation();
+        if (moved) { moved = false; return; }
         panel.classList.toggle('open');
       };
     }
+    
     wrap.querySelectorAll('[data-sim-role]').forEach(function(btn) {
       btn.onclick = function() { window.setDevSimRole(btn.getAttribute('data-sim-role')); };
     });
