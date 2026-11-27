@@ -4510,7 +4510,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var wrap = document.createElement('div');
     wrap.id = 'webposDevRoleSimBar';
     wrap.innerHTML =
-      '<div class="wds-panel' + (activeSim ? ' open' : '') + '" id="wdsPanel">' +
+      '<div class="wds-panel" id="wdsPanel">' +
         '<div class="wds-title"><span>Simulasi Role (Developer)</span><span style="color:var(--primary,#4f46e5);">' + currentEffective.toUpperCase() + '</span></div>' +
         '<div class="wds-grid">' +
           '<button type="button" class="wds-role-btn' + (currentEffective === 'developer' ? ' active' : '') + '" data-sim-role="developer">Developer</button>' +
@@ -4528,11 +4528,40 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     var tBtn = document.getElementById('wdsToggleBtn');
     var panel = document.getElementById('wdsPanel');
     if (tBtn && panel) {
-      tBtn.onclick = function() { panel.classList.toggle('open'); };
+      tBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        panel.classList.toggle('open');
+      };
     }
     wrap.querySelectorAll('[data-sim-role]').forEach(function(btn) {
       btn.onclick = function() { window.setDevSimRole(btn.getAttribute('data-sim-role')); };
     });
+
+    if (!window.__webposDevSimOutsideBound) {
+      window.__webposDevSimOutsideBound = true;
+      function closeDevSimPanelIfOutside(target) {
+        var bar = document.getElementById('webposDevRoleSimBar');
+        var pnl = document.getElementById('wdsPanel');
+        if (!bar || !pnl || !pnl.classList.contains('open')) return;
+        if (!target || !bar.contains(target)) {
+          pnl.classList.remove('open');
+        }
+      }
+      document.addEventListener('click', function(e) {
+        closeDevSimPanelIfOutside(e.target);
+      }, true);
+      document.addEventListener('focusin', function(e) {
+        closeDevSimPanelIfOutside(e.target);
+      }, true);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          var pnl = document.getElementById('wdsPanel');
+          if (pnl) pnl.classList.remove('open');
+        } else {
+          closeDevSimPanelIfOutside(e.target);
+        }
+      }, true);
+    }
   }
 
   function initDevSimAuthCheck() {
