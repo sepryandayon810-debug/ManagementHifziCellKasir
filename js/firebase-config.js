@@ -4221,3 +4221,208 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     enhanceStrukModals();
   }
 })();
+
+// 11. GLOBAL 3D SIDEBAR USER PROFILE POPUP (KLIK AVATAR / NAMA DI SIDEBAR KIRI)
+(function() {
+  if (window.__webposUserProfileInit) return;
+  window.__webposUserProfileInit = true;
+
+  var profSeq = 0;
+  function mkProf3d(svgInner, size) {
+    profSeq++;
+    var sz = size || 20;
+    return '<svg class="wp-3d-native-icon" style="width:' + sz + 'px;height:' + sz + 'px;flex-shrink:0;" viewBox="0 0 48 48" fill="none">' +
+      svgInner.replace(/__ID__/g, 'wpp_' + profSeq + '_') + '</svg>';
+  }
+  var P_ICONS = {
+    shield: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs><path d="M24 5L39 11V23C39 33 32.5 40 24 43C15.5 40 9 33 9 23V11L24 5Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M17 24L22 29L32 18.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>', sz); },
+    mail: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="6" y1="10" x2="42" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/></linearGradient></defs><rect x="5" y="10" width="38" height="28" rx="7" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M8 14L24 26L40 14" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>', sz); },
+    phone: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="10" y1="5" x2="38" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ADE80"/><stop offset="100%" stop-color="#16A34A"/></linearGradient></defs><rect x="12" y="5" width="24" height="38" rx="6" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><rect x="16" y="10" width="16" height="22" rx="2.5" fill="#DCFCE7"/><circle cx="24" cy="37" r="2.2" fill="#FFFFFF"/>', sz); },
+    badge: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="6" y1="8" x2="42" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FBBF24"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><rect x="6" y="10" width="36" height="28" rx="7" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><circle cx="17" cy="24" r="4.5" fill="#FFFFFF"/><rect x="25" y="19" width="12" height="3.2" rx="1.6" fill="#FFFFFF"/><rect x="25" y="25.5" width="9" height="3" rx="1.5" fill="#FEF3C7"/>', sz); },
+    clock: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#6D28D9"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M24 14V24L31 28" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>', sz); },
+    edit: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><rect x="6" y="6" width="36" height="36" rx="10" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M16 32L18 25L29 14L34 19L23 30L16 32Z" fill="#FFFFFF"/>', sz); },
+    close: function(sz) { return mkProf3d('<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#E11D48"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.32"/><path d="M17 17L31 31M31 17L17 31" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round"/>', sz || 25); }
+  };
+
+  function ensureProfileStyles() {
+    if (document.getElementById('webpos-user-profile-style')) return;
+    var st = document.createElement('style');
+    st.id = 'webpos-user-profile-style';
+    st.textContent = [
+      '.user-profile{cursor:pointer !important;border-radius:12px;transition:background .18s ease,transform .15s ease;}',
+      '.user-profile:hover{background:rgba(99,102,241,0.09);}',
+      '.user-profile:active{transform:scale(0.98);}',
+      '#webposUserProfileModal{position:fixed;inset:0;z-index:100020;background:rgba(15,23,42,0.58);display:none;align-items:center;justify-content:center;padding:16px;}',
+      '#webposUserProfileModal.open{display:flex;}',
+      '.wpp-card{width:100%;max-width:410px;background:var(--bg-surface,#ffffff);color:var(--text-main,#0f172a);border:1px solid var(--border,rgba(148,163,184,0.28));border-radius:20px;box-shadow:0 24px 55px rgba(15,23,42,0.34);overflow:hidden;font-family:inherit;animation:wppPop .18s ease-out;}',
+      '@keyframes wppPop{from{opacity:0;transform:scale(0.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}',
+      '.wpp-head{position:relative;padding:20px 18px 16px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#fff;display:flex;align-items:center;gap:14px;}',
+      '.wpp-avatar{width:56px;height:56px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#fff;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,0.45),rgba(15,23,42,0.28));border:2.5px solid rgba(255,255,255,0.88);box-shadow:0 8px 18px rgba(15,23,42,0.3);}',
+      '.wpp-close{position:absolute;top:12px;right:12px;background:transparent;border:none;padding:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .16s ease;}',
+      '.wpp-close:hover{transform:scale(1.12);}',
+      '.wpp-status-pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:800;letter-spacing:0.02em;margin-top:5px;}',
+      '.wpp-body{padding:14px 16px;display:flex;flex-direction:column;gap:9px;max-height:62vh;overflow-y:auto;}',
+      '.wpp-row{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:12px;background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,rgba(148,163,184,0.2));}',
+      '.wpp-lbl{font-size:0.68rem;color:var(--text-muted,#64748b);font-weight:600;line-height:1.2;}',
+      '.wpp-val{font-size:0.83rem;font-weight:700;color:var(--text-main,#0f172a);word-break:break-word;margin-top:1px;}',
+      '.wpp-edit-box{padding:11px;border-radius:12px;background:var(--bg-subtle,#f8fafc);border:1px solid rgba(99,102,241,0.35);display:none;flex-direction:column;gap:8px;}',
+      '.wpp-edit-box.open{display:flex;}',
+      '.wpp-input{width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--border,#cbd5e1);background:var(--bg-surface,#ffffff);color:var(--text-main,#0f172a);font-size:0.83rem;font-family:inherit;box-sizing:border-box;}',
+      '.wpp-foot{padding:11px 16px 14px;border-top:1px solid var(--border,rgba(148,163,184,0.2));display:flex;align-items:center;justify-content:space-between;gap:8px;}',
+      '.wpp-btn{border:none;border-radius:11px;padding:8px 13px;font-size:0.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:transform .15s ease;}',
+      '.wpp-btn:active{transform:scale(0.97);}',
+      '.wpp-btn-sec{background:var(--bg-subtle,#f1f5f9);color:var(--text-main,#0f172a);border:1px solid var(--border,rgba(148,163,184,0.3));}',
+      '.wpp-btn-pri{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;box-shadow:0 4px 12px rgba(79,70,229,0.32);}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function fmtDateVal(v) {
+    if (!v) return '-';
+    try {
+      var d = (typeof v.toDate === 'function') ? v.toDate() : new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return '-'; }
+  }
+
+  function closeProfileModal() {
+    var m = document.getElementById('webposUserProfileModal');
+    if (m) m.classList.remove('open');
+  }
+
+  async function openProfileModal() {
+    ensureProfileStyles();
+    var m = document.getElementById('webposUserProfileModal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'webposUserProfileModal';
+      m.addEventListener('click', function(e) { if (e.target === m) closeProfileModal(); });
+      document.body.appendChild(m);
+    }
+
+    var authUser = (window.firebase && firebase.auth) ? firebase.auth().currentUser : null;
+    var domName = (document.getElementById('userName') && document.getElementById('userName').textContent || '').trim();
+    var domRole = (document.getElementById('userRole') && document.getElementById('userRole').textContent || '').trim();
+    var appVer = '';
+    try { appVer = localStorage.getItem('webpos_app_version') || ''; } catch (e) {}
+
+    var uData = {};
+    if (authUser && authUser.uid && window.firebase && firebase.firestore) {
+      try {
+        var snap = await firebase.firestore().collection('users').doc(authUser.uid).get();
+        if (snap.exists) uData = snap.data() || {};
+      } catch (e) {}
+    }
+
+    var fullName = uData.name || uData.fullName || (authUser && authUser.displayName) || domName || 'Pengguna';
+    var username = uData.username || '';
+    var role = String(uData.role || domRole || 'kasir').toUpperCase();
+    var rawStatus = String(uData.status || 'active').toLowerCase();
+    var statusLabel = rawStatus === 'active' ? 'Aktif' : (rawStatus === 'pending' ? 'Menunggu Persetujuan' : rawStatus.toUpperCase());
+    var statusBg = rawStatus === 'active' ? 'rgba(16,185,129,0.22)' : 'rgba(245,158,11,0.24)';
+    var statusClr = rawStatus === 'active' ? '#a7f3d0' : '#fde68a';
+    var email = uData.email || (authUser && authUser.email) || '-';
+    var phone = uData.phone || uData.noHp || uData.no_hp || uData.hp || uData.whatsapp || (authUser && authUser.phoneNumber) || '';
+    var uid = (authUser && authUser.uid) || '-';
+    var lastLogin = (authUser && authUser.metadata && authUser.metadata.lastSignInTime) ? fmtDateVal(authUser.metadata.lastSignInTime) : fmtDateVal(uData.lastLogin);
+    var initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(function(w) { return w[0]; }).join('').toUpperCase() || 'U';
+
+    m.innerHTML =
+      '<div class="wpp-card" role="dialog" aria-modal="true">' +
+        '<div class="wpp-head">' +
+          '<div class="wpp-avatar">' + esc(initials) + '</div>' +
+          '<div style="min-width:0;flex:1;padding-right:28px;">' +
+            '<div style="font-size:1.02rem;font-weight:800;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(fullName) + '</div>' +
+            (username ? '<div style="font-size:0.74rem;opacity:0.86;margin-top:1px;">@' + esc(username) + '</div>' : '') +
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+              '<span class="wpp-status-pill" style="background:rgba(255,255,255,0.2);color:#fff;">' + esc(role) + '</span>' +
+              '<span class="wpp-status-pill" style="background:' + statusBg + ';color:' + statusClr + ';">● ' + esc(statusLabel) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<button type="button" class="wpp-close" id="wppCloseBtn" aria-label="Tutup">' + P_ICONS.close(26) + '</button>' +
+        '</div>' +
+        '<div class="wpp-body">' +
+          '<div class="wpp-row">' + P_ICONS.mail(22) + '<div style="min-width:0;flex:1;"><div class="wpp-lbl">Email Akun</div><div class="wpp-val">' + esc(email) + '</div></div></div>' +
+          '<div class="wpp-row">' + P_ICONS.phone(22) + '<div style="min-width:0;flex:1;"><div class="wpp-lbl">Nomor HP / WhatsApp</div><div class="wpp-val" id="wppPhoneText">' + esc(phone || 'Belum diisi') + '</div></div></div>' +
+          '<div class="wpp-row">' + P_ICONS.shield(22) + '<div style="min-width:0;flex:1;"><div class="wpp-lbl">Status &amp; Hak Akses</div><div class="wpp-val">' + esc(statusLabel + ' • ' + role) + '</div></div></div>' +
+          '<div class="wpp-row">' + P_ICONS.badge(22) + '<div style="min-width:0;flex:1;"><div class="wpp-lbl">UID Akun' + (appVer ? ' • Versi ' + esc(appVer) : '') + '</div><div class="wpp-val" style="font-family:monospace;font-size:0.74rem;">' + esc(uid) + '</div></div></div>' +
+          '<div class="wpp-row">' + P_ICONS.clock(22) + '<div style="min-width:0;flex:1;"><div class="wpp-lbl">Login Terakhir</div><div class="wpp-val">' + esc(lastLogin) + '</div></div></div>' +
+          '<div class="wpp-edit-box" id="wppEditBox">' +
+            '<div style="font-size:0.75rem;font-weight:800;color:var(--primary,#4f46e5);">Perbarui Data Profil</div>' +
+            '<input type="text" class="wpp-input" id="wppEditName" placeholder="Nama Lengkap" value="' + esc(fullName) + '">' +
+            '<input type="tel" class="wpp-input" id="wppEditPhone" placeholder="Nomor HP / WA (contoh: 0812xxxx)" value="' + esc(phone) + '">' +
+            '<div style="display:flex;justify-content:flex-end;gap:6px;">' +
+              '<button type="button" class="wpp-btn wpp-btn-sec" id="wppCancelEdit">Batal</button>' +
+              '<button type="button" class="wpp-btn wpp-btn-pri" id="wppSaveEdit">Simpan Profil</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="wpp-foot">' +
+          (authUser ? '<button type="button" class="wpp-btn wpp-btn-sec" id="wppToggleEdit">' + P_ICONS.edit(17) + '<span>Edit HP / Nama</span></button>' : '<span></span>') +
+          '<button type="button" class="wpp-btn wpp-btn-pri" id="wppFooterClose">Tutup</button>' +
+        '</div>' +
+      '</div>';
+
+    m.classList.add('open');
+
+    var cBtn = document.getElementById('wppCloseBtn');
+    var fClose = document.getElementById('wppFooterClose');
+    if (cBtn) cBtn.onclick = closeProfileModal;
+    if (fClose) fClose.onclick = closeProfileModal;
+
+    var tEdit = document.getElementById('wppToggleEdit');
+    var eBox = document.getElementById('wppEditBox');
+    var cEdit = document.getElementById('wppCancelEdit');
+    var sEdit = document.getElementById('wppSaveEdit');
+    if (tEdit && eBox) tEdit.onclick = function() { eBox.classList.toggle('open'); };
+    if (cEdit && eBox) cEdit.onclick = function() { eBox.classList.remove('open'); };
+    if (sEdit && authUser) {
+      sEdit.onclick = async function() {
+        var newName = (document.getElementById('wppEditName').value || '').trim();
+        var newPhone = (document.getElementById('wppEditPhone').value || '').trim();
+        if (!newName) return;
+        sEdit.disabled = true;
+        sEdit.textContent = 'Menyimpan...';
+        try {
+          await firebase.firestore().collection('users').doc(authUser.uid).set({
+            name: newName,
+            phone: newPhone,
+            noHp: newPhone,
+            updatedAt: Date.now()
+          }, { merge: true });
+          var unEl = document.getElementById('userName');
+          if (unEl) unEl.textContent = newName;
+          openProfileModal();
+        } catch (err) {
+          sEdit.disabled = false;
+          sEdit.textContent = 'Simpan Profil';
+        }
+      };
+    }
+  }
+
+  function bindSidebarProfileClick() {
+    ensureProfileStyles();
+    document.querySelectorAll('.user-profile').forEach(function(el) {
+      if (el.dataset.wppBound === '1') return;
+      el.dataset.wppBound = '1';
+      el.title = 'Klik untuk lihat profil akun';
+      el.addEventListener('click', function(e) {
+        if (e.target && e.target.closest && e.target.closest('button, a')) return;
+        openProfileModal();
+      });
+    });
+  }
+
+  window.WebPOSUserProfile = { open: openProfileModal, close: closeProfileModal };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindSidebarProfileClick);
+  } else {
+    bindSidebarProfileClick();
+  }
+})();
