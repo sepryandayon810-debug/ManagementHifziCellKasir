@@ -40,25 +40,25 @@
       --warning-light: #fffbeb;
       --danger: #dc2626;
       --danger-light: #fef2f2;
-      
+
       --bg-base: #f8fafc;
       --bg-surface: #ffffff;
       --bg-subtle: #f1f5f9;
       --border: #e2e8f0;
-      
+
       --text-main: #0f172a;
       --text-muted: #64748b;
       --text-sub: #475569;
-      
+
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
       --radius-xl: 20px;
-      
+
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-      
+
       --sidebar-width: 270px;
       --sidebar-collapsed: 76px;
       --header-h: 68px;
@@ -113,7 +113,7 @@
       transition: transform 0.25s ease, width 0.25s ease;
     }
     .sidebar.collapsed { width: var(--sidebar-collapsed); }
-    
+
     @media(max-width: 1024px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.mobile-open { transform: translateX(0); }
@@ -216,15 +216,15 @@
     @media(max-width: 1024px) { .main-content { margin-left: 0 !important; } }
 
     .main-header {
-      height: var(--header-h); 
+      height: var(--header-h);
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      display: flex; 
-      align-items: center; 
+      display: flex;
+      align-items: center;
       justify-content: space-between;
-      padding: 0 1.25rem; 
-      position: sticky; 
-      top: 0; 
+      padding: 0 1.25rem;
+      position: sticky;
+      top: 0;
       z-index: 90;
     }
     .header-left { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
@@ -251,29 +251,32 @@
     }
     .card-header {
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
     }
     .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
     .card-body { padding: 1.25rem; }
 
-    .form-group { margin-bottom: 1rem; }
-    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-sub); margin-bottom: 0.4rem; }
+    .form-group { margin-bottom: 0.9rem; }
+    .form-label { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; font-weight: 600; color: var(--text-sub); margin-bottom: 0.38rem; }
     .form-input, .form-select, .form-textarea {
       width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main);
       font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.15s;
     }
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
-    .form-textarea { min-height: 75px; resize: vertical; }
+    .form-textarea { min-height: 70px; resize: vertical; }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.65rem 1.25rem; border-radius: var(--radius-md); font-size: 0.85rem;
+      padding: 0.65rem 1.15rem; border-radius: var(--radius-md); font-size: 0.85rem;
       font-weight: 700; cursor: pointer; border: none; outline: none; font-family: inherit; transition: all 0.15s;
     }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-sm { padding: 0.45rem 0.8rem; font-size: 0.78rem; }
     .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-primary:hover { background: var(--primary-hover); }
     .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-sub); }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
     .btn-block { width: 100%; }
@@ -281,10 +284,10 @@
     /* OCR SECTION */
     .ocr-upload-area {
       border: 2px dashed var(--border); border-radius: var(--radius-md);
-      padding: 2rem 1rem; text-align: center; background: var(--bg-subtle); cursor: pointer; transition: all 0.2s;
+      padding: 1.65rem 1rem; text-align: center; background: var(--bg-subtle); cursor: pointer; transition: all 0.2s;
     }
-    .ocr-upload-area:hover { border-color: var(--primary); background: var(--primary-light); }
-    .ocr-loading { display: none; text-align: center; padding: 1.5rem; }
+    .ocr-upload-area:hover, .ocr-upload-area.drag-over { border-color: var(--primary); background: var(--primary-light); }
+    .ocr-loading { display: none; text-align: center; padding: 1.25rem; }
     .spinner {
       width: 36px; height: 36px; border: 3px solid var(--border);
       border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 0.75rem;
@@ -293,40 +296,117 @@
 
     .ocr-result { display: none; margin-top: 1rem; }
     .ocr-result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
-    .ocr-preview-image { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 200px; object-fit: contain; background: white; }
-    .ocr-parsed-data { background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.8rem; line-height: 1.5; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); color: var(--text-main); }
+    @media (max-width: 520px) { .ocr-result-grid { grid-template-columns: 1fr; } }
+    .ocr-preview-image { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 210px; object-fit: contain; background: white; }
+    .ocr-parsed-data { background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.8rem; line-height: 1.55; max-height: 210px; overflow-y: auto; border: 1px solid var(--border); color: var(--text-main); }
 
-    .receipt-type-tabs { display: flex; gap: 0.35rem; margin-bottom: 1.25rem; background: var(--bg-subtle); padding: 0.35rem; border-radius: var(--radius-md); }
-    .receipt-type-tab { flex: 1; padding: 0.6rem; border: none; background: transparent; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; transition: all 0.15s; }
+    /* TABS JENIS STRUK */
+    .receipt-type-tabs {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+      margin-bottom: 1.15rem; background: var(--bg-subtle); padding: 0.35rem; border-radius: var(--radius-md);
+    }
+    .receipt-type-tab {
+      padding: 0.6rem 0.35rem; border: none; background: transparent; border-radius: var(--radius-sm);
+      font-weight: 700; cursor: pointer; color: var(--text-muted); font-size: 0.78rem; transition: all 0.15s;
+      font-family: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     .receipt-type-tab.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+    .receipt-type-tab[data-type="token_pln"].active { color: #b45309; }
+    [data-theme="dark"] .receipt-type-tab[data-type="token_pln"].active { color: #fbbf24; }
 
     .form-section { background: var(--bg-subtle); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.85rem; border-left: 4px solid var(--primary); }
     .form-section.receiver { border-left-color: var(--success); }
-    .form-section-title { font-weight: 700; color: var(--primary); margin-bottom: 0.65rem; font-size: 0.85rem; }
+    .form-section.pln { border-left-color: #f59e0b; }
+    .form-section-title { font-weight: 700; color: var(--primary); margin-bottom: 0.65rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
     .form-section.receiver .form-section-title { color: var(--success); }
+    .form-section.pln .form-section-title { color: #b45309; }
+    [data-theme="dark"] .form-section.pln .form-section-title { color: #fbbf24; }
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; gap: 0; } }
 
-    .receipt-preview-container { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 1.25rem; position: sticky; top: calc(var(--header-h) + 1.25rem); }
+    /* QUICK NOMINAL CHIPS */
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .quick-chip {
+      padding: 0.35rem 0.65rem; border-radius: 8px; border: 1.5px solid var(--border);
+      background: var(--bg-surface); color: var(--text-sub); font-size: 0.76rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .quick-chip:hover, .quick-chip.active { border-color: #f59e0b; background: var(--warning-light); color: #b45309; }
+    [data-theme="dark"] .quick-chip:hover, [data-theme="dark"] .quick-chip.active { color: #fbbf24; }
+
+    .token-input-lg {
+      font-family: 'Courier New', monospace; font-size: 1.02rem; font-weight: 800;
+      letter-spacing: 0.06em; text-align: center;
+    }
+    .digit-badge {
+      font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+      background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted);
+    }
+    .digit-badge.ok { background: var(--success-light); color: var(--success); border-color: var(--success); }
+    .digit-badge.warn { background: var(--warning-light); color: var(--warning); border-color: var(--warning); }
+
+    /* PREVIEW STRUK KERTAS THERMAL */
+    .receipt-preview-container {
+      background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border);
+      padding: 1.25rem; position: sticky; top: calc(var(--header-h) + 1.25rem);
+    }
+    .receipt-paper-stage {
+      background: #e2e8f0; border-radius: var(--radius-md); padding: 1rem 0.75rem;
+      display: flex; justify-content: center;
+    }
+    [data-theme="dark"] .receipt-paper-stage { background: #1e293b; }
+
     .receipt-preview {
-      background: white; border: 1px solid #ddd; border-radius: var(--radius-sm); padding: 1.25rem;
-      max-width: 280px; margin: 0 auto; font-family: 'Courier New', monospace; color: #333; font-size: 11px; line-height: 1.4; box-shadow: var(--shadow-sm);
+      position: relative;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      padding: 1.25rem 1.05rem;
+      width: 100%;
+      max-width: 300px;
+      margin: 0 auto;
+      font-family: 'Courier New', Courier, monospace;
+      color: #111827;
+      font-size: 11px;
+      line-height: 1.45;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
     }
-    [data-theme="dark"] .receipt-preview { background: #f8fafc; color: #0f172a; }
-    .receipt-header { text-align: center; border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
-    .receipt-title { font-size: 1rem; font-weight: bold; margin-bottom: 0.2rem; }
-    .receipt-address { font-size: 0.68rem; color: #666; }
-    .receipt-info { font-size: 0.72rem; margin-bottom: 0.65rem; border-bottom: 1px dashed #333; padding-bottom: 0.5rem; }
-    .receipt-info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; }
-    .receipt-items { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
-    .receipt-total { border-bottom: 1px dashed #333; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
-    .receipt-footer { text-align: center; font-size: 0.68rem; color: #666; }
+    .receipt-header { text-align: center; border-bottom: 1.5px dashed #334155; padding-bottom: 0.65rem; margin-bottom: 0.65rem; }
+    .receipt-title { font-size: 15px; font-weight: 800; letter-spacing: 0.03em; margin-bottom: 0.15rem; color: #0f172a; }
+    .receipt-address { font-size: 10px; color: #475569; word-break: break-word; }
+    .receipt-badge-type {
+      display: inline-block; margin-top: 6px; padding: 2px 8px;
+      border: 1px solid #0f172a; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: #0f172a;
+    }
+    .receipt-info { font-size: 10.5px; margin-bottom: 0.6rem; border-bottom: 1px dashed #475569; padding-bottom: 0.5rem; }
+    .receipt-info-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 0.2rem; }
+    .receipt-info-row span:last-child { text-align: right; word-break: break-word; }
+    .receipt-items { border-bottom: 1px dashed #475569; padding-bottom: 0.65rem; margin-bottom: 0.65rem; font-size: 10.5px; }
+    .receipt-total { border-bottom: 1.5px dashed #334155; padding-bottom: 0.65rem; margin-bottom: 0.65rem; }
+    .receipt-footer { text-align: center; font-size: 10px; color: #475569; word-break: break-word; }
 
-    .share-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; margin-top: 1.25rem; }
-    .share-btn {
-      display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem;
-      border-radius: var(--radius-md); font-weight: 700; cursor: pointer; border: none; font-size: 0.82rem; transition: transform 0.15s; color: white;
+    .token-box-preview {
+      margin: 8px 0 4px;
+      padding: 8px 6px;
+      border: 2px solid #0f172a;
+      background: #f8fafc;
+      text-align: center;
     }
+    .token-box-label {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; color: #334155; margin-bottom: 4px;
+    }
+    .token-box-code {
+      font-size: 13.5px; font-weight: 800; letter-spacing: 0.05em; color: #0f172a;
+      word-break: break-all; line-height: 1.35;
+    }
+
+    .share-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; margin-top: 1.1rem; }
+    .share-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.45rem; padding: 0.75rem;
+      border-radius: var(--radius-md); font-weight: 700; cursor: pointer; border: none; font-size: 0.82rem;
+      transition: transform 0.15s, opacity 0.15s; color: white; font-family: inherit;
+    }
+    .share-btn:active { transform: scale(0.98); }
     .share-btn.pdf { background: #dc2626; }
     .share-btn.image { background: #059669; }
     .share-btn.whatsapp { background: #25d366; }
@@ -334,6 +414,8 @@
 
     .info-box { padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.85rem; font-size: 0.82rem; border-left: 4px solid; color: var(--text-main); }
     .info-box.info { background: var(--accent-light); border-left-color: var(--accent); }
+    .info-box.ok { background: var(--success-light); border-left-color: var(--success); }
+    .info-box.warn { background: var(--warning-light); border-left-color: var(--warning); }
     [data-theme="dark"] .info-box.info { background: rgba(2, 132, 199, 0.15); color: var(--text-main); }
     .info-title { font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem; color: var(--text-main); }
 
@@ -376,11 +458,16 @@
     .toast {
       display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem;
       background: var(--bg-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
-      border-left: 4px solid; font-size: 0.85rem; font-weight: 600; color: var(--text-main);
+      border-left: 4px solid; font-size: 0.84rem; font-weight: 600; color: var(--text-main);
     }
     .toast.success { border-left-color: var(--success); }
+    .toast.success i { color: var(--success); }
     .toast.error { border-left-color: var(--danger); }
+    .toast.error i { color: var(--danger); }
     .toast.warning { border-left-color: var(--warning); }
+    .toast.warning i { color: var(--warning); }
+    .toast.info { border-left-color: var(--accent); }
+    .toast.info i { color: var(--accent); }
 
     /* MOBILE BOTTOM NAVIGATION BAR */
     .mobile-bar {
@@ -397,7 +484,7 @@
 
     @media (max-width: 1024px) {
       .mobile-bar { display: flex; }
-      .page-content { padding-bottom: calc(60px + 1.5rem); }
+      .page-content { padding: 1rem; padding-bottom: calc(60px + 1.5rem); }
       .d-md-none { display: flex !important; }
     }
     @media (min-width: 1025px) { .d-md-none { display: none !important; } }
@@ -543,143 +630,154 @@
       <div class="printer-grid">
         <!-- KOLOM KIRI -->
         <div class="left-column">
-          <!-- Pengaturan Header Struk -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title"><i class="fas fa-cog" style="color: var(--primary)"></i> Pengaturan Header Struk</span>
-            </div>
-            <div class="card-body">
-              <div class="form-group">
-                <label class="form-label">Nama Toko/Konter *</label>
-                <input type="text" class="form-input" id="receiptStoreName" placeholder="Contoh: Hifzi Cell" oninput="updatePreview()">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Alamat *</label>
-                <textarea class="form-textarea" id="receiptAddress" rows="2" placeholder="Alamat lengkap..." oninput="updatePreview()"></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Nomor HP</label>
-                <input type="text" class="form-input" id="receiptPhone" placeholder="0812-3456-7890" oninput="updatePreview()">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Catatan Footer</label>
-                <textarea class="form-textarea" id="receiptNote" rows="2" placeholder="Terima kasih..." oninput="updatePreview()"></textarea>
-              </div>
-              <button class="btn btn-primary btn-block" id="btnSaveHeader">
-                <i class="fas fa-save"></i> Simpan Header
-              </button>
-            </div>
-          </div>
 
-          <!-- Status Printer -->
+          <!-- OCR Pembaca Screenshot (DANA Token PLN, Order Kuota, Transfer Bank, E-Wallet) -->
           <div class="card">
             <div class="card-header">
-              <span class="card-title"><i class="fab fa-bluetooth-b" style="color: var(--accent)"></i> Status Printer Thermal</span>
+              <span class="card-title"><i class="fas fa-camera" style="color: var(--accent)"></i> Scan Screenshot (Token PLN / Transfer)</span>
             </div>
             <div class="card-body">
-              <div class="info-box info">
-                <div class="info-title"><i class="fas fa-info-circle"></i> Pengaturan Printer</div>
-                <div>Konfigurasi dan pemilihan printer thermal utama diatur langsung melalui menu <strong>Pengaturan</strong>.</div>
-              </div>
-              <button class="btn btn-outline btn-block" onclick="window.location.href='page-setting.html'">
-                <i class="fas fa-cog"></i> Buka Menu Pengaturan
-              </button>
-            </div>
-          </div>
-
-          <!-- OCR Pembaca Bukti Transfer -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title"><i class="fas fa-camera" style="color: var(--accent)"></i> Baca Bukti Transfer (OCR)</span>
-            </div>
-            <div class="card-body">
-              <!-- Opsi Mode Pemindai: AI Vision (Cerdas) vs Tesseract (Offline) -->
-              <div style="margin-bottom: 0.85rem; background: var(--bg-subtle); padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <div style="margin-bottom: 0.85rem; background: var(--bg-subtle); padding: 0.65rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                  <span style="font-size:0.78rem; font-weight:700; color:var(--primary);"><i class="fas fa-robot"></i> Mode AI Vision (Super Akurat & Cepat)</span>
+                  <span style="font-size:0.78rem; font-weight:700; color:var(--primary);"><i class="fas fa-robot"></i> Mode AI Vision (Cepat &amp; Akurat)</span>
                   <label style="font-size:0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
                     <input type="checkbox" id="useAiScan" checked> <strong>Aktifkan AI</strong>
                   </label>
                 </div>
                 <div id="aiKeyBox">
-                  <input type="password" class="form-input" id="geminiApiKey" placeholder="Masukkan Google Gemini API Key (Gratis)..." style="font-size:0.78rem; padding:0.45rem 0.65rem;" onchange="localStorage.setItem('webpos_gemini_key', this.value)">
+                  <input type="password" class="form-input" id="geminiApiKey" placeholder="Opsional: Google Gemini API Key (jika kosong pakai mode offline)..." style="font-size:0.78rem; padding:0.45rem 0.65rem;">
                   <div style="font-size:0.68rem; color:var(--text-muted); margin-top:3px;">
-                    Dapatkan kunci gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary); font-weight:bold;">aistudio.google.com</a> (Kunci disimpan aman di HP Anda).
+                    Cocok untuk screenshot <strong>Token PLN DANA / Order Kuota</strong>, BRImo, BNI, BCA, LinkAja. Kunci disimpan aman di HP Anda.
                   </div>
                 </div>
               </div>
 
               <div class="ocr-upload-area" id="ocrUploadArea">
-                <i class="fas fa-cloud-upload-alt fa-2x" style="color: var(--text-muted); margin-bottom: 0.5rem;"></i>
-                <div style="font-weight: 700; color: var(--text-sub); font-size: 0.85rem;">Klik atau Drop Gambar Bukti Transfer</div>
+                <i class="fas fa-cloud-upload-alt fa-2x" style="color: var(--primary); margin-bottom: 0.45rem;"></i>
+                <div style="font-weight: 700; color: var(--text-main); font-size: 0.86rem;">Pilih / Drop Screenshot Transaksi</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">Otomatis deteksi Token Listrik PLN (DANA/Order Kuota), Transfer Bank &amp; E-Wallet</div>
                 <input type="file" id="ocrFileInput" accept="image/*" style="display: none;">
               </div>
-              <div class="ocr-loading" id="ocrLoading" style="text-align:center; padding:1.25rem;">
-  <div class="spinner" style="margin: 0 auto 0.75rem;"></div>
-  <div style="font-size: 0.85rem; font-weight:700; color:var(--primary); margin-bottom: 0.5rem;" id="ocrProgressText">Membaca teks bukti transfer...</div>
-  
-  <!-- PROGRESS BAR PERSENTASE -->
-  <div style="background:#e2e8f0; border-radius:999px; height:10px; width:100%; max-width:280px; margin:0 auto; overflow:hidden; border:1px solid #cbd5e1;">
-    <div id="ocrProgressBar" style="background:linear-gradient(90deg, #4f46e5, #059669); height:100%; width:20%; transition:width 0.3s ease;"></div>
-  </div>
-  <div id="ocrProgressPercent" style="font-size: 0.75rem; font-weight:bold; color:var(--text-muted); margin-top:0.35rem;">20%</div>
-</div>
+
+              <div class="ocr-loading" id="ocrLoading">
+                <div class="spinner"></div>
+                <div style="font-size: 0.85rem; font-weight:700; color:var(--primary); margin-bottom: 0.5rem;" id="ocrProgressText">Membaca gambar...</div>
+                <div style="background:#e2e8f0; border-radius:999px; height:10px; width:100%; max-width:280px; margin:0 auto; overflow:hidden; border:1px solid #cbd5e1;">
+                  <div id="ocrProgressBar" style="background:linear-gradient(90deg, #4f46e5, #059669); height:100%; width:20%; transition:width 0.3s ease;"></div>
+                </div>
+                <div id="ocrProgressPercent" style="font-size: 0.75rem; font-weight:bold; color:var(--text-muted); margin-top:0.35rem;">20%</div>
+              </div>
+
               <div class="ocr-result" id="ocrResultSection">
                 <div class="ocr-result-grid">
-                  <div><img id="ocrPreviewImage" class="ocr-preview-image"></div>
+                  <div><img id="ocrPreviewImage" class="ocr-preview-image" alt="Preview Screenshot"></div>
                   <div><div id="ocrParsedData" class="ocr-parsed-data"></div></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                  <button class="btn btn-primary" id="btnApplyOcr" style="flex:1;"><i class="fas fa-check"></i> Gunakan</button>
-                  <button class="btn btn-outline" id="btnResetOcr" style="flex:1;"><i class="fas fa-redo"></i> Ulangi</button>
+                  <button type="button" class="btn btn-primary" id="btnApplyOcr" style="flex:1;"><i class="fas fa-check"></i> Terapkan</button>
+                  <button type="button" class="btn btn-outline" id="btnResetOcr" style="flex:1;"><i class="fas fa-redo"></i> Scan Ulang</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Input Manual -->
+          <!-- Input Manual / Edit Struk -->
           <div class="card">
             <div class="card-header">
-              <span class="card-title"><i class="fas fa-edit" style="color: var(--success)"></i> Input Manual</span>
+              <span class="card-title"><i class="fas fa-edit" style="color: var(--success)"></i> Data Struk</span>
+              <button type="button" class="btn btn-outline btn-sm" id="btnResetForm"><i class="fas fa-eraser"></i> Reset</button>
             </div>
             <div class="card-body">
               <div class="receipt-type-tabs">
-                <button class="receipt-type-tab active" onclick="setReceiptType('transfer')" data-type="transfer">🏦 Transfer Bank</button>
-                <button class="receipt-type-tab" onclick="setReceiptType('top_up')" data-type="top_up">📱 E-Wallet / Top Up</button>
+                <button type="button" class="receipt-type-tab active" onclick="setReceiptType('token_pln')" data-type="token_pln">⚡ Token PLN</button>
+                <button type="button" class="receipt-type-tab" onclick="setReceiptType('transfer')" data-type="transfer">🏦 Transfer</button>
+                <button type="button" class="receipt-type-tab" onclick="setReceiptType('top_up')" data-type="top_up">📱 E-Wallet</button>
               </div>
               <div id="manualFormContainer"></div>
             </div>
           </div>
+
+          <!-- Pengaturan Header Struk -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fas fa-store" style="color: var(--primary)"></i> Header &amp; Footer Struk</span>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Nama Toko / Konter *</label>
+                <input type="text" class="form-input" id="receiptStoreName" placeholder="Contoh: HIFZI CELL" oninput="updatePreview()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Alamat *</label>
+                <textarea class="form-textarea" id="receiptAddress" rows="2" placeholder="Alamat lengkap konter..." oninput="updatePreview()"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nomor HP / WA</label>
+                <input type="text" class="form-input" id="receiptPhone" placeholder="0812-3456-7890" oninput="updatePreview()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Catatan Footer</label>
+                <textarea class="form-textarea" id="receiptNote" rows="2" placeholder="Terima kasih telah bertransaksi..." oninput="updatePreview()"></textarea>
+              </div>
+              <button type="button" class="btn btn-primary btn-block" id="btnSaveHeader">
+                <i class="fas fa-save"></i> Simpan Header Struk
+              </button>
+            </div>
+          </div>
+
+          <!-- Status Printer Thermal -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fab fa-bluetooth-b" style="color: var(--accent)"></i> Status Printer Thermal</span>
+            </div>
+            <div class="card-body">
+              <div class="info-box info" id="printerStatusBox">
+                <div class="info-title"><i class="fas fa-info-circle"></i> <span id="printerStatusTitle">Memeriksa printer...</span></div>
+                <div id="printerStatusDesc">Konfigurasi dan pemilihan printer thermal diatur melalui menu <strong>Pengaturan</strong>.</div>
+              </div>
+              <button type="button" class="btn btn-outline btn-block" onclick="window.location.href='page-setting.html'">
+                <i class="fas fa-cog"></i> Buka Menu Pengaturan Printer
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <!-- KOLOM KANAN: Preview Struk & Aksi -->
         <div class="right-column">
           <div class="receipt-preview-container">
-            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">
-              <i class="fas fa-eye" style="color: var(--success)"></i> Preview Struk
-            </h3>
-            
-            <div class="receipt-preview" id="receiptPreview">
-              <div class="receipt-header">
-                <div class="receipt-title" id="previewStoreName">NAMA TOKO</div>
-                <div class="receipt-address" id="previewAddress">Alamat Toko</div>
-                <div class="receipt-address" id="previewPhone" style="margin-top: 0.2rem;">-</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.85rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">
+                <i class="fas fa-receipt" style="color: var(--success)"></i> Preview Struk
+              </h3>
+              <button type="button" class="btn btn-outline btn-sm" id="btnCopyReceiptText" title="Salin teks struk">
+                <i class="fas fa-copy"></i> Salin Teks
+              </button>
+            </div>
+
+            <div class="receipt-paper-stage">
+              <div class="receipt-preview" id="receiptPreview">
+                <div class="receipt-header">
+                  <div class="receipt-title" id="previewStoreName">HIFZI CELL</div>
+                  <div class="receipt-address" id="previewAddress">Alamat Toko</div>
+                  <div class="receipt-address" id="previewPhone" style="margin-top: 2px;"></div>
+                  <div class="receipt-badge-type" id="previewType">TOKEN LISTRIK PLN</div>
+                </div>
+                <div class="receipt-info">
+                  <div class="receipt-info-row"><span>Tanggal:</span><span id="previewDate" style="font-weight:bold;">-</span></div>
+                  <div class="receipt-info-row"><span>Waktu:</span><span id="previewTime" style="font-weight:bold;">-</span></div>
+                </div>
+                <div class="receipt-items" id="previewItems"></div>
+                <div class="receipt-total" id="previewTotal"></div>
+                <div class="receipt-footer" id="previewFooter">Terima kasih telah bertransaksi</div>
               </div>
-              <div class="receipt-info">
-                <div class="receipt-info-row"><span>Tanggal:</span><span id="previewDate" style="font-weight:bold;">-</span></div>
-                <div class="receipt-info-row"><span>Waktu:</span><span id="previewTime" style="font-weight:bold;">-</span></div>
-                <div class="receipt-info-row"><span>Jenis:</span><span id="previewType" style="font-weight:bold;">-</span></div>
-              </div>
-              <div class="receipt-items" id="previewItems"></div>
-              <div class="receipt-total" id="previewTotal"></div>
-              <div class="receipt-footer" id="previewFooter">Terima kasih</div>
             </div>
 
             <div class="share-actions">
-              <button class="share-btn pdf" id="btnSharePdf"><i class="fas fa-file-pdf"></i> PDF</button>
-              <button class="share-btn image" id="btnShareImg"><i class="fas fa-image"></i> Gambar</button>
-              <button class="share-btn whatsapp" id="btnShareWa"><i class="fab fa-whatsapp"></i> WA</button>
-              <button class="share-btn print" id="btnPrintThermal"><i class="fas fa-print"></i> Cetak Thermal</button>
+              <button type="button" class="share-btn print" id="btnPrintThermal"><i class="fas fa-print"></i> Cetak Thermal</button>
+              <button type="button" class="share-btn whatsapp" id="btnShareWa"><i class="fab fa-whatsapp"></i> Kirim WA</button>
+              <button type="button" class="share-btn image" id="btnShareImg"><i class="fas fa-image"></i> Simpan JPG</button>
+              <button type="button" class="share-btn pdf" id="btnSharePdf"><i class="fas fa-file-pdf"></i> Simpan PDF</button>
             </div>
           </div>
         </div>
@@ -714,27 +812,122 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-  let currentReceiptType = 'transfer';
+  let currentReceiptType = 'token_pln';
   let scannedData = null;
+
+  const formDrafts = {
+    token_pln: {
+      tanggal: '',
+      jam: '',
+      sumberApp: 'DANA',
+      noMeter: '',
+      namaPelanggan: '',
+      tarifDaya: '',
+      kwh: '',
+      tokenCode: '',
+      nominal: '',
+      admin: 3000,
+      ref: ''
+    },
+    transfer: {
+      tanggal: '',
+      jam: '',
+      pengirim: '',
+      norekPengirim: '',
+      bankAsal: 'BRI',
+      penerima: '',
+      rekening: '',
+      bankTujuan: 'BRI',
+      nominal: '',
+      admin: 5000,
+      ref: ''
+    },
+    top_up: {
+      tanggal: '',
+      jam: '',
+      norekPengirim: '',
+      bankAsal: 'DANA',
+      penerima: '',
+      rekening: '',
+      bankTujuan: 'BRI',
+      nominal: '',
+      admin: 5000,
+      ref: ''
+    }
+  };
+
+  function getDefaultDate() {
+    return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function getDefaultTime() {
+    return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':') + ' WIB';
+  }
+
+  function escHtml(val) {
+    return String(val == null ? '' : val)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function parseNumStrict(raw, fallback) {
+    if (raw === null || raw === undefined) return fallback;
+    const str = String(raw).trim();
+    if (str === '') return fallback;
+    const n = parseInt(str.replace(/[^\d-]/g, ''), 10);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  }
+
+  function formatNumber(num) {
+    const n = Math.round(Number(num) || 0);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function formatToken20(raw) {
+    const digits = String(raw || '').replace(/\D/g, '').slice(0, 20);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1-');
+  }
+
+  function isBridgeSuccess(res) {
+    if (res === true || res === 1) return true;
+    const s = String(res || '').trim().toLowerCase();
+    return s === 'ok' || s === 'true' || s === 'success' || s.startsWith('ok:') || s.startsWith('saved');
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     syncStoreBrandName();
     setupSidebarEvents();
     setupAuthUser();
     loadHeaderSettings();
+    updatePrinterStatusCard();
     renderManualForm();
     updatePreview();
 
-    // Muat Gemini API Key yang pernah disimpan
     const savedAiKey = localStorage.getItem('webpos_gemini_key');
-    if (savedAiKey && document.getElementById('geminiApiKey')) {
-      document.getElementById('geminiApiKey').value = savedAiKey;
+    const keyInput = document.getElementById('geminiApiKey');
+    if (savedAiKey && keyInput) keyInput.value = savedAiKey;
+    if (keyInput) {
+      keyInput.addEventListener('change', () => {
+        localStorage.setItem('webpos_gemini_key', keyInput.value.trim());
+      });
     }
 
-    // Event Listeners tombol
+    const useAiCb = document.getElementById('useAiScan');
+    const aiKeyBox = document.getElementById('aiKeyBox');
+    if (useAiCb && aiKeyBox) {
+      useAiCb.addEventListener('change', () => {
+        aiKeyBox.style.display = useAiCb.checked ? 'block' : 'none';
+      });
+    }
+
     document.getElementById('btnSaveHeader')?.addEventListener('click', saveHeader);
     document.getElementById('btnApplyOcr')?.addEventListener('click', applyOcrToForm);
     document.getElementById('btnResetOcr')?.addEventListener('click', resetOcr);
+    document.getElementById('btnResetForm')?.addEventListener('click', resetCurrentForm);
+    document.getElementById('btnCopyReceiptText')?.addEventListener('click', copyReceiptPlainText);
     document.getElementById('btnSharePdf')?.addEventListener('click', shareAsPDF);
     document.getElementById('btnShareImg')?.addEventListener('click', shareAsImage);
     document.getElementById('btnShareWa')?.addEventListener('click', shareToWhatsApp);
@@ -743,25 +936,94 @@
     const uploadArea = document.getElementById('ocrUploadArea');
     const fileInput = document.getElementById('ocrFileInput');
     uploadArea?.addEventListener('click', () => fileInput?.click());
-    
+
+    if (uploadArea) {
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+      });
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
+      });
+      uploadArea.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const file = e.dataTransfer?.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+          await processImageFile(file);
+        } else if (file) {
+          showToast('File harus berupa gambar screenshot', 'warning');
+        }
+      });
+    }
+
     fileInput?.addEventListener('change', async (e) => {
-      if (e.target.files.length > 0) {
+      if (e.target.files && e.target.files.length > 0) {
         await processImageFile(e.target.files[0]);
       }
     });
   });
 
+  function updatePrinterStatusCard() {
+    const box = document.getElementById('printerStatusBox');
+    const titleEl = document.getElementById('printerStatusTitle');
+    const descEl = document.getElementById('printerStatusDesc');
+    if (!box || !titleEl || !descEl) return;
+
+    const hasHelper = typeof window.WebPOSPrinter !== 'undefined';
+    const avail = hasHelper && window.WebPOSPrinter.available();
+    const cfg = hasHelper ? window.WebPOSPrinter.config() : {
+      name: localStorage.getItem('webpos_printer_name') || '',
+      mac: localStorage.getItem('webpos_printer_mac') || ''
+    };
+
+    box.classList.remove('info', 'ok', 'warn');
+    if (avail && cfg.mac) {
+      box.classList.add('ok');
+      titleEl.textContent = 'Printer Siap: ' + (cfg.name || 'Thermal Bluetooth');
+      descEl.innerHTML = 'MAC: <strong>' + escHtml(cfg.mac) + '</strong> — siap cetak struk langsung dari tombol Cetak Thermal.';
+    } else if (avail && !cfg.mac) {
+      box.classList.add('warn');
+      titleEl.textContent = 'Printer Belum Dipilih';
+      descEl.innerHTML = 'Bluetooth APK aktif, silakan pilih printer thermal terlebih dahulu di menu <strong>Pengaturan</strong>.';
+    } else {
+      box.classList.add('info');
+      titleEl.textContent = cfg.mac ? ('Printer Tersimpan: ' + (cfg.name || cfg.mac)) : 'Mode Browser / Preview';
+      descEl.innerHTML = 'Cetak Bluetooth ESC/POS aktif otomatis di APK Android WebPOS. Di browser PC/HP, tombol Cetak Thermal membuka dialog print biasa.';
+    }
+  }
+
   async function syncStoreBrandName() {
     const logoEl = document.querySelector(".logo-text");
-    if (!logoEl) return;
     const cachedName = localStorage.getItem("webpos_store_name");
-    if (cachedName) logoEl.textContent = cachedName;
+    if (logoEl && cachedName) logoEl.textContent = cachedName;
     try {
       if (typeof db !== 'undefined') {
         const doc = await db.collection("settings").doc("store").get();
-        if (doc.exists && doc.data().name) {
-          logoEl.textContent = doc.data().name;
-          localStorage.setItem("webpos_store_name", doc.data().name);
+        if (doc.exists) {
+          const s = doc.data() || {};
+          if (s.name) {
+            if (logoEl) logoEl.textContent = s.name;
+            localStorage.setItem("webpos_store_name", String(s.name).trim());
+          }
+          if (typeof s.address === 'string' && s.address.trim()) {
+            localStorage.setItem("webpos_store_address", s.address.trim());
+          }
+          if (typeof s.phone === 'string' && s.phone.trim()) {
+            localStorage.setItem("webpos_store_phone", s.phone.trim());
+          }
+          if (typeof s.footerNote === 'string' && s.footerNote.trim()) {
+            localStorage.setItem("webpos_store_footer_note", s.footerNote.trim());
+          }
+          const nameIn = document.getElementById('receiptStoreName');
+          const addrIn = document.getElementById('receiptAddress');
+          const phoneIn = document.getElementById('receiptPhone');
+          const noteIn = document.getElementById('receiptNote');
+          if (nameIn && !nameIn.value.trim() && s.name) nameIn.value = s.name;
+          if (addrIn && !addrIn.value.trim() && s.address) addrIn.value = s.address;
+          if (phoneIn && !phoneIn.value.trim() && s.phone) phoneIn.value = s.phone;
+          if (noteIn && !noteIn.value.trim() && s.footerNote) noteIn.value = s.footerNote;
+          updatePreview();
         }
       }
     } catch (e) {}
@@ -781,24 +1043,28 @@
         backdrop.classList.add("active");
       };
     }
-    backdrop.onclick = () => {
-      sidebar.classList.remove("mobile-open");
-      backdrop.classList.remove("active");
-    };
+    if (backdrop) {
+      backdrop.onclick = () => {
+        sidebar.classList.remove("mobile-open");
+        backdrop.classList.remove("active");
+      };
+    }
 
     document.querySelectorAll(".nav-dropdown").forEach(d => {
       const t = d.querySelector(".nav-dropdown-toggle");
       if (t) t.onclick = (e) => { e.preventDefault(); d.classList.toggle("open"); };
     });
 
-    document.getElementById("btnThemeToggle").onclick = () => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      const nextTheme = isDark ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", nextTheme);
-      localStorage.setItem("webpos_theme", nextTheme);
-    };
+    const themeBtn = document.getElementById("btnThemeToggle");
+    if (themeBtn) {
+      themeBtn.onclick = () => {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        const nextTheme = isDark ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", nextTheme);
+        localStorage.setItem("webpos_theme", nextTheme);
+      };
+    }
 
-    // Logout dengan Modal Internal WebPOS (Bukan windows alert)
     const logoutBtn = document.getElementById("btnLogout");
     if (logoutBtn) {
       logoutBtn.onclick = () => {
@@ -838,7 +1104,7 @@
           const doc = await db.collection("users").doc(user.uid).get();
           if (doc.exists) {
             const u = doc.data();
-            const name = u.name || u.username || user.email.split("@")[0];
+            const name = u.name || u.username || (user.email ? user.email.split("@")[0] : 'Kasir');
             const role = (u.role || "Kasir").toUpperCase();
             document.getElementById("userName").textContent = name;
             document.getElementById("userRole").textContent = role;
@@ -847,12 +1113,14 @@
               RoleGuard.apply((u.role || "kasir").toLowerCase());
             }
           }
-        } catch(e) {}
+        } catch (e) {}
       });
     }
   }
 
- // --- PROSES OCR KILAT ANTI-STUCK DENGAN DYNAMIC PROGRESS STEPPER ---
+  // =========================================================================
+  // OCR ENGINE: AI VISION (GEMINI) + OFFLINE TESSERACT (PLN, TRANSFER, E-WALLET)
+  // =========================================================================
   async function processImageFile(file) {
     const uploadArea = document.getElementById('ocrUploadArea');
     const loadingArea = document.getElementById('ocrLoading');
@@ -868,70 +1136,72 @@
     if (loadingArea) loadingArea.style.display = 'block';
     if (resultArea) resultArea.style.display = 'none';
 
-    // JIKA MODE AI DIAKTIFKAN & ADA KUNCI: GUNAKAN GOOGLE AI DENGAN KOMPRESI KILAT
     if (useAi && apiKey) {
-      if (pBar) pBar.style.width = '35%';
-      if (pText) pText.textContent = '35%';
-      if (statusText) statusText.textContent = 'Mengompres gambar untuk AI...';
+      if (pBar) pBar.style.width = '30%';
+      if (pText) pText.textContent = '30%';
+      if (statusText) statusText.textContent = 'Mengompres screenshot...';
 
+      let aiTimer = null;
       try {
-        // Kompres gambar ke ukuran ringan (~80KB) agar tidak memicu 503 di Google
-        const compressedBase64 = await compressImageForAi(file, 900);
+        const compressedBase64 = await compressImageForAi(file, 960);
         const cleanBase64 = compressedBase64.split(',')[1];
 
-        // PROGRESS DINAMIS HIDUP (Tidak akan pernah terasa stuck lagi!)
-        let aiProgress = 70;
-        if (pBar) pBar.style.width = '70%';
-        if (pText) pText.textContent = '70%';
+        let aiProgress = 55;
+        if (pBar) pBar.style.width = '55%';
+        if (pText) pText.textContent = '55%';
         if (statusText) statusText.textContent = 'Menghubungkan ke Gemini AI...';
 
         const aiStatusMessages = [
-          'AI sedang menganalisis gambar...',
-          'Membaca nama pengirim & penerima...',
-          'Mendeteksi nomor rekening & nominal...',
-          'Menyusun rincian struk digital...'
+          'AI menganalisis screenshot...',
+          'Mendeteksi Token PLN / bukti transfer...',
+          'Membaca kode token, nama & nominal...',
+          'Menyusun struk digital...'
         ];
         let msgIdx = 0;
-
-        const aiTimer = setInterval(() => {
-          if (aiProgress < 94) {
-            aiProgress += 4;
+        aiTimer = setInterval(() => {
+          if (aiProgress < 92) {
+            aiProgress += 5;
             if (pBar) pBar.style.width = aiProgress + '%';
             if (pText) pText.textContent = aiProgress + '%';
             if (statusText && msgIdx < aiStatusMessages.length) {
               statusText.textContent = aiStatusMessages[msgIdx++];
             }
           }
-        }, 400);
+        }, 450);
 
-        const prompt = `Anda adalah sistem OCR kasir profesional. Baca gambar bukti transfer bank/e-wallet ini (BRImo, DANA, LinkAja, BNI wondr, BCA, Mandiri, dll).
-Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis dengan format ini:
+        const prompt = `Anda adalah sistem OCR kasir konter pulsa & PPOB profesional di Indonesia.
+Baca screenshot transaksi ini (bisa berupa Token Listrik PLN dari DANA / Order Kuota / BRImo / Tokopedia / Shopee, atau Transfer Bank BRImo/BNI wondr/BCA/Mandiri, atau E-Wallet DANA/LinkAja/GoPay/OVO).
+Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, persis dengan struktur ini:
 {
-  "type": "transfer atau top_up (jika DANA/LinkAja/GoPay gunakan top_up, jika bank gunakan transfer)",
-  "bankAsal": "nama bank/ewallet pengirim (misal: BRI, BNI, DANA, LinkAja)",
-  "bankTujuan": "nama bank/ewallet penerima (misal: BRI, BNI, BCA, Mandiri)",
-  "pengirim": "nama orang pengirim (misal: SEPRYANDA YON atau LinkAja)",
-  "norekPengirim": "nomor rekening atau ID pengirim LENGKAP dengan sensor bintang (misal: 0669 **** **** 531, *******375, atau 0811****9491, atau LinkAja). JANGAN DIISI STRIP MINUS",
-  "penerima": "nama orang penerima (misal: SUPRIADI atau SEPRYANDA YON atau ASHA SEPTIANI IRSAT, hapus gelar Sdr/Sdri)",
-  "rekening": "nomor rekening atau ID penerima LENGKAP dengan sensor bintang (misal: ****9531 atau 0181 0107 6416 508 atau 0324562281 atau 1815110375)",
-  "nominal": angka integer saja (misal: 500000),
-  "admin": angka integer (biaya admin konter default 5000 atau dari struk),
-  "tanggal": "tanggal transaksi asli dari struk (misal: 30 Nov 2025 atau 26 Juli 2025)",
-  "jam": "jam transaksi asli dari struk (misal: 17:01 WIB atau 20:57:58 WIB, BUKAN jam status bar HP)",
-  "ref": "nomor referensi atau ID transaksi asli struk",
-  "status": "BERHASIL"
+  "type": "token_pln atau transfer atau top_up (WAJIB token_pln jika ada Token Listrik/PLN/Stroom/kWh/No Meter/20 digit kode token)",
+  "sumberApp": "DANA atau Order Kuota atau BRI atau BNI atau BCA atau LinkAja atau Lainnya",
+  "noMeter": "nomor meter atau ID pelanggan PLN (hanya angka 11-12 digit, kosong jika bukan PLN)",
+  "namaPelanggan": "nama pelanggan PLN (kosong jika bukan PLN)",
+  "tarifDaya": "tarif/daya listrik misal R1/900VA atau R1M/1300VA (kosong jika bukan PLN)",
+  "kwh": "jumlah kWh misal 13.8 kWh (kosong jika bukan PLN)",
+  "tokenCode": "20 digit kode stroom/token PLN diformat XXXX-XXXX-XXXX-XXXX-XXXX (kosong jika bukan PLN)",
+  "bankAsal": "nama bank/ewallet pengirim (misal BRI, BNI, DANA, LinkAja)",
+  "bankTujuan": "nama bank/ewallet penerima",
+  "pengirim": "nama pengirim (jika transfer/ewallet)",
+  "norekPengirim": "nomor rekening/HP pengirim lengkap dengan sensor bintang jika ada",
+  "penerima": "nama penerima (hapus gelar Sdr/Sdri)",
+  "rekening": "nomor rekening/HP penerima",
+  "nominal": 20000,
+  "tanggal": "tanggal transaksi asli dari screenshot (misal 27 Nov 2026)",
+  "jam": "jam transaksi asli dari screenshot (misal 17:01 WIB, BUKAN jam status bar atas HP)",
+  "ref": "nomor referensi / SN / ID transaksi asli"
 }`;
 
-        const modelList = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        const modelList = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
         let response = null;
         let lastErrorMsg = '';
 
         for (const model of modelList) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               signal: controller.signal,
@@ -945,14 +1215,13 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
                 generationConfig: {
                   responseMimeType: "application/json",
                   temperature: 0.1,
-                  maxOutputTokens: 600
+                  maxOutputTokens: 700
                 }
               })
             });
 
             clearTimeout(timeoutId);
             if (response.ok) break;
-
             const errData = await response.json().catch(() => ({}));
             lastErrorMsg = errData.error?.message || `HTTP ${response.status}`;
           } catch (e) {
@@ -961,23 +1230,20 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         }
 
         clearInterval(aiTimer);
-
         if (!response || !response.ok) {
           throw new Error(lastErrorMsg || 'Server AI sedang sibuk');
         }
 
         const resJson = await response.json();
-        let rawAiText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const rawAiText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const jsonMatch = rawAiText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error('Format respon AI tidak valid');
-        
-        const parsedAiData = JSON.parse(jsonMatch[0]);
-        parsedAiData.admin = parseInt(document.getElementById('manualAdmin')?.value) || parsedAiData.admin || 5000;
-        parsedAiData.total = (parsedAiData.nominal || 0) + parsedAiData.admin;
 
-        scannedData = parsedAiData;
+        const parsed = normalizeScannedData(JSON.parse(jsonMatch[0]));
+        scannedData = parsed;
         document.getElementById('ocrPreviewImage').src = compressedBase64;
-        applyOcrToForm();
+        displayOcrResult(scannedData);
+        applyOcrToForm(true);
 
         if (pBar) pBar.style.width = '100%';
         if (pText) pText.textContent = '100%';
@@ -986,16 +1252,17 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         setTimeout(() => {
           if (loadingArea) loadingArea.style.display = 'none';
           if (resultArea) resultArea.style.display = 'block';
-          showToast('Bukti transfer berhasil dibaca 100% akurat oleh AI!', 'success');
+          showToast('Screenshot berhasil dibaca oleh AI Vision!', 'success');
         }, 150);
         return;
       } catch (aiErr) {
-        console.warn('AI Scan gagal, beralih ke engine lokal cerdas:', aiErr);
-        showToast('AI sibuk (' + aiErr.message + '), beralih ke mode offline cerdas...', 'warning');
+        if (aiTimer) clearInterval(aiTimer);
+        console.warn('AI Scan gagal, beralih ke mode offline:', aiErr);
+        showToast('AI gagal (' + aiErr.message + '), beralih ke OCR offline...', 'warning');
       }
     }
-    
-    // JIKA AI SIBUK / TIDAK ADA KUNCI: GUNAKAN ENGINE OFFLINE CERDAS (BEBAS ERROR)
+
+    // MODE OFFLINE TESSERACT
     if (typeof Tesseract === 'undefined') {
       if (loadingArea) loadingArea.style.display = 'none';
       if (uploadArea) uploadArea.style.display = 'block';
@@ -1006,7 +1273,7 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
     let currentPct = 20;
     if (pBar) pBar.style.width = '20%';
     if (pText) pText.textContent = '20%';
-    if (statusText) statusText.textContent = 'Membaca gambar secara offline...';
+    if (statusText) statusText.textContent = 'Membaca teks secara offline...';
 
     const progressTimer = setInterval(() => {
       if (currentPct < 90) {
@@ -1014,7 +1281,7 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         if (pBar) pBar.style.width = currentPct + '%';
         if (pText) pText.textContent = currentPct + '%';
       }
-    }, 200);
+    }, 250);
 
     try {
       const base64Str = await fileToBase64(file);
@@ -1027,18 +1294,17 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
       await worker.terminate();
 
       clearInterval(progressTimer);
-
       if (pBar) pBar.style.width = '100%';
       if (pText) pText.textContent = '100%';
 
       scannedData = parseReceiptText(result.data.text);
       displayOcrResult(scannedData);
-      applyOcrToForm();
+      applyOcrToForm(true);
 
       setTimeout(() => {
         if (loadingArea) loadingArea.style.display = 'none';
         if (resultArea) resultArea.style.display = 'block';
-        showToast('Bukti transfer dibaca (Mode Offline Cerdas)', 'success');
+        showToast('Screenshot berhasil dibaca (Mode Offline)', 'success');
       }, 150);
     } catch (err) {
       clearInterval(progressTimer);
@@ -1048,8 +1314,27 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
     }
   }
 
-  // Kompresi Kilat Khusus AI: Gambar diperkecil ke JPEG 80% (~80KB) agar diupload dalam 0.2 detik & bebas 503
-  function compressImageForAi(file, maxWidth = 900) {
+  function normalizeScannedData(raw) {
+    const d = Object.assign({}, raw || {});
+    const allowed = ['token_pln', 'transfer', 'top_up'];
+    if (!allowed.includes(d.type)) {
+      d.type = (d.tokenCode || d.noMeter || d.kwh || d.tarifDaya) ? 'token_pln' : 'transfer';
+    }
+    if (d.tokenCode) d.tokenCode = formatToken20(d.tokenCode);
+    d.nominal = parseNumStrict(d.nominal, 0);
+    const defaultAdmin = d.type === 'token_pln' ? 3000 : 5000;
+    const currentAdminVal = (currentReceiptType === d.type)
+      ? parseNumStrict(document.getElementById('manualAdmin')?.value, defaultAdmin)
+      : defaultAdmin;
+    d.admin = currentAdminVal;
+    d.total = d.nominal + d.admin;
+    d.tanggal = d.tanggal || getDefaultDate();
+    d.jam = d.jam || getDefaultTime();
+    d.ref = d.ref || ('TRX-' + Date.now().toString().slice(-8));
+    return d;
+  }
+
+  function compressImageForAi(file, maxWidth = 960) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1064,9 +1349,8 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
           }
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.8));
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
         };
         img.onerror = reject;
         img.src = e.target.result;
@@ -1084,8 +1368,8 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
       reader.readAsDataURL(file);
     });
   }
-  
-  function resizeImageForFastOcr(base64Str, maxWidth = 950) {
+
+  function resizeImageForFastOcr(base64Str, maxWidth = 1400) {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = base64Str;
@@ -1099,237 +1383,374 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick (\`\`\`json), persis 
         }
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL('image/png'));
       };
       img.onerror = () => resolve(base64Str);
     });
   }
-  
-// === ENGINE CERDAS MULTI-BANK (DANA, BRIMO, BNI, LINKAJA) ===
-function extractDateTime(rawText) {
-  let tanggal = '';
-  let jam = '';
 
-  const combo = rawText.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})[^\w\r\n]{1,6}([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?(?:\s*(?:WIB|WITA|WIT))?)/i);
-  if (combo) {
-    tanggal = combo[1].trim();
-    jam = combo[2].trim().replace('.', ':');
-    if (!jam.toUpperCase().includes('WIB')) jam += ' WIB';
+  // =========================================================================
+  // PARSER CERDAS: TOKEN LISTRIK PLN (DANA / ORDER KUOTA) + TRANSFER + E-WALLET
+  // =========================================================================
+  function extractDateTime(rawText) {
+    let tanggal = '';
+    let jam = '';
+
+    const combo = rawText.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})[^\w\r\n]{1,8}([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?(?:\s*(?:WIB|WITA|WIT))?)/i);
+    if (combo) {
+      tanggal = combo[1].trim();
+      jam = combo[2].trim().replace(/\./g, ':');
+      if (!/WIB|WITA|WIT/i.test(jam)) jam += ' WIB';
+      return { tanggal, jam };
+    }
+
+    const tglTeks = rawText.match(/(\d{1,2})\s+(Jan(?:uari)?|Feb(?:ruari)?|Mar(?:et)?|Apr(?:il)?|Mei|Jun(?:i)?|Jul(?:i)?|Agu(?:stus)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Des(?:ember)?)\s+(\d{4})/i);
+    if (tglTeks) tanggal = `${tglTeks[1]} ${tglTeks[2]} ${tglTeks[3]}`;
+
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    for (let i = 0; i < lines.length; i++) {
+      if (i < 2 && /^(?:[0-2]?\d[:.][0-5]\d)\b/.test(lines[i]) && !/WIB|WITA|WIT/i.test(lines[i])) continue;
+      const tm = lines[i].match(/([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?\s*(?:WIB|WITA|WIT))/i)
+        || lines[i].match(/(?:pukul|jam|waktu)\s*[:=-]?\s*([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?)/i);
+      if (tm) {
+        jam = tm[1].replace(/\./g, ':');
+        if (!/WIB|WITA|WIT/i.test(jam)) jam += ' WIB';
+        break;
+      }
+    }
+
+    if (!tanggal) tanggal = getDefaultDate();
+    if (!jam) jam = getDefaultTime();
     return { tanggal, jam };
   }
 
-  const tglTeks = rawText.match(/(\d{1,2})\s+(Jan(?:uari)?|Feb(?:ruari)?|Mar(?:et)?|Apr(?:il)?|Mei|Jun(?:i)?|Jul(?:i)?|Agu(?:stus)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Des(?:ember)?)\s+(\d{4})/i);
-  if (tglTeks) tanggal = `${tglTeks[1]} ${tglTeks[2]} ${tglTeks[3]}`;
+  function cleanPersonName(str) {
+    if (!str) return '';
+    return str.trim()
+      .replace(/^[^a-zA-Z]*(?:nama\s*pelanggan|nama|penerima|pengirim|tujuan|sumber\s+dana|dari|ke|kirim\s+ke|transfer\s+ke|a\.?n\.?|a\/n|sdri?\.?|bapa?k\.?|ibu\.?)\s*[:=-]?\s*/i, '')
+      .replace(/[\s-]+(bank\s+[a-z]+|bri|bca|bni|mandiri|bsi|dana|gopay|ovo|cimb|btn|seabank|jago)$/i, '')
+      .replace(/^[•.*xX\-0-9\s:\"'\(\)]+/, '')
+      .replace(/[\(\)\"':]+$/, '')
+      .trim();
+  }
 
-  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  for (let i = 0; i < lines.length; i++) {
-    if (i < 2 && /^(?:[0-2]?\d[:.][0-5]\d|\d{1,2}\.\d{2}\b)/.test(lines[i]) && !lines[i].toUpperCase().includes('WIB')) continue;
-    const tm = lines[i].match(/([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?\s*(?:WIB|WITA|WIT))/i) || lines[i].match(/(?:pukul|jam|\b)([0-2]?\d[:.][0-5]\d(?::[0-5]\d)?)\b/i);
-    if (tm) {
-      jam = tm[1].replace('.', ':');
-      if (!jam.toUpperCase().includes('WIB')) jam += ' WIB';
-      break;
+  function isValidPersonName(str) {
+    if (!str || typeof str !== 'string') return false;
+    const s = cleanPersonName(str).toUpperCase();
+    if (s.length < 3 || s.length > 38 || /\d/.test(s) || !/^[A-Z\s.'`\/\-]+$/.test(s) || !/[AIUEO]/.test(s)) return false;
+    const kataDilarang = [
+      'BERHASIL', 'SUKSES', 'TRANSAKSI', 'TRANSFER', 'TOTAL', 'BIAYA', 'ADMIN', 'REFERENSI',
+      'TANGGAL', 'SUMBER', 'DANA', 'REKENING', 'BANK', 'NOMINAL', 'WIB', 'CATATAN', 'RINCIAN',
+      'METODE', 'PEMBAYARAN', 'KIRIM', 'UANG', 'DETAIL', 'STATUS', 'TARIF', 'DAYA', 'TOKEN',
+      'LISTRIK', 'PRABAYAR', 'STROOM', 'METER', 'PELANGGAN', 'KWH', 'HARGA', 'SN', 'PLN'
+    ];
+    for (const k of kataDilarang) {
+      if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k)) return false;
     }
+    return true;
   }
 
-  if (!tanggal) tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  if (!jam) jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  return { tanggal, jam };
-}
-
-function cleanPersonName(str) {
-  if (!str) return '';
-  return str.trim()
-    .replace(/^[^a-zA-Z]*(?:nama|penerima|pengirim|tujuan|sumber\s+dana|dari|ke|kirim\s+ke|transfer\s+ke|a\.?n\.?|a\/n|sdri?\.?|bapa?k\.?|ibu\.?)\s*[:=-]?\s*/i, '')
-    .replace(/[\s-]+(bank\s+[a-z]+|bri|bca|bni|mandiri|bsi|dana|gopay|ovo|cimb|btn|seabank|jago)$/i, '')
-    .replace(/^[•.*xX\-0-9\s:\"'\(\)]+/, '')
-    .replace(/[\(\)\"':]+$/, '')
-    .trim();
-}
-
-function isValidPersonName(str) {
-  if (!str || typeof str !== 'string') return false;
-  const s = cleanPersonName(str).toUpperCase();
-  if (s.length < 3 || s.length > 38 || /\d/.test(s) || !/^[A-Z\s.'`-]+$/.test(s) || !/[AIUEO]/.test(s)) return false;
-  const kataDilarang = ['BERHASIL', 'SUKSES', 'TRANSAKSI', 'TRANSFER', 'TOTAL', 'BIAYA', 'ADMIN', 'REFERENSI', 'TANGGAL', 'SUMBER', 'DANA', 'REKENING', 'BANK', 'NOMINAL', 'WIB', 'CATATAN', 'RINCIAN', 'METODE', 'PEMBAYARAN', 'KIRIM', 'UANG', 'DETAIL', 'STATUS'];
-  for (let k of kataDilarang) {
-    if (s === k || s.startsWith(k + ' ') || s.endsWith(' ' + k)) return false;
+  function isTokenPlnText(rawText) {
+    if (!rawText) return false;
+    const up = rawText.toUpperCase();
+    const hasGrouped20 = /\b\d{4}[\s\-]\d{4}[\s\-]\d{4}[\s\-]\d{4}[\s\-]\d{4}\b/.test(rawText);
+    const hasPlnKeyword = /(TOKEN\s*LISTRIK|PLN\s*PRABAYAR|STROOM|NO\.?\s*METER|ID\s*PELANGGAN|TARIF\s*\/?\s*DAYA|KWH\b|KODE\s*TOKEN|NOMOR\s*TOKEN|LISTRIK\s*PLN)/i.test(up);
+    return hasGrouped20 || hasPlnKeyword;
   }
-  return true;
-}
 
-function parseReceiptText(rawText) {
-  if (!rawText) return null;
-  const textUpper = rawText.toUpperCase();
-  const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const { tanggal, jam } = extractDateTime(rawText);
+  function parseTokenPlnText(rawText) {
+    const text = String(rawText || '');
+    const up = text.toUpperCase();
+    const { tanggal, jam } = extractDateTime(text);
 
-  let data = {
-    type: 'transfer',
-    bankAsal: 'BRI',
-    bankTujuan: 'BRI',
-    pengirim: '',
-    norekPengirim: '',
-    penerima: '',
-    rekening: '',
-    nominal: 0,
-    admin: parseInt(document.getElementById('manualAdmin')?.value) || 5000,
-    total: 0,
-    ref: 'TRX-' + Math.floor(10000000 + Math.random() * 90000000),
-    tanggal: tanggal,
-    jam: jam,
-    status: 'BERHASIL'
-  };
+    let sumberApp = 'DANA';
+    if (up.includes('ORDER KUOTA') || up.includes('ORDERKUOTA')) sumberApp = 'Order Kuota';
+    else if (up.includes('DANA')) sumberApp = 'DANA';
+    else if (up.includes('BRIMO') || up.includes('BRI')) sumberApp = 'BRI';
+    else if (up.includes('BCA')) sumberApp = 'BCA';
+    else if (up.includes('MANDIRI') || up.includes('LIVIN')) sumberApp = 'Mandiri';
+    else if (up.includes('BNI') || up.includes('WONDR')) sumberApp = 'BNI';
+    else if (up.includes('SHOPEE')) sumberApp = 'ShopeePay';
+    else if (up.includes('GOPAY') || up.includes('TOKOPEDIA')) sumberApp = 'GoPay';
 
-  const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*ID|ID\s*Transaksi|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_)\-\]]{6,40})/i);
-  if (refMatch) data.ref = refMatch[1].trim();
+    let tokenCode = '';
+    const grouped20 = text.match(/\b(\d{4}[\s\-]\d{4}[\s\-]\d{4}[\s\-]\d{4}[\s\-]\d{4})\b/);
+    if (grouped20) {
+      tokenCode = formatToken20(grouped20[1]);
+    } else {
+      const nearToken = text.match(/(?:TOKEN|STROOM|KODE\s*TOKEN|NOMOR\s*TOKEN|SN)\s*(?:[:=-]\s*|\r?\n\s*)([\d\s\-]{20,26})/i);
+      if (nearToken) {
+        const d20 = nearToken[1].replace(/\D/g, '');
+        if (d20.length >= 20) tokenCode = formatToken20(d20.slice(0, 20));
+      }
+      if (!tokenCode) {
+        const solid20 = text.match(/(?:^|[^\d])(\d{20})(?:[^\d]|$)/);
+        if (solid20) tokenCode = formatToken20(solid20[1]);
+      }
+    }
 
-  const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION'));
-  const isLinkAja = textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'));
-  const isWondrBNI = textUpper.includes('WONDR') || textUpper.includes('BY BNI');
-  const isBRImo = textUpper.includes('BRIMO') || (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN') && textUpper.includes('BRI'));
-
-  // 1. LINKAJA
-  if (isLinkAja) {
-    data.type = 'top_up';
-    data.bankAsal = 'LinkAja';
-    data.bankTujuan = 'BNI';
-    data.pengirim = 'LinkAja';
-    data.norekPengirim = 'LinkAja'; // Anti strip '-'
-
-    for (let i = 0; i < rawLines.length; i++) {
-      const l = rawLines[i];
-      if (l.toUpperCase().includes('BANK BNI') || l.toUpperCase().includes('BNI')) data.bankTujuan = 'BNI';
-      const rekMatch = l.match(/(\d{8,18})/);
-      if (rekMatch && !data.rekening) {
-        data.rekening = rekMatch[1];
-        if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
-          data.penerima = cleanPersonName(rawLines[i + 1]);
+    let noMeter = '';
+    const meterMatch = text.match(/(?:NO\.?\s*METER|ID\s*PELANGGAN|ID\s*PEL|IDPEL|NOMOR\s*METER|METER\s*NUMBER)\s*(?:\/\s*(?:ID\s*PEL(?:ANGGAN)?|NO\.?\s*METER))?\s*(?:[:=-]\s*|\r?\n\s*)(\d{10,13})/i);
+    if (meterMatch) {
+      noMeter = meterMatch[1].trim();
+    } else {
+      const tokenDigits = tokenCode.replace(/\D/g, '');
+      const candidates = text.match(/\b\d{11,12}\b/g) || [];
+      for (const c of candidates) {
+        if (!c.startsWith('08') && (!tokenDigits || !tokenDigits.includes(c))) {
+          noMeter = c;
+          break;
         }
       }
     }
-  }
 
-  // 2. DANA
-  else if (isRealDanaApp) {
-    data.type = 'top_up';
-    data.bankAsal = 'DANA';
-    data.bankTujuan = 'BRI';
-
-    // Format otomatis: 0811****9491 (bukan 0811-9491)
-    const danaPhone = rawText.match(/08(\d{2})[^\d\r\n]{1,6}(\d{4})/);
-    if (danaPhone) {
-      data.pengirim = `08${danaPhone[1]}****${danaPhone[2]}`;
-      data.norekPengirim = data.pengirim;
-    } else {
-      data.pengirim = '0811****9491';
-      data.norekPengirim = '0811****9491';
+    let namaPelanggan = '';
+    const nameMatch = text.match(/(?:NAMA\s*PELANGGAN|NAMA\s*CUST(?:OMER)?|CUSTOMER\s*NAME|NAMA)\s*(?:[:=-]\s*|\r?\n\s*)([A-Za-z][A-Za-z\s.'`\/\-]{1,36})/i);
+    if (nameMatch) {
+      const candidate = nameMatch[1].split(/\r?\n/)[0].trim();
+      if (isValidPersonName(candidate)) namaPelanggan = cleanPersonName(candidate);
     }
 
-    const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)\s*([•·.*xX0-9]+)|\s*-\s*([A-Za-z]+)|\s*$)/im);
-    if (bannerMatch) {
-      data.penerima = cleanPersonName(bannerMatch[1]);
-      if (bannerMatch[2]) data.bankTujuan = bannerMatch[2].toUpperCase();
-      if (bannerMatch[3]) {
-        let rek = bannerMatch[3].trim();
-        if (/^\d{4}$/.test(rek)) rek = '****' + rek;
-        data.rekening = rek;
+    let tarifDaya = '';
+    const tdMatch = text.match(/(?:TARIF\s*\/?\s*DAYA|SEGMEN\s*\/?\s*DAYA|DAYA)\s*(?:[:=-]\s*|\r?\n\s*)([A-Z0-9]{1,4}\s*\/?\s*\d{3,5}\s*(?:VA)?)/i)
+      || text.match(/\b((?:R1M?|R2|R3|B1|B2|B3|I1|I2|S1|S2|P1)[A-Z]?\s*\/\s*\d{3,5}\s*(?:VA)?)\b/i);
+    if (tdMatch) {
+      tarifDaya = tdMatch[1].replace(/\s+/g, '').toUpperCase();
+      if (!tarifDaya.endsWith('VA')) tarifDaya += 'VA';
+    }
+
+    let kwh = '';
+    const kwhMatch = text.match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*KWH\b/i)
+      || text.match(/(?:JML\s*KWH|JUMLAH\s*KWH|KWH)\s*(?:[:=-]\s*|\r?\n\s*)(\d{1,4}(?:[.,]\d{1,2})?)/i);
+    if (kwhMatch) {
+      kwh = kwhMatch[1].replace(',', '.') + ' kWh';
+    }
+
+    let nominal = 0;
+    const nomMatch = text.match(/(?:NOMINAL\s*TOKEN|NOMINAL|DENOM|RP\s*STROOM|TOKEN\s*LISTRIK|PLN\s*PRABAYAR|TOTAL\s*BAYAR|HARGA)\s*(?:[:=-]\s*|\r?\n\s*)(?:Rp\.?\s*)?([\d.]{4,12}(?:,\d{2})?)/i);
+    if (nomMatch) {
+      nominal = parseInt(nomMatch[1].replace(/\./g, '').replace(/,\d{2}$/, ''), 10) || 0;
+    }
+    if (!nominal) {
+      const rpMatches = text.match(/Rp\.?\s*(\d{1,3}(?:\.\d{3})+)/gi) || [];
+      for (const m of rpMatches) {
+        const val = parseInt(m.replace(/[^\d]/g, ''), 10) || 0;
+        if (val >= 20000) { nominal = val; break; }
       }
     }
-    if (!data.rekening || data.rekening === '-') data.rekening = '****9531';
+
+    let ref = '';
+    const refMatch = text.match(/(?:NO\.?\s*REF(?:ERENSI)?|ID\s*TRANSAKSI|ID\s*ORDER|REF\.?\s*ID)\s*(?:[:=-]\s*|\r?\n\s*)([A-Za-z0-9_\-]{6,32})/i);
+    if (refMatch) ref = refMatch[1].trim();
+    if (!ref) ref = 'PLN-' + Date.now().toString().slice(-8);
+
+    const admin = (currentReceiptType === 'token_pln')
+      ? parseNumStrict(document.getElementById('manualAdmin')?.value, 3000)
+      : 3000;
+
+    return {
+      type: 'token_pln',
+      sumberApp,
+      noMeter,
+      namaPelanggan,
+      tarifDaya,
+      kwh,
+      tokenCode,
+      nominal,
+      admin,
+      total: nominal + admin,
+      tanggal,
+      jam,
+      ref,
+      status: 'BERHASIL'
+    };
   }
 
-  // 3. BRIMO BRI
-  else if (isBRImo) {
-    data.type = 'transfer';
-    data.bankAsal = 'BRI';
-    data.bankTujuan = 'BRI';
+  function parseReceiptText(rawText) {
+    if (!rawText) return null;
 
-    let inSumber = false, inTujuan = false;
-    for (let line of rawLines) {
-      const up = line.toUpperCase();
-      if (up.startsWith('SUMBER DANA')) { inSumber = true; inTujuan = false; continue; }
-      if (up.startsWith('TUJUAN')) { inSumber = false; inTujuan = true; continue; }
-      if (up.includes('JENIS TRANSAKSI')) { inSumber = false; inTujuan = false; }
+    if (isTokenPlnText(rawText)) {
+      return parseTokenPlnText(rawText);
+    }
 
-      if (inSumber) {
-        const clean = cleanPersonName(line);
-        if (!data.pengirim && isValidPersonName(clean) && clean !== 'SY') data.pengirim = clean;
-        const masked = line.match(/(0669|\d{4})[^\d\r\n]*(\d{3,4})/);
-        if (masked) data.norekPengirim = `${masked[1]} **** **** ${masked[2]}`;
+    const textUpper = rawText.toUpperCase();
+    const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const { tanggal, jam } = extractDateTime(rawText);
+
+    const defaultAdmin = parseNumStrict(document.getElementById('manualAdmin')?.value, 5000);
+    let data = {
+      type: 'transfer',
+      bankAsal: 'BRI',
+      bankTujuan: 'BRI',
+      pengirim: '',
+      norekPengirim: '',
+      penerima: '',
+      rekening: '',
+      nominal: 0,
+      admin: defaultAdmin,
+      total: 0,
+      ref: 'TRX-' + Math.floor(10000000 + Math.random() * 90000000),
+      tanggal,
+      jam,
+      status: 'BERHASIL'
+    };
+
+    const refMatch = rawText.match(/(?:No\.?\s*Referensi|Ref\.?\s*ID|ID\s*Transaksi|No\.\s*Ref)\s*[:=]?\s*([A-Za-z0-9_\-]{6,40})/i);
+    if (refMatch) data.ref = refMatch[1].trim();
+
+    const isRealDanaApp = (textUpper.includes('ID DANA') || textUpper.includes('SALDO DANA') || textUpper.includes('DANA PROTECTION'));
+    const isLinkAja = textUpper.includes('LINKAJA') || (textUpper.includes('KIRIM KE BANK') && textUpper.includes('METODE PEMBAYARAN'));
+    const isWondrBNI = textUpper.includes('WONDR') || textUpper.includes('BY BNI');
+    const isBRImo = textUpper.includes('BRIMO') || (textUpper.includes('SUMBER DANA') && textUpper.includes('TUJUAN') && textUpper.includes('BRI'));
+
+    if (isLinkAja) {
+      data.type = 'top_up';
+      data.bankAsal = 'LinkAja';
+      data.bankTujuan = 'BNI';
+      data.pengirim = 'LinkAja';
+      data.norekPengirim = 'LinkAja';
+
+      for (let i = 0; i < rawLines.length; i++) {
+        const l = rawLines[i];
+        if (l.toUpperCase().includes('BNI')) data.bankTujuan = 'BNI';
+        else if (l.toUpperCase().includes('BRI')) data.bankTujuan = 'BRI';
+        else if (l.toUpperCase().includes('BCA')) data.bankTujuan = 'BCA';
+        else if (l.toUpperCase().includes('MANDIRI')) data.bankTujuan = 'MANDIRI';
+        const rekMatch = l.match(/(\d{8,18})/);
+        if (rekMatch && !data.rekening) {
+          data.rekening = rekMatch[1];
+          if (rawLines[i + 1] && isValidPersonName(rawLines[i + 1])) {
+            data.penerima = cleanPersonName(rawLines[i + 1]);
+          }
+        }
       }
-      if (inTujuan) {
-        const clean = cleanPersonName(line);
-        if (!data.penerima && isValidPersonName(clean) && clean !== 'S') data.penerima = clean;
-        const cleanAcc = line.replace(/[\s\-\.]/g, '');
-        if (/^\d{10,18}$/.test(cleanAcc)) data.rekening = line.trim();
+    } else if (isRealDanaApp) {
+      data.type = 'top_up';
+      data.bankAsal = 'DANA';
+      data.bankTujuan = 'BRI';
+
+      const danaPhone = rawText.match(/08(\d{2})[^\d\r\n]{1,6}(\d{4})/);
+      if (danaPhone) {
+        data.pengirim = `08${danaPhone[1]}****${danaPhone[2]}`;
+        data.norekPengirim = data.pengirim;
+      } else {
+        data.pengirim = 'DANA';
+        data.norekPengirim = 'DANA';
+      }
+
+      const bannerMatch = rawText.match(/(?:KIRIM\s+UANG(?:\s+RP[\d.,]+)?\s+KE|KE)\s+([A-Za-z\s.'`-]+?)(?:\s*-\s*([A-Za-z]+)\s*([•·.*xX0-9]+)|\s*-\s*([A-Za-z]+)|\s*$)/im);
+      if (bannerMatch) {
+        data.penerima = cleanPersonName(bannerMatch[1]);
+        if (bannerMatch[2]) data.bankTujuan = bannerMatch[2].toUpperCase();
+        if (bannerMatch[3]) {
+          let rek = bannerMatch[3].trim();
+          if (/^\d{4}$/.test(rek)) rek = '****' + rek;
+          data.rekening = rek;
+        }
+      }
+    } else if (isBRImo) {
+      data.type = 'transfer';
+      data.bankAsal = 'BRI';
+      data.bankTujuan = 'BRI';
+
+      let inSumber = false, inTujuan = false;
+      for (const line of rawLines) {
+        const up = line.toUpperCase();
+        if (up.startsWith('SUMBER DANA')) { inSumber = true; inTujuan = false; continue; }
+        if (up.startsWith('TUJUAN')) { inSumber = false; inTujuan = true; continue; }
+        if (up.includes('JENIS TRANSAKSI')) { inSumber = false; inTujuan = false; }
+
+        if (inSumber) {
+          const clean = cleanPersonName(line);
+          if (!data.pengirim && isValidPersonName(clean) && clean !== 'SY') data.pengirim = clean;
+          const masked = line.match(/(\d{4})[^\d\r\n]*(\d{3,4})/);
+          if (masked) data.norekPengirim = `${masked[1]} **** **** ${masked[2]}`;
+        }
+        if (inTujuan) {
+          const clean = cleanPersonName(line);
+          if (!data.penerima && isValidPersonName(clean) && clean !== 'S') data.penerima = clean;
+          const cleanAcc = line.replace(/[\s\-\.]/g, '');
+          if (/^\d{10,18}$/.test(cleanAcc)) data.rekening = line.trim();
+        }
+      }
+    } else if (isWondrBNI) {
+      data.type = 'transfer';
+      data.bankAsal = 'BNI';
+      data.bankTujuan = 'BNI';
+      let inPenerima = false, inSumber = false;
+      for (const line of rawLines) {
+        const up = line.toUpperCase();
+        if (up.startsWith('PENERIMA')) { inPenerima = true; inSumber = false; continue; }
+        if (up.startsWith('SUMBER DANA')) { inSumber = true; inPenerima = false; continue; }
+        if (up.includes('DETAIL TRANSFER')) { inPenerima = false; inSumber = false; }
+
+        if (inPenerima) {
+          const clean = cleanPersonName(line);
+          if (!data.penerima && isValidPersonName(clean)) data.penerima = clean;
+          const rek = line.match(/(\d{8,16})/);
+          if (rek) data.rekening = rek[1];
+        }
+        if (inSumber) {
+          const clean = cleanPersonName(line);
+          if (!data.pengirim && isValidPersonName(clean)) data.pengirim = clean;
+          const masked = line.match(/([*•\d]{6,16})/);
+          if (masked) data.norekPengirim = masked[1];
+        }
       }
     }
-    if (!data.norekPengirim) data.norekPengirim = '0669 **** **** 531';
-  }
 
-  // 4. WONDR BY BNI
-  else if (isWondrBNI) {
-    data.type = 'transfer';
-    data.bankAsal = 'BNI';
-    data.bankTujuan = 'BNI';
-    let inPenerima = false, inSumber = false;
-    for (let line of rawLines) {
-      const up = line.toUpperCase();
-      if (up.startsWith('PENERIMA')) { inPenerima = true; inSumber = false; continue; }
-      if (up.startsWith('SUMBER DANA')) { inSumber = true; inPenerima = false; continue; }
-      if (up.includes('DETAIL TRANSFER')) { inPenerima = false; inSumber = false; }
-
-      if (inPenerima) {
-        const clean = cleanPersonName(line);
-        if (!data.penerima && isValidPersonName(clean)) data.penerima = clean;
-        const rek = line.match(/(\d{8,16})/);
-        if (rek) data.rekening = rek[1];
-      }
-      if (inSumber) {
-        const clean = cleanPersonName(line);
-        if (!data.pengirim && isValidPersonName(clean)) data.pengirim = clean;
-        const masked = line.match(/([*•\d]{6,16})/);
-        if (masked) data.norekPengirim = masked[1];
-      }
+    const nomMatch = rawText.match(/(?:TOTAL BAYAR|NOMINAL|JUMLAH|TOTAL TRANSAKSI)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
+    if (nomMatch) {
+      const clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
+      data.nominal = parseInt(clean, 10) || 0;
     }
-  }
+    if (!data.nominal) {
+      const anyRp = rawText.match(/Rp\.?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/i);
+      if (anyRp) data.nominal = parseInt(anyRp[1].replace(/\./g, ''), 10) || 0;
+    }
 
-  // Deteksi Nominal
-  const nomMatch = rawText.match(/(?:TOTAL BAYAR|NOMINAL|JUMLAH|TOTAL TRANSAKSI)\s*[:=]?\s*(?:Rp\.?|\b)\s*([\d.,]+)/i);
-  if (nomMatch) {
-    const clean = nomMatch[1].replace(/Rp\.?/gi, '').replace(/\./g, '').replace(/,\d{2}/, '').trim();
-    data.nominal = parseInt(clean, 10) || 0;
-  }
-  if (!data.nominal) {
-    const anyRp = rawText.match(/Rp\.?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,})/i);
-    if (anyRp) data.nominal = parseInt(anyRp[1].replace(/\./g, ''), 10) || 0;
-  }
+    if (!data.penerima) data.penerima = 'Pelanggan';
+    if (!data.rekening) data.rekening = '-';
+    if (!data.pengirim) data.pengirim = data.bankAsal;
+    if (!data.norekPengirim) data.norekPengirim = data.bankAsal;
 
-  if (!data.penerima) data.penerima = 'Pelanggan';
-  if (!data.rekening) data.rekening = '-';
-  if (!data.pengirim) data.pengirim = data.bankAsal;
-  if (!data.norekPengirim) data.norekPengirim = data.bankAsal;
-
-  data.total = data.nominal + data.admin;
-  return data;
-}
+    data.total = data.nominal + data.admin;
+    return data;
+  }
 
   function displayOcrResult(data) {
-    if (!data) return;
+    const el = document.getElementById('ocrParsedData');
+    if (!data || !el) return;
+
+    if (data.type === 'token_pln') {
+      el.innerHTML = `
+        <div><strong>Jenis:</strong> <span style="color:#d97706; font-weight:700;">⚡ Token Listrik PLN</span></div>
+        <div><strong>Sumber:</strong> ${escHtml(data.sumberApp || 'DANA')}</div>
+        <div><strong>No. Meter:</strong> <strong>${escHtml(data.noMeter || '-')}</strong></div>
+        <div><strong>Nama:</strong> ${escHtml(data.namaPelanggan || '-')}</div>
+        <div><strong>Tarif/Daya:</strong> ${escHtml(data.tarifDaya || '-')} | <strong>kWh:</strong> ${escHtml(data.kwh || '-')}</div>
+        <div style="margin:4px 0; padding:4px 6px; background:var(--warning-light); border:1px dashed #d97706; border-radius:6px; font-family:monospace; font-weight:800; text-align:center;">
+          ${escHtml(data.tokenCode || 'Token belum terdeteksi')}
+        </div>
+        <div><strong>Nominal:</strong> Rp ${formatNumber(data.nominal)} | <strong>Admin:</strong> Rp ${formatNumber(data.admin)}</div>
+        <div><strong>Total:</strong> <strong style="color:var(--success);">Rp ${formatNumber(data.total)}</strong></div>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Waktu: ${escHtml(data.tanggal)} ${escHtml(data.jam)}</div>
+      `;
+      return;
+    }
+
     const isEwal = data.type === 'top_up';
-    document.getElementById('ocrParsedData').innerHTML = `
+    el.innerHTML = `
       <div><strong>Jenis:</strong> <span style="color:var(--primary); font-weight:700;">${isEwal ? '📱 E-Wallet / Top Up' : '🏦 Transfer Bank'}</span></div>
-      <div><strong>Layanan/Bank:</strong> ${data.bankAsal || '-'} &rarr; ${data.bankTujuan || '-'}</div>
-      <div><strong>Pengirim:</strong> ${data.pengirim} ${data.norekPengirim && data.norekPengirim !== data.pengirim ? '(' + data.norekPengirim + ')' : ''}</div>
-      <div><strong>Penerima:</strong> <span style="font-weight:700;">${data.penerima}</span></div>
-      <div><strong>No. Rek / HP:</strong> ${data.rekening}</div>
+      <div><strong>Layanan/Bank:</strong> ${escHtml(data.bankAsal || '-')} &rarr; ${escHtml(data.bankTujuan || '-')}</div>
+      <div><strong>Pengirim:</strong> ${escHtml(data.pengirim || '-')} ${data.norekPengirim && data.norekPengirim !== data.pengirim ? '(' + escHtml(data.norekPengirim) + ')' : ''}</div>
+      <div><strong>Penerima:</strong> <strong>${escHtml(data.penerima || '-')}</strong></div>
+      <div><strong>No. Rek / HP:</strong> ${escHtml(data.rekening || '-')}</div>
       <div><strong>Nominal:</strong> Rp ${formatNumber(data.nominal)}</div>
       <div><strong>Admin:</strong> Rp ${formatNumber(data.admin)}</div>
       <div><strong>Total:</strong> <strong style="color:var(--success);">Rp ${formatNumber(data.total)}</strong></div>
-      <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Waktu: ${data.tanggal} ${data.jam}</div>
+      <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Waktu: ${escHtml(data.tanggal)} ${escHtml(data.jam)}</div>
     `;
   }
 
@@ -1338,386 +1759,903 @@ function parseReceiptText(rawText) {
     document.getElementById('ocrResultSection').style.display = 'none';
     document.getElementById('ocrUploadArea').style.display = 'block';
     document.getElementById('ocrFileInput').value = '';
-    showToast('Form OCR direset', 'info');
+    showToast('Scanner direset, silakan pilih gambar baru', 'info');
+  }
+
+  // =========================================================================
+  // FORM MANAGEMENT (PER-TAB STATE — ANTI HILANG SAAT PINDAH TAB)
+  // =========================================================================
+  function saveActiveFormToDraft() {
+    const d = formDrafts[currentReceiptType];
+    if (!d) return;
+    const val = (id) => document.getElementById(id)?.value;
+
+    if (val('manualDate') !== undefined) d.tanggal = val('manualDate');
+    if (val('manualTime') !== undefined) d.jam = val('manualTime');
+    if (val('manualNominal') !== undefined) d.nominal = val('manualNominal');
+    if (val('manualAdmin') !== undefined) d.admin = val('manualAdmin');
+    if (val('manualRef') !== undefined) d.ref = val('manualRef');
+
+    if (currentReceiptType === 'token_pln') {
+      if (val('plnSumberApp') !== undefined) d.sumberApp = val('plnSumberApp');
+      if (val('plnNoMeter') !== undefined) d.noMeter = val('plnNoMeter');
+      if (val('plnNama') !== undefined) d.namaPelanggan = val('plnNama');
+      if (val('plnTarifDaya') !== undefined) d.tarifDaya = val('plnTarifDaya');
+      if (val('plnKwh') !== undefined) d.kwh = val('plnKwh');
+      if (val('plnTokenCode') !== undefined) d.tokenCode = val('plnTokenCode');
+    } else if (currentReceiptType === 'transfer') {
+      if (val('manualSender') !== undefined) d.pengirim = val('manualSender');
+      if (val('manualSenderAccount') !== undefined) d.norekPengirim = val('manualSenderAccount');
+      if (val('manualBankFrom') !== undefined) d.bankAsal = val('manualBankFrom');
+      if (val('manualReceiver') !== undefined) d.penerima = val('manualReceiver');
+      if (val('manualReceiverAccount') !== undefined) d.rekening = val('manualReceiverAccount');
+      if (val('manualBankTo') !== undefined) d.bankTujuan = val('manualBankTo');
+    } else {
+      if (val('manualSenderAccount') !== undefined) d.norekPengirim = val('manualSenderAccount');
+      if (val('manualBankFrom') !== undefined) d.bankAsal = val('manualBankFrom');
+      if (val('manualReceiver') !== undefined) d.penerima = val('manualReceiver');
+      if (val('manualReceiverAccount') !== undefined) d.rekening = val('manualReceiverAccount');
+      if (val('manualBankTo') !== undefined) d.bankTujuan = val('manualBankTo');
+    }
   }
 
   function setReceiptType(type) {
+    saveActiveFormToDraft();
     currentReceiptType = type;
     document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
     renderManualForm();
     updatePreview();
   }
 
+  function resetCurrentForm() {
+    if (currentReceiptType === 'token_pln') {
+      formDrafts.token_pln = {
+        tanggal: getDefaultDate(), jam: getDefaultTime(), sumberApp: 'DANA',
+        noMeter: '', namaPelanggan: '', tarifDaya: '', kwh: '', tokenCode: '',
+        nominal: '', admin: 3000, ref: ''
+      };
+    } else if (currentReceiptType === 'transfer') {
+      formDrafts.transfer = {
+        tanggal: getDefaultDate(), jam: getDefaultTime(), pengirim: '', norekPengirim: '',
+        bankAsal: 'BRI', penerima: '', rekening: '', bankTujuan: 'BRI',
+        nominal: '', admin: 5000, ref: ''
+      };
+    } else {
+      formDrafts.top_up = {
+        tanggal: getDefaultDate(), jam: getDefaultTime(), norekPengirim: '',
+        bankAsal: 'DANA', penerima: '', rekening: '', bankTujuan: 'BRI',
+        nominal: '', admin: 5000, ref: ''
+      };
+    }
+    renderManualForm();
+    updatePreview();
+    showToast('Form struk dikosongkan', 'info');
+  }
+
   function renderManualForm() {
     const container = document.getElementById('manualFormContainer');
-    
-    // Prioritaskan data hasil scan terbaru
-    const existingDate = scannedData?.tanggal || document.getElementById('manualDate')?.value || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const existingTime = scannedData?.jam || document.getElementById('manualTime')?.value || (new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-    
-    let existingSender = scannedData?.pengirim || document.getElementById('manualSender')?.value || '';
-    let existingSenderAcc = scannedData?.norekPengirim || document.getElementById('manualSenderAccount')?.value || '';
-    let existingReceiver = scannedData?.penerima || document.getElementById('manualReceiver')?.value || '';
-    let existingReceiverAcc = scannedData?.rekening || document.getElementById('manualReceiverAccount')?.value || '';
-    let existingNominal = (scannedData?.nominal !== undefined && scannedData?.nominal !== 0) ? scannedData.nominal : (document.getElementById('manualNominal')?.value || '');
-    let existingAdmin = scannedData?.admin || document.getElementById('manualAdmin')?.value || 5000;
-    let existingBankFrom = scannedData?.bankAsal || document.getElementById('manualBankFrom')?.value || '';
-    let existingBankTo = scannedData?.bankTujuan || document.getElementById('manualBankTo')?.value || '';
+    const d = formDrafts[currentReceiptType];
+    const tgl = d.tanggal || getDefaultDate();
+    const jam = d.jam || getDefaultTime();
 
-    if (!existingSenderAcc || existingSenderAcc === '-') existingSenderAcc = existingBankFrom || 'LinkAja';
+    if (currentReceiptType === 'token_pln') {
+      const apps = ['DANA', 'Order Kuota', 'BRI', 'BNI', 'BCA', 'Mandiri', 'ShopeePay', 'GoPay', 'Lainnya'];
+      const appOpts = apps.map(a => `<option value="${escHtml(a)}" ${(d.sumberApp || 'DANA').toLowerCase() === a.toLowerCase() ? 'selected' : ''}>${escHtml(a)}</option>`).join('');
+      const quickNoms = [20000, 50000, 100000, 200000, 500000, 1000000];
+      const curNom = parseNumStrict(d.nominal, 0);
+      const chipsHtml = quickNoms.map(n => {
+        const label = n >= 1000000 ? (n / 1000000) + 'jt' : (n / 1000) + 'rb';
+        return `<button type="button" class="quick-chip ${curNom === n ? 'active' : ''}" onclick="setQuickNominal(${n})">${label}</button>`;
+      }).join('');
 
-    if (currentReceiptType === 'transfer') {
+      const formattedToken = formatToken20(d.tokenCode || '');
+      const digitCount = formattedToken.replace(/\D/g, '').length;
+      const badgeCls = digitCount === 20 ? 'ok' : (digitCount > 0 ? 'warn' : '');
+      const badgeTxt = digitCount === 20 ? '20/20 digit ✓' : `${digitCount}/20 digit`;
+
+      container.innerHTML = `
+        <div class="form-section pln">
+          <div class="form-section-title">
+            <span><i class="fas fa-bolt"></i> Tempel Cepat (Copy dari DANA / Order Kuota)</span>
+            <button type="button" class="btn btn-outline btn-sm" onclick="pasteFromClipboardToPln()"><i class="fas fa-paste"></i> Tempel</button>
+          </div>
+          <textarea class="form-textarea" id="plnQuickPaste" rows="2" placeholder="Tempel teks detail transaksi PLN dari DANA / Order Kuota / WA di sini, lalu klik Ekstrak..."></textarea>
+          <button type="button" class="btn btn-warning btn-sm btn-block" style="margin-top:0.5rem;" onclick="extractPlnFromQuickPaste()">
+            <i class="fas fa-magic"></i> Ekstrak Otomatis ke Form
+          </button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${escHtml(tgl)}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${escHtml(jam)}" oninput="updatePreview()"></div>
+        </div>
+
+        <div class="form-section pln">
+          <div class="form-section-title"><span>⚡ Kode Token / Stroom (20 Digit)</span><span id="tokenDigitBadge" class="digit-badge ${badgeCls}">${badgeTxt}</span></div>
+          <div class="form-group" style="margin-bottom:0.5rem;">
+            <input type="text" class="form-input token-input-lg" id="plnTokenCode" value="${escHtml(formattedToken)}" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="24" inputmode="numeric" oninput="onTokenCodeInput(this)">
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" class="btn btn-outline btn-sm" style="flex:1;" onclick="pasteTokenOnly()"><i class="fas fa-paste"></i> Tempel Token</button>
+            <button type="button" class="btn btn-outline btn-sm" style="flex:1;" onclick="copyTokenOnly()"><i class="fas fa-copy"></i> Salin Token</button>
+          </div>
+        </div>
+
+        <div class="form-section receiver">
+          <div class="form-section-title"><span>🏠 Data Pelanggan PLN</span></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">No. Meter / ID Pel *</label><input type="text" class="form-input" id="plnNoMeter" value="${escHtml(d.noMeter || '')}" placeholder="Contoh: 14234567890" inputmode="numeric" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Nama Pelanggan</label><input type="text" class="form-input" id="plnNama" value="${escHtml(d.namaPelanggan || '')}" placeholder="Contoh: BUDI SANTOSO" oninput="updatePreview()"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tarif / Daya</label><input type="text" class="form-input" id="plnTarifDaya" value="${escHtml(d.tarifDaya || '')}" placeholder="Contoh: R1/900VA" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Jumlah kWh</label><input type="text" class="form-input" id="plnKwh" value="${escHtml(d.kwh || '')}" placeholder="Contoh: 13.8 kWh" oninput="updatePreview()"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Sumber Pembelian</label><select class="form-select" id="plnSumberApp" onchange="updatePreview()">${appOpts}</select></div>
+            <div class="form-group"><label class="form-label">No. Ref / SN</label><input type="text" class="form-input" id="manualRef" value="${escHtml(d.ref || '')}" placeholder="Otomatis jika kosong" oninput="updatePreview()"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nominal Cepat</label>
+          <div class="quick-chips">${chipsHtml}</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nominal Token (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${escHtml(d.nominal)}" placeholder="20000" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Biaya Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${escHtml(d.admin)}" placeholder="3000" min="0" oninput="updatePreview()"></div>
+        </div>
+      `;
+    } else if (currentReceiptType === 'transfer') {
       const banks = ['BRI', 'BCA', 'BNI', 'MANDIRI', 'BSI', 'SEABANK', 'JAGO', 'CIMB', 'LAINNYA'];
-      const bankOptionsFrom = banks.map(b => `<option value="${b}" ${existingBankFrom.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
-      const bankOptionsTo = banks.map(b => `<option value="${b}" ${existingBankTo.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
+      const bankFrom = d.bankAsal || 'BRI';
+      const bankTo = d.bankTujuan || 'BRI';
+      const bankOptionsFrom = banks.map(b => `<option value="${b}" ${bankFrom.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
+      const bankOptionsTo = banks.map(b => `<option value="${b}" ${bankTo.toUpperCase().includes(b) ? 'selected' : ''}>${b}</option>`).join('');
 
       container.innerHTML = `
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${existingDate}" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${existingTime}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${escHtml(tgl)}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${escHtml(jam)}" oninput="updatePreview()"></div>
         </div>
         <div class="form-section">
           <div class="form-section-title">👤 Pengirim (Bank Asal)</div>
-          <div class="form-group"><label class="form-label">Nama Pengirim</label><input type="text" class="form-input" id="manualSender" value="${existingSender}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">No Rekening Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${existingSenderAcc}" placeholder="Contoh: 0669 **** **** 531" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nama Pengirim</label><input type="text" class="form-input" id="manualSender" value="${escHtml(d.pengirim || '')}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${escHtml(d.norekPengirim || '')}" placeholder="Contoh: 0669 **** **** 531" oninput="updatePreview()"></div>
           <div class="form-group"><label class="form-label">Bank Asal</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${bankOptionsFrom}</select></div>
         </div>
         <div class="form-section receiver">
           <div class="form-section-title">🎯 Penerima (Bank Tujuan)</div>
-          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${existingReceiver}" placeholder="Contoh: SUPRIADI" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">No Rekening Penerima</label><input type="text" class="form-input" id="manualReceiverAccount" value="${existingReceiverAcc}" placeholder="Contoh: 0181 0107 6416 508" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${escHtml(d.penerima || '')}" placeholder="Contoh: SUPRIADI" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening Penerima</label><input type="text" class="form-input" id="manualReceiverAccount" value="${escHtml(d.rekening || '')}" placeholder="Contoh: 0181 0107 6416 508" oninput="updatePreview()"></div>
           <div class="form-group"><label class="form-label">Bank Tujuan</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${bankOptionsTo}</select></div>
         </div>
+        <div class="form-group"><label class="form-label">No. Referensi</label><input type="text" class="form-input" id="manualRef" value="${escHtml(d.ref || '')}" placeholder="Otomatis jika kosong" oninput="updatePreview()"></div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${existingNominal}" placeholder="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${existingAdmin}" placeholder="5000" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${escHtml(d.nominal)}" placeholder="0" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${escHtml(d.admin)}" placeholder="5000" min="0" oninput="updatePreview()"></div>
         </div>
       `;
     } else {
       const ewallets = ['DANA', 'LinkAja', 'GoPay', 'OVO', 'ShopeePay', 'i.Saku', 'LAINNYA'];
-      const targets = ['BNI', 'BRI', 'BCA', 'MANDIRI', 'BSI', 'DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja'];
-      const ewalletOpts = ewallets.map(e => `<option value="${e}" ${existingBankFrom.toUpperCase().includes(e.toUpperCase()) ? 'selected' : ''}>${e}</option>`).join('');
-      const targetOpts = targets.map(t => `<option value="${t}" ${existingBankTo.toUpperCase().includes(t.toUpperCase()) ? 'selected' : ''}>${t}</option>`).join('');
+      const targets = ['BRI', 'BNI', 'BCA', 'MANDIRI', 'BSI', 'DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja'];
+      const bankFrom = d.bankAsal || 'DANA';
+      const bankTo = d.bankTujuan || 'BRI';
+      const ewalletOpts = ewallets.map(e => `<option value="${e}" ${bankFrom.toUpperCase().includes(e.toUpperCase()) ? 'selected' : ''}>${e}</option>`).join('');
+      const targetOpts = targets.map(t => `<option value="${t}" ${bankTo.toUpperCase().includes(t.toUpperCase()) ? 'selected' : ''}>${t}</option>`).join('');
 
       container.innerHTML = `
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${existingDate}" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${existingTime}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Tanggal</label><input type="text" class="form-input" id="manualDate" value="${escHtml(tgl)}" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Waktu</label><input type="text" class="form-input" id="manualTime" value="${escHtml(jam)}" oninput="updatePreview()"></div>
         </div>
         <div class="form-section">
           <div class="form-section-title">📱 Pengirim (E-Wallet)</div>
-          <div class="form-group"><label class="form-label">ID / No. HP Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${existingSenderAcc}" placeholder="Contoh: 0811****9491 / LinkAja" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">ID / No. HP Pengirim</label><input type="text" class="form-input" id="manualSenderAccount" value="${escHtml(d.norekPengirim || '')}" placeholder="Contoh: 0811****9491 / LinkAja" oninput="updatePreview()"></div>
           <div class="form-group"><label class="form-label">Layanan E-Wallet</label><select class="form-select" id="manualBankFrom" onchange="updatePreview()">${ewalletOpts}</select></div>
         </div>
         <div class="form-section receiver">
           <div class="form-section-title">🎯 Penerima / Tujuan</div>
-          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${existingReceiver}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">No Rekening / No HP Tujuan</label><input type="text" class="form-input" id="manualReceiverAccount" value="${existingReceiverAcc}" placeholder="Contoh: ****9531 / 1815110375" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nama Penerima</label><input type="text" class="form-input" id="manualReceiver" value="${escHtml(d.penerima || '')}" placeholder="Contoh: SEPRYANDA YON" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">No Rekening / No HP Tujuan</label><input type="text" class="form-input" id="manualReceiverAccount" value="${escHtml(d.rekening || '')}" placeholder="Contoh: ****9531 / 1815110375" oninput="updatePreview()"></div>
           <div class="form-group"><label class="form-label">Bank / Layanan Tujuan</label><select class="form-select" id="manualBankTo" onchange="updatePreview()">${targetOpts}</select></div>
         </div>
+        <div class="form-group"><label class="form-label">No. Referensi</label><input type="text" class="form-input" id="manualRef" value="${escHtml(d.ref || '')}" placeholder="Otomatis jika kosong" oninput="updatePreview()"></div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${existingNominal}" placeholder="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${existingAdmin}" placeholder="5000" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" class="form-input" id="manualNominal" value="${escHtml(d.nominal)}" placeholder="0" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label class="form-label">Admin (Rp)</label><input type="number" class="form-input" id="manualAdmin" value="${escHtml(d.admin)}" placeholder="5000" min="0" oninput="updatePreview()"></div>
         </div>
       `;
     }
   }
 
-  function applyOcrToForm() {
-    if (!scannedData) return;
-    currentReceiptType = scannedData.type || 'transfer';
-    document.querySelectorAll('.receipt-type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === currentReceiptType));
-    renderManualForm();
-    updatePreview(scannedData);
-    showToast('Data OCR berhasil diterapkan ke struk!', 'success');
+  function onTokenCodeInput(inputEl) {
+    const formatted = formatToken20(inputEl.value);
+    inputEl.value = formatted;
+    const digits = formatted.replace(/\D/g, '').length;
+    const badge = document.getElementById('tokenDigitBadge');
+    if (badge) {
+      badge.className = 'digit-badge ' + (digits === 20 ? 'ok' : (digits > 0 ? 'warn' : ''));
+      badge.textContent = digits === 20 ? '20/20 digit ✓' : `${digits}/20 digit`;
+    }
+    updatePreview();
   }
-  
-  function updatePreview(extraData) {
-    const storeName = document.getElementById('receiptStoreName')?.value || 'NAMA TOKO';
-    const address = document.getElementById('receiptAddress')?.value || 'Alamat Toko';
-    const phone = document.getElementById('receiptPhone')?.value || '';
-    const note = document.getElementById('receiptNote')?.value || 'Terima kasih atas kepercayaan Anda';
 
-    document.getElementById('previewStoreName').textContent = storeName;
-    document.getElementById('previewAddress').textContent = address;
-    document.getElementById('previewPhone').textContent = phone ? 'HP: ' + phone : '';
-    document.getElementById('previewFooter').textContent = note;
+  function setQuickNominal(val) {
+    const el = document.getElementById('manualNominal');
+    if (el) el.value = val;
+    formDrafts.token_pln.nominal = val;
+    document.querySelectorAll('.quick-chip').forEach(btn => {
+      const txt = btn.textContent.trim();
+      const target = val >= 1000000 ? (val / 1000000) + 'jt' : (val / 1000) + 'rb';
+      btn.classList.toggle('active', txt === target);
+    });
+    updatePreview();
+  }
 
-    const tgl = document.getElementById('manualDate')?.value || extraData?.tanggal || scannedData?.tanggal || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const jam = document.getElementById('manualTime')?.value || extraData?.jam || scannedData?.jam || (new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-    
-    if (document.getElementById('previewDate')) {
-      document.getElementById('previewDate').textContent = tgl;
+  async function pasteFromClipboardToPln() {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        showToast('Silakan tempel manual (tahan lama > Tempel) di kotak teks', 'info');
+        return;
+      }
+      const txt = await navigator.clipboard.readText();
+      if (!txt || !txt.trim()) {
+        showToast('Clipboard kosong', 'warning');
+        return;
+      }
+      const box = document.getElementById('plnQuickPaste');
+      if (box) box.value = txt;
+      extractPlnFromQuickPaste();
+    } catch (e) {
+      showToast('Izin clipboard ditolak browser, silakan tempel manual di kotak teks', 'warning');
     }
-    if (document.getElementById('previewTime')) {
-      document.getElementById('previewTime').textContent = jam;
+  }
+
+  function extractPlnFromQuickPaste() {
+    const txt = document.getElementById('plnQuickPaste')?.value?.trim();
+    if (!txt) {
+      showToast('Tempel teks transaksi DANA / Order Kuota dulu', 'warning');
+      return;
     }
-    
+    const parsed = parseTokenPlnText(txt);
+    scannedData = parsed;
+    applyOcrToForm(true);
+    showToast('Data Token PLN berhasil diekstrak!', 'success');
+  }
+
+  async function pasteTokenOnly() {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        showToast('Tempel manual kode token di kolom 20 digit', 'info');
+        return;
+      }
+      const txt = await navigator.clipboard.readText();
+      const formatted = formatToken20(txt);
+      const input = document.getElementById('plnTokenCode');
+      if (input && formatted) {
+        input.value = formatted;
+        onTokenCodeInput(input);
+        showToast('Kode token ditempel (' + formatted.replace(/\D/g, '').length + ' digit)', 'success');
+      } else {
+        showToast('Tidak ditemukan angka token di clipboard', 'warning');
+      }
+    } catch (e) {
+      showToast('Silakan tempel manual di kolom kode token', 'warning');
+    }
+  }
+
+  function copyTokenOnly() {
+    const code = formatToken20(document.getElementById('plnTokenCode')?.value || '');
+    if (!code) { showToast('Kode token masih kosong', 'warning'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code)
+        .then(() => showToast('Kode token disalin: ' + code, 'success'))
+        .catch(() => showToast('Gagal menyalin otomatis', 'warning'));
+    } else {
+      showToast('Salin tidak didukung di perangkat ini', 'warning');
+    }
+  }
+
+  function applyOcrToForm(silent) {
+    if (!scannedData) return;
+    const t = scannedData.type || 'transfer';
+    currentReceiptType = t;
+
+    if (t === 'token_pln') {
+      formDrafts.token_pln = {
+        tanggal: scannedData.tanggal || getDefaultDate(),
+        jam: scannedData.jam || getDefaultTime(),
+        sumberApp: scannedData.sumberApp || 'DANA',
+        noMeter: scannedData.noMeter || '',
+        namaPelanggan: scannedData.namaPelanggan || '',
+        tarifDaya: scannedData.tarifDaya || '',
+        kwh: scannedData.kwh || '',
+        tokenCode: formatToken20(scannedData.tokenCode || ''),
+        nominal: scannedData.nominal || '',
+        admin: scannedData.admin != null ? scannedData.admin : 3000,
+        ref: scannedData.ref || ''
+      };
+    } else if (t === 'transfer') {
+      formDrafts.transfer = {
+        tanggal: scannedData.tanggal || getDefaultDate(),
+        jam: scannedData.jam || getDefaultTime(),
+        pengirim: scannedData.pengirim || '',
+        norekPengirim: scannedData.norekPengirim || '',
+        bankAsal: scannedData.bankAsal || 'BRI',
+        penerima: scannedData.penerima || '',
+        rekening: scannedData.rekening || '',
+        bankTujuan: scannedData.bankTujuan || 'BRI',
+        nominal: scannedData.nominal || '',
+        admin: scannedData.admin != null ? scannedData.admin : 5000,
+        ref: scannedData.ref || ''
+      };
+    } else {
+      formDrafts.top_up = {
+        tanggal: scannedData.tanggal || getDefaultDate(),
+        jam: scannedData.jam || getDefaultTime(),
+        norekPengirim: scannedData.norekPengirim || scannedData.pengirim || '',
+        bankAsal: scannedData.bankAsal || 'DANA',
+        penerima: scannedData.penerima || '',
+        rekening: scannedData.rekening || '',
+        bankTujuan: scannedData.bankTujuan || 'BRI',
+        nominal: scannedData.nominal || '',
+        admin: scannedData.admin != null ? scannedData.admin : 5000,
+        ref: scannedData.ref || ''
+      };
+    }
+
+    document.querySelectorAll('.receipt-type-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.type === currentReceiptType));
+    renderManualForm();
+    updatePreview();
+    if (!silent) showToast('Data hasil scan diterapkan ke struk!', 'success');
+  }
+
+  // =========================================================================
+  // SNAPSHOT DATA STRUK AKTIF & LIVE PREVIEW
+  // =========================================================================
+  function getActiveReceiptData() {
+    saveActiveFormToDraft();
+    const storeName = (document.getElementById('receiptStoreName')?.value || localStorage.getItem('webpos_store_name') || 'HIFZI CELL').trim();
+    const address = (document.getElementById('receiptAddress')?.value || '').trim();
+    const phone = (document.getElementById('receiptPhone')?.value || '').trim();
+    const note = (document.getElementById('receiptNote')?.value || 'Terima kasih telah bertransaksi').trim();
+
+    const tgl = (document.getElementById('manualDate')?.value || getDefaultDate()).trim();
+    const jam = (document.getElementById('manualTime')?.value || getDefaultTime()).trim();
+    const nom = parseNumStrict(document.getElementById('manualNominal')?.value, 0);
+    const adm = parseNumStrict(document.getElementById('manualAdmin')?.value, 0);
+    const rawRef = (document.getElementById('manualRef')?.value || '').trim();
+    const prefix = currentReceiptType === 'token_pln' ? 'PLN-' : 'TRX-';
+    const refNo = rawRef || (prefix + Date.now().toString().slice(-8));
+
+    if (currentReceiptType === 'token_pln') {
+      return {
+        type: 'token_pln',
+        typeLabel: 'TOKEN LISTRIK PLN',
+        storeName, address, phone, note,
+        tanggal: tgl, jam,
+        sumberApp: (document.getElementById('plnSumberApp')?.value || 'DANA').trim(),
+        noMeter: (document.getElementById('plnNoMeter')?.value || '-').trim() || '-',
+        namaPelanggan: (document.getElementById('plnNama')?.value || '-').trim() || '-',
+        tarifDaya: (document.getElementById('plnTarifDaya')?.value || '-').trim() || '-',
+        kwh: (document.getElementById('plnKwh')?.value || '-').trim() || '-',
+        tokenCode: formatToken20(document.getElementById('plnTokenCode')?.value || ''),
+        nominal: nom, admin: adm, total: nom + adm, ref: refNo
+      };
+    }
+
     const isEwallet = currentReceiptType === 'top_up';
-    document.getElementById('previewType').textContent = isEwallet ? 'E-WALLET / TOP UP' : 'TRANSFER BANK';
+    const sender = (document.getElementById('manualSender')?.value || '').trim();
+    const senderRek = (document.getElementById('manualSenderAccount')?.value || '').trim();
+    const bankFrom = (document.getElementById('manualBankFrom')?.value || (isEwallet ? 'DANA' : 'BRI')).trim();
+    const receiver = (document.getElementById('manualReceiver')?.value || 'Pelanggan').trim() || 'Pelanggan';
+    const receiverRek = (document.getElementById('manualReceiverAccount')?.value || '-').trim() || '-';
+    const bankTo = (document.getElementById('manualBankTo')?.value || 'BRI').trim();
 
-    let sender = document.getElementById('manualSender')?.value || extraData?.pengirim || scannedData?.pengirim || '';
-    let senderRek = document.getElementById('manualSenderAccount')?.value || extraData?.norekPengirim || scannedData?.norekPengirim || '';
-    let bankFrom = document.getElementById('manualBankFrom')?.value || extraData?.bankAsal || scannedData?.bankAsal || (isEwallet ? 'E-Wallet' : 'Bank');
-    let receiver = document.getElementById('manualReceiver')?.value || extraData?.penerima || scannedData?.penerima || 'Pelanggan';
-    let receiverRek = document.getElementById('manualReceiverAccount')?.value || extraData?.rekening || scannedData?.rekening || '-';
-    let bankTo = document.getElementById('manualBankTo')?.value || extraData?.bankTujuan || scannedData?.bankTujuan || (isEwallet ? 'Layanan Tujuan' : 'BANK TUJUAN');
+    return {
+      type: currentReceiptType,
+      typeLabel: isEwallet ? 'E-WALLET / TOP UP' : 'TRANSFER BANK',
+      storeName, address, phone, note,
+      tanggal: tgl, jam,
+      sender, senderRek, bankFrom, receiver, receiverRek, bankTo,
+      nominal: nom, admin: adm, total: nom + adm, ref: refNo
+    };
+  }
 
-    const nom = parseInt(document.getElementById('manualNominal')?.value) || extraData?.nominal || scannedData?.nominal || 0;
-    const adm = parseInt(document.getElementById('manualAdmin')?.value) || extraData?.admin || scannedData?.admin || 0;
-    const refNo = extraData?.ref || scannedData?.ref || ('TRX-' + Date.now().toString().slice(-8));
+  function updatePreview() {
+    const r = getActiveReceiptData();
 
-    if (isEwallet) {
-      const pengirimEwallet = senderRek || sender || bankFrom;
-      document.getElementById('previewItems').innerHTML = `
-        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
-          <div style="display:flex; justify-content:space-between;"><span>Pengirim / ID:</span><span style="font-weight:bold;">${pengirimEwallet}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Layanan Asal:</span><span style="font-weight:bold;">${bankFrom}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>No. Rek / HP:</span><span style="font-weight:bold;">${receiverRek}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
+    document.getElementById('previewStoreName').textContent = r.storeName;
+    const addrEl = document.getElementById('previewAddress');
+    addrEl.textContent = r.address;
+    addrEl.style.display = r.address ? 'block' : 'none';
+
+    const phoneEl = document.getElementById('previewPhone');
+    phoneEl.textContent = r.phone ? ('HP/WA: ' + r.phone) : '';
+    phoneEl.style.display = r.phone ? 'block' : 'none';
+
+    document.getElementById('previewType').textContent = r.typeLabel;
+    document.getElementById('previewDate').textContent = r.tanggal;
+    document.getElementById('previewTime').textContent = r.jam;
+    document.getElementById('previewFooter').textContent = r.note;
+
+    const itemsEl = document.getElementById('previewItems');
+    if (r.type === 'token_pln') {
+      const tokenDisplay = r.tokenCode || '---- ---- ---- ---- ----';
+      itemsEl.innerHTML = `
+        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #475569;">
+          <div class="receipt-info-row"><span>No. Meter/ID:</span><span style="font-weight:bold;">${escHtml(r.noMeter)}</span></div>
+          <div class="receipt-info-row"><span>Nama:</span><span style="font-weight:bold;">${escHtml(r.namaPelanggan)}</span></div>
+          <div class="receipt-info-row"><span>Tarif / Daya:</span><span style="font-weight:bold;">${escHtml(r.tarifDaya)}</span></div>
+          <div class="receipt-info-row"><span>Jml kWh:</span><span style="font-weight:bold;">${escHtml(r.kwh)}</span></div>
         </div>
-        <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
+        <div class="token-box-preview">
+          <div class="token-box-label">KODE TOKEN / STROOM PLN</div>
+          <div class="token-box-code">${escHtml(tokenDisplay)}</div>
+        </div>
+        <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #475569;">
+          <div class="receipt-info-row"><span>Nominal Token:</span><span>Rp ${formatNumber(r.nominal)}</span></div>
+          <div class="receipt-info-row"><span>Biaya Admin:</span><span>Rp ${formatNumber(r.admin)}</span></div>
+        </div>
+      `;
+    } else if (r.type === 'top_up') {
+      const pengirimEwallet = r.senderRek || r.sender || r.bankFrom;
+      itemsEl.innerHTML = `
+        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #475569;">
+          <div class="receipt-info-row"><span>Pengirim/ID:</span><span style="font-weight:bold;">${escHtml(pengirimEwallet)}</span></div>
+          <div class="receipt-info-row"><span>Layanan Asal:</span><span style="font-weight:bold;">${escHtml(r.bankFrom)}</span></div>
+          <div class="receipt-info-row"><span>Penerima:</span><span style="font-weight:bold;">${escHtml(r.receiver)}</span></div>
+          <div class="receipt-info-row"><span>No. Rek/HP:</span><span style="font-weight:bold;">${escHtml(r.receiverRek)}</span></div>
+          <div class="receipt-info-row"><span>Tujuan:</span><span style="font-weight:bold;">${escHtml(r.bankTo)}</span></div>
+        </div>
+        <div class="receipt-info-row"><span>Nominal:</span><span>Rp ${formatNumber(r.nominal)}</span></div>
+        <div class="receipt-info-row"><span>Biaya Admin:</span><span>Rp ${formatNumber(r.admin)}</span></div>
       `;
     } else {
-      const senderDisplay = sender ? (senderRek && senderRek !== '-' && senderRek !== '****' ? `${sender} (${senderRek})` : sender) : (bankFrom || 'Pengirim');
-      document.getElementById('previewItems').innerHTML = `
-        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #444;">
-          <div style="display:flex; justify-content:space-between;"><span>Pengirim:</span><span style="font-weight:bold;">${senderDisplay}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Bank Sumber:</span><span style="font-weight:bold;">${bankFrom}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Penerima:</span><span style="font-weight:bold;">${receiver}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>No. Rekening:</span><span style="font-weight:bold;">${receiverRek}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Bank Tujuan:</span><span style="font-weight:bold;">${bankTo}</span></div>
+      const senderDisplay = r.sender
+        ? (r.senderRek && r.senderRek !== '-' && r.senderRek !== '****' ? `${r.sender} (${r.senderRek})` : r.sender)
+        : (r.bankFrom || 'Pengirim');
+      itemsEl.innerHTML = `
+        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #475569;">
+          <div class="receipt-info-row"><span>Pengirim:</span><span style="font-weight:bold;">${escHtml(senderDisplay)}</span></div>
+          <div class="receipt-info-row"><span>Bank Sumber:</span><span style="font-weight:bold;">${escHtml(r.bankFrom)}</span></div>
+          <div class="receipt-info-row"><span>Penerima:</span><span style="font-weight:bold;">${escHtml(r.receiver)}</span></div>
+          <div class="receipt-info-row"><span>No. Rekening:</span><span style="font-weight:bold;">${escHtml(r.receiverRek)}</span></div>
+          <div class="receipt-info-row"><span>Bank Tujuan:</span><span style="font-weight:bold;">${escHtml(r.bankTo)}</span></div>
         </div>
-        <div style="display:flex; justify-content:space-between;"><span>Nominal:</span><span>Rp ${formatNumber(nom)}</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>Biaya Admin:</span><span>Rp ${formatNumber(adm)}</span></div>
+        <div class="receipt-info-row"><span>Nominal:</span><span>Rp ${formatNumber(r.nominal)}</span></div>
+        <div class="receipt-info-row"><span>Biaya Admin:</span><span>Rp ${formatNumber(r.admin)}</span></div>
       `;
     }
 
     document.getElementById('previewTotal').innerHTML = `
-      <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-top:4px;">
+      <div style="display:flex; justify-content:space-between; font-weight:800; font-size:12.5px; margin-top:2px; color:#0f172a;">
         <span>TOTAL BAYAR</span>
-        <span>Rp ${formatNumber(nom + adm)}</span>
+        <span>Rp ${formatNumber(r.total)}</span>
       </div>
-      <div style="text-align:center; margin-top:6px; font-size:9px; color:#666;">
-        [ REFF: ${refNo} ]
+      <div style="text-align:center; margin-top:6px; font-size:9.5px; color:#475569;">
+        STATUS: BERHASIL | REF: ${escHtml(r.ref)}
       </div>
     `;
   }
 
+  // =========================================================================
+  // PENGATURAN HEADER STRUK (SYNC SEMUA KEY + FIRESTORE)
+  // =========================================================================
   function loadHeaderSettings() {
-    const saved = localStorage.getItem('webpos_receipt_header');
-    if (saved) {
-      try {
-        const h = JSON.parse(saved);
-        if (h.storeName) document.getElementById('receiptStoreName').value = h.storeName;
-        if (h.address) document.getElementById('receiptAddress').value = h.address;
-        if (h.phone) document.getElementById('receiptPhone').value = h.phone;
-        if (h.note) document.getElementById('receiptNote').value = h.note;
-      } catch(e){}
-    }
+    let h1 = {}, h2 = {};
+    try { h1 = JSON.parse(localStorage.getItem('webpos_receipt_header') || '{}') || {}; } catch (e) {}
+    try { h2 = JSON.parse(localStorage.getItem('receiptHeader') || '{}') || {}; } catch (e) {}
+
+    const storeName = h1.storeName || h2.storeName || localStorage.getItem('webpos_store_name') || 'HIFZI CELL';
+    const address = h1.address || h2.address || localStorage.getItem('webpos_store_address') || '';
+    const phone = h1.phone || h2.phone || localStorage.getItem('webpos_store_phone') || '';
+    const note = h1.note || h2.note || localStorage.getItem('webpos_store_footer_note') || 'Terima kasih telah bertransaksi';
+
+    document.getElementById('receiptStoreName').value = storeName;
+    document.getElementById('receiptAddress').value = address;
+    document.getElementById('receiptPhone').value = phone;
+    document.getElementById('receiptNote').value = note;
   }
 
-  function saveHeader() {
+  async function saveHeader() {
     const h = {
-      storeName: document.getElementById('receiptStoreName').value,
-      address: document.getElementById('receiptAddress').value,
-      phone: document.getElementById('receiptPhone').value,
-      note: document.getElementById('receiptNote').value
+      storeName: document.getElementById('receiptStoreName').value.trim(),
+      address: document.getElementById('receiptAddress').value.trim(),
+      phone: document.getElementById('receiptPhone').value.trim(),
+      note: document.getElementById('receiptNote').value.trim()
     };
     localStorage.setItem('webpos_receipt_header', JSON.stringify(h));
-    showToast('Header struk berhasil disimpan!', 'success');
+    localStorage.setItem('receiptHeader', JSON.stringify(h));
+    if (h.storeName) localStorage.setItem('webpos_store_name', h.storeName);
+    localStorage.setItem('webpos_store_address', h.address);
+    localStorage.setItem('webpos_store_phone', h.phone);
+    localStorage.setItem('webpos_store_footer_note', h.note);
+
+    try {
+      if (typeof db !== 'undefined' && navigator.onLine) {
+        await db.collection('settings').doc('store').set({
+          name: h.storeName || 'HIFZI CELL',
+          address: h.address,
+          phone: h.phone,
+          footerNote: h.note
+        }, { merge: true });
+      }
+    } catch (e) {}
+
+    showToast('Header struk berhasil disimpan & disinkronkan!', 'success');
     updatePreview();
   }
 
-  function printThermalUsingHelper() {
-    const nom = parseInt(document.getElementById('manualNominal')?.value) || 0;
-    if (nom <= 0) { showToast('Isi nominal terlebih dahulu', 'warning'); return; }
+  // =========================================================================
+  // ESC/POS BUILDER 58mm (32 KOLOM) + CETAK THERMAL BLUETOOTH (WebPOSPrinter)
+  // =========================================================================
+  function escPosAscii(str) {
+    return String(str == null ? '' : str).replace(/[^\x20-\x7E]/g, ' ');
+  }
 
-    const textContent = document.getElementById('receiptPreview').innerText;
-    if (typeof window.printToThermalPrinter === 'function') {
-      window.printToThermalPrinter(textContent);
+  function escPosRow(left, right, width = 32) {
+    const l = escPosAscii(left).trim();
+    const r = escPosAscii(right).trim();
+    const gap = width - l.length - r.length;
+    if (gap >= 1) return l + ' '.repeat(gap) + r;
+    const maxR = Math.max(10, width - l.length - 1);
+    return l + ' ' + r.slice(0, maxR);
+  }
+
+  function buildEscPosReceipt(r) {
+    const bytes = [];
+    const pushBytes = (arr) => { for (let i = 0; i < arr.length; i++) bytes.push(arr[i]); };
+    const pushLine = (txt) => {
+      const clean = escPosAscii(txt);
+      for (let i = 0; i < clean.length; i++) bytes.push(clean.charCodeAt(i) & 0xff);
+      bytes.push(0x0a);
+    };
+
+    const INIT = [0x1b, 0x40];
+    const ALIGN_LEFT = [0x1b, 0x61, 0x00];
+    const ALIGN_CENTER = [0x1b, 0x61, 0x01];
+    const BOLD_ON = [0x1b, 0x45, 0x01];
+    const BOLD_OFF = [0x1b, 0x45, 0x00];
+    const SIZE_NORMAL = [0x1b, 0x21, 0x00];
+    const SIZE_TALL_BOLD = [0x1b, 0x21, 0x18];
+    const LINE = '--------------------------------';
+    const DLINE = '================================';
+
+    pushBytes(INIT);
+    pushBytes(ALIGN_CENTER);
+    pushBytes(SIZE_TALL_BOLD);
+    pushLine((r.storeName || 'HIFZI CELL').toUpperCase());
+    pushBytes(SIZE_NORMAL);
+    if (r.address) pushLine(r.address);
+    if (r.phone) pushLine('HP/WA: ' + r.phone);
+    pushLine(DLINE);
+    pushBytes(BOLD_ON);
+    pushLine(r.typeLabel);
+    pushBytes(BOLD_OFF);
+    pushLine(LINE);
+
+    pushBytes(ALIGN_LEFT);
+    pushLine(escPosRow('Tanggal', r.tanggal));
+    pushLine(escPosRow('Waktu', r.jam));
+    pushLine(LINE);
+
+    if (r.type === 'token_pln') {
+      pushLine(escPosRow('No. Meter', r.noMeter));
+      pushLine(escPosRow('Nama', r.namaPelanggan));
+      pushLine(escPosRow('Tarif/Daya', r.tarifDaya));
+      pushLine(escPosRow('Jml kWh', r.kwh));
+      pushLine(LINE);
+      pushBytes(ALIGN_CENTER);
+      pushBytes(BOLD_ON);
+      pushLine('KODE TOKEN / STROOM PLN');
+      pushBytes(SIZE_TALL_BOLD);
+      pushLine(r.tokenCode || '---- ---- ---- ---- ----');
+      pushBytes(SIZE_NORMAL);
+      pushBytes(BOLD_OFF);
+      pushBytes(ALIGN_LEFT);
+      pushLine(LINE);
+      pushLine(escPosRow('Nominal', 'Rp ' + formatNumber(r.nominal)));
+      pushLine(escPosRow('Admin', 'Rp ' + formatNumber(r.admin)));
+    } else if (r.type === 'top_up') {
+      pushLine(escPosRow('Pengirim', r.senderRek || r.sender || r.bankFrom));
+      pushLine(escPosRow('Layanan', r.bankFrom));
+      pushLine(escPosRow('Penerima', r.receiver));
+      pushLine(escPosRow('No.Rek/HP', r.receiverRek));
+      pushLine(escPosRow('Tujuan', r.bankTo));
+      pushLine(LINE);
+      pushLine(escPosRow('Nominal', 'Rp ' + formatNumber(r.nominal)));
+      pushLine(escPosRow('Admin', 'Rp ' + formatNumber(r.admin)));
     } else {
-      let iframe = document.getElementById('printReceiptFrame');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'printReceiptFrame';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
+      pushLine(escPosRow('Pengirim', r.sender || r.bankFrom));
+      if (r.senderRek) pushLine(escPosRow('Rek Asal', r.senderRek));
+      pushLine(escPosRow('Bank Asal', r.bankFrom));
+      pushLine(escPosRow('Penerima', r.receiver));
+      pushLine(escPosRow('No. Rek', r.receiverRek));
+      pushLine(escPosRow('Bank Tjn', r.bankTo));
+      pushLine(LINE);
+      pushLine(escPosRow('Nominal', 'Rp ' + formatNumber(r.nominal)));
+      pushLine(escPosRow('Admin', 'Rp ' + formatNumber(r.admin)));
+    }
+
+    pushLine(DLINE);
+    pushBytes(BOLD_ON);
+    pushLine(escPosRow('TOTAL BAYAR', 'Rp ' + formatNumber(r.total)));
+    pushBytes(BOLD_OFF);
+    pushLine(DLINE);
+
+    pushBytes(ALIGN_CENTER);
+    pushLine('REF: ' + r.ref);
+    pushLine(r.note || 'Terima kasih');
+    pushBytes([0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x00]);
+    return new Uint8Array(bytes);
+  }
+
+  async function printThermalUsingHelper() {
+    const r = getActiveReceiptData();
+    if (r.type === 'token_pln' && !r.tokenCode && r.nominal <= 0) {
+      showToast('Isi kode token atau nominal terlebih dahulu', 'warning');
+      return;
+    }
+    if (r.type !== 'token_pln' && r.nominal <= 0) {
+      showToast('Isi nominal terlebih dahulu', 'warning');
+      return;
+    }
+
+    if (typeof window.WebPOSPrinter !== 'undefined' && window.WebPOSPrinter.available()) {
+      const cfg = window.WebPOSPrinter.config();
+      if (!cfg.mac) {
+        showToast('Printer belum dipilih. Buka menu Pengaturan untuk pilih printer Bluetooth.', 'warning');
+        return;
       }
-      const doc = iframe.contentWindow.document;
-      doc.open();
-      doc.write(`<html><head><title>Struk</title><style>body{font-family:'Courier New',monospace;font-size:11px;margin:0;padding:10px;white-space:pre-wrap;}</style></head><body>${textContent}</body></html>`);
-      doc.close();
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+      showToast('Mengirim struk ke ' + (cfg.name || 'Printer Thermal') + '...', 'info');
+      try {
+        const escPosBytes = buildEscPosReceipt(r);
+        await window.WebPOSPrinter.print(escPosBytes);
+        showToast('Struk berhasil dicetak ke printer thermal!', 'success');
+      } catch (err) {
+        console.error('Thermal print error:', err);
+        showToast('Gagal cetak thermal: ' + (err?.message || err), 'error');
+      }
+      return;
+    }
+
+    let iframe = document.getElementById('printReceiptFrame');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'printReceiptFrame';
+      iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+      document.body.appendChild(iframe);
+    }
+    const plain = buildPlainReceiptText(r);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><title>Struk</title><style>body{font-family:'Courier New',monospace;font-size:11px;margin:0;padding:8px;white-space:pre-wrap;width:58mm;}</style></head><body>${escHtml(plain)}</body></html>`);
+    doc.close();
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }
+
+  // =========================================================================
+  // RENDER GAMBAR STRUK, SIMPAN JPG, SIMPAN PDF & SHARE WA (GAMBAR SAJA!)
+  // =========================================================================
+  async function renderReceiptCanvas() {
+    const el = document.getElementById('receiptPreview');
+    if (!el) throw new Error('Preview struk tidak ditemukan');
+    return await html2canvas(el, {
+      scale: 2.5,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false
+    });
+  }
+
+  function makeReceiptFileName(ext) {
+    const r = getActiveReceiptData();
+    const prefix = r.type === 'token_pln' ? 'Struk-PLN' : (r.type === 'top_up' ? 'Struk-EWallet' : 'Struk-Transfer');
+    const safeRef = (r.ref || Date.now()).toString().replace(/[^A-Za-z0-9_-]/g, '');
+    return `${prefix}-${safeRef}.${ext}`;
+  }
+
+  async function shareAsImage() {
+    showToast('Menyiapkan gambar JPG...', 'info');
+    try {
+      const canvas = await renderReceiptCanvas();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+      const b64 = dataUrl.split(',')[1] || '';
+      const fileName = makeReceiptFileName('jpg');
+
+      if (window.AndroidShare && typeof window.AndroidShare.saveImage === 'function') {
+        const res = window.AndroidShare.saveImage(b64, fileName);
+        if (isBridgeSuccess(res)) {
+          showToast('Struk JPG tersimpan di Galeri HP (' + fileName + ')', 'success');
+          return;
+        }
+        showToast('Gagal simpan JPG: ' + String(res), 'error');
+        return;
+      }
+      if (window.AndroidBT && typeof window.AndroidBT.saveImage === 'function') {
+        if (isBridgeSuccess(window.AndroidBT.saveImage(b64, fileName))) {
+          showToast('Struk JPG tersimpan di HP (' + fileName + ')', 'success');
+          return;
+        }
+      }
+
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+      showToast('Gambar struk JPG diunduh!', 'success');
+    } catch (err) {
+      showToast('Gagal membuat JPG: ' + (err?.message || err), 'error');
     }
   }
 
   async function shareAsPDF() {
-    const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 80, canvas.height / canvas.width * 80);
-    pdf.save('struk-' + Date.now() + '.pdf');
-    showToast('PDF berhasil diunduh', 'success');
-  }
-
-  async function shareAsImage() {
-    const canvas = await html2canvas(document.getElementById('receiptPreview'), { scale: 2 });
-    const link = document.createElement('a');
-    link.download = 'struk-' + Date.now() + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    showToast('Gambar struk diunduh', 'success');
-  }
-
-  // --- BUILD TEKS WHATSAPP RAPI DENGAN BOLD & EMOJI ---
-  function buildWhatsAppText() {
-    const store = document.getElementById('previewStoreName')?.innerText || document.getElementById('receiptStoreName')?.value || 'HIFZI CELL';
-    const address = document.getElementById('previewAddress')?.innerText || document.getElementById('receiptAddress')?.value || '';
-    const phone = document.getElementById('previewPhone')?.innerText || document.getElementById('receiptPhone')?.value || '';
-    const date = document.getElementById('previewDate')?.innerText || ((document.getElementById('manualDate')?.value || '') + ' ' + (document.getElementById('manualTime')?.value || '')).trim() || (new Date().toLocaleDateString('id-ID') + ' ' + new Date().toLocaleTimeString('id-ID') + ' WIB');
-    
-    const isEwallet = currentReceiptType === 'top_up';
-    const typeLabel = isEwallet ? 'E-WALLET / TOP UP' : 'TRANSFER BANK';
-
-    let sender = document.getElementById('manualSender')?.value || scannedData?.pengirim || '';
-    let senderRek = document.getElementById('manualSenderAccount')?.value || scannedData?.norekPengirim || '';
-    let bankFrom = document.getElementById('manualBankFrom')?.value || scannedData?.bankAsal || (isEwallet ? 'E-Wallet' : 'Bank');
-    let receiver = document.getElementById('manualReceiver')?.value || scannedData?.penerima || 'Pelanggan';
-    let receiverRek = document.getElementById('manualReceiverAccount')?.value || scannedData?.rekening || '-';
-    let bankTo = document.getElementById('manualBankTo')?.value || scannedData?.bankTujuan || (isEwallet ? 'Layanan Tujuan' : 'BANK TUJUAN');
-
-    const nom = formatNumber(parseInt(document.getElementById('manualNominal')?.value) || scannedData?.nominal || 0);
-    const adm = formatNumber(parseInt(document.getElementById('manualAdmin')?.value) || scannedData?.admin || 0);
-    const total = formatNumber((parseInt(document.getElementById('manualNominal')?.value) || 0) + (parseInt(document.getElementById('manualAdmin')?.value) || 0));
-    const ref = scannedData?.ref || ('TRX-' + Date.now().toString().slice(-8));
-
-    if (isEwallet) {
-      const pengirimEwallet = senderRek || sender || bankFrom;
-      return `*${store.toUpperCase()}*
-${address ? address + '\n' : ''}${phone ? phone + '\n' : ''}━━━━━━━━━━━━━━━━━━━━━━
-*STRUK BUKTI ${typeLabel}*
-━━━━━━━━━━━━━━━━━━━━━━
-📅 *Waktu* : ${date}
-👤 *Pengirim / ID* : ${pengirimEwallet}
-📱 *Layanan Asal* : ${bankFrom}
-🎯 *Penerima* : ${receiver}
-💳 *No. Rek / HP* : ${receiverRek}
-🏦 *Tujuan* : ${bankTo}
-──────────────────────
-💵 *Nominal* : Rp ${nom}
-🏷️ *Biaya Admin* : Rp ${adm}
-━━━━━━━━━━━━━━━━━━━━━━
-*💰 TOTAL BAYAR : Rp ${total}*
-━━━━━━━━━━━━━━━━━━━━━━
-_No. Ref : ${ref}_
-
-_Terima kasih atas kepercayaan Anda._`;
-    } else {
-      const senderDisplay = sender ? (senderRek && senderRek !== '-' && senderRek !== '****' ? `${sender} (${senderRek})` : sender) : (bankFrom || 'Pengirim');
-      return `*${store.toUpperCase()}*
-${address ? address + '\n' : ''}${phone ? phone + '\n' : ''}━━━━━━━━━━━━━━━━━━━━━━
-*STRUK BUKTI ${typeLabel}*
-━━━━━━━━━━━━━━━━━━━━━━
-📅 *Waktu* : ${date}
-👤 *Pengirim* : ${senderDisplay}
-🏛️ *Bank Asal* : ${bankFrom}
-🎯 *Penerima* : ${receiver}
-💳 *No. Rekening* : ${receiverRek}
-🏦 *Bank Tujuan* : ${bankTo}
-──────────────────────
-💵 *Nominal* : Rp ${nom}
-🏷️ *Biaya Admin* : Rp ${adm}
-━━━━━━━━━━━━━━━━━━━━━━
-*💰 TOTAL BAYAR : Rp ${total}*
-━━━━━━━━━━━━━━━━━━━━━━
-_No. Ref : ${ref}_
-
-_Terima kasih atas kepercayaan Anda._`;
-    }
-  }
-  
-  // --- SHARE STRUK KE WHATSAPP (GAMBAR + TEKS LENGKAP) ---
-  async function shareToWhatsApp() {
-    const previewEl = document.getElementById('receiptPreview');
-    if (!previewEl) return;
-
-    showToast('Menyiapkan gambar & teks struk...', 'info');
-    const waText = buildWhatsAppText();
-
-    // Otomatis salin teks struk ke clipboard perangkat
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(waText).catch(() => {});
-    }
-
+    showToast('Menyiapkan file PDF...', 'info');
     try {
-      const canvas = await html2canvas(previewEl, { scale: 2.5, backgroundColor: '#ffffff' });
+      const canvas = await renderReceiptCanvas();
+      const imgData = canvas.toDataURL('image/jpeg', 0.94);
+      const pdfW = 80;
+      const imgH = (canvas.height / canvas.width) * pdfW;
+      const pdfH = Math.max(95, Math.ceil(imgH) + 6);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [pdfW, pdfH] });
+      pdf.addImage(imgData, 'JPEG', 0, 3, pdfW, imgH);
 
-      // Jika di HP Android / iOS (Mendukung Web Share API dengan Lampiran File)
-      if (navigator.canShare) {
-        canvas.toBlob(async (blob) => {
-          if (!blob) return fallbackWa(canvas, waText);
-          const file = new File([blob], 'struk-transaksi.png', { type: 'image/png' });
-          
+      const fileName = makeReceiptFileName('pdf');
+      const pdfDataUri = pdf.output('datauristring');
+      const pdfB64 = pdfDataUri.split(',')[1] || '';
+
+      if (window.AndroidShare && typeof window.AndroidShare.savePdf === 'function') {
+        const res = window.AndroidShare.savePdf(pdfB64, fileName);
+        if (isBridgeSuccess(res)) {
+          showToast('Struk PDF tersimpan di folder Download (' + fileName + ')', 'success');
+          return;
+        }
+        showToast('Gagal simpan PDF: ' + String(res), 'error');
+        return;
+      }
+      if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
+        if (isBridgeSuccess(window.AndroidBT.savePdf(pdfB64, fileName))) {
+          showToast('Struk PDF tersimpan di folder Download (' + fileName + ')', 'success');
+          return;
+        }
+      }
+
+      pdf.save(fileName);
+      showToast('Struk PDF berhasil diunduh!', 'success');
+    } catch (err) {
+      showToast('Gagal membuat PDF: ' + (err?.message || err), 'error');
+    }
+  }
+
+  async function shareToWhatsApp() {
+    showToast('Menyiapkan gambar struk untuk WhatsApp...', 'info');
+    try {
+      const canvas = await renderReceiptCanvas();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+      const b64 = dataUrl.split(',')[1] || '';
+      const fileName = makeReceiptFileName('jpg');
+
+      if (window.AndroidShare && typeof window.AndroidShare.shareImageToWhatsApp === 'function') {
+        window.AndroidShare.shareImageToWhatsApp(b64, fileName, '');
+        showToast('Membuka WhatsApp dengan gambar struk...', 'success');
+        return;
+      }
+      if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
+        window.AndroidShare.shareImage(b64, fileName);
+        showToast('Pilih WhatsApp untuk kirim gambar struk', 'success');
+        return;
+      }
+      if (window.AndroidBT && typeof window.AndroidBT.shareImage === 'function') {
+        window.AndroidBT.shareImage(b64, fileName);
+        showToast('Pilih WhatsApp untuk kirim gambar struk', 'success');
+        return;
+      }
+
+      if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.94));
+        if (blob) {
+          const file = new File([blob], fileName, { type: 'image/jpeg' });
           if (navigator.canShare({ files: [file] })) {
             try {
-              await navigator.share({
-                files: [file],
-                title: 'Struk Transaksi Digital',
-                text: waText
-              });
-              showToast('Membuka WhatsApp dengan gambar & teks!', 'success');
+              await navigator.share({ files: [file] });
+              showToast('Gambar struk siap dikirim ke WhatsApp!', 'success');
               return;
             } catch (err) {
-              if (err.name !== 'AbortError') fallbackWa(canvas, waText);
+              if (err && err.name === 'AbortError') return;
             }
-          } else {
-            fallbackWa(canvas, waText);
           }
-        }, 'image/png');
-      } else {
-        fallbackWa(canvas, waText);
+        }
       }
-    } catch (e) {
-      fallbackWa(null, waText);
+
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+      showToast('Gambar struk diunduh! Silakan lampirkan ke WhatsApp.', 'success');
+    } catch (err) {
+      showToast('Gagal berbagi ke WhatsApp: ' + (err?.message || err), 'error');
     }
   }
 
-  function fallbackWa(canvas, waText) {
-    if (canvas) {
-      // Otomatis unduh gambar struk beresolusi tinggi ke HP / PC
-      const link = document.createElement('a');
-      link.download = 'struk-transaksi-' + Date.now() + '.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+  function buildPlainReceiptText(r) {
+    const lines = [];
+    lines.push((r.storeName || 'HIFZI CELL').toUpperCase());
+    if (r.address) lines.push(r.address);
+    if (r.phone) lines.push('HP/WA: ' + r.phone);
+    lines.push('================================');
+    lines.push(r.typeLabel);
+    lines.push('--------------------------------');
+    lines.push(`Waktu    : ${r.tanggal} ${r.jam}`);
+
+    if (r.type === 'token_pln') {
+      lines.push(`No.Meter : ${r.noMeter}`);
+      lines.push(`Nama     : ${r.namaPelanggan}`);
+      lines.push(`Tarif    : ${r.tarifDaya}`);
+      lines.push(`Jml kWh  : ${r.kwh}`);
+      lines.push('--------------------------------');
+      lines.push('KODE TOKEN / STROOM PLN:');
+      lines.push(r.tokenCode || '-');
+      lines.push('--------------------------------');
+      lines.push(`Nominal  : Rp ${formatNumber(r.nominal)}`);
+      lines.push(`Admin    : Rp ${formatNumber(r.admin)}`);
+    } else if (r.type === 'top_up') {
+      lines.push(`Pengirim : ${r.senderRek || r.sender || r.bankFrom}`);
+      lines.push(`Layanan  : ${r.bankFrom}`);
+      lines.push(`Penerima : ${r.receiver}`);
+      lines.push(`No.Rek/HP: ${r.receiverRek}`);
+      lines.push(`Tujuan   : ${r.bankTo}`);
+      lines.push('--------------------------------');
+      lines.push(`Nominal  : Rp ${formatNumber(r.nominal)}`);
+      lines.push(`Admin    : Rp ${formatNumber(r.admin)}`);
+    } else {
+      lines.push(`Pengirim : ${r.sender || r.bankFrom}${r.senderRek ? ' (' + r.senderRek + ')' : ''}`);
+      lines.push(`Bank Asal: ${r.bankFrom}`);
+      lines.push(`Penerima : ${r.receiver}`);
+      lines.push(`No. Rek  : ${r.receiverRek}`);
+      lines.push(`Bank Tjn : ${r.bankTo}`);
+      lines.push('--------------------------------');
+      lines.push(`Nominal  : Rp ${formatNumber(r.nominal)}`);
+      lines.push(`Admin    : Rp ${formatNumber(r.admin)}`);
     }
-    
-    // Buka WhatsApp dengan teks rincian lengkap yang rapi
-    const text = encodeURIComponent(waText || buildWhatsAppText());
-    window.open('https://wa.me/?text=' + text, '_blank');
-    showToast('Gambar struk diunduh & WhatsApp dibuka dengan teks lengkap!', 'success');
+
+    lines.push('================================');
+    lines.push(`TOTAL    : Rp ${formatNumber(r.total)}`);
+    lines.push(`REF      : ${r.ref}`);
+    lines.push('');
+    lines.push(r.note || 'Terima kasih');
+    return lines.join('\n');
   }
-  
-  
-  function formatNumber(num) {
-    return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  function copyReceiptPlainText() {
+    const text = buildPlainReceiptText(getActiveReceiptData());
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast('Teks struk berhasil disalin!', 'success'))
+        .catch(() => showToast('Gagal menyalin teks', 'warning'));
+    } else {
+      showToast('Browser tidak mendukung salin otomatis', 'warning');
+    }
   }
 
   function showToast(msg, type = 'success') {
     const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const iconMap = {
+      success: 'fa-check-circle',
+      error: 'fa-times-circle',
+      warning: 'fa-exclamation-triangle',
+      info: 'fa-info-circle'
+    };
+    const icon = iconMap[type] || 'fa-info-circle';
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    el.innerHTML = `<i class="fas fa-check-circle"></i><span>${msg}</span>`;
+    el.innerHTML = `<i class="fas ${icon}"></i><span>${escHtml(msg)}</span>`;
     container.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
+    setTimeout(() => el.remove(), 3200);
   }
 </script>
 </body>
