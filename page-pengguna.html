@@ -1038,7 +1038,8 @@
       const userDoc = await db.collection("users").doc(user.uid).get();
       if (userDoc.exists) {
         const u = userDoc.data();
-        currentUserRole = (u.role || "kasir").toLowerCase();
+        const realRole = (u.role || "kasir").toLowerCase();
+        currentUserRole = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(realRole) : realRole;
         
         document.getElementById("userName").textContent = u.name || user.email.split("@")[0];
         document.getElementById("userRole").textContent = currentUserRole.toUpperCase();
