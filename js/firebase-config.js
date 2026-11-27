@@ -4568,7 +4568,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (rendered && rendered.jpegDataUrl) {
       var b64 = rendered.jpegDataUrl.split(',')[1] || '';
       if (window.AndroidShare && typeof window.AndroidShare.shareImageToWhatsApp === 'function') {
-        try { window.AndroidShare.shareImageToWhatsApp(b64, rendered.jpgFileName, plainText); rcptToast('Membuka WhatsApp dengan gambar nota...', 'success'); return; } catch (e) {}
+       try { window.AndroidShare.shareImageToWhatsApp(b64, rendered.jpgFileName, ''); rcptToast('Membuka WhatsApp dengan gambar nota...', 'success'); return; } catch (e) {}
       }
       if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
         try { window.AndroidShare.shareImage(b64, rendered.jpgFileName); rcptToast('Pilih WhatsApp untuk kirim nota JPG', 'success'); return; } catch (e) {}
