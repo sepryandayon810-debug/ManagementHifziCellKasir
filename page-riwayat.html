@@ -1900,57 +1900,49 @@ if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
         `;
       }
 
+      function buildRiwayatReceiptPayload(t) {
+        const isReseller = isResellerTx(t);
+        const nominal = KasCore.getNominal(t);
+        const payMethod = KasCore.getPaymentMethod(t) || 'tunai';
+        const cat = KasCore.getCategory(t);
+        const catLabel = TYPE_LABELS[cat] || cat || 'TRANSAKSI';
+        const itemsArr = (t.items && Array.isArray(t.items) && t.items.length > 0)
+          ? t.items
+          : [{ name: t.catatan || t.note || catLabel, quantity: 1, price: nominal, total: nominal }];
+        return {
+          id: t.id,
+          inputSequence: t.inputSequence || '',
+          timestamp: t.waktu || t.timestamp || Date.now(),
+          cashierName: t.userName || t.cashierName || '-',
+          customerName: t.customerName || '',
+          resellerMode: isReseller,
+          resellerName: isReseller ? getResellerCounterName(t) : null,
+          docTitle: isReseller ? (payMethod === 'utang' ? 'NOTA RESELLER (HUTANG)' : 'NOTA PENJUALAN RESELLER')
+            : (cat === 'jual' ? (payMethod === 'utang' ? 'NOTA PENJUALAN HUTANG' : 'NOTA PENJUALAN') : ('BUKTI ' + catLabel.toUpperCase())),
+          items: itemsArr,
+          subtotal: t.subtotal != null ? t.subtotal : nominal,
+          discount: t.discount != null ? t.discount : (t.diskon || 0),
+          rounding: t.rounding != null ? t.rounding : (t.pembulatan || 0),
+          total: nominal,
+          paymentMethod: payMethod,
+          paymentAmount: t.paymentAmount != null ? t.paymentAmount : (payMethod === 'utang' ? (t.bayar_sekarang || 0) : nominal),
+          change: t.change != null ? t.change : 0,
+          remainingPiutang: t.remainingPiutang != null ? t.remainingPiutang : (payMethod === 'utang' ? Math.max(0, nominal - (t.bayar_sekarang || 0)) : 0)
+        };
+      }
+
       window.printTransaction = function(id) {
         const t = allTransactions.find(x => x.id === id);
         if (!t) return;
         lastTransactionData = t;
-
-        const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
-        const address = storeSettings.address || '';
-        const phone = storeSettings.phone || '';
-
-        let itemsText = TYPE_LABELS[KasCore.getCategory(t)] || KasCore.getCategory(t)
-        if (t.items && Array.isArray(t.items) && t.items.length > 0) {
-          itemsText = t.items.map(function(i) {
-            const name = i.name || i.productName || 'Barang';
-            const qty = i.quantity || i.qty || 1;
-            const price = i.price || i.harga || 0;
-            const subtotal = i.total || (price * qty);
-            return name + '\n' + qty + ' x ' + Utils.formatRupiah(price) + ' = ' + Utils.formatRupiah(subtotal);
-          }).join('\n');
-        }
-
-        const totalNominal = Utils.formatRupiah(KasCore.getNominal(t));
-        const paymentMethod = (KasCore.getPaymentMethod(t) || 'tunai').toUpperCase()
-        const headerStore = storeName.toUpperCase();
-        const addressText = address ? '  ' + address + '\n' : '';
-        const phoneText = phone ? '  Telp: ' + phone + '\n' : '';
-
-        const isReseller = isResellerTx(t);
-        const konterLine = isReseller
-          ? (' Konter : ' + getResellerCounterName(t) + '\n Tipe   : RESELLER\n')
-          : (t.customerName ? (' Plgn   : ' + t.customerName + '\n') : '');
+        const payload = buildRiwayatReceiptPayload(t);
+        const plain = window.WebPOSReceipt ? window.WebPOSReceipt.buildPlain(payload) : '';
         const paper = document.getElementById('strukPaper');
-        paper.textContent = 
-'================================\n' +
-'  ' + headerStore + '\n' +
-addressText +
-phoneText +
-'================================\n' +
-' No.    : ' + String(t.inputSequence || '-') + '\n' +
-' ID     : ' + t.id + '\n' +
-' Waktu  : ' + formatDateTime(t.waktu || t.timestamp) + '\n' +
-' Kasir  : ' + (t.userName || '-') + '\n' +
-konterLine +
-'--------------------------------\n' +
-itemsText + '\n' +
-'--------------------------------\n' +
-'TOTAL  : ' + totalNominal + '\n' +
-'Metode : ' + paymentMethod + '\n' +
-'================================\n' +
-'  Terima Kasih Telah Berbelanja\n' +
-'================================';
-
+        paper.textContent = plain;
+        if (window.WebPOSReceipt) {
+          window.WebPOSReceipt.setCurrentTx(payload, plain);
+          window.WebPOSReceipt.enhanceStrukModals();
+        }
         document.getElementById('strukModal').classList.add('active');
       };
 
@@ -1973,30 +1965,8 @@ itemsText + '\n' +
         Utils.showLoading('Menghubungkan printer...');
         try {
           await new Promise((res, rej) => bluetoothSerial.connect(mac, res, rej));
-          const t = lastTransactionData;
-          const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS';
-          let c = '\x1B\x40\x1B\x61\x01\x1B\x45\x01' + storeName.toUpperCase() + '\x1B\x45\x00\x0A';
-          c += '--------------------------------\x0A\x1B\x61\x00';
-          const isReseller = isResellerTx(t);
-          c += 'No    : ' + String(t.inputSequence || '-') + '\x0A';
-          c += 'ID    : ' + t.id + '\x0A';
-          c += 'Tgl   : ' + formatDateTime(t.waktu || t.timestamp) + '\x0A';
-          c += 'Kasir : ' + (t.userName || '-') + '\x0A';
-          if (isReseller) {
-            c += '\x1B\x45\x01Konter: ' + getResellerCounterName(t) + '\x1B\x45\x00\x0A';
-            c += 'Tipe  : RESELLER\x0A';
-          } else if (t.customerName) {
-            c += 'Plgn  : ' + t.customerName + '\x0A';
-          }
-          c += '--------------------------------\x0A';
-          if (t.items) {
-            t.items.forEach(i => {
-              c += (i.name || i.productName) + '\x0A  ' + (i.quantity || i.qty || 1) + ' x ' + Utils.formatRupiah(i.price || i.harga || 0) + ' = ' + Utils.formatRupiah(i.total || 0) + '\x0A';
-            });
-          }
-          c += '--------------------------------\x0A';
-          c += 'TOTAL: ' + Utils.formatRupiah(KasCore.getNominal(t)) + '\x0A================================\x0A\x1B\x61\x01Terima Kasih\x0A\x0A\x0A\x1D\x56\x41\x03';
-
+          const payload = buildRiwayatReceiptPayload(lastTransactionData);
+          const c = window.WebPOSReceipt.buildEscPos(payload);
           await new Promise((res, rej) => bluetoothSerial.write(c, res, rej));
           await new Promise(res => bluetoothSerial.disconnect(res, res));
           Utils.hideLoading();
@@ -2006,7 +1976,7 @@ itemsText + '\n' +
           Utils.showToast('Gagal mencetak: ' + e, 'error');
         }
       };
-
+      
       function getItemProductId(item) {
         const nestedProduct = item && (item.product || item.productData);
         return item && (
