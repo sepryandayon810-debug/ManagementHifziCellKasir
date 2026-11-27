@@ -4314,6 +4314,25 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="amount-value" id="paymentTotal">Rp 0</div>
         </div>
 
+        <div id="kasirRoundingBox" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.35rem 0.65rem;margin-bottom:0.25rem;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-secondary);flex-shrink:0;">
+          <label for="kasirRoundingMode" style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.72rem;font-weight:700;color:var(--text-primary);margin:0;white-space:nowrap;">
+            <svg class="wp-3d-native-icon" viewBox="0 0 48 48" fill="none" style="width:18px;height:18px;"><defs><linearGradient id="kRndG" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#kRndG)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.34"/><text x="24" y="29.5" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="14" fill="#FFFFFF">Rp</text></svg>
+            Pembulatan
+            <span id="kasirRoundingBadge" style="display:none;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:6px;background:rgba(16,185,129,0.14);color:#059669;"></span>
+          </label>
+          <select id="kasirRoundingMode" class="form-input" onchange="window.onKasirRoundingChange(this.value)" style="width:auto;min-width:142px;padding:0.28rem 2rem 0.28rem 0.55rem;font-size:0.73rem;font-weight:700;border-radius:8px;">
+            <option value="0">Tanpa Pembulatan</option>
+            <option value="up_100">Naik ke Rp 100</option>
+            <option value="up_500">Naik ke Rp 500</option>
+            <option value="up_1000">Naik ke Rp 1.000</option>
+            <option value="down_100">Turun ke Rp 100</option>
+            <option value="down_500">Turun ke Rp 500</option>
+            <option value="down_1000">Turun ke Rp 1.000</option>
+            <option value="near_500">Terdekat Rp 500</option>
+            <option value="near_1000">Terdekat Rp 1.000</option>
+          </select>
+        </div>
+
         <div class="amount-display" style="background:rgba(99,102,241,.08);border:2px solid var(--primary);">
           <div class="amount-label">Jumlah Diterima</div>
           <div class="amount-value" id="paymentInput" style="color:var(--primary);font-size:2.25rem;">Rp 0</div>
@@ -5646,9 +5665,55 @@ function renderCart() {
   if (totalEl) totalEl.textContent = formatRupiah(total);
 }
 
-   function calculateTotal() {
+   let kasirRoundingMode = '0';
+
+    function getKasirBaseTotal() {
       const subtotal = getCartSubtotal();
       return Math.max(0, subtotal - toMoney(discount));
+    }
+
+    function getKasirRoundingAmount() {
+      const base = getKasirBaseTotal();
+      if (!base || !kasirRoundingMode || kasirRoundingMode === '0') return 0;
+      const parts = String(kasirRoundingMode).split('_');
+      const dir = parts[0];
+      const step = parseInt(parts[1], 10) || 0;
+      if (!step) return 0;
+      let rounded = base;
+      if (dir === 'up') rounded = Math.ceil(base / step) * step;
+      else if (dir === 'down') rounded = Math.floor(base / step) * step;
+      else if (dir === 'near') rounded = Math.round(base / step) * step;
+      return rounded - base;
+    }
+
+    function updateKasirRoundingUI() {
+      const amt = getKasirRoundingAmount();
+      const badge = document.getElementById('kasirRoundingBadge');
+      if (badge) {
+        if (amt !== 0) {
+          badge.style.display = 'inline-block';
+          badge.textContent = (amt > 0 ? '+' : '-') + formatRupiah(Math.abs(amt));
+          badge.style.background = amt > 0 ? 'rgba(16,185,129,0.14)' : 'rgba(245,158,11,0.16)';
+          badge.style.color = amt > 0 ? '#059669' : '#d97706';
+        } else {
+          badge.style.display = 'none';
+          badge.textContent = '';
+        }
+      }
+      const payTot = document.getElementById('paymentTotal');
+      if (payTot) payTot.textContent = formatRupiah(calculateTotal());
+    }
+
+    window.onKasirRoundingChange = function(val) {
+      kasirRoundingMode = val || '0';
+      updateKasirRoundingUI();
+      if (typeof renderPaymentItemsSummary === 'function') renderPaymentItemsSummary();
+      if (typeof updatePaymentDisplay === 'function') updatePaymentDisplay();
+      if (typeof updatePiutangDisplay === 'function') updatePiutangDisplay();
+    };
+
+    function calculateTotal() {
+      return Math.max(0, getKasirBaseTotal() + getKasirRoundingAmount());
     }
 
     // ===== FUNGSI POP-UP DISKON & AMBIL OWNER =====
@@ -5808,10 +5873,14 @@ function renderCart() {
     // ===== PAYMENT MODAL =====
     const paymentModal = document.getElementById('paymentModal');
 
-        function resetPaymentModal() {
+       function resetPaymentModal() {
       // Reset ke mode tunai default
       paymentMethod = 'cash';
       paymentAmount = 0;
+      kasirRoundingMode = '0';
+      const rndSel = document.getElementById('kasirRoundingMode');
+      if (rndSel) rndSel.value = '0';
+      updateKasirRoundingUI();
       
       // Reset UI methods
       document.querySelectorAll('.payment-method').forEach(x => x.classList.remove('active'));
@@ -5864,14 +5933,21 @@ function renderCart() {
         </div>
       `).join('');
 
-      const subtotal = getCartSubtotal();
-      const total = calculateTotal();
-      const discAmt = Math.max(0, subtotal - total);
+     const discAmt = Math.max(0, toMoney(discount));
       if (discAmt > 0) {
         html += `
           <div style="display:flex; align-items:center; justify-content:space-between; padding-top:0.2rem; font-size:0.74rem; font-weight:700; color:#ef4444;">
             <span>Diskon</span>
             <span>- ${formatRupiah(discAmt)}</span>
+          </div>
+        `;
+      }
+      const rndAmt = getKasirRoundingAmount();
+      if (rndAmt !== 0) {
+        html += `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding-top:0.2rem; font-size:0.74rem; font-weight:700; color:${rndAmt > 0 ? '#059669' : '#d97706'};">
+            <span>Pembulatan</span>
+            <span>${rndAmt > 0 ? '+' : '-'}${formatRupiah(Math.abs(rndAmt))}</span>
           </div>
         `;
       }
@@ -6130,6 +6206,8 @@ document.getElementById('btnConfirmPaymentDesktop').addEventListener('click', pr
             items: normalizedOfflineItems,
             subtotal: subtotalOffline,
             total: total,
+            rounding: getKasirRoundingAmount(),
+            pembulatan: getKasirRoundingAmount(),
             diskon: discount,
             discount: discount,
             discountNote: discountNote || null,
@@ -6301,6 +6379,12 @@ await firebase.firestore().collection('transactions').doc(result.id).update({
     total: i.total
   })),
   userName: document.getElementById('userName').textContent,
+ userName: document.getElementById('userName').textContent,
+  subtotal: subtotal,
+  diskon: discount,
+  discount: discount,
+  rounding: getKasirRoundingAmount(),
+  pembulatan: getKasirRoundingAmount(),
   priceMode: hutangReseller.isReseller ? 'reseller' : 'regular',
   resellerMode: hutangReseller.isReseller,
   resellerName: finalHutangKonter
@@ -6314,6 +6398,7 @@ const transaction = {
   items: cart,
   subtotal,
   discount,
+  rounding: getKasirRoundingAmount(),
   total,
   paymentMethod: 'hutang',
   paymentAmount: piutangPayment,
@@ -6455,6 +6540,8 @@ await firebase.firestore().collection('transactions').doc(result.id).update({
   subtotal: subtotal,
   diskon: discount,
   discount: discount,
+  rounding: getKasirRoundingAmount(),
+  pembulatan: getKasirRoundingAmount(),
   discountNote: discountNote || null,
   isOwnerTake: Boolean(discountNote && discountNote.toLowerCase().includes('owner'))
 });
@@ -6467,6 +6554,7 @@ const transaction = {
   items: cart,
   subtotal,
   discount,
+  rounding: getKasirRoundingAmount(),
   total,
   paymentMethod,
   paymentAmount,
@@ -7067,6 +7155,7 @@ document.addEventListener('keydown', (e) => {
     }
 
     function generateEscPosKasir(tx) {
+      if (window.WebPOSReceipt) return window.WebPOSReceipt.buildEscPos(tx);
       const hdr = loadReceiptHeader();
       const storeName = hdr.storeName || 'NAMA TOKO';
       const address = hdr.address || '';
@@ -7128,6 +7217,7 @@ document.addEventListener('keydown', (e) => {
     }
 
     function generateStrukPlain(tx) {
+      if (window.WebPOSReceipt) return window.WebPOSReceipt.buildPlain(tx);
       const hdr = loadReceiptHeader();
       const storeName = hdr.storeName || 'NAMA TOKO';
       const address = hdr.address || '';
@@ -7177,9 +7267,13 @@ document.addEventListener('keydown', (e) => {
 
     function showStrukModal(tx) {
       lastTransactionData = tx;
+      const plainStruk = generateStrukPlain(tx);
       const paper = document.getElementById('strukPaper');
-      paper.textContent = generateStrukPlain(tx);
-
+      paper.textContent = plainStruk;
+      if (window.WebPOSReceipt) {
+        window.WebPOSReceipt.setCurrentTx(tx, plainStruk);
+        window.WebPOSReceipt.enhanceStrukModals();
+      }
       // Disable tombol print kalau plugin bluetooth tidak ada
       const btnPrint = document.getElementById('btnPrintStruk');
       if (!window.bluetoothSerial) {
