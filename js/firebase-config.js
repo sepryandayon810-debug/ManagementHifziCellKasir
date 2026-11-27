@@ -572,8 +572,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
                 : 'Versi terbaru WebPOS sudah siap dipakai. Muat ulang sekarang agar fitur &amp; perbaikan langsung aktif — data transaksi tetap aman.') +
             '</div>' +
           '</div>' +
-          '<button type="button" id="btnCloseWebposUpdate" aria-label="Tutup" style="background:rgba(148,163,184,0.14);color:#cbd5e1;border:none;width:26px;height:26px;border-radius:8px;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">&times;</button>' +
-        '</div>' +
+          '<button type="button" id="btnCloseWebposUpdate" aria-label="Tutup" style="background:transparent;border:none;width:28px;height:28px;padding:0;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;"><svg style="width:24px;height:24px;filter:drop-shadow(0 2px 5px rgba(225,29,72,0.45));" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="wpUpdCloseG" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#E11D48"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#wpUpdCloseG)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.32"/><path d="M17 17L31 31M31 17L17 31" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round"/></svg></button>' +        '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">' +
           '<button type="button" id="btnLaterWebposUpdate" style="flex:0 0 auto;background:rgba(148,163,184,0.14);color:#e2e8f0;border:1px solid rgba(148,163,184,0.22);padding:8px 14px;border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;">Nanti</button>' +
           '<button type="button" id="btnReloadWebposUpdate" style="flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);color:#ffffff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(34,197,94,0.35);">Refresh' + (initialVer ? ' (' + initialVer + ')' : '') + '</button>' +
@@ -1150,6 +1149,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         el.style.setProperty('display', 'none', 'important');
         el.dataset.upgraded3d = '1';
         el.dataset.u3dClass = curClass;
+        if (key === 'close' && parent.tagName === 'BUTTON' && !(parent.textContent || '').trim() && !parent.classList.contains('btn-mobile-cancel')) {
+          parent.classList.add('u3d-close-btn');
+        }
         parent.insertBefore(svg, el.nextSibling);
       }
     } catch (e) {}
@@ -1233,10 +1235,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           '.nav-dropdown.open .nav-dropdown-toggle > .u3d-dd-arrow{transform:rotate(180deg) !important;}',
           '.sidebar.collapsed .u3d-dd-arrow{display:none !important;}',
           '.kas-date-btn > .ui-3d-svg,.page-btn > .ui-3d-svg,.btn-icon-box > .ui-3d-svg,.btn-icon-sm > .ui-3d-svg,.btn-icon > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{width:18px;height:18px;margin:0;}',
-          '.modal-close:has(> .ui-3d-svg),.close-btn:has(> .ui-3d-svg),.struk-modal-close:has(> .ui-3d-svg),.cart-item-remove:has(> .ui-3d-svg){background:transparent !important;border:none !important;box-shadow:none !important;padding:2px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}',
-          '.modal-close > .ui-3d-svg,.close-btn > .ui-3d-svg,.struk-modal-close > .ui-3d-svg{width:24px;height:24px;margin:0;}',
-          '.modal-close:hover > .ui-3d-svg,.close-btn:hover > .ui-3d-svg,.struk-modal-close:hover > .ui-3d-svg,.cart-item-remove:hover > .ui-3d-svg{transform:scale(1.12);}',
-          '.cart-item-remove > .ui-3d-svg{width:19px;height:19px;margin:0;}',
+         '.u3d-close-btn,.modal-close:has(> .ui-3d-svg),.close-btn:has(> .ui-3d-svg),.struk-modal-close:has(> .ui-3d-svg),.barcode-modal-close:has(> .ui-3d-svg),.undo-close:has(> .ui-3d-svg),.cart-item-remove:has(> .ui-3d-svg),.reseller-counter-clear:has(> .ui-3d-svg),.bi-remove:has(> .ui-3d-svg){background:transparent !important;border:none !important;box-shadow:none !important;padding:2px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}',
+          '.u3d-close-btn > .ui-3d-svg,.modal-close > .ui-3d-svg,.close-btn > .ui-3d-svg,.struk-modal-close > .ui-3d-svg,.barcode-modal-close > .ui-3d-svg,.undo-close > .ui-3d-svg{width:26px !important;height:26px !important;margin:0 !important;filter:drop-shadow(0 3px 6px rgba(225,29,72,0.36)) !important;}',
+          '.u3d-close-btn:hover > .ui-3d-svg,.modal-close:hover > .ui-3d-svg,.close-btn:hover > .ui-3d-svg,.struk-modal-close:hover > .ui-3d-svg,.barcode-modal-close:hover > .ui-3d-svg,.cart-item-remove:hover > .ui-3d-svg{transform:scale(1.14) !important;}',
+          '.u3d-close-btn:active > .ui-3d-svg{transform:scale(0.94) !important;}',
+          '.cart-item-remove.u3d-close-btn > .ui-3d-svg,.cart-item-remove > .ui-3d-svg,.reseller-counter-clear.u3d-close-btn > .ui-3d-svg,.bi-remove.u3d-close-btn > .ui-3d-svg{width:19px !important;height:19px !important;}',
           '.qty-btn > .ui-3d-svg{width:15px;height:15px;margin:0;}',
           '.numpad-btn > .ui-3d-svg{width:20px;height:20px;margin:0;}',
           '.password-toggle > .ui-3d-svg,.toggle-password > .ui-3d-svg{width:18px;height:18px;margin:0;}',
