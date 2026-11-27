@@ -1041,9 +1041,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     '#mobileMenuToggle',
     '#btnHealthGuard',
     '.logo-icon.has-custom-logo',
-    '.logo-badge.has-custom-logo'
+    '.logo-badge.has-custom-logo',
+    '#webposDateModal',
+    '#webposSelectModal',
+    '#webposReceiptImgModal',
+    '#webposUnifiedPreviewModal',
+    '#btnWpShareNotaImg',
+    '#btnWpSaveNotaPdf',
+    '.wp-3d-native-icon'
   ].join(',');
-
   // Hapus SVG 3D duplikat jika halaman (seperti Dashboard index.html) sudah punya SVG 3D sendiri
   function cleanupDuplicate3dSvgs() {
     try {
@@ -1238,12 +1244,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
       if (!window.__webposDatePickerClickBound) {
         window.__webposDatePickerClickBound = true;
-        document.addEventListener('click', function(e) {
-          var t = e.target;
-          if (t && t.tagName === 'INPUT' && t.type === 'date' && typeof t.showPicker === 'function') {
-            try { t.showPicker(); } catch (err) {}
-          }
-        });
       }
 
       // 1. Tombol Header Dark Mode (#btnThemeToggle maupun #btnTheme)
@@ -2670,5 +2670,1535 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     document.addEventListener('DOMContentLoaded', bootBrandLogo);
   } else {
     bootBrandLogo();
+  }
+})();
+
+// =========================================================================
+// WEBPOS 3D POPUP SYSTEM & UNIFIED RECEIPT ENGINE (PNG / PDF / THERMAL)
+// =========================================================================
+(function() {
+  if (window.__webposUnifiedUiV1) return;
+  window.__webposUnifiedUiV1 = true;
+
+  var uidCounter = 0;
+  function mk3d(svgBody, cls) {
+    uidCounter++;
+    var p = 'wp3d_' + uidCounter + '_';
+    return '<svg class="wp-3d-native-icon ' + (cls || '') + '" viewBox="0 0 48 48" fill="none" aria-hidden="true">' +
+      svgBody.replace(/__ID__/g, p) + '</svg>';
+  }
+
+  var ICONS_3D = {
+    calendar: function(cls) {
+      return mk3d(
+        '<defs>' +
+          '<linearGradient id="__ID__bg" x1="6" y1="10" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#CBD5E1"/></linearGradient>' +
+          '<linearGradient id="__ID__top" x1="6" y1="10" x2="42" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#E11D48"/></linearGradient>' +
+          '<linearGradient id="__ID__pin" x1="14" y1="5" x2="18" y2="15" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/></linearGradient>' +
+        '</defs>' +
+        '<rect x="6" y="10" width="36" height="32" rx="8" fill="url(#__ID__bg)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<path d="M6 18C6 13.6 9.6 10 14 10H34C38.4 10 42 13.6 42 18V21H6V18Z" fill="url(#__ID__top)"/>' +
+        '<ellipse cx="24" cy="14" rx="13" ry="2.6" fill="#FFFFFF" fill-opacity="0.28"/>' +
+        '<rect x="13.5" y="5.5" width="5" height="9.5" rx="2.5" fill="url(#__ID__pin)" stroke="#FFFFFF" stroke-width="1.2"/>' +
+        '<rect x="29.5" y="5.5" width="5" height="9.5" rx="2.5" fill="url(#__ID__pin)" stroke="#FFFFFF" stroke-width="1.2"/>' +
+        '<rect x="12" y="25" width="6.5" height="5.5" rx="1.8" fill="#3B82F6"/>' +
+        '<rect x="20.75" y="25" width="6.5" height="5.5" rx="1.8" fill="#10B981"/>' +
+        '<rect x="29.5" y="25" width="6.5" height="5.5" rx="1.8" fill="#F59E0B"/>' +
+        '<rect x="12" y="33" width="15" height="4.5" rx="1.6" fill="#94A3B8"/>',
+        cls
+      );
+    },
+    list: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#818CF8"/><stop offset="55%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient></defs>' +
+        '<rect x="6" y="6" width="36" height="36" rx="11" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/>' +
+        '<ellipse cx="24" cy="13" rx="12" ry="4.5" fill="#FFFFFF" fill-opacity="0.26"/>' +
+        '<circle cx="15" cy="18" r="2.4" fill="#A5F3FC"/><rect x="20.5" y="16" width="14" height="4" rx="2" fill="#FFFFFF"/>' +
+        '<circle cx="15" cy="25" r="2.4" fill="#6EE7B7"/><rect x="20.5" y="23" width="14" height="4" rx="2" fill="#FFFFFF"/>' +
+        '<circle cx="15" cy="32" r="2.4" fill="#FDE68A"/><rect x="20.5" y="30" width="10.5" height="4" rx="2" fill="#FFFFFF"/>',
+        cls
+      );
+    },
+    search: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="8" y1="8" x2="34" y2="34" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs>' +
+        '<circle cx="21" cy="21" r="13" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="2"/>' +
+        '<circle cx="21" cy="21" r="7.5" fill="#E0F2FE"/>' +
+        '<ellipse cx="18.5" cy="17.5" rx="3.5" ry="2" fill="#FFFFFF" fill-opacity="0.85"/>' +
+        '<path d="M31 31L40 40" stroke="#0369A1" stroke-width="6" stroke-linecap="round"/>' +
+        '<path d="M31 31L40 40" stroke="#38BDF8" stroke-width="3.2" stroke-linecap="round"/>',
+        cls
+      );
+    },
+    check: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.32"/>' +
+        '<path d="M15.5 24.5L21.5 30.5L33 18.5" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>',
+        cls
+      );
+    },
+    close: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#E11D48"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.3"/>' +
+        '<path d="M17 17L31 31M31 17L17 31" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round"/>',
+        cls
+      );
+    },
+    chevLeft: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/>' +
+        '<ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.3"/>' +
+        '<path d="M27 15L18 24L27 33" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>',
+        cls
+      );
+    },
+    chevRight: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93C5FD"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/>' +
+        '<ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.3"/>' +
+        '<path d="M21 15L30 24L21 33" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>',
+        cls
+      );
+    },
+    today: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="100%" stop-color="#F59E0B"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.35"/>' +
+        '<path d="M24 13L27.2 19.8L34.6 20.8L29.2 26L30.5 33.4L24 29.8L17.5 33.4L18.8 26L13.4 20.8L20.8 19.8Z" fill="#FFFFFF"/>',
+        cls
+      );
+    },
+    clear: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDA4AF"/><stop offset="100%" stop-color="#E11D48"/></linearGradient></defs>' +
+        '<rect x="7" y="10" width="34" height="30" rx="8" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/>' +
+        '<path d="M18 19L30 31M30 19L18 31" stroke="#FFFFFF" stroke-width="3.8" stroke-linecap="round"/>',
+        cls
+      );
+    },
+    image: function(cls) {
+      return mk3d(
+        '<defs>' +
+          '<linearGradient id="__ID__g" x1="6" y1="8" x2="42" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient>' +
+          '<linearGradient id="__ID__m" x1="10" y1="22" x2="38" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#A7F3D0"/><stop offset="100%" stop-color="#10B981"/></linearGradient>' +
+        '</defs>' +
+        '<rect x="6" y="8" width="36" height="32" rx="9" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="14" rx="12" ry="3.6" fill="#FFFFFF" fill-opacity="0.28"/>' +
+        '<circle cx="16.5" cy="18.5" r="3.6" fill="#FDE047"/>' +
+        '<path d="M10 35L20 24L27.5 31.5L32.5 26.5L38 35H10Z" fill="url(#__ID__m)"/>',
+        cls
+      );
+    },
+    pdf: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="9" y1="5" x2="39" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#BE123C"/></linearGradient></defs>' +
+        '<path d="M13 6H29L39 16V38C39 40.8 36.8 43 34 43H13C10.2 43 8 40.8 8 38V11C8 8.2 10.2 6 13 6Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<path d="M29 6V14C29 15.1 29.9 16 31 16H39L29 6Z" fill="#FECDD3"/>' +
+        '<rect x="13" y="24" width="22" height="10" rx="4" fill="#FFFFFF" fill-opacity="0.94"/>' +
+        '<text x="24" y="31.5" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="7.5" fill="#BE123C">PDF</text>',
+        cls
+      );
+    },
+    download: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.32"/>' +
+        '<path d="M24 14V28M17.5 23L24 29.5L30.5 23" stroke="#FFFFFF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M15 34H33" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/>',
+        cls
+      );
+    },
+    receipt: function(cls) {
+      return mk3d(
+        '<defs>' +
+          '<linearGradient id="__ID__g" x1="10" y1="5" x2="38" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E2E8F0"/></linearGradient>' +
+          '<linearGradient id="__ID__t" x1="10" y1="5" x2="38" y2="15" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6366F1"/><stop offset="100%" stop-color="#4338CA"/></linearGradient>' +
+        '</defs>' +
+        '<path d="M11 8C11 6.3 12.3 5 14 5H34C35.7 5 37 6.3 37 8V42L33 39L29 42L24 39L19 42L15 39L11 42V8Z" fill="url(#__ID__g)" stroke="#CBD5E1" stroke-width="1.4"/>' +
+        '<path d="M11 8C11 6.3 12.3 5 14 5H34C35.7 5 37 6.3 37 8V14H11V8Z" fill="url(#__ID__t)"/>' +
+        '<rect x="15" y="19" width="18" height="3" rx="1.5" fill="#6366F1"/>' +
+        '<rect x="15" y="25" width="14" height="2.8" rx="1.4" fill="#94A3B8"/>' +
+        '<rect x="15" y="31" width="18" height="3.2" rx="1.6" fill="#10B981"/>',
+        cls
+      );
+    },
+    rounding: function(cls) {
+      return mk3d(
+        '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="50%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs>' +
+        '<circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/>' +
+        '<ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.34"/>' +
+        '<text x="24" y="29.5" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="14" fill="#FFFFFF">Rp</text>',
+        cls
+      );
+    }
+  };
+
+  window.WebPOS3DIcons = ICONS_3D;
+
+  function ensureUnifiedStyles() {
+    if (document.getElementById('webpos-unified-ui-style')) return;
+    var st = document.createElement('style');
+    st.id = 'webpos-unified-ui-style';
+    st.textContent = [
+      '.wp-3d-native-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(15,23,42,0.22));}',
+      '.wp-pop-backdrop{position:fixed;inset:0;z-index:100025;background:rgba(15,23,42,0.58);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box;animation:wpPopFade .16s ease;}',
+      '.wp-pop-backdrop.open{display:flex;}',
+      '.wp-pop-card{width:100%;max-width:368px;background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#0f172a));border:1px solid var(--border,var(--border-color,#e2e8f0));border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,0.34);overflow:hidden;display:flex;flex-direction:column;max-height:86vh;animation:wpPopIn .2s cubic-bezier(.16,1,.3,1);}',
+      '[data-theme="dark"] .wp-pop-card,[data-theme="midnight"] .wp-pop-card,[data-theme="oled"] .wp-pop-card,[data-theme="emerald"] .wp-pop-card{background:var(--bg-surface,#1e293b);color:var(--text-main,#f8fafc);border-color:rgba(148,163,184,0.22);}',
+      '.wp-pop-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;padding:0.85rem 1rem;border-bottom:1px solid var(--border,var(--border-color,#e2e8f0));background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(14,165,233,0.06));}',
+      '.wp-pop-title{display:flex;align-items:center;gap:0.55rem;font-size:0.94rem;font-weight:800;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+      '.wp-pop-title .wp-3d-native-icon{width:24px;height:24px;}',
+      '.wp-pop-close{border:none;background:transparent;padding:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;transition:transform .16s ease;}',
+      '.wp-pop-close:hover{transform:scale(1.1);}',
+      '.wp-pop-close .wp-3d-native-icon{width:26px;height:26px;}',
+      '.wp-pop-body{padding:0.9rem 1rem;overflow-y:auto;flex:1;min-height:0;}',
+      '.wp-pop-foot{display:flex;align-items:center;gap:0.5rem;padding:0.75rem 1rem;border-top:1px solid var(--border,var(--border-color,#e2e8f0));background:var(--bg-subtle,var(--bg-secondary,rgba(148,163,184,0.07)));}',
+      '.wp-pop-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.58rem 0.75rem;border-radius:12px;border:1px solid var(--border,var(--border-color,#cbd5e1));background:var(--bg-surface,var(--bg-card,#ffffff));color:var(--text-main,var(--text-primary,#1e293b));font-size:0.8rem;font-weight:700;cursor:pointer;transition:all .15s ease;font-family:inherit;}',
+      '.wp-pop-btn:hover{transform:translateY(-1px);border-color:var(--primary,#6366f1);}',
+      '.wp-pop-btn.primary{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(79,70,229,0.28);}',
+      '.wp-pop-btn.emerald{background:linear-gradient(135deg,#059669,#10b981);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(5,150,105,0.28);}',
+      '.wp-pop-btn.rose{background:linear-gradient(135deg,#e11d48,#f43f5e);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(225,29,72,0.26);}',
+      '.wp-pop-btn .wp-3d-native-icon{width:19px;height:19px;}',
+      '.wp-cal-nav{display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-bottom:0.75rem;}',
+      '.wp-cal-nav-btn{border:none;background:transparent;padding:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;transition:transform .15s;}',
+      '.wp-cal-nav-btn:hover{transform:scale(1.1);}',
+      '.wp-cal-nav-btn .wp-3d-native-icon{width:30px;height:30px;}',
+      '.wp-cal-ym{display:flex;align-items:center;gap:0.35rem;flex:1;justify-content:center;}',
+      '.wp-cal-ym-pill{border:1px solid var(--border,var(--border-color,#cbd5e1));background:var(--bg-subtle,var(--bg-secondary,#f1f5f9));color:inherit;border-radius:10px;padding:0.36rem 0.65rem;font-size:0.84rem;font-weight:800;cursor:pointer;transition:all .15s;}',
+      '.wp-cal-ym-pill:hover{border-color:var(--primary,#6366f1);color:var(--primary,#6366f1);}',
+      '.wp-cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;text-align:center;}',
+      '.wp-cal-weekdays span{font-size:0.7rem;font-weight:800;color:var(--text-muted,#64748b);padding:4px 0;text-transform:uppercase;}',
+      '.wp-cal-weekdays span:first-child{color:#f43f5e;}',
+      '.wp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}',
+      '.wp-cal-day{height:38px;border:none;border-radius:11px;background:transparent;color:inherit;font-size:0.83rem;font-weight:700;cursor:pointer;transition:all .14s;display:flex;align-items:center;justify-content:center;}',
+      '.wp-cal-day:hover:not(:disabled){background:rgba(99,102,241,0.14);color:var(--primary,#4f46e5);transform:scale(1.06);}',
+      '.wp-cal-day.other{opacity:0.34;font-weight:500;}',
+      '.wp-cal-day.sun:not(.selected){color:#f43f5e;}',
+      '.wp-cal-day.today{box-shadow:inset 0 0 0 2px var(--primary,#6366f1);color:var(--primary,#6366f1);}',
+      '.wp-cal-day.selected{background:linear-gradient(135deg,#4f46e5,#6366f1) !important;color:#fff !important;box-shadow:0 6px 14px rgba(79,70,229,0.38);}',
+      '.wp-cal-day:disabled{opacity:0.22;cursor:not-allowed;}',
+      '.wp-cal-months{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}',
+      '.wp-cal-month-btn{padding:0.6rem 0.4rem;border-radius:11px;border:1px solid var(--border,var(--border-color,#e2e8f0));background:var(--bg-subtle,var(--bg-secondary,#f8fafc));color:inherit;font-size:0.8rem;font-weight:700;cursor:pointer;transition:all .14s;}',
+      '.wp-cal-month-btn.active,.wp-cal-month-btn:hover{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border-color:transparent;}',
+      '.wp-sel-search-wrap{display:flex;align-items:center;gap:0.5rem;padding:0.48rem 0.72rem;border-radius:12px;border:1.5px solid var(--border,var(--border-color,#cbd5e1));background:var(--bg-subtle,var(--bg-secondary,#f8fafc));margin-bottom:0.65rem;}',
+      '.wp-sel-search-wrap:focus-within{border-color:var(--primary,#6366f1);box-shadow:0 0 0 3px rgba(99,102,241,0.14);}',
+      '.wp-sel-search{border:none;background:transparent;outline:none;color:inherit;width:100%;font-size:0.85rem;font-weight:600;font-family:inherit;}',
+      '.wp-sel-list{display:flex;flex-direction:column;gap:4px;max-height:52vh;overflow-y:auto;padding-right:2px;}',
+      '.wp-sel-group{font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#64748b);padding:0.5rem 0.6rem 0.2rem;}',
+      '.wp-sel-opt{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:0.6rem;padding:0.68rem 0.8rem;border-radius:12px;border:1px solid transparent;background:transparent;color:inherit;font-size:0.86rem;font-weight:600;cursor:pointer;transition:all .13s;font-family:inherit;}',
+      '.wp-sel-opt:hover:not(:disabled){background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.22);}',
+      '.wp-sel-opt.selected{background:linear-gradient(135deg,rgba(79,70,229,0.14),rgba(99,102,241,0.1));border-color:var(--primary,#6366f1);color:var(--primary,#4f46e5);font-weight:800;}',
+      '[data-theme="dark"] .wp-sel-opt.selected,[data-theme="midnight"] .wp-sel-opt.selected,[data-theme="oled"] .wp-sel-opt.selected{color:#a5b4fc;}',
+      '.wp-sel-opt:disabled{opacity:0.4;cursor:not-allowed;}',
+      '.wp-sel-empty{text-align:center;padding:1.5rem 0.75rem;font-size:0.84rem;color:var(--text-muted,#64748b);}',
+      '.wp-rcpt-actions-bar{display:flex !important;flex-wrap:wrap !important;gap:0.45rem !important;align-items:center !important;justify-content:stretch !important;}',
+      '.wp-rcpt-actions-bar > button,.wp-rcpt-actions-bar > .btn{flex:1 1 44% !important;min-width:120px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;gap:0.4rem !important;border-radius:11px !important;font-weight:700 !important;padding:0.55rem 0.7rem !important;font-size:0.78rem !important;cursor:pointer !important;}',
+      '.wp-rcpt-btn-img{background:linear-gradient(135deg,#059669,#10b981) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(5,150,105,0.28) !important;}',
+      '.wp-rcpt-btn-pdf{background:linear-gradient(135deg,#e11d48,#f43f5e) !important;color:#fff !important;border:none !important;box-shadow:0 5px 14px rgba(225,29,72,0.26) !important;}',
+      '.wp-rcpt-img-stage{background:#e2e8f0;border-radius:14px;padding:0.75rem;display:flex;justify-content:center;align-items:flex-start;max-height:60vh;overflow:auto;}',
+      '[data-theme="dark"] .wp-rcpt-img-stage,[data-theme="midnight"] .wp-rcpt-img-stage,[data-theme="oled"] .wp-rcpt-img-stage{background:#0f172a;}',
+      '.wp-rcpt-img-stage img{max-width:100%;height:auto;border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,0.26);}',
+      '@keyframes wpPopFade{from{opacity:0}to{opacity:1}}',
+      '@keyframes wpPopIn{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function findFieldLabel(el, fallback) {
+    try {
+      if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
+      if (el.id) {
+        var lbl = document.querySelector('label[for="' + el.id.replace(/"/g, '\\"') + '"]');
+        if (lbl && lbl.textContent.trim()) return lbl.textContent.replace(/\*/g, '').trim();
+      }
+      var grp = el.closest('.form-group,.filter-group,.input-group,.filter-item,.date-group');
+      if (grp) {
+        var gl = grp.querySelector('label');
+        if (gl && gl.textContent.trim()) return gl.textContent.replace(/\*/g, '').trim();
+      }
+      if (el.title) return el.title.trim();
+    } catch (e) {}
+    return fallback;
+  }
+
+  function fireInputEvents(el) {
+    try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+    try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+  }
+
+  // ===== 1. WEBPOS 3D CALENDAR PICKER =====
+  var MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  var activeDateInput = null;
+  var calViewYear = new Date().getFullYear();
+  var calViewMonth = new Date().getMonth();
+  var calMode = 'days';
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function toYMD(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); }
+  function parseYMD(val) {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) return null;
+    var p = val.split('-');
+    return { y: parseInt(p[0], 10), m: parseInt(p[1], 10) - 1, d: parseInt(p[2], 10) };
+  }
+
+  function ensureDateModal() {
+    ensureUnifiedStyles();
+    var bd = document.getElementById('webposDateModal');
+    if (bd) return bd;
+    bd = document.createElement('div');
+    bd.id = 'webposDateModal';
+    bd.className = 'wp-pop-backdrop';
+    bd.innerHTML =
+      '<div class="wp-pop-card" role="dialog" aria-modal="true">' +
+        '<div class="wp-pop-head">' +
+          '<h3 class="wp-pop-title" id="wpDateTitle">' + ICONS_3D.calendar() + '<span>Pilih Tanggal</span></h3>' +
+          '<button type="button" class="wp-pop-close" id="wpDateClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
+        '</div>' +
+        '<div class="wp-pop-body">' +
+          '<div class="wp-cal-nav">' +
+            '<button type="button" class="wp-cal-nav-btn" id="wpCalPrev" aria-label="Sebelumnya">' + ICONS_3D.chevLeft() + '</button>' +
+            '<div class="wp-cal-ym">' +
+              '<button type="button" class="wp-cal-ym-pill" id="wpCalMonthBtn"></button>' +
+              '<button type="button" class="wp-cal-ym-pill" id="wpCalYearBtn"></button>' +
+            '</div>' +
+            '<button type="button" class="wp-cal-nav-btn" id="wpCalNext" aria-label="Berikutnya">' + ICONS_3D.chevRight() + '</button>' +
+          '</div>' +
+          '<div id="wpCalStage"></div>' +
+        '</div>' +
+        '<div class="wp-pop-foot">' +
+          '<button type="button" class="wp-pop-btn" id="wpCalClear">' + ICONS_3D.clear() + '<span>Hapus</span></button>' +
+          '<button type="button" class="wp-pop-btn primary" id="wpCalToday">' + ICONS_3D.today() + '<span>Hari Ini</span></button>' +
+        '</div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(bd);
+
+    bd.addEventListener('click', function(e) { if (e.target === bd) closeDateModal(); });
+    document.getElementById('wpDateClose').onclick = closeDateModal;
+    document.getElementById('wpCalPrev').onclick = function() {
+      if (calMode === 'months') { calViewYear--; }
+      else if (calMode === 'years') { calViewYear -= 12; }
+      else { calViewMonth--; if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; } }
+      renderCalendar();
+    };
+    document.getElementById('wpCalNext').onclick = function() {
+      if (calMode === 'months') { calViewYear++; }
+      else if (calMode === 'years') { calViewYear += 12; }
+      else { calViewMonth++; if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; } }
+      renderCalendar();
+    };
+    document.getElementById('wpCalMonthBtn').onclick = function() {
+      calMode = (calMode === 'months') ? 'days' : 'months';
+      renderCalendar();
+    };
+    document.getElementById('wpCalYearBtn').onclick = function() {
+      calMode = (calMode === 'years') ? 'days' : 'years';
+      renderCalendar();
+    };
+    document.getElementById('wpCalToday').onclick = function() {
+      var now = new Date();
+      selectCalendarDate(toYMD(now.getFullYear(), now.getMonth(), now.getDate()));
+    };
+    document.getElementById('wpCalClear').onclick = function() {
+      if (activeDateInput) {
+        activeDateInput.value = '';
+        fireInputEvents(activeDateInput);
+      }
+      closeDateModal();
+    };
+    return bd;
+  }
+
+  function closeDateModal() {
+    var bd = document.getElementById('webposDateModal');
+    if (bd) bd.classList.remove('open');
+    activeDateInput = null;
+  }
+
+  function selectCalendarDate(ymd) {
+    if (!activeDateInput) { closeDateModal(); return; }
+    var target = activeDateInput;
+    if (target.min && ymd < target.min) ymd = target.min;
+    if (target.max && ymd > target.max) ymd = target.max;
+    target.value = ymd;
+    closeDateModal();
+    fireInputEvents(target);
+  }
+
+  function renderCalendar() {
+    var monthBtn = document.getElementById('wpCalMonthBtn');
+    var yearBtn = document.getElementById('wpCalYearBtn');
+    var stage = document.getElementById('wpCalStage');
+    if (!stage) return;
+    monthBtn.textContent = MONTHS_ID[calViewMonth];
+    yearBtn.textContent = String(calViewYear);
+
+    if (calMode === 'months') {
+      var mh = '<div class="wp-cal-months">';
+      for (var m = 0; m < 12; m++) {
+        mh += '<button type="button" class="wp-cal-month-btn' + (m === calViewMonth ? ' active' : '') + '" data-m="' + m + '">' + MONTHS_SHORT[m] + '</button>';
+      }
+      mh += '</div>';
+      stage.innerHTML = mh;
+      stage.querySelectorAll('.wp-cal-month-btn').forEach(function(b) {
+        b.onclick = function() { calViewMonth = parseInt(b.dataset.m, 10); calMode = 'days'; renderCalendar(); };
+      });
+      return;
+    }
+
+    if (calMode === 'years') {
+      var startY = calViewYear - 5;
+      var yh = '<div class="wp-cal-months">';
+      for (var y = startY; y < startY + 12; y++) {
+        yh += '<button type="button" class="wp-cal-month-btn' + (y === calViewYear ? ' active' : '') + '" data-y="' + y + '">' + y + '</button>';
+      }
+      yh += '</div>';
+      stage.innerHTML = yh;
+      stage.querySelectorAll('.wp-cal-month-btn').forEach(function(b) {
+        b.onclick = function() { calViewYear = parseInt(b.dataset.y, 10); calMode = 'days'; renderCalendar(); };
+      });
+      return;
+    }
+
+    var now = new Date();
+    var todayYMD = toYMD(now.getFullYear(), now.getMonth(), now.getDate());
+    var selVal = activeDateInput ? activeDateInput.value : '';
+    var minVal = activeDateInput ? (activeDateInput.min || '') : '';
+    var maxVal = activeDateInput ? (activeDateInput.max || '') : '';
+
+    var firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+    var daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+    var prevMonthDays = new Date(calViewYear, calViewMonth, 0).getDate();
+
+    var html = '<div class="wp-cal-weekdays"><span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span></div><div class="wp-cal-grid">';
+    var totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+    if (totalCells < 35) totalCells = 35;
+
+    for (var i = 0; i < totalCells; i++) {
+      var cellY = calViewYear, cellM = calViewMonth, dayNum = 0, isOther = false;
+      if (i < firstDay) {
+        dayNum = prevMonthDays - (firstDay - 1 - i);
+        cellM = calViewMonth - 1;
+        if (cellM < 0) { cellM = 11; cellY--; }
+        isOther = true;
+      } else if (i >= firstDay + daysInMonth) {
+        dayNum = i - (firstDay + daysInMonth) + 1;
+        cellM = calViewMonth + 1;
+        if (cellM > 11) { cellM = 0; cellY++; }
+        isOther = true;
+      } else {
+        dayNum = i - firstDay + 1;
+      }
+      var ymd = toYMD(cellY, cellM, dayNum);
+      var disabled = (minVal && ymd < minVal) || (maxVal && ymd > maxVal);
+      var cls = 'wp-cal-day';
+      if (isOther) cls += ' other';
+      if (i % 7 === 0) cls += ' sun';
+      if (ymd === todayYMD) cls += ' today';
+      if (ymd === selVal) cls += ' selected';
+      html += '<button type="button" class="' + cls + '" data-ymd="' + ymd + '"' + (disabled ? ' disabled' : '') + '>' + dayNum + '</button>';
+    }
+    html += '</div>';
+    stage.innerHTML = html;
+    stage.querySelectorAll('.wp-cal-day').forEach(function(b) {
+      b.onclick = function() { selectCalendarDate(b.dataset.ymd); };
+    });
+  }
+
+  window.WebPOSDatePicker = {
+    open: function(inputEl) {
+      if (!inputEl || inputEl.disabled || inputEl.readOnly) return;
+      activeDateInput = inputEl;
+      calMode = 'days';
+      var parsed = parseYMD(inputEl.value);
+      var base = parsed ? new Date(parsed.y, parsed.m, parsed.d) : new Date();
+      calViewYear = base.getFullYear();
+      calViewMonth = base.getMonth();
+      var bd = ensureDateModal();
+      var titleEl = document.getElementById('wpDateTitle');
+      if (titleEl) {
+        var sp = titleEl.querySelector('span');
+        if (sp) sp.textContent = findFieldLabel(inputEl, 'Pilih Tanggal');
+      }
+      var clearBtn = document.getElementById('wpCalClear');
+      if (clearBtn) clearBtn.style.display = inputEl.required ? 'none' : '';
+      renderCalendar();
+      try { inputEl.blur(); } catch (e) {}
+      bd.classList.add('open');
+    },
+    close: closeDateModal
+  };
+
+  try {
+    var origShowPicker = HTMLInputElement.prototype.showPicker;
+    HTMLInputElement.prototype.showPicker = function() {
+      if (this && this.type === 'date' && !this.disabled && !this.readOnly && this.dataset.nativeDate !== 'true') {
+        window.WebPOSDatePicker.open(this);
+        return;
+      }
+      if (typeof origShowPicker === 'function') return origShowPicker.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  // ===== 2. WEBPOS 3D SELECT PICKER =====
+  var activeSelectEl = null;
+
+  function ensureSelectModal() {
+    ensureUnifiedStyles();
+    var bd = document.getElementById('webposSelectModal');
+    if (bd) return bd;
+    bd = document.createElement('div');
+    bd.id = 'webposSelectModal';
+    bd.className = 'wp-pop-backdrop';
+    bd.innerHTML =
+      '<div class="wp-pop-card" role="dialog" aria-modal="true">' +
+        '<div class="wp-pop-head">' +
+          '<h3 class="wp-pop-title" id="wpSelTitle">' + ICONS_3D.list() + '<span>Pilih Opsi</span></h3>' +
+          '<button type="button" class="wp-pop-close" id="wpSelClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
+        '</div>' +
+        '<div class="wp-pop-body">' +
+          '<div class="wp-sel-search-wrap" id="wpSelSearchWrap" style="display:none;">' +
+            ICONS_3D.search() +
+            '<input type="text" class="wp-sel-search" id="wpSelSearch" placeholder="Cari pilihan..." autocomplete="off">' +
+          '</div>' +
+          '<div class="wp-sel-list" id="wpSelList"></div>' +
+        '</div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(bd);
+
+    bd.addEventListener('click', function(e) { if (e.target === bd) closeSelectModal(); });
+    document.getElementById('wpSelClose').onclick = closeSelectModal;
+    document.getElementById('wpSelSearch').addEventListener('input', function() {
+      renderSelectOptions(this.value || '');
+    });
+    return bd;
+  }
+
+  function closeSelectModal() {
+    var bd = document.getElementById('webposSelectModal');
+    if (bd) bd.classList.remove('open');
+    activeSelectEl = null;
+  }
+
+  function renderSelectOptions(filterText) {
+    var listEl = document.getElementById('wpSelList');
+    if (!listEl || !activeSelectEl) return;
+    var q = String(filterText || '').trim().toLowerCase();
+    var curVal = activeSelectEl.value;
+    var frag = document.createDocumentFragment();
+    var countRendered = 0;
+
+    function addOptionBtn(opt) {
+      var txt = (opt.textContent || opt.label || '').trim();
+      if (q && txt.toLowerCase().indexOf(q) === -1) return;
+      var isSel = opt.selected || (opt.value === curVal);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'wp-sel-opt' + (isSel ? ' selected' : '');
+      if (opt.disabled) btn.disabled = true;
+      var span = document.createElement('span');
+      span.textContent = txt;
+      btn.appendChild(span);
+      if (isSel) {
+        var chk = document.createElement('span');
+        chk.innerHTML = ICONS_3D.check();
+        btn.appendChild(chk);
+      }
+      btn.onclick = function() {
+        if (opt.disabled || !activeSelectEl) return;
+        var target = activeSelectEl;
+        var prev = target.value;
+        target.value = opt.value;
+        opt.selected = true;
+        closeSelectModal();
+        if (target.value !== prev) {
+          fireInputEvents(target);
+        } else {
+          try { target.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+        }
+      };
+      frag.appendChild(btn);
+      countRendered++;
+    }
+
+    var children = activeSelectEl.children;
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (child.tagName === 'OPTGROUP') {
+        var groupOpts = child.querySelectorAll('option');
+        var matched = [];
+        for (var j = 0; j < groupOpts.length; j++) {
+          var t = (groupOpts[j].textContent || '').trim();
+          if (!q || t.toLowerCase().indexOf(q) !== -1) matched.push(groupOpts[j]);
+        }
+        if (matched.length > 0) {
+          var hdr = document.createElement('div');
+          hdr.className = 'wp-sel-group';
+          hdr.textContent = child.label || '';
+          frag.appendChild(hdr);
+          matched.forEach(addOptionBtn);
+        }
+      } else if (child.tagName === 'OPTION') {
+        addOptionBtn(child);
+      }
+    }
+
+    listEl.innerHTML = '';
+    if (countRendered === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'wp-sel-empty';
+      empty.textContent = 'Pilihan tidak ditemukan';
+      listEl.appendChild(empty);
+    } else {
+      listEl.appendChild(frag);
+    }
+  }
+
+  window.WebPOSSelectPicker = {
+    open: function(selEl) {
+      if (!selEl || selEl.disabled || selEl.multiple || (selEl.size && selEl.size > 1)) return;
+      if (selEl.dataset.nativeSelect === 'true') return;
+      activeSelectEl = selEl;
+      var bd = ensureSelectModal();
+      var titleEl = document.getElementById('wpSelTitle');
+      if (titleEl) {
+        var sp = titleEl.querySelector('span');
+        if (sp) sp.textContent = findFieldLabel(selEl, 'Pilih Opsi');
+      }
+      var searchWrap = document.getElementById('wpSelSearchWrap');
+      var searchInput = document.getElementById('wpSelSearch');
+      var totalOpts = selEl.options ? selEl.options.length : 0;
+      if (searchWrap && searchInput) {
+        searchInput.value = '';
+        searchWrap.style.display = totalOpts > 6 ? 'flex' : 'none';
+      }
+      renderSelectOptions('');
+      try { selEl.blur(); } catch (e) {}
+      bd.classList.add('open');
+      setTimeout(function() {
+        var cur = document.querySelector('#wpSelList .wp-sel-opt.selected');
+        if (cur && cur.scrollIntoView) {
+          try { cur.scrollIntoView({ block: 'center' }); } catch (e) {}
+        }
+      }, 40);
+    },
+    close: closeSelectModal
+  };
+
+  var touchStartPt = null;
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches && e.touches.length === 1) {
+      touchStartPt = { x: e.touches[0].clientX, y: e.touches[0].clientY, target: e.target };
+    }
+  }, { capture: true, passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchStartPt || !e.changedTouches || !e.changedTouches.length) return;
+    var dx = Math.abs(e.changedTouches[0].clientX - touchStartPt.x);
+    var dy = Math.abs(e.changedTouches[0].clientY - touchStartPt.y);
+    var t = e.target;
+    touchStartPt = null;
+    if (dx > 10 || dy > 10 || !t) return;
+    if (t.tagName === 'INPUT' && t.type === 'date' && !t.disabled && !t.readOnly && t.dataset.nativeDate !== 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      window.WebPOSDatePicker.open(t);
+    } else if (t.tagName === 'SELECT' && !t.disabled && !t.multiple && !(t.size > 1) && t.dataset.nativeSelect !== 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      window.WebPOSSelectPicker.open(t);
+    }
+  }, true);
+
+  document.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    var t = e.target;
+    if (!t) return;
+    if (t.tagName === 'INPUT' && t.type === 'date' && !t.disabled && !t.readOnly && t.dataset.nativeDate !== 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      window.WebPOSDatePicker.open(t);
+    } else if (t.tagName === 'SELECT' && !t.disabled && !t.multiple && !(t.size > 1) && t.dataset.nativeSelect !== 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      window.WebPOSSelectPicker.open(t);
+    }
+  }, true);
+
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.tagName === 'INPUT' && t.type === 'date' && !t.disabled && !t.readOnly && t.dataset.nativeDate !== 'true') {
+      e.preventDefault();
+      window.WebPOSDatePicker.open(t);
+    }
+  }, true);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeDateModal();
+      closeSelectModal();
+      var rm = document.getElementById('webposReceiptImgModal');
+      if (rm) rm.classList.remove('open');
+      var pm = document.getElementById('webposUnifiedPreviewModal');
+      if (pm) pm.classList.remove('open');
+      return;
+    }
+    var t = e.target;
+    if (!t) return;
+    if ((e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') && t.tagName === 'SELECT' && !t.disabled && !t.multiple && !(t.size > 1) && t.dataset.nativeSelect !== 'true') {
+      e.preventDefault();
+      window.WebPOSSelectPicker.open(t);
+    } else if ((e.key === 'Enter' || e.key === ' ') && t.tagName === 'INPUT' && t.type === 'date' && !t.disabled && !t.readOnly && t.dataset.nativeDate !== 'true') {
+      e.preventDefault();
+      window.WebPOSDatePicker.open(t);
+    }
+  }, true);
+
+  // ===== 3. WEBPOS UNIFIED RECEIPT ENGINE (THERMAL + NOTA PNG + PDF) =====
+  var currentReceiptTx = null;
+  var currentReceiptText = '';
+  var lastRenderedPng = null;
+  var lastRenderedName = 'Nota-WebPOS.png';
+
+  function fmtRp(n) {
+    var num = Math.round(Number(n) || 0);
+    var sign = num < 0 ? '-' : '';
+    return sign + 'Rp ' + Math.abs(num).toLocaleString('id-ID');
+  }
+
+  function fmtSignedRp(n) {
+    var num = Math.round(Number(n) || 0);
+    if (num > 0) return '+' + fmtRp(num);
+    if (num < 0) return '-' + fmtRp(Math.abs(num));
+    return 'Rp 0';
+  }
+
+  function loadStoreHeader() {
+    var hdr = {};
+    try { hdr = JSON.parse(localStorage.getItem('receiptHeader')) || {}; } catch (e) {}
+    if (!hdr.storeName && !hdr.address && !hdr.phone && !hdr.note) {
+      try { hdr = JSON.parse(localStorage.getItem('webpos_receipt_header')) || {}; } catch (e) {}
+    }
+    return {
+      storeName: (hdr.storeName || localStorage.getItem('webpos_store_name') || 'HIFZI CELL').trim(),
+      address: (hdr.address || localStorage.getItem('webpos_store_address') || '').trim(),
+      phone: (hdr.phone || localStorage.getItem('webpos_store_phone') || '').trim(),
+      note: (hdr.note || localStorage.getItem('webpos_store_footer_note') || 'Terima kasih telah berbelanja').trim(),
+      logo: localStorage.getItem('webpos_store_logo') || ''
+    };
+  }
+
+  function normalizeTx(tx) {
+    if (!tx || typeof tx !== 'object') return null;
+    var hdr = loadStoreHeader();
+    var items = Array.isArray(tx.items) ? tx.items.map(function(it) {
+      var qty = Number(it.quantity != null ? it.quantity : (it.qty != null ? it.qty : 1)) || 1;
+      var price = Number(it.price != null ? it.price : (it.harga != null ? it.harga : 0)) || 0;
+      var sub = Number(it.total != null ? it.total : (qty * price)) || 0;
+      return {
+        name: String(it.name || it.productName || 'Barang'),
+        quantity: qty,
+        price: price,
+        total: sub,
+        priceType: it.priceType || ''
+      };
+    }) : [];
+
+    var totalQty = items.reduce(function(acc, i) { return acc + i.quantity; }, 0);
+    var itemsSum = items.reduce(function(acc, i) { return acc + i.total; }, 0);
+    var isReseller = Boolean(
+      tx.resellerMode ||
+      tx.priceMode === 'reseller' ||
+      tx.resellerName ||
+      items.some(function(i) { return i.priceType === 'reseller'; })
+    );
+    var rawMethod = String(tx.paymentMethod || tx.metode_pembayaran || tx.metode || 'tunai').toLowerCase();
+    var isHutang = (rawMethod === 'hutang' || rawMethod === 'utang' || (Number(tx.remainingPiutang) || 0) > 0);
+    var methodLabel = rawMethod === 'cash' ? 'TUNAI'
+      : (rawMethod === 'utang' || rawMethod === 'hutang') ? 'HUTANG'
+      : rawMethod.toUpperCase();
+
+    var discount = Number(tx.discount != null ? tx.discount : (tx.diskon || 0)) || 0;
+    var tax = Number(tx.tax || 0) || 0;
+    var rounding = Number(tx.rounding != null ? tx.rounding : (tx.pembulatan || 0)) || 0;
+    var subtotal = Number(tx.subtotal != null ? tx.subtotal : (itemsSum || tx.total || tx.nominal || 0)) || 0;
+    var total = Number(tx.total != null ? tx.total : (tx.nominal != null ? tx.nominal : Math.max(0, subtotal - discount + tax + rounding))) || 0;
+    var paid = tx.paymentAmount != null ? Number(tx.paymentAmount) : (isHutang ? Number(tx.bayar_sekarang || 0) : total);
+    var change = tx.change != null ? Number(tx.change) : Math.max(0, paid - total);
+    var remaining = tx.remainingPiutang != null ? Number(tx.remainingPiutang) : (isHutang ? Math.max(0, total - paid) : 0);
+
+    var ts = tx.timestamp || tx.waktu || tx.created_at || Date.now();
+    if (ts && typeof ts === 'object' && typeof ts.toMillis === 'function') ts = ts.toMillis();
+    var dObj = new Date(ts);
+    if (isNaN(dObj.getTime())) dObj = new Date();
+    var dateStr = dObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    var timeStr = dObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    var konter = isReseller ? String(tx.resellerName || tx.customerName || 'Reseller Umum') : '';
+    var customer = !isReseller ? String(tx.customerName || '') : '';
+    var docTitle = tx.docTitle || (
+      isReseller && isHutang ? 'NOTA RESELLER (HUTANG)' :
+      isReseller ? 'NOTA PENJUALAN RESELLER' :
+      isHutang ? 'NOTA PENJUALAN HUTANG' :
+      'NOTA PENJUALAN'
+    );
+
+    return {
+      id: String(tx.id || ('TRX' + Date.now())),
+      seqNo: tx.inputSequence ? String(tx.inputSequence) : '',
+      dateTime: dateStr + ' ' + timeStr,
+      cashier: String(tx.cashierName || tx.userName || '-'),
+      isReseller: isReseller,
+      isHutang: isHutang,
+      statusLabel: isHutang && remaining > 0 ? 'BELUM LUNAS' : 'LUNAS',
+      konter: konter,
+      customer: customer,
+      docTitle: docTitle,
+      items: items,
+      totalQty: totalQty,
+      subtotal: subtotal,
+      discount: discount,
+      tax: tax,
+      rounding: rounding,
+      total: total,
+      paid: paid,
+      change: change,
+      remaining: remaining,
+      methodLabel: methodLabel,
+      noteText: String(tx.receiptNote || hdr.note),
+      store: hdr
+    };
+  }
+
+  function buildPlain(tx) {
+    var n = normalizeTx(tx);
+    if (!n) return '';
+    var L = [];
+    L.push('================================');
+    L.push('  ' + n.store.storeName.toUpperCase());
+    if (n.store.address) L.push('  ' + n.store.address);
+    if (n.store.phone) L.push('  HP: ' + n.store.phone);
+    L.push('================================');
+    L.push(n.docTitle);
+    L.push('No     : ' + n.id);
+    if (n.seqNo) L.push('Urut   : #' + n.seqNo);
+    L.push('Tgl    : ' + n.dateTime);
+    L.push('Kasir  : ' + n.cashier);
+    if (n.isReseller) {
+      L.push('Konter : ' + n.konter);
+      L.push('Tipe   : RESELLER');
+    } else if (n.customer) {
+      L.push('Plgn   : ' + n.customer);
+    }
+    L.push('Status : ' + n.statusLabel);
+    L.push('--------------------------------');
+    if (n.items.length > 0) {
+      n.items.forEach(function(item) {
+        L.push(item.name);
+        L.push('  ' + item.quantity + ' x ' + fmtRp(item.price) + ' = ' + fmtRp(item.total));
+      });
+    } else {
+      L.push(n.docTitle);
+    }
+    L.push('--------------------------------');
+    if (n.totalQty > 0) L.push('Total Item : ' + n.totalQty + ' pcs');
+    L.push('Subtotal   : ' + fmtRp(n.subtotal));
+    if (n.discount > 0) L.push('Diskon     : -' + fmtRp(n.discount));
+    if (n.tax > 0) L.push('PPN        : ' + fmtRp(n.tax));
+    if (n.rounding !== 0) L.push('Pembulatan : ' + fmtSignedRp(n.rounding));
+    L.push('TOTAL      : ' + fmtRp(n.total));
+    L.push('--------------------------------');
+    if (n.isHutang) {
+      L.push('Bayar Awal : ' + fmtRp(n.paid));
+      L.push('Sisa Hutang: ' + fmtRp(n.remaining));
+    } else {
+      L.push('Bayar      : ' + fmtRp(n.paid));
+      L.push('Kembali    : ' + fmtRp(n.change));
+    }
+    L.push('Metode     : ' + n.methodLabel);
+    L.push('================================');
+    L.push(n.noteText);
+    return L.join('\n');
+  }
+
+  function buildEscPos(tx) {
+    var n = normalizeTx(tx);
+    if (!n) return '';
+    var ESC = '\x1B', GS = '\x1D', FEED = '\x0A';
+    var INIT = ESC + '\x40', CENTER = ESC + '\x61\x01', LEFT = ESC + '\x61\x00';
+    var BOLD_ON = ESC + '\x45\x01', BOLD_OFF = ESC + '\x45\x00';
+    var SIZE2 = ESC + '\x21\x10', SIZE1 = ESC + '\x21\x00', CUT = GS + '\x56\x41\x03';
+
+    var c = INIT;
+    c += CENTER + BOLD_ON + SIZE2 + n.store.storeName.toUpperCase() + SIZE1 + BOLD_OFF + FEED;
+    if (n.store.address) c += CENTER + n.store.address + FEED;
+    if (n.store.phone) c += CENTER + 'HP: ' + n.store.phone + FEED;
+    c += CENTER + '------------------------------' + FEED;
+    c += CENTER + BOLD_ON + n.docTitle + BOLD_OFF + FEED;
+    c += LEFT;
+    c += 'No     : ' + n.id + FEED;
+    if (n.seqNo) c += 'Urut   : #' + n.seqNo + FEED;
+    c += 'Tgl    : ' + n.dateTime + FEED;
+    c += 'Kasir  : ' + n.cashier + FEED;
+    if (n.isReseller) {
+      c += BOLD_ON + 'Konter : ' + n.konter + BOLD_OFF + FEED;
+      c += 'Tipe   : RESELLER' + FEED;
+    } else if (n.customer) {
+      c += 'Plgn   : ' + n.customer + FEED;
+    }
+    c += 'Status : ' + n.statusLabel + FEED;
+    c += '------------------------------' + FEED;
+    if (n.items.length > 0) {
+      n.items.forEach(function(item) {
+        c += item.name + FEED;
+        c += '  ' + item.quantity + ' x ' + fmtRp(item.price) + ' = ' + fmtRp(item.total) + FEED;
+      });
+    } else {
+      c += n.docTitle + FEED;
+    }
+    c += '------------------------------' + FEED;
+    if (n.totalQty > 0) c += 'Total Item : ' + n.totalQty + ' pcs' + FEED;
+    c += 'Subtotal   : ' + fmtRp(n.subtotal) + FEED;
+    if (n.discount > 0) c += 'Diskon     : -' + fmtRp(n.discount) + FEED;
+    if (n.tax > 0) c += 'PPN        : ' + fmtRp(n.tax) + FEED;
+    if (n.rounding !== 0) c += 'Pembulatan : ' + fmtSignedRp(n.rounding) + FEED;
+    c += BOLD_ON + 'TOTAL      : ' + fmtRp(n.total) + BOLD_OFF + FEED;
+    c += '------------------------------' + FEED;
+    if (n.isHutang) {
+      c += 'Bayar Awal : ' + fmtRp(n.paid) + FEED;
+      c += BOLD_ON + 'Sisa Hutang: ' + fmtRp(n.remaining) + BOLD_OFF + FEED;
+    } else {
+      c += 'Bayar      : ' + fmtRp(n.paid) + FEED;
+      c += 'Kembali    : ' + fmtRp(n.change) + FEED;
+    }
+    c += 'Metode     : ' + n.methodLabel + FEED;
+    c += '==============================' + FEED;
+    c += CENTER + n.noteText + FEED + FEED + FEED + FEED + CUT;
+    return c;
+  }
+
+  function loadImageSafe(src) {
+    return new Promise(function(resolve) {
+      if (!src) { resolve(null); return; }
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function() { resolve(img); };
+      img.onerror = function() { resolve(null); };
+      img.src = src;
+    });
+  }
+
+  function wrapLines(ctx, text, maxW) {
+    var words = String(text || '').split(/\s+/);
+    var lines = [], cur = '';
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? (cur + ' ' + words[i]) : words[i];
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push(cur);
+        cur = words[i];
+      } else {
+        cur = test;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  async function renderCanvasPng(txOrText, customTitle) {
+    var isStruct = txOrText && typeof txOrText === 'object';
+    var n = isStruct ? normalizeTx(txOrText) : null;
+    var hdr = n ? n.store : loadStoreHeader();
+    var logoImg = await loadImageSafe(hdr.logo);
+
+    var W = 760;
+    var CARD_X = 28;
+    var CARD_W = W - CARD_X * 2;
+    var INNER_X = CARD_X + 34;
+    var INNER_W = CARD_W - 68;
+
+    var measureCanvas = document.createElement('canvas');
+    measureCanvas.width = W;
+    measureCanvas.height = 100;
+    var mctx = measureCanvas.getContext('2d');
+
+    var rows = [];
+    var plainLines = [];
+    if (n) {
+      mctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+      n.items.forEach(function(it) {
+        var wrapped = wrapLines(mctx, it.name, INNER_W - 200);
+        rows.push({ item: it, wrapped: wrapped });
+      });
+    } else {
+      var raw = String(txOrText || '').replace(/\r/g, '').split('\n');
+      for (var r = 0; r < raw.length; r++) {
+        var ln = raw[r].trim();
+        if (!ln) continue;
+        if (/^[=\-_*]{4,}$/.test(ln)) {
+          plainLines.push({ type: 'div' });
+        } else {
+          plainLines.push({ type: 'text', text: ln });
+        }
+      }
+    }
+
+    var H = 56;
+    H += logoImg ? 104 : 68;
+    H += 36;
+    if (hdr.address) H += 26;
+    if (hdr.phone) H += 24;
+    H += 66;
+
+    if (n) {
+      var metaCount = 3 + (n.seqNo ? 1 : 0) + ((n.isReseller || n.customer) ? 1 : 0) + (n.isReseller ? 1 : 0) + 1;
+      H += metaCount * 30 + 28;
+      H += 44;
+      rows.forEach(function(row) {
+        H += (row.wrapped.length * 26) + 34;
+      });
+      H += 24 + 34 + 32;
+      if (n.discount > 0) H += 32;
+      if (n.tax > 0) H += 32;
+      if (n.rounding !== 0) H += 32;
+      H += 74 + (34 * 3 + 22) + 74 + 72;
+    } else {
+      plainLines.forEach(function(pl) {
+        H += pl.type === 'div' ? 20 : 30;
+      });
+      H += 110;
+    }
+
+    var canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = Math.max(540, H);
+    var ctx = canvas.getContext('2d');
+
+    var bgGrad = ctx.createLinearGradient(0, 0, W, canvas.height);
+    bgGrad.addColorStop(0, '#eef2ff');
+    bgGrad.addColorStop(1, '#e2e8f0');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, canvas.height);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.14)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 10;
+    drawRoundRect(ctx, CARD_X, 24, CARD_W, canvas.height - 54, 22);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.restore();
+
+    var accentA = n && n.isReseller ? '#4f46e5' : (n && n.isHutang ? '#d97706' : '#2563eb');
+    var accentB = n && n.isReseller ? '#7c3aed' : (n && n.isHutang ? '#f59e0b' : '#4f46e5');
+    ctx.save();
+    drawRoundRect(ctx, CARD_X, 24, CARD_W, 12, 6);
+    var topGrad = ctx.createLinearGradient(CARD_X, 24, CARD_X + CARD_W, 24);
+    topGrad.addColorStop(0, accentA);
+    topGrad.addColorStop(1, accentB);
+    ctx.fillStyle = topGrad;
+    ctx.fill();
+    ctx.restore();
+
+    var y = 60;
+    if (logoImg) {
+      var sz = 78;
+      var lx = (W - sz) / 2;
+      ctx.save();
+      drawRoundRect(ctx, lx, y, sz, sz, 18);
+      ctx.clip();
+      ctx.drawImage(logoImg, lx, y, sz, sz);
+      ctx.restore();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2;
+      drawRoundRect(ctx, lx, y, sz, sz, 18);
+      ctx.stroke();
+      y += sz + 18;
+    } else {
+      var msz = 52;
+      var mx = (W - msz) / 2;
+      var mGrad = ctx.createLinearGradient(mx, y, mx + msz, y + msz);
+      mGrad.addColorStop(0, accentA);
+      mGrad.addColorStop(1, accentB);
+      drawRoundRect(ctx, mx, y, msz, msz, 14);
+      ctx.fillStyle = mGrad;
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 24px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((hdr.storeName || 'H').slice(0, 2).toUpperCase(), W / 2, y + msz / 2 + 1);
+      y += msz + 16;
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 28px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(hdr.storeName.toUpperCase(), W / 2, y + 18);
+    y += 32;
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '500 17px "Segoe UI", Arial, sans-serif';
+    if (hdr.address) {
+      ctx.fillText(hdr.address, W / 2, y + 14);
+      y += 24;
+    }
+    if (hdr.phone) {
+      ctx.fillText('Telp / WA: ' + hdr.phone, W / 2, y + 14);
+      y += 24;
+    }
+
+    y += 10;
+    var bannerTitle = n ? n.docTitle : (customTitle || 'BUKTI TRANSAKSI');
+    var banW = Math.min(INNER_W, Math.max(320, bannerTitle.length * 14 + 64));
+    var banX = (W - banW) / 2;
+    var bGrad = ctx.createLinearGradient(banX, y, banX + banW, y);
+    bGrad.addColorStop(0, accentA);
+    bGrad.addColorStop(1, accentB);
+    drawRoundRect(ctx, banX, y, banW, 40, 20);
+    ctx.fillStyle = bGrad;
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 17px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(bannerTitle, W / 2, y + 26);
+    y += 58;
+
+    function drawKV(label, value, opts) {
+      opts = opts || {};
+      ctx.textAlign = 'left';
+      ctx.fillStyle = opts.labelColor || '#64748b';
+      ctx.font = (opts.bold ? '700 ' : '600 ') + (opts.size || 18) + 'px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(label, INNER_X, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = opts.valColor || '#0f172a';
+      ctx.font = (opts.valBold !== false ? '700 ' : '600 ') + (opts.size || 18) + 'px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(String(value || '-'), INNER_X + INNER_W, y);
+      y += opts.step || 29;
+    }
+
+    function drawDash(padTop, padBot) {
+      y += padTop || 6;
+      ctx.save();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(INNER_X, y);
+      ctx.lineTo(INNER_X + INNER_W, y);
+      ctx.stroke();
+      ctx.restore();
+      y += padBot || 18;
+    }
+
+    if (n) {
+      drawKV('No. Nota', n.id);
+      if (n.seqNo) drawKV('No. Urut', '#' + n.seqNo);
+      drawKV('Tanggal', n.dateTime);
+      drawKV('Kasir', n.cashier);
+      if (n.isReseller) {
+        drawKV('Konter Reseller', n.konter, { valColor: '#4f46e5', bold: true });
+        drawKV('Tipe Harga', 'RESELLER', { valColor: '#7c3aed' });
+      } else if (n.customer) {
+        drawKV('Pelanggan', n.customer);
+      }
+      drawKV('Metode Bayar', n.methodLabel);
+
+      y += 4;
+      drawRoundRect(ctx, INNER_X, y, INNER_W, 36, 10);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.font = '800 15px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('NAMA BARANG / QTY', INNER_X + 14, y + 23);
+      ctx.textAlign = 'right';
+      ctx.fillText('SUBTOTAL', INNER_X + INNER_W - 14, y + 23);
+      y += 54;
+
+      rows.forEach(function(row, idx) {
+        var it = row.item;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 20px "Segoe UI", Arial, sans-serif';
+        row.wrapped.forEach(function(wline, wi) {
+          ctx.fillText(wline, INNER_X + 6, y);
+          if (wi === 0) {
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '800 20px "Segoe UI", Arial, sans-serif';
+            ctx.fillText(fmtRp(it.total), INNER_X + INNER_W - 6, y);
+            ctx.textAlign = 'left';
+            ctx.font = '700 20px "Segoe UI", Arial, sans-serif';
+          }
+          y += 25;
+        });
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 16px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(it.quantity + ' x ' + fmtRp(it.price), INNER_X + 6, y);
+        y += 14;
+        if (idx < rows.length - 1) {
+          ctx.strokeStyle = '#f1f5f9';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(INNER_X, y);
+          ctx.lineTo(INNER_X + INNER_W, y);
+          ctx.stroke();
+        }
+        y += 22;
+      });
+
+      drawDash(2, 22);
+
+      if (n.totalQty > 0) drawKV('Total Item', n.totalQty + ' pcs', { step: 30 });
+      drawKV('Subtotal', fmtRp(n.subtotal), { step: 30 });
+      if (n.discount > 0) drawKV('Diskon', '-' + fmtRp(n.discount), { valColor: '#e11d48', step: 30 });
+      if (n.tax > 0) drawKV('PPN', fmtRp(n.tax), { step: 30 });
+      if (n.rounding !== 0) {
+        drawKV('Pembulatan', fmtSignedRp(n.rounding), {
+          valColor: n.rounding > 0 ? '#059669' : '#d97706',
+          step: 30
+        });
+      }
+
+      y += 4;
+      drawRoundRect(ctx, INNER_X, y, INNER_W, 56, 14);
+      var totGrad = ctx.createLinearGradient(INNER_X, y, INNER_X + INNER_W, y);
+      totGrad.addColorStop(0, '#0f172a');
+      totGrad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = totGrad;
+      ctx.fill();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '800 18px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('TOTAL TAGIHAN', INNER_X + 20, y + 34);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 26px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtRp(n.total), INNER_X + INNER_W - 20, y + 36);
+      y += 80;
+
+      if (n.isHutang) {
+        drawKV('Bayar Awal', fmtRp(n.paid), { step: 30 });
+        drawKV('Sisa Hutang', fmtRp(n.remaining), { valColor: '#d97706', bold: true, step: 30 });
+      } else {
+        drawKV('Jumlah Diterima', fmtRp(n.paid), { step: 30 });
+        drawKV('Kembalian', fmtRp(n.change), { valColor: '#059669', bold: true, step: 30 });
+      }
+
+      y += 8;
+      var stOk = n.statusLabel === 'LUNAS';
+      var stText = stOk ? 'LUNAS' : 'BELUM LUNAS (HUTANG)';
+      var stW = stOk ? 180 : 280;
+      var stX = (W - stW) / 2;
+      drawRoundRect(ctx, stX, y, stW, 40, 20);
+      ctx.fillStyle = stOk ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.14)';
+      ctx.fill();
+      ctx.strokeStyle = stOk ? '#10b981' : '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = stOk ? '#047857' : '#b45309';
+      ctx.font = '900 17px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(stText, W / 2, y + 26);
+      y += 62;
+    } else {
+      plainLines.forEach(function(pl) {
+        if (pl.type === 'div') {
+          drawDash(4, 14);
+          return;
+        }
+        var line = pl.text;
+        var colonIdx = line.indexOf(':');
+        if (colonIdx > 0 && colonIdx < 24 && !/^https?:/i.test(line)) {
+          var k = line.slice(0, colonIdx).trim();
+          var v = line.slice(colonIdx + 1).trim();
+          var isBig = /total|grand|nominal|selisih|saldo akhir/i.test(k);
+          drawKV(k, v, {
+            bold: isBig,
+            size: isBig ? 20 : 17,
+            valColor: isBig ? '#4f46e5' : '#0f172a',
+            step: isBig ? 34 : 28
+          });
+        } else {
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '700 18px "Segoe UI", Arial, sans-serif';
+          ctx.fillText(line, W / 2, y);
+          y += 28;
+        }
+      });
+      y += 16;
+    }
+
+    drawDash(2, 22);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#475569';
+    ctx.font = '600 16px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(n ? n.noteText : hdr.note, W / 2, y);
+
+    var safeId = n ? n.id.replace(/[^a-zA-Z0-9_-]/g, '') : ('Nota_' + Date.now());
+    return {
+      dataUrl: canvas.toDataURL('image/png'),
+      fileName: 'Nota-' + safeId + '.png'
+    };
+  }
+
+  function dataUrlToFile(dataUrl, fileName) {
+    var arr = dataUrl.split(',');
+    var mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
+    var bstr = atob(arr[1]);
+    var n = bstr.length;
+    var u8 = new Uint8Array(n);
+    while (n--) u8[n] = bstr.charCodeAt(n);
+    return new File([u8], fileName, { type: mime });
+  }
+
+  function downloadDataUrl(dataUrl, fileName) {
+    var a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fileName || 'Nota-WebPOS.png';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { try { a.remove(); } catch (e) {} }, 120);
+  }
+
+  function ensureReceiptImgModal() {
+    ensureUnifiedStyles();
+    var bd = document.getElementById('webposReceiptImgModal');
+    if (bd) return bd;
+    bd = document.createElement('div');
+    bd.id = 'webposReceiptImgModal';
+    bd.className = 'wp-pop-backdrop';
+    bd.innerHTML =
+      '<div class="wp-pop-card" style="max-width:430px;" role="dialog" aria-modal="true">' +
+        '<div class="wp-pop-head">' +
+          '<h3 class="wp-pop-title">' + ICONS_3D.image() + '<span>Nota Digital (Gambar PNG)</span></h3>' +
+          '<button type="button" class="wp-pop-close" id="wpRcptImgClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
+        '</div>' +
+        '<div class="wp-pop-body">' +
+          '<div class="wp-rcpt-img-stage"><img id="wpRcptImgPreview" alt="Nota Digital"></div>' +
+        '</div>' +
+        '<div class="wp-pop-foot">' +
+          '<button type="button" class="wp-pop-btn emerald" id="wpRcptImgDownload">' + ICONS_3D.download() + '<span>Unduh PNG</span></button>' +
+          '<button type="button" class="wp-pop-btn rose" id="wpRcptImgPdf">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+        '</div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(bd);
+    bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
+    document.getElementById('wpRcptImgClose').onclick = function() { bd.classList.remove('open'); };
+    document.getElementById('wpRcptImgDownload').onclick = function() {
+      if (lastRenderedPng) downloadDataUrl(lastRenderedPng, lastRenderedName);
+    };
+    document.getElementById('wpRcptImgPdf').onclick = function() {
+      if (lastRenderedPng) printImageAsPdf(lastRenderedPng, lastRenderedName);
+    };
+    return bd;
+  }
+
+  function printImageAsPdf(dataUrl, titleName) {
+    var oldFrame = document.getElementById('webposPdfPrintFrame');
+    if (oldFrame) oldFrame.remove();
+    var iframe = document.createElement('iframe');
+    iframe.id = 'webposPdfPrintFrame';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+    document.body.appendChild(iframe);
+    var doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + (titleName || 'Nota').replace(/</g, '') + '</title>' +
+      '<style>@page{size:auto;margin:6mm;}body{margin:0;display:flex;justify-content:center;background:#fff;}img{max-width:100%;width:110mm;height:auto;display:block;}</style>' +
+      '</head><body><img id="pImg" src="' + dataUrl + '"></body></html>'
+    );
+    doc.close();
+    var imgEl = doc.getElementById('pImg');
+    function doPrint() {
+      setTimeout(function() {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {}
+        setTimeout(function() { try { iframe.remove(); } catch (e) {} }, 2500);
+      }, 150);
+    }
+    if (imgEl && !imgEl.complete) {
+      imgEl.onload = doPrint;
+      imgEl.onerror = doPrint;
+    } else {
+      doPrint();
+    }
+  }
+
+  function getActiveReceiptSource() {
+    var paper = document.getElementById('strukPaper');
+    var paperText = paper ? (paper.textContent || '').trim() : '';
+    if (currentReceiptTx && (!paperText || paperText === currentReceiptText)) {
+      return { src: currentReceiptTx, title: null };
+    }
+    if (paperText) {
+      var titleEl = document.querySelector('#strukModal .struk-modal-title, #strukModal .modal-title, #strukModal .struk-header h3');
+      var titleTxt = titleEl ? titleEl.textContent.trim().toUpperCase() : 'BUKTI TRANSAKSI';
+      return { src: paperText, title: titleTxt };
+    }
+    if (currentReceiptTx) return { src: currentReceiptTx, title: null };
+    return null;
+  }
+
+  async function shareImage(txOrText, customTitle) {
+    var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
+    if (!target) return;
+    var rendered = await renderCanvasPng(target.src, target.title);
+    lastRenderedPng = rendered.dataUrl;
+    lastRenderedName = rendered.fileName;
+
+    if (window.AndroidShare && typeof window.AndroidShare.shareImage === 'function') {
+      try {
+        window.AndroidShare.shareImage(rendered.dataUrl, rendered.fileName);
+        return;
+      } catch (e) {}
+    }
+
+    try {
+      var file = dataUrlToFile(rendered.dataUrl, rendered.fileName);
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+
+    var bd = ensureReceiptImgModal();
+    var img = document.getElementById('wpRcptImgPreview');
+    if (img) img.src = rendered.dataUrl;
+    bd.classList.add('open');
+  }
+
+  async function exportPdf(txOrText, customTitle) {
+    var target = txOrText != null ? { src: txOrText, title: customTitle } : getActiveReceiptSource();
+    if (!target) return;
+    var rendered = await renderCanvasPng(target.src, target.title);
+    lastRenderedPng = rendered.dataUrl;
+    lastRenderedName = rendered.fileName;
+    printImageAsPdf(rendered.dataUrl, rendered.fileName.replace(/\.png$/i, ''));
+  }
+
+  function openPreview(txOrText, titleText) {
+    ensureUnifiedStyles();
+    var isObj = txOrText && typeof txOrText === 'object';
+    var plain = isObj ? buildPlain(txOrText) : String(txOrText || '');
+    if (isObj) {
+      currentReceiptTx = txOrText;
+      currentReceiptText = plain.trim();
+    } else {
+      currentReceiptTx = null;
+      currentReceiptText = plain.trim();
+    }
+
+    var bd = document.getElementById('webposUnifiedPreviewModal');
+    if (!bd) {
+      bd = document.createElement('div');
+      bd.id = 'webposUnifiedPreviewModal';
+      bd.className = 'wp-pop-backdrop';
+      bd.innerHTML =
+        '<div class="wp-pop-card" style="max-width:420px;" role="dialog" aria-modal="true">' +
+          '<div class="wp-pop-head">' +
+            '<h3 class="wp-pop-title" id="wpPrevTitle">' + ICONS_3D.receipt() + '<span>Preview Struk</span></h3>' +
+            '<button type="button" class="wp-pop-close" id="wpPrevClose" aria-label="Tutup">' + ICONS_3D.close() + '</button>' +
+          '</div>' +
+          '<div class="wp-pop-body" style="background:var(--bg-subtle,#f8fafc);">' +
+            '<pre id="wpPrevPaper" style="margin:0;padding:1rem;background:#fff;color:#0f172a;border-radius:12px;border:1px dashed #cbd5e1;font-family:\'Courier New\',monospace;font-size:0.78rem;line-height:1.45;white-space:pre-wrap;overflow-x:auto;"></pre>' +
+          '</div>' +
+          '<div class="wp-pop-foot wp-rcpt-actions-bar">' +
+            '<button type="button" class="wp-pop-btn emerald" id="wpPrevImgBtn">' + ICONS_3D.image() + '<span>Nota Gambar</span></button>' +
+            '<button type="button" class="wp-pop-btn rose" id="wpPrevPdfBtn">' + ICONS_3D.pdf() + '<span>Simpan PDF</span></button>' +
+          '</div>' +
+        '</div>';
+      (document.body || document.documentElement).appendChild(bd);
+      bd.addEventListener('click', function(e) { if (e.target === bd) bd.classList.remove('open'); });
+      document.getElementById('wpPrevClose').onclick = function() { bd.classList.remove('open'); };
+      document.getElementById('wpPrevImgBtn').onclick = function() {
+        shareImage(currentReceiptTx || currentReceiptText, titleText || 'BUKTI TRANSAKSI');
+      };
+      document.getElementById('wpPrevPdfBtn').onclick = function() {
+        exportPdf(currentReceiptTx || currentReceiptText, titleText || 'BUKTI TRANSAKSI');
+      };
+    }
+    var tSpan = document.querySelector('#wpPrevTitle span');
+    if (tSpan) tSpan.textContent = titleText || 'Preview Struk';
+    var paperEl = document.getElementById('wpPrevPaper');
+    if (paperEl) paperEl.textContent = plain;
+    bd.classList.add('open');
+  }
+
+  function enhanceStrukModals() {
+    ensureUnifiedStyles();
+    var modal = document.getElementById('strukModal');
+    if (!modal || modal.dataset.wpReceiptEnhanced === '1') return;
+    var footer = modal.querySelector('.struk-actions, .struk-footer, .modal-footer');
+    if (!footer) return;
+    modal.dataset.wpReceiptEnhanced = '1';
+    footer.classList.add('wp-rcpt-actions-bar');
+
+    var btnImg = document.createElement('button');
+    btnImg.type = 'button';
+    btnImg.className = 'btn btn-sm wp-rcpt-btn-img';
+    btnImg.id = 'btnWpShareNotaImg';
+    btnImg.innerHTML = ICONS_3D.image() + '<span>Nota Gambar</span>';
+    btnImg.onclick = function() { shareImage(); };
+
+    var btnPdf = document.createElement('button');
+    btnPdf.type = 'button';
+    btnPdf.className = 'btn btn-sm wp-rcpt-btn-pdf';
+    btnPdf.id = 'btnWpSaveNotaPdf';
+    btnPdf.innerHTML = ICONS_3D.pdf() + '<span>Simpan PDF</span>';
+    btnPdf.onclick = function() { exportPdf(); };
+
+    footer.appendChild(btnImg);
+    footer.appendChild(btnPdf);
+  }
+
+  window.WebPOSReceipt = {
+    setCurrentTx: function(tx, plainText) {
+      currentReceiptTx = tx || null;
+      currentReceiptText = plainText ? String(plainText).trim() : (tx ? buildPlain(tx).trim() : '');
+    },
+    clearCurrentTx: function() {
+      currentReceiptTx = null;
+      currentReceiptText = '';
+    },
+    normalizeTx: normalizeTx,
+    buildPlain: buildPlain,
+    buildEscPos: buildEscPos,
+    renderCanvasPng: renderCanvasPng,
+    shareImage: shareImage,
+    exportPdf: exportPdf,
+    openPreview: openPreview,
+    enhanceStrukModals: enhanceStrukModals
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enhanceStrukModals);
+  } else {
+    enhanceStrukModals();
   }
 })();
