@@ -2864,11 +2864,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         '<defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ADE80"/><stop offset="55%" stop-color="#16A34A"/><stop offset="100%" stop-color="#15803D"/></linearGradient></defs>' +
         '<path d="M24 6C14.1 6 6 14 6 23.8C6 27.3 7 30.6 8.8 33.4L6.2 42L15.1 39.5C17.8 41 20.8 41.8 24 41.8C33.9 41.8 42 33.8 42 23.9C42 14 33.9 6 24 6Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/>' +
         '<path d="M18.2 16.5C17.5 16.5 16.3 17.2 16.1 18.6C15.9 20.1 16.6 23.1 19.6 26.3C22.6 29.5 26 30.8 28.2 31C29.7 31.1 31.1 29.9 31.4 28.8C31.6 28.1 31.4 27.6 30.9 27.3L28 25.9C27.5 25.6 27 25.7 26.6 26.1L25.5 27.3C24.2 26.7 21.8 24.6 20.8 22.7L21.9 21.5C22.3 21.1 22.4 20.5 22.1 20L20.8 17.2C20.5 16.7 19.9 16.5 18.2 16.5Z" fill="#FFFFFF"/>',
-        cls
+       cls
       );
-    }
-
- );
     }
   };
 
