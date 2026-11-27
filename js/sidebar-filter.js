@@ -35,7 +35,8 @@ function applyMenuVisibility() {
   // 1. Terapkan role tersimpan SEGERA (0 ms, tanpa nunggu jaringan)
   try {
     const cachedRole = localStorage.getItem("webpos_user_role");
-    if (cachedRole) applyRoleRulesUI(cachedRole);
+    const effectiveCached = (cachedRole && typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(cachedRole) : cachedRole;
+    if (effectiveCached) applyRoleRulesUI(effectiveCached);
   } catch (e) {}
 
   if (typeof auth === "undefined" || typeof db === "undefined") return;
@@ -44,13 +45,16 @@ function applyMenuVisibility() {
     db.collection("users").doc(user.uid).get().then(doc => {
       if (!doc.exists) return;
       const uData = doc.data() || {};
-      const role = (uData.role || "kasir").toLowerCase();
+      const realRole = (uData.role || "kasir").toLowerCase();
+      const isSim = (realRole === "developer" && typeof window.isDevRoleSimActive === "function" && window.isDevRoleSimActive());
+      const role = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(realRole) : realRole;
       try {
-        localStorage.setItem("webpos_user_role", role);
-        if (uData.permissions && typeof uData.permissions === "object") {
+        localStorage.setItem("webpos_user_role", realRole);
+        if (!isSim && uData.permissions && typeof uData.permissions === "object") {
           localStorage.setItem("webpos_user_permissions", JSON.stringify(uData.permissions));
         }
       } catch (e) {}
+      
       window.currentUserRole = role;
       if (typeof window.RoleGuard !== "undefined" && typeof window.RoleGuard.apply === "function") {
         const roleEl = document.getElementById("userRole");
