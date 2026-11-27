@@ -1818,7 +1818,7 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     const skipCols = new Set([
       "users", "settings", "shifts", "modal", "products", "produk",
       "customers", "pelanggan", "categories", "kategori", "hutang",
-      "piutang", "pembelian", "penggajian", "log_aktivitas",
+      "piutang", "debts", "pembelian", "penggajian", "log_aktivitas",
       "saldo_sisa_history", "closing", "closings"
     ]);
     cachedKasCoreCols = [...foundCols].filter(c => c && !skipCols.has(c.toLowerCase()));
@@ -2193,57 +2193,13 @@ async function healLocalUserTransactions(user, displayName, roleName) {
   // ==========================================
   // 📋 DETAIL LAPORAN PIUTANG & PELANGGAN BERHUTANG HARI INI
   // ==========================================
-  async function buildPiutangReport(kas, combinedRecords, targetDate) {
+ async function buildPiutangReport(kas, combinedRecords, targetDate) {
     const items = [];
-    const seen = new Set();
+    const seenIds = new Set();
+    const seenSigs = new Set();
+    const debtByTxId = new Map();
 
-    (combinedRecords || []).forEach(tx => {
-      if (!tx) return;
-      const methodStr = String(tx.metode_pembayaran || tx.paymentMethod || tx.metode || "").toLowerCase();
-      const katStr = String(tx.kategori || tx.category || tx.type || "").toLowerCase();
-      const isHutangMethod = /hutang|utang|tempo|kredit/.test(methodStr);
-      const isPiutangKat = /pinjaman_tunai|piutang/.test(katStr) || (tx.type === 'piutang');
-
-      if (isHutangMethod || isPiutangKat) {
-        const idKey = tx.id || tx.docId || tx.invoiceNumber || makeTxSignature(tx);
-        if (seen.has(idKey)) return;
-        seen.add(idKey);
-
-        const custName = tx.customerName || tx.pelanggan || tx.customer || tx.name || tx.namaPelanggan || tx.nama || "Pelanggan Tanpa Nama";
-        const nominal = safeNum(tx.nominal ?? tx.total ?? tx.amount ?? tx.sisa ?? tx.cash_in ?? tx.cashOut);
-        const timeStr = formatTxTime(tx);
-        const ts = getTxTimestamp(tx);
-        const uId = tx.userId || tx.kasirId || tx.uid || "";
-        const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || tx.kasir || "";
-
-        let desc = "";
-        if (Array.isArray(tx.items) && tx.items.length > 0) {
-          desc = tx.items.map(i => (i.nama || i.name || "Item") + (i.qty ? ` (x${i.qty})` : "")).join(", ");
-        } else if (tx.keterangan || tx.note || tx.catatan) {
-          desc = tx.keterangan || tx.note || tx.catatan;
-        } else if (isHutangMethod) {
-          desc = "Transaksi Kasir (Tempo/Hutang)";
-        } else {
-          desc = "Pinjaman Tunai / Piutang";
-        }
-
-        const rawStatus = String(tx.status || "unpaid").toLowerCase();
-        const isLunas = (/lunas|paid/.test(rawStatus) && safeNum(tx.sisa) === 0);
-        const statusLabel = isLunas ? "Lunas" : "Belum Lunas";
-
-        items.push({
-          id: idKey,
-          name: custName,
-          desc: desc,
-          nominal: nominal,
-          timeStr: timeStr,
-          staffName: staffName,
-          status: statusLabel,
-          ts: ts
-        });
-      }
-    });
-
+    // 1. Baca koleksi 'debts' TERLEBIH DAHULU sebagai sumber status asli (Lunas / Belum Lunas & sisa terbaru)
     try {
       const p = targetDate.split("-").map(Number);
       const startMs = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
@@ -2260,17 +2216,22 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
       debtSnap.forEach(doc => {
         const d = doc.data() || {};
+        if (d.transactionId) debtByTxId.set(String(d.transactionId), { id: doc.id, data: d });
+        if (d.invoiceNumber) debtByTxId.set(String(d.invoiceNumber), { id: doc.id, data: d });
+
         if (d.type && d.type !== "piutang" && d.type !== "customer") return;
 
-        const idKey = doc.id;
-        if (seen.has(idKey) || (d.transactionId && seen.has(d.transactionId))) return;
-        seen.add(idKey);
+        seenIds.add(String(doc.id));
+        if (d.transactionId) seenIds.add(String(d.transactionId));
+        if (d.invoiceNumber) seenIds.add(String(d.invoiceNumber));
 
-        const custName = d.name || d.customerName || d.pelanggan || "Pelanggan Tanpa Nama";
-        const nominal = safeNum(d.remainingAmount ?? d.sisa ?? d.amount ?? d.nominal);
+        const custName = d.customerName || d.name || d.pelanggan || "Pelanggan Tanpa Nama";
+        const amountTotal = safeNum(d.amount ?? d.nominal);
+        const sisaVal = safeNum(d.remaining ?? d.remainingAmount ?? d.sisa ?? amountTotal);
         const timeStr = formatTxTime(d);
         const ts = getTxTimestamp(d);
-        const staffName = d.userName || d.kasir || "";
+        const uId = d.userId || d.kasirId || d.uid || "";
+        const staffName = cachedUsersMap[uId]?.name || d.userName || d.kasir || "";
 
         let desc = "";
         if (Array.isArray(d.items) && d.items.length > 0) {
@@ -2279,14 +2240,20 @@ async function healLocalUserTransactions(user, displayName, roleName) {
           desc = d.note || d.catatan || d.keterangan || "Piutang Pelanggan";
         }
 
-        const isLunas = d.status === "paid" || d.status === "lunas" || nominal <= 0;
+        const rawSt = String(d.status || "").toLowerCase();
+        const isLunas = rawSt === "paid" || rawSt === "lunas" || sisaVal <= 0;
         const statusLabel = isLunas ? "Lunas" : "Belum Lunas";
+        const displayNominal = amountTotal || sisaVal;
+        const unpaidNominal = isLunas ? 0 : sisaVal;
+
+        seenSigs.add(custName.toLowerCase().trim() + "|" + displayNominal + "|" + timeStr);
 
         items.push({
-          id: idKey,
+          id: doc.id,
           name: custName,
           desc: desc,
-          nominal: nominal || safeNum(d.amount),
+          nominal: displayNominal,
+          unpaidNominal: unpaidNominal,
           timeStr: timeStr,
           staffName: staffName,
           status: statusLabel,
@@ -2297,15 +2264,85 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       console.warn("load debts query error:", eDebt);
     }
 
+    // 2. Lengkapi dari transaksi kasir / pinjaman tunai yang belum ada di daftar debts di atas (anti-dobel)
+    (combinedRecords || []).forEach(tx => {
+      if (!tx) return;
+      if (tx._colName === "debts") return;
+      const methodStr = String(tx.metode_pembayaran || tx.paymentMethod || tx.metode || "").toLowerCase();
+      const katStr = String(tx.kategori || tx.category || tx.type || "").toLowerCase();
+      const isHutangMethod = /hutang|utang|tempo|kredit/.test(methodStr);
+      const isPiutangKat = /pinjaman_tunai|piutang/.test(katStr) || (tx.type === 'piutang');
+
+      if (isHutangMethod || isPiutangKat) {
+        const keys = [tx._docId, tx.id, tx.docId, tx.invoiceNumber].filter(Boolean).map(String);
+        if (keys.some(k => seenIds.has(k))) return;
+
+        const custName = tx.customerName || tx.pelanggan || tx.customer || tx.name || tx.namaPelanggan || tx.nama || "Pelanggan Tanpa Nama";
+        const nominal = safeNum(tx.nominal ?? tx.total ?? tx.amount ?? tx.sisa ?? tx.cash_in ?? tx.cashOut);
+        const timeStr = formatTxTime(tx);
+        const sigKey = custName.toLowerCase().trim() + "|" + nominal + "|" + timeStr;
+        if (seenSigs.has(sigKey)) return;
+
+        const idKey = keys[0] || makeTxSignature(tx);
+        keys.forEach(k => seenIds.add(k));
+        seenIds.add(idKey);
+        seenSigs.add(sigKey);
+
+        const ts = getTxTimestamp(tx);
+        const uId = tx.userId || tx.kasirId || tx.uid || "";
+        const staffName = cachedUsersMap[uId]?.name || tx.userName || tx.kasirName || tx.kasir || "";
+
+        let desc = "";
+        if (Array.isArray(tx.items) && tx.items.length > 0) {
+          desc = tx.items.map(i => (i.nama || i.name || "Item") + (i.qty ? ` (x${i.qty})` : "")).join(", ");
+        } else if (tx.keterangan || tx.note || tx.catatan) {
+          desc = tx.keterangan || tx.note || tx.catatan;
+        } else if (isHutangMethod) {
+          desc = "Transaksi Kasir (Tempo/Hutang)";
+        } else {
+          desc = "Pinjaman Tunai / Piutang";
+        }
+
+        // Cek status pelunasan dari dokumen debts pasangan (misal untuk pinjaman_tunai)
+        const linkedDebt = keys.map(k => debtByTxId.get(k)).find(Boolean);
+        let isLunas = false;
+        let unpaidNominal = nominal;
+        if (linkedDebt && linkedDebt.data) {
+          const ld = linkedDebt.data;
+          const ldSisa = safeNum(ld.remaining ?? ld.remainingAmount ?? ld.sisa ?? nominal);
+          const ldSt = String(ld.status || "").toLowerCase();
+          isLunas = ldSt === "paid" || ldSt === "lunas" || ldSisa <= 0;
+          unpaidNominal = isLunas ? 0 : ldSisa;
+        } else {
+          const rawStatus = String(tx.status || "unpaid").toLowerCase();
+          isLunas = (/lunas|paid/.test(rawStatus) && safeNum(tx.sisa) === 0);
+          unpaidNominal = isLunas ? 0 : nominal;
+        }
+        const statusLabel = isLunas ? "Lunas" : "Belum Lunas";
+
+        items.push({
+          id: idKey,
+          name: custName,
+          desc: desc,
+          nominal: nominal,
+          unpaidNominal: unpaidNominal,
+          timeStr: timeStr,
+          staffName: staffName,
+          status: statusLabel,
+          ts: ts
+        });
+      }
+    });
+
     items.sort((a, b) => b.ts - a.ts);
-    const totalPiutang = items.reduce((acc, curr) => acc + curr.nominal, 0);
+    const totalUnpaid = items.reduce((acc, curr) => acc + safeNum(curr.unpaidNominal), 0);
 
     return {
-      summary: { totalPiutang: totalPiutang || safeNum(kas.piutang), count: items.length },
+      summary: { totalPiutang: items.length > 0 ? totalUnpaid : safeNum(kas.piutang), count: items.length },
       items
     };
   }
-
+  
   window.openPiutangModal = function() {
     const modal = document.getElementById("modalPiutangDetail");
     if (!modal) return;
