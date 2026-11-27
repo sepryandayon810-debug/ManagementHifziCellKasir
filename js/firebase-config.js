@@ -943,14 +943,32 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
     lock: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="8" y1="20" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FCD34D"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><path d="M15 21V15C15 10 19 6 24 6C29 6 33 10 33 15V21" stroke="#94A3B8" stroke-width="4.5" stroke-linecap="round"/><rect x="9" y="20" width="30" height="23" rx="6.5" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="24" cy="30" r="3" fill="#FFFFFF"/><rect x="22.6" y="31" width="2.8" height="6" rx="1.4" fill="#FFFFFF"/></svg>',
 
-    info: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="55%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="24" cy="15.5" r="2.6" fill="#FEF08A"/><rect x="21.8" y="21" width="4.4" height="14" rx="2.2" fill="#FFFFFF"/></svg>'
+    info: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__a" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="55%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#0369A1"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__a)" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="24" cy="15.5" r="2.6" fill="#FEF08A"/><rect x="21.8" y="21" width="4.4" height="14" rx="2.2" fill="#FFFFFF"/></svg>',
+    close: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#E11D48"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="11" ry="4.5" fill="#FFFFFF" fill-opacity="0.32"/><path d="M17 17L31 31M31 17L17 31" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round"/></svg>',
+    search: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="8" y1="8" x2="34" y2="34" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#67E8F9"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><circle cx="21" cy="21" r="13" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="2"/><circle cx="21" cy="21" r="7.5" fill="#E0F2FE"/><ellipse cx="18.5" cy="17.5" rx="3.5" ry="2" fill="#FFFFFF" fill-opacity="0.85"/><path d="M31 31L40 40" stroke="#0369A1" stroke-width="6" stroke-linecap="round"/><path d="M31 31L40 40" stroke="#38BDF8" stroke-width="3.2" stroke-linecap="round"/></svg>',
+    eye: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="12" x2="42" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/></linearGradient></defs><path d="M4 24C8.8 15 15.8 11 24 11C32.2 11 39.2 15 44 24C39.2 33 32.2 37 24 37C15.8 37 8.8 33 4 24Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><circle cx="24" cy="24" r="8" fill="#FFFFFF"/><circle cx="24" cy="24" r="4.5" fill="#1E3A8A"/><circle cx="22.3" cy="22.2" r="1.6" fill="#FFFFFF"/></svg>',
+    eyeoff: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="12" x2="42" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#94A3B8"/><stop offset="100%" stop-color="#475569"/></linearGradient></defs><path d="M4 24C8.8 15 15.8 11 24 11C32.2 11 39.2 15 44 24C39.2 33 32.2 37 24 37C15.8 37 8.8 33 4 24Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><circle cx="24" cy="24" r="6.5" fill="#E2E8F0"/><path d="M10 10L38 38" stroke="#F43F5E" stroke-width="4.5" stroke-linecap="round"/></svg>',
+    backspace: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="10" x2="42" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FBBF24"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><path d="M16 11H38C40.8 11 43 13.2 43 16V32C43 34.8 40.8 37 38 37H16L6 24L16 11Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M22 19L32 29M32 19L22 29" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/></svg>',
+    arrowright: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="#4338CA"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.3"/><path d="M15 24H32M26 17L33 24L26 31" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    sort: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#2563EB"/></linearGradient></defs><rect x="6" y="6" width="36" height="36" rx="11" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.5"/><path d="M17 31V16M12.5 20.5L17 16L21.5 20.5" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 17V32M26.5 27.5L31 32L35.5 27.5" stroke="#FDE047" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    shield: '<svg class="ui-3d-svg" viewBox="0 0 48 48" fill="none"><defs><linearGradient id="__ID__g" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399"/><stop offset="55%" stop-color="#059669"/><stop offset="100%" stop-color="#065F46"/></linearGradient></defs><path d="M24 5L39 11V23C39 33 32.5 40 24 43C15.5 40 9 33 9 23V11L24 5Z" fill="url(#__ID__g)" stroke="#FFFFFF" stroke-width="1.6"/><path d="M17 24L22 29L32 18.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
   function mapGlobalUiKey(el) {
     var c = el.className || '';
-    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-caret|fa-backspace|fa-eye|fa-sort|fa-ellipsis|fa-grip/.test(c)) return null;
-    if (/(?:^|\s)fa-(?:times|xmark|search|arrow-right)(?:\s|$)/.test(c)) return null;
+    if (!c || /fa-spin|fa-spinner|fa-circle-notch|fa-caret|fa-ellipsis|fa-grip/.test(c)) return null;
 
+    if (/(?:^|\s)fa-(?:times|xmark|close)(?:\s|$)/.test(c)) return 'close';
+    if (/(?:^|\s)fa-search(?:\s|$)/.test(c)) return 'search';
+    if (c.indexOf('fa-eye-slash') !== -1) return 'eyeoff';
+    if (/(?:^|\s)fa-eye(?:\s|$)/.test(c)) return 'eye';
+    if (c.indexOf('fa-backspace') !== -1) return 'backspace';
+    if (c.indexOf('fa-arrow-right') !== -1) return 'arrowright';
+    if (c.indexOf('fa-sort') !== -1) return 'sort';
+    if (c.indexOf('fa-shield') !== -1) return 'shield';
+    if (c.indexOf('fa-sliders') !== -1) return 'settings';
+    if (c.indexOf('fa-shopping-bag') !== -1) return 'basket';
+    if (c.indexOf('fa-dice') !== -1) return 'bolt';
     if (c.indexOf('fa-chevron-down') !== -1 || c.indexOf('fa-angle-down') !== -1) return 'chevdown';
     if (c.indexOf('fa-chevron-up') !== -1 || c.indexOf('fa-angle-up') !== -1) return 'chevup';
     if (c.indexOf('fa-chevron-left') !== -1 || c.indexOf('fa-angle-left') !== -1) return 'chevleft';
@@ -1023,23 +1041,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     '.mobile-nav',
     '#ptrIndicator',
     '.ptr-indicator',
-    '.modal-close',
-    '.close-btn',
-    '.search-input-wrapper',
-    '.produk-search',
-    '.search-box',
-    '.password-toggle',
-    '.toggle-password',
-    '.qty-btn',
-    '.cart-item-remove',
-    '.numpad-btn',
     '.user-avatar',
-    '.action-arrow',
     '#btnThemeToggle',
     '#btnTheme',
     '#btnLogout',
     '#mobileMenuToggle',
-    '#btnHealthGuard',
     '.logo-icon.has-custom-logo',
     '.logo-badge.has-custom-logo',
     '#webposDateModal',
@@ -1227,6 +1233,16 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
           '.nav-dropdown.open .nav-dropdown-toggle > .u3d-dd-arrow{transform:rotate(180deg) !important;}',
           '.sidebar.collapsed .u3d-dd-arrow{display:none !important;}',
           '.kas-date-btn > .ui-3d-svg,.page-btn > .ui-3d-svg,.btn-icon-box > .ui-3d-svg,.btn-icon-sm > .ui-3d-svg,.btn-icon > .ui-3d-svg,.floating-cart-btn > .ui-3d-svg{width:18px;height:18px;margin:0;}',
+          '.modal-close:has(> .ui-3d-svg),.close-btn:has(> .ui-3d-svg),.struk-modal-close:has(> .ui-3d-svg),.cart-item-remove:has(> .ui-3d-svg){background:transparent !important;border:none !important;box-shadow:none !important;padding:2px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}',
+          '.modal-close > .ui-3d-svg,.close-btn > .ui-3d-svg,.struk-modal-close > .ui-3d-svg{width:24px;height:24px;margin:0;}',
+          '.modal-close:hover > .ui-3d-svg,.close-btn:hover > .ui-3d-svg,.struk-modal-close:hover > .ui-3d-svg,.cart-item-remove:hover > .ui-3d-svg{transform:scale(1.12);}',
+          '.cart-item-remove > .ui-3d-svg{width:19px;height:19px;margin:0;}',
+          '.qty-btn > .ui-3d-svg{width:15px;height:15px;margin:0;}',
+          '.numpad-btn > .ui-3d-svg{width:20px;height:20px;margin:0;}',
+          '.password-toggle > .ui-3d-svg,.toggle-password > .ui-3d-svg{width:18px;height:18px;margin:0;}',
+          '.action-arrow > .ui-3d-svg{width:16px;height:16px;margin:0;}',
+          '#btnHealthGuard > .ui-3d-svg{width:22px;height:22px;margin:0;}',
+          '#btnHealthGuard:hover > .ui-3d-svg{transform:scale(1.12);}',
           '#btnThemeToggle .ui-3d-svg,#btnTheme .ui-3d-svg,#btnLogout .ui-3d-svg,#mobileMenuToggle .ui-3d-svg{width:20px;height:20px;margin:0;}',
           '#btnThemeToggle:hover .ui-3d-svg,#btnTheme:hover .ui-3d-svg,#btnLogout:hover .ui-3d-svg,#mobileMenuToggle:hover .ui-3d-svg,.menu-toggle:hover > .ui-3d-svg{transform:scale(1.12);}',
           '.user-avatar{position:relative !important;overflow:hidden !important;border-radius:50% !important;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,0.48) 0%,rgba(255,255,255,0.06) 38%,rgba(15,23,42,0.38) 100%),linear-gradient(145deg,var(--primary,#6366f1),#7c3aed) !important;border:2px solid rgba(255,255,255,0.85) !important;box-shadow:0 6px 14px rgba(79,70,229,0.38),0 2px 4px rgba(15,23,42,0.22),inset 0 2px 4px rgba(255,255,255,0.58),inset 0 -5px 8px rgba(15,23,42,0.34) !important;font-weight:800 !important;letter-spacing:0.03em !important;text-shadow:0 1px 2px rgba(15,23,42,0.45) !important;transition:transform .22s ease,box-shadow .22s ease !important;}',
