@@ -11,7 +11,6 @@ if (typeof window.RoleGuard === 'undefined') {
       if (role === 'admin') {
         this.hideMenu('[data-menu="penggajian"]');
         this.hideMenu('[data-menu="reset"]');
-        this.hideMenu('[data-menu="pengguna"]');
         this.hideMenu('[data-menu="log-aktivitas"]');
         this.hideMenu('[data-menu="backup"]');
         this.hideMenu('[data-menu="setting"]');
@@ -28,7 +27,6 @@ if (typeof window.RoleGuard === 'undefined') {
         this.hideMenu('[data-menu="data-pelanggan"]');
         this.hideMenu('[data-menu="setting"]');
         this.hideMenu('[data-menu="penggajian"]');
-        this.hideMenu('[data-menu="pengguna"]');
         this.hideMenu('[data-menu="backup"]');
         this.hideMenu('[data-menu="reset"]');
         this.hideMenu('[data-menu="log-aktivitas"]');
@@ -119,7 +117,6 @@ var RoleGuard = window.RoleGuard;
       var ADMIN_BLOCKED_PAGES = {
         'page-penggajian.html': 'penggajian',
         'page-reset.html': 'reset',
-        'page-pengguna.html': 'pengguna',
         'page-log-aktivitas.html': 'log-aktivitas',
         'page-backup.html': 'backup',
         'page-setting.html': 'setting'
@@ -132,7 +129,6 @@ var RoleGuard = window.RoleGuard;
         'page-saldo-telegram.html': 'telegram',
         'page-data-pelanggan.html': 'data-pelanggan',
         'page-penggajian.html': 'penggajian',
-        'page-pengguna.html': 'pengguna',
         'page-backup.html': 'backup',
         'page-reset.html': 'reset',
         'page-log-aktivitas.html': 'log-aktivitas',
