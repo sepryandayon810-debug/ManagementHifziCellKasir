@@ -1345,21 +1345,25 @@
       <button type="button" class="modal-close" onclick="closeStaffTxDetailModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding: 1rem;">
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.5rem; margin-bottom:1rem; text-align:center;">
-        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.5rem;">
+      <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:0.55rem; margin-bottom:1rem; text-align:center;">
+        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.55rem;">
           <div style="font-size:0.68rem; color:var(--text-muted);">Modal Awal</div>
-          <strong style="font-size:0.85rem;" id="staffDetailModalAwal">Rp 0</strong>
+          <strong style="font-size:0.88rem;" id="staffDetailModalAwal">Rp 0</strong>
         </div>
-        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.5rem;">
+        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.55rem;">
           <div style="font-size:0.68rem; color:var(--text-muted);">Total Penjualan</div>
-          <strong style="font-size:0.85rem; color:var(--success);" id="staffDetailPenjualan">Rp 0</strong>
+          <strong style="font-size:0.88rem; color:var(--success);" id="staffDetailPenjualan">Rp 0</strong>
         </div>
-        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.5rem;">
+        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.55rem;">
+          <div style="font-size:0.68rem; color:var(--text-muted);">Total Uang Kas</div>
+          <strong style="font-size:0.88rem; color:var(--accent, #2563eb);" id="staffDetailTotalKas">Rp 0</strong>
+        </div>
+        <div style="background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.55rem;">
           <div style="font-size:0.68rem; color:var(--text-muted);">Jumlah Transaksi</div>
-          <strong style="font-size:0.85rem; color:var(--primary);" id="staffDetailTrxCount">0 Trx</strong>
+          <strong style="font-size:0.88rem; color:var(--primary);" id="staffDetailTrxCount">0 Trx</strong>
         </div>
       </div>
-
+      
       <div style="font-size:0.75rem; font-weight:700; color:var(--text-sub); margin-bottom:0.5rem;">
         <i class="fas fa-list-check"></i> Daftar Transaksi Staf:
       </div>
@@ -2600,7 +2604,19 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     document.getElementById("staffDetailPenjualan").textContent = formatRupiah(s.penjualan);
     document.getElementById("staffDetailTrxCount").textContent = s.count + " Trx";
     document.getElementById("staffDetailModalAwal").textContent = formatRupiah(s.modal);
-
+    const staffSum = (typeof KasCore.createSummary === "function") ? KasCore.createSummary(s.transactions || []) : null;
+    const staffKasCalc = (staffSum && typeof KasCore.calculateKasFisikLaciFromSummary === "function")
+      ? KasCore.calculateKasFisikLaciFromSummary(s.modal || 0, staffSum)
+      : null;
+    const staffTotalKas = staffKasCalc
+      ? staffKasCalc.totalKasFisikDiLaci
+      : (s.modal || 0) + (s.transactions || []).reduce((acc, tx) => acc + KasCore.normalizeNumber(tx.cash_in) - KasCore.normalizeNumber(tx.cash_out), 0);
+    const kasEl = document.getElementById("staffDetailTotalKas");
+    if (kasEl) {
+      kasEl.textContent = formatRupiah(staffTotalKas);
+      kasEl.style.color = staffTotalKas < 0 ? "var(--danger)" : "var(--accent, #2563eb)";
+    }
+    
     const listEl = document.getElementById("staffDetailTxList");
     if (!listEl) return;
 
