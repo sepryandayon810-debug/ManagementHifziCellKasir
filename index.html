@@ -1558,15 +1558,16 @@ async function healLocalUserTransactions(user, displayName, roleName) {
         displayRole = u.role || displayRole;
       }
 
-      currentUserRole = displayRole.toLowerCase();
+      const realRole = displayRole.toLowerCase();
+      currentUserRole = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(realRole) : realRole;
       window.currentUserRole = currentUserRole;
-      try { localStorage.setItem("webpos_user_role", currentUserRole); } catch (e) {}
+      try { localStorage.setItem("webpos_user_role", realRole); } catch (e) {}
       if (typeof RoleGuard !== 'undefined') {
         RoleGuard.apply(currentUserRole);
       }
 
       document.getElementById("userName").textContent = displayName;
-      document.getElementById("userRole").textContent = displayRole.toUpperCase();
+      document.getElementById("userRole").textContent = currentUserRole.toUpperCase();
       document.getElementById("namaUserDisplay").textContent = displayName;
 
       const avatar = document.getElementById("userAvatar");
@@ -1585,7 +1586,8 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       }
 
     // ⭐ Pastikan baris ini ada:
-      healLocalUserTransactions(user, displayName, currentUserRole);
+      healLocalUserTransactions(user, displayName, realRole);
+
 
     } catch (err) {
       console.error(err);
