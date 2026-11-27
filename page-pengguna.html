@@ -760,6 +760,13 @@
         </div>
       </div>
       <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Nomor HP / WhatsApp</label>
+        <div class="input-wrap">
+          <i class="fas fa-phone field-icon"></i>
+          <input type="tel" class="form-control" id="newUserPhone" placeholder="0812xxxxxxxx (opsional)">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Password (min. 6 karakter)</label>
         <div class="input-wrap">
           <i class="fas fa-lock field-icon"></i>
@@ -809,8 +816,37 @@
       <div class="form-group" style="margin-bottom:0.85rem;">
         <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email</label>
         <div class="input-wrap">
+         <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Email</label>
+        <div class="input-wrap">
           <i class="fas fa-envelope field-icon"></i>
           <input type="email" class="form-control" id="editUserEmail" placeholder="email@contoh.com">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Nomor HP / WhatsApp</label>
+        <div class="input-wrap">
+          <i class="fas fa-phone field-icon"></i>
+          <input type="tel" class="form-control" id="editUserPhone" placeholder="0812xxxxxxxx">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Role Akses</label>
+          <div class="input-wrap">
+            <i class="fas fa-shield-halved field-icon"></i>
+            <select class="form-control" id="editUserRole"></select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:0.35rem;">Status Akun</label>
+          <div class="input-wrap">
+            <i class="fas fa-circle-check field-icon"></i>
+            <select class="form-control" id="editUserStatus">
+              <option value="active">Aktif</option>
+              <option value="pending">Pending / Nonaktif</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:0;">
@@ -1155,6 +1191,8 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
       const safeNameHtml = escHtml(u.name || "-");
       const safeUserHtml = escHtml(u.username || "-");
       const safeEmailHtml = escHtml(u.email || "-");
+      const rawPhone = u.phone || u.noHp || u.no_hp || u.hp || u.whatsapp || "";
+      const safePhoneHtml = rawPhone ? escHtml(rawPhone) : "";
       const safeLabelJs = escJs(u.name || u.email || "Staf");
       const safeRoleClass = escHtml(role.replace(/[^a-z0-9_-]/g, ""));
       const safeStatusClass = escHtml(String(status).replace(/[^a-z0-9_-]/g, ""));
@@ -1167,7 +1205,10 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
   <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">@${safeUserHtml}</div>
             </button>
           </td>
-          <td>${safeEmailHtml}</td>
+          <td>
+            <div>${safeEmailHtml}</div>
+            ${safePhoneHtml ? `<div style="font-size:0.74rem; color:var(--text-muted); margin-top:2px;"><i class="fas fa-phone" style="font-size:0.68rem;"></i> ${safePhoneHtml}</div>` : ''}
+          </td>
           <td>
             <span class="role-tag role-${safeRoleClass}">${escHtml(role.toUpperCase())}</span>
           </td>
@@ -1357,6 +1398,12 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     document.getElementById("editUserName").value = u.name || "";
     document.getElementById("editUserUsername").value = u.username || "";
    document.getElementById("editUserEmail").value = u.email || "";
+    document.getElementById("editUserPhone").value = u.phone || u.noHp || u.no_hp || u.hp || u.whatsapp || "";
+    const statusSelect = document.getElementById("editUserStatus");
+    if (statusSelect) {
+      statusSelect.value = (u.status || "active").toLowerCase() === "active" ? "active" : "pending";
+      statusSelect.disabled = (uid === currentUserId);
+    }
     const targetRole = (u.role || "kasir").toLowerCase();
     roleSelect.value = targetRole;
 
@@ -1423,6 +1470,8 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     const name = document.getElementById("editUserName").value.trim();
     const username = document.getElementById("editUserUsername").value.trim().toLowerCase().replace(/\s+/g, "");
     const email = document.getElementById("editUserEmail").value.trim();
+    const phone = (document.getElementById("editUserPhone")?.value || "").trim();
+    const status = document.getElementById("editUserStatus")?.value || user.status || "active";
     const role = document.getElementById("editUserRole").value;
     const user = allUsers.find(x => x.id === uid);
     if (!user) return;
@@ -1485,9 +1534,18 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
         name: name,
         username: username,
         role: role,
+        const data = {
+        name: name,
+        username: username,
+        phone: phone,
+        noHp: phone,
+        role: role,
         permissions: permissions, // <-- Ikut disimpan ke Firebase
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
+      if (uid !== currentUserId) {
+        data.status = status;
+      }
 
       // Email di Firestore ikut diubah. Email login (Firebase Auth) TIDAK bisa
       // diubah dari klien untuk akun orang lain -> butuh Cloud Function (bagian 5).
@@ -1535,7 +1593,7 @@ document.getElementById("btnCreateUser").onclick = openCreateUserModal;
     opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
     roleSelect.appendChild(opt);
   });
-  ["newUserName","newUserUsername","newUserEmail","newUserPassword"].forEach(id => {
+  ["newUserName","newUserUsername","newUserEmail","newUserPhone","newUserPassword"].forEach(id => {
     document.getElementById(id).value = "";
   });
   document.getElementById("modalCreateUser").classList.add("active");
@@ -1549,6 +1607,7 @@ window.saveNewUser = async function() {
   const name = document.getElementById("newUserName").value.trim();
   const username = document.getElementById("newUserUsername").value.trim();
   const email = document.getElementById("newUserEmail").value.trim();
+  const phone = (document.getElementById("newUserPhone")?.value || "").trim();
   const password = document.getElementById("newUserPassword").value.trim();
   const role = document.getElementById("newUserRole").value;
 
@@ -1618,7 +1677,10 @@ window.saveNewUser = async function() {
       status: "active",
       permissions: {}, // Hak akses menu default
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: currentUserId
+      email: email,
+      phone: phone,
+      noHp: phone,
+      role: role,
     }, { merge: true });
 
     toast(`Pengguna ${name} berhasil didaftarkan & langsung aktif!`, "success");
