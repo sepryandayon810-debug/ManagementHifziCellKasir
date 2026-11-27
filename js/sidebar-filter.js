@@ -7,7 +7,6 @@ function applyRoleRulesUI(role) {
   if (r === "admin") {
     hideMenuItem('[data-menu="penggajian"]');
     hideMenuItem('[data-menu="reset"]');
-    hideMenuItem('[data-menu="pengguna"]');
     hideMenuItem('[data-menu="setting"]');
     hideMenuItem('[data-menu="log-aktivitas"]');
     hideMenuItem('[data-menu="backup"]');
@@ -22,7 +21,6 @@ function applyRoleRulesUI(role) {
     hideMenuItem('[data-menu="pelanggan"]');
     hideMenuItem('[data-menu="setting"]');
     hideMenuItem('[data-menu="penggajian"]');
-    hideMenuItem('[data-menu="pengguna"]');
     hideMenuItem('[data-menu="backup"]');
     hideMenuItem('[data-menu="reset"]');
     hideMenuItem('[data-menu="log-aktivitas"]');
