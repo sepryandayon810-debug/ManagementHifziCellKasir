@@ -1476,36 +1476,95 @@ html,body{overflow-x:hidden;max-width:100vw}
    ========================================== */
 .beli-items-list {
   margin-bottom: 1rem;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-right: 2px;
 }
 .beli-item-row {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem 0.8rem;
   background: var(--bg-secondary);
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+}
+.beli-item-row .bi-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 .beli-item-row .bi-name {
   flex: 1;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+  white-space: normal;
+  word-break: break-word;
+}
+.beli-item-row .bi-badge-new {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  vertical-align: middle;
+}
+.beli-item-row .bi-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border-color);
 }
 .beli-item-row .bi-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+.beli-item-row .bi-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.beli-item-row .bi-chip.bi-qty {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.beli-item-row .bi-subtotal {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--primary);
   white-space: nowrap;
 }
 .beli-item-row .bi-remove {
   width: 24px;
   height: 24px;
   border: none;
-  background: rgba(239,68,68,0.1);
+  background: rgba(239,68,68,0.12);
   color: var(--danger);
   border-radius: 50%;
   cursor: pointer;
@@ -1519,7 +1578,8 @@ html,body{overflow-x:hidden;max-width:100vw}
   background: var(--danger);
   color: white;
 }
-.btn-add-item {
+  
+  .btn-add-item {
   width: 100%;
   padding: 0.5rem;
   border: 1.5px dashed var(--border-color);
@@ -7623,19 +7683,35 @@ function renderBeliItemsList() {
     container.innerHTML = '';
     return;
   }
-  
-  container.style.display = 'block';
-  container.innerHTML = beliItems.map((item, index) => `
-    <div class="beli-item-row">
-      <span class="bi-name">${item.productName}</span>
-       <span class="bi-info">${item.qty} x ${formatRupiah(item.hargaBeli)}${item.normalPrice > 0 ? ` · Umum ${formatRupiah(item.normalPrice)}` : ''}${item.resellerPrice > 0 ? ` · Reseller ${formatRupiah(item.resellerPrice)}` : ''}</span>
-      <button class="bi-remove" onclick="removeBeliItem(${index})" title="Hapus">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-  `).join('');
-}
 
+  container.style.display = 'flex';
+  container.innerHTML = beliItems.map((item, index) => {
+    const subtotal = Number(item.total) || (Number(item.qty || 0) * Number(item.hargaBeli || 0));
+    const esc = (v) => String(v || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const safeName = esc(item.productName);
+    const safeSupplier = item.supplier && item.supplier !== 'Supplier Umum' ? esc(item.supplier) : '';
+    return `
+      <div class="beli-item-row">
+        <div class="bi-head">
+          <div class="bi-name">${safeName}${item.isNewProduct ? '<span class="bi-badge-new">BARU</span>' : ''}</div>
+          <button type="button" class="bi-remove" onclick="removeBeliItem(${index})" title="Hapus">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="bi-bottom">
+          <div class="bi-info">
+            <span class="bi-chip bi-qty">${item.qty} × ${formatRupiah(item.hargaBeli)}</span>
+            ${item.normalPrice > 0 ? `<span class="bi-chip">Umum: ${formatRupiah(item.normalPrice)}</span>` : ''}
+            ${item.resellerPrice > 0 ? `<span class="bi-chip">Reseller: ${formatRupiah(item.resellerPrice)}</span>` : ''}
+            ${safeSupplier ? `<span class="bi-chip">Supplier: ${safeSupplier}</span>` : ''}
+          </div>
+          <span class="bi-subtotal">${formatRupiah(subtotal)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+  
 function removeBeliItem(index) {
   beliItems.splice(index, 1);
   renderBeliItemsList();
