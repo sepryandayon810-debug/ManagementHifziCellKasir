@@ -1685,7 +1685,7 @@ if (category === 'kas_keluar') {
 ['kategori', 'metode_pembayaran', 'nominal', 'admin', 'modal_produk',
  'shiftId', 'customerName', 'catatan', 'status', 'pengaruhi_kas_global',
  'resellerMode', 'isReseller', 'priceMode', 'tipe_penjualan', 'nama_konter', 'resellerName',
- 'items', 'userName', 'note', 'diskon', 'discount', 'subtotal'
+ 'items', 'userName', 'note', 'diskon', 'discount', 'subtotal', 'rounding', 'pembulatan'
 ].forEach(function (field) {
   if (payload[field] !== undefined) doc[field] = payload[field];
 });
