@@ -4102,30 +4102,32 @@ html,body{overflow-x:hidden;max-width:100vw}
     <!-- Diisi via JS -->
   </div>
 
-  <!-- Total Preview -->
+ <!-- Pembulatan & Total Keluar dari Kas (sebelahan, tepat di atas Total Pembelian) -->
+  <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:0.65rem;margin:.75rem 0;">
+    <div class="form-group" style="margin:0;">
+      <label class="form-label" style="font-size:0.78rem;">Pembulatan Kas</label>
+      <select class="form-select" id="beliPembulatan" onchange="applyBeliRounding()" style="padding:0.6rem 0.75rem;font-size:0.84rem;">
+        <option value="0">Tidak dibulatkan</option>
+        <option value="500">Ke Rp 500</option>
+        <option value="1000">Ke Rp 1.000</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label" style="font-size:0.78rem;">Keluar Kas <span style="color:var(--text-muted);font-weight:400;">(bisa edit)</span></label>
+      <div style="display:flex;">
+        <span style="padding:0.6rem 0.65rem;background:var(--bg-secondary);border:1.5px solid var(--border-color);border-right:none;border-radius:0.75rem 0 0 0.75rem;color:var(--text-muted);font-size:0.84rem;">Rp</span>
+        <input type="number" class="form-input" id="beliTotalKas" placeholder="0" min="0" step="1" oninput="beliTotalKasEdited=true;updateBeliTotalPreview()" style="border-radius:0 0.75rem 0.75rem 0;padding:0.6rem 0.7rem;font-size:0.84rem;min-width:0;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Preview (hasil akhir setelah pembulatan) -->
   <div class="beli-total-box">
     <div>
       <span>Total Pembelian:</span>
       <small id="beliRoundingPreview" style="display:block;color:var(--text-muted);font-size:.7rem;">Pembulatan: Rp 0</small>
     </div>
     <span id="beliTotalPreview">Rp 0</span>
-  </div>
-  <div class="form-group" style="margin:.75rem 0;">
-    <label class="form-label" style="font-size:0.8rem;">Pembulatan Kas</label>
-    <select class="form-select" id="beliPembulatan" onchange="applyBeliRounding()" style="padding:0.625rem 0.875rem;font-size:0.875rem;">
-      <option value="0">Tidak dibulatkan</option>
-      <option value="100">Ke Rp 100</option>
-      <option value="500">Ke Rp 500</option>
-      <option value="1000">Ke Rp 1.000</option>
-      <option value="5000">Ke Rp 5.000</option>
-    </select>
-  </div>
-  <div class="form-group" style="margin:.75rem 0;">
-    <label class="form-label" style="font-size:0.8rem;">Total Keluar dari Kas <span style="color:var(--text-muted);font-weight:400;">(bisa diedit)</span></label>
-    <div style="display:flex;">
-      <span style="padding:0.625rem 0.75rem;background:var(--bg-secondary);border:1.5px solid var(--border-color);border-right:none;border-radius:0.75rem 0 0 0.75rem;color:var(--text-muted);font-size:0.875rem;">Rp</span>
-      <input type="number" class="form-input" id="beliTotalKas" placeholder="0" min="0" step="1" oninput="beliTotalKasEdited=true;updateBeliTotalPreview()" style="border-radius:0 0.75rem 0.75rem 0;padding:0.625rem 0.875rem;font-size:0.875rem;">
-    </div>
   </div>
 
   <!-- Action Buttons -->
@@ -4374,7 +4376,7 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="amount-value" id="paymentTotal">Rp 0</div>
         </div>
 
-        <div id="kasirRoundingBox" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.35rem 0.65rem;margin-bottom:0.25rem;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-secondary);flex-shrink:0;">
+       <div id="kasirRoundingBox" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.35rem 0.65rem;margin-bottom:0.35rem;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-secondary);flex-shrink:0;">
           <label for="kasirRoundingMode" style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.72rem;font-weight:700;color:var(--text-primary);margin:0;white-space:nowrap;">
             <svg class="wp-3d-native-icon" viewBox="0 0 48 48" fill="none" style="width:18px;height:18px;"><defs><linearGradient id="kRndG" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FDE047"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient></defs><circle cx="24" cy="24" r="19" fill="url(#kRndG)" stroke="#FFFFFF" stroke-width="1.6"/><ellipse cx="24" cy="13" rx="10" ry="4" fill="#FFFFFF" fill-opacity="0.34"/><text x="24" y="29.5" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="14" fill="#FFFFFF">Rp</text></svg>
             Pembulatan
@@ -4382,17 +4384,18 @@ html,body{overflow-x:hidden;max-width:100vw}
           </label>
           <select id="kasirRoundingMode" class="form-input" onchange="window.onKasirRoundingChange(this.value)" style="width:auto;min-width:142px;padding:0.28rem 2rem 0.28rem 0.55rem;font-size:0.73rem;font-weight:700;border-radius:8px;">
             <option value="0">Tanpa Pembulatan</option>
-            <option value="up_100">Naik ke Rp 100</option>
             <option value="up_500">Naik ke Rp 500</option>
             <option value="up_1000">Naik ke Rp 1.000</option>
-            <option value="down_100">Turun ke Rp 100</option>
             <option value="down_500">Turun ke Rp 500</option>
             <option value="down_1000">Turun ke Rp 1.000</option>
-            <option value="near_500">Terdekat Rp 500</option>
-            <option value="near_1000">Terdekat Rp 1.000</option>
           </select>
         </div>
 
+        <div class="amount-display">
+          <div class="amount-label">Total Bayar</div>
+          <div class="amount-value" id="paymentTotal">Rp 0</div>
+        </div>
+        
         <div class="amount-display" style="background:rgba(99,102,241,.08);border:2px solid var(--primary);">
           <div class="amount-label">Jumlah Diterima</div>
           <div class="amount-value" id="paymentInput" style="color:var(--primary);font-size:2.25rem;">Rp 0</div>
