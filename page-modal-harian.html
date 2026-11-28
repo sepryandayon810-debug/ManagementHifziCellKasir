@@ -321,8 +321,13 @@
     }
     .btn-primary { background: var(--primary); color: #fff; flex: 1; }
     .btn-primary:hover { background: var(--primary-hover); }
-    .btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
-
+.btn-secondary { background: var(--bg-subtle); border-color: var(--border); color: var(--text-main); }
+    .btn-danger-soft { background: var(--danger-light); border: 1px solid rgba(220,38,38,0.3); color: var(--danger); }
+    .btn-danger-soft:hover { background: var(--danger); color: #fff; }
+    .btn-row-cancel { padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid rgba(220,38,38,0.3); background: var(--danger-light); color: var(--danger); font-size: 0.74rem; font-weight: 700; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; transition: all 0.15s; }
+    .btn-row-cancel:hover { background: var(--danger); color: #fff; }
+    .cancel-opt-box { display: flex; align-items: flex-start; gap: 0.55rem; text-align: left; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.7rem 0.85rem; margin-bottom: 1.25rem; font-size: 0.78rem; color: var(--text-sub); cursor: pointer; }
+    .cancel-opt-box input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--danger); flex-shrink: 0; }
     /* TABEL RINGKASAN */
     .table-container { overflow-x: auto; }
     .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
@@ -640,10 +645,15 @@
             </div>
           </div>
 
-          <div class="action-row">
+         <div class="action-row">
             <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">Batal / Kembali</button>
             <button type="button" class="btn btn-primary" id="btnSaveModal">
               <i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift
+            </button>
+          </div>
+          <div id="ownerCancelModalWrap" style="display:none; margin-top:0.75rem;">
+            <button type="button" class="btn btn-danger-soft" id="btnCancelCurrentModal" style="width:100%;">
+              <i class="fas fa-rotate-left"></i> Batalkan / Hapus Modal Hari Ini (Owner / Dev)
             </button>
           </div>
         </div>
@@ -683,6 +693,7 @@
                   <th>Role</th>
                   <th>Dialokasikan Oleh</th>
                   <th style="text-align:right">Jumlah Modal (Rp)</th>
+                  <th id="thModalAction" style="text-align:center; display:none;">Aksi</th>
                 </tr>
               </thead>
               <tbody id="summaryTableBody">
@@ -705,6 +716,23 @@
   <a href="page-riwayat.html" class="mobile-bar-item"><i class="fas fa-history"></i><span>Riwayat</span></a>
   <a href="page-setting.html" class="mobile-bar-item"><i class="fas fa-cog"></i><span>Setting</span></a>
 </nav>
+
+<!-- MODAL KONFIRMASI BATALKAN MODAL HARIAN (KHUSUS OWNER / DEVELOPER) -->
+<div class="custom-modal-backdrop" id="customCancelModalDialog" style="z-index: 6000;">
+  <div class="custom-dialog-card">
+    <div class="dialog-icon-wrap danger"><i class="fas fa-rotate-left"></i></div>
+    <h3 class="dialog-title">Batalkan Modal Harian?</h3>
+    <p class="dialog-message" id="cancelModalMsg">Modal harian ini akan dihapus sehingga kas awal kembali ke Rp 0.</p>
+    <label class="cancel-opt-box">
+      <input type="checkbox" id="chkResetRelatedShift" checked>
+      <span>Sekalian reset status <strong>Shift</strong> di tanggal &amp; akun tersebut (cocok untuk menghapus data testing agar kembali ke awal).</span>
+    </label>
+    <div class="dialog-btn-group">
+      <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customCancelModalDialog').classList.remove('open')">Batal</button>
+      <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmCancelModalAction" onclick="confirmCancelModalHarian()">Ya, Batalkan</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL KONFIRMASI LOGOUT INTERNAL -->
 <div class="custom-modal-backdrop" id="customLogoutModal">
@@ -771,6 +799,20 @@
   let rawModalAmount = 0;
   let currentUser = null;
   let currentUserRole = "kasir";
+  let currentExistingModalEntry = null;
+  let pendingCancelModalEntry = null;
+
+  function isOwnerOrDev() {
+    return currentUserRole === "owner" || currentUserRole === "developer";
+  }
+
+  function escHtmlSafe(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
@@ -847,8 +889,11 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       updateModalDisplay();
     });
 
-    document.getElementById("selectTargetKasir").onchange = loadExistingModal;
+   document.getElementById("selectTargetKasir").onchange = loadExistingModal;
     document.getElementById("btnSaveModal").onclick = saveModalHarian;
+    document.getElementById("btnCancelCurrentModal").onclick = () => {
+      if (currentExistingModalEntry) openCancelModalDialog(currentExistingModalEntry);
+    };
 
     // Tombol toggle dark mode di header
     document.getElementById("btnThemeToggle").onclick = () => {
@@ -959,11 +1004,24 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     if (!targetUid) return;
 
     try {
-      const modalDoc = await db.collection("modal").doc(`${todayStr}_${targetUid}`).get();
+      const docId = `${todayStr}_${targetUid}`;
+      const modalDoc = await db.collection("modal").doc(docId).get();
+      const cancelWrap = document.getElementById("ownerCancelModalWrap");
       if (modalDoc.exists && modalDoc.data().amount) {
-        rawModalAmount = modalDoc.data().amount;
+        const md = modalDoc.data();
+        rawModalAmount = md.amount;
+        currentExistingModalEntry = {
+          id: docId,
+          date: md.date || todayStr,
+          userId: md.userId || targetUid,
+          userName: md.userName || "-",
+          amount: md.amount
+        };
+        if (cancelWrap) cancelWrap.style.display = isOwnerOrDev() ? "block" : "none";
       } else {
         rawModalAmount = 0;
+        currentExistingModalEntry = null;
+        if (cancelWrap) cancelWrap.style.display = "none";
       }
       updateModalDisplay();
     } catch (e) {
@@ -1016,8 +1074,14 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       return (b.date || "").localeCompare(a.date || "");
     });
 
+    const canCancel = isOwnerOrDev();
+    const thAction = document.getElementById("thModalAction");
+    if (thAction) thAction.style.display = canCancel ? "" : "none";
+    const colSpanCount = canCancel ? 5 : 4;
+
     let rowsHtml = "";
     const isAdmin = currentUserRole === "admin";
+    window._modalSummaryEntries = {};
 
     entries.forEach(m => {
       const targetUser = usersMap[m.userId] || {};
@@ -1034,29 +1098,44 @@ document.getElementById("btnFilterModalRange").onclick = () => {
         return;
       }
 
+      const displayName = m.userName || targetUser.name || "-";
+      window._modalSummaryEntries[m.id] = {
+        id: m.id,
+        date: m.date || "",
+        userId: m.userId || "",
+        userName: displayName,
+        amount: m.amount || 0
+      };
+
       rowsHtml += `
         <tr>
           <td>
-            <strong>${m.userName || targetUser.name || "-"}</strong>
+            <strong>${escHtmlSafe(displayName)}</strong>
             <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
-              ${m.date || "-"}
+              ${escHtmlSafe(m.date || "-")}
             </div>
           </td>
 
           <td>
             <span class="badge"
               style="background:var(--primary-light); color:var(--primary)">
-              ${targetRole.toUpperCase()}
+              ${escHtmlSafe(targetRole.toUpperCase())}
             </span>
           </td>
 
           <td style="color:var(--text-muted);">
-            ${m.allocatedByName || "Mandiri / Sistem"}
+            ${escHtmlSafe(m.allocatedByName || "Mandiri / Sistem")}
           </td>
 
-          <td style="text-align:right; font-weight:800; color:var(--success);">
+          <td style="text-align:right; font-weight:800; color:var(--success); white-space:nowrap;">
             ${formatRupiah(m.amount)}
           </td>
+          ${canCancel ? `
+          <td style="text-align:center;">
+            <button type="button" class="btn-row-cancel" onclick="openCancelModalById('${escHtmlSafe(m.id)}')" title="Batalkan / Hapus Modal">
+              <i class="fas fa-rotate-left"></i> Batal
+            </button>
+          </td>` : ""}
         </tr>
       `;
     });
@@ -1064,7 +1143,7 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     if (!rowsHtml) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4"
+          <td colspan="${colSpanCount}"
             style="text-align:center; padding:1.5rem; color:var(--text-muted)">
             Tidak ada alokasi modal pada rentang tanggal tersebut.
           </td>
@@ -1073,7 +1152,7 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     } else {
       tbody.innerHTML = rowsHtml;
     }
-
+    
     /*
      * Hitung total sesuai hak akses user
      */
@@ -1120,6 +1199,68 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     summaryTotalEl.textContent = "Total: Rp 0";
   }
 }
+
+  window.openCancelModalById = function(docId) {
+    const entry = window._modalSummaryEntries && window._modalSummaryEntries[docId];
+    if (!entry) return;
+    openCancelModalDialog(entry);
+  };
+
+  function openCancelModalDialog(entry) {
+    if (!isOwnerOrDev()) {
+      toast("Hanya Owner atau Developer yang dapat membatalkan modal harian.", "error");
+      return;
+    }
+    pendingCancelModalEntry = entry;
+    const msgEl = document.getElementById("cancelModalMsg");
+    if (msgEl) {
+      msgEl.textContent = `Batalkan modal ${formatRupiah(entry.amount)} milik ${entry.userName} pada tanggal ${entry.date}? Kas awal akan kembali ke Rp 0.`;
+    }
+    const chk = document.getElementById("chkResetRelatedShift");
+    if (chk) chk.checked = true;
+    const dlg = document.getElementById("customCancelModalDialog");
+    if (dlg) dlg.classList.add("open");
+  }
+
+  window.confirmCancelModalHarian = async function() {
+    if (!isOwnerOrDev() || !pendingCancelModalEntry) return;
+    const entry = pendingCancelModalEntry;
+    const resetShift = Boolean(document.getElementById("chkResetRelatedShift")?.checked);
+    const dlg = document.getElementById("customCancelModalDialog");
+    if (dlg) dlg.classList.remove("open");
+
+    if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Membatalkan modal harian...");
+
+    try {
+      await db.collection("modal").doc(entry.id).delete();
+
+      if (resetShift) {
+        await db.collection("shifts").doc(entry.id).delete().catch(() => {});
+        const todayStr = getTodayString();
+        if (entry.userId === currentUser.uid && entry.date === todayStr && window.KasCore && typeof KasCore.syncShiftCache === "function") {
+          KasCore.syncShiftCache(entry.userId, todayStr, "none", null);
+        }
+      } else {
+        await db.collection("shifts").doc(entry.id).set({
+          modalAwal: 0,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(() => {});
+      }
+
+      if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
+      pendingCancelModalEntry = null;
+      toast(`Modal ${entry.userName} (${entry.date}) berhasil dibatalkan!`, "success");
+
+      await loadExistingModal();
+      const from = document.getElementById("summaryDateFrom")?.value || getTodayString();
+      const to = document.getElementById("summaryDateTo")?.value || getTodayString();
+      await loadModalSummary(from, to);
+    } catch (err) {
+      if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
+      console.error("Gagal membatalkan modal harian:", err);
+      toast("Gagal membatalkan modal: " + (err.message || err), "error");
+    }
+  };
 
   window.switchInputMode = function(mode) {
     const btnManual = document.getElementById("tabModeManual");
