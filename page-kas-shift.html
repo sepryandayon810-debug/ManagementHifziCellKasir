@@ -384,9 +384,11 @@
 .arsip-filter-control:focus { border-color: var(--primary); background: var(--bg-surface); }
 .shift-appr-meta { font-size: 0.66rem; color: var(--text-muted); font-weight: 600; text-align: right; max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .arsip-kpi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; padding: 0.75rem 0.9rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+.arsip-kpi-strip { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.4fr); gap: 0.5rem; padding: 0.75rem 0.9rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+@media (max-width: 420px) { .arsip-kpi-strip { grid-template-columns: repeat(2, 1fr); } .arsip-kpi-strip .arsip-kpi-box:last-child { grid-column: 1 / -1; } }
 .arsip-kpi-box { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.55rem 0.65rem; min-width: 0; }
 .arsip-kpi-label { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.arsip-kpi-val { font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-top: 0.12rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arsip-kpi-val { font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-top: 0.12rem; font-variant-numeric: tabular-nums; word-break: break-word; }
 
 /* KARTU ARSIP CLOSING RAPI (MOBILE & DESKTOP) */
 #arsipList { max-height: none; overflow-y: visible; }
@@ -398,12 +400,13 @@
 .arsip-datetime { font-size: 0.84rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
 .arsip-time-sub { font-size: 0.73rem; font-weight: 600; color: var(--text-muted); }
 .arsip-row-user { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; flex-wrap: wrap; }
-.arsip-user-left { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: var(--text-sub); min-width: 0; }
+.arsip-user-left { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: var(--text-sub); min-width: 0; }
 .arsip-role-chip { font-size: 0.62rem; font-weight: 800; padding: 0.12rem 0.42rem; border-radius: 6px; background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; }
-.arsip-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.5rem 0.6rem; }
+.arsip-scope-chip { font-size: 0.58rem; font-weight: 700; padding: 0.1rem 0.38rem; border-radius: 6px; background: rgba(79, 70, 229, 0.08); color: var(--primary); text-transform: uppercase; letter-spacing: 0.02em; }
+.arsip-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.5rem 0.5rem; }
 .arsip-metric-col { min-width: 0; }
-.arsip-metric-lbl { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
-.arsip-metric-val { font-size: 0.8rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.arsip-metric-lbl { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+.arsip-metric-val { font-size: clamp(0.68rem, 3.1vw, 0.82rem); font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; white-space: normal; word-break: break-word; margin-top: 1px; }
 .arsip-note-bar { font-size: 0.72rem; color: var(--text-muted); background: var(--bg-subtle); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.35rem; }
 .arsip-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.64rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .arsip-badge.balance { background: var(--success-light); color: var(--success); }
@@ -2017,12 +2020,50 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         const kpiSelisihEl = document.getElementById('kpiArsipSelisih');
         const pendingInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'pending').length;
         const approvedInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'approved').length;
-        const totalSelisih = items.reduce((sum, c) => sum + (Number(c.selisih) || 0), 0);
+        const calcDedupedSelisih = (list) => {
+          const valid = (list || []).filter(c => String(c.approvalStatus || '').toLowerCase() !== 'rejected');
+          if (!valid.length) return { total: 0, deduped: false };
+          const byDate = {};
+          valid.forEach(c => {
+            const key = String(c.date || c.docId || 'unknown');
+            if (!byDate[key]) byDate[key] = [];
+            byDate[key].push(c);
+          });
+          let sum = 0;
+          let deduped = false;
+          const sortLatest = (arr) => arr.slice().sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
+          Object.keys(byDate).forEach(dateKey => {
+            const dayItems = byDate[dateKey];
+            const bossItems = dayItems.filter(c => {
+              const r = String(c.userRole || 'kasir').toLowerCase();
+              return r === 'owner' || r === 'developer';
+            });
+            const adminItems = dayItems.filter(c => String(c.userRole || 'kasir').toLowerCase() === 'admin');
+            const kasirItems = dayItems.filter(c => {
+              const r = String(c.userRole || 'kasir').toLowerCase();
+              return r !== 'owner' && r !== 'developer' && r !== 'admin';
+            });
+            if (bossItems.length > 0) {
+              sum += Number(sortLatest(bossItems)[0].selisih) || 0;
+              if (dayItems.length > 1) deduped = true;
+            } else if (adminItems.length > 0) {
+              sum += Number(sortLatest(adminItems)[0].selisih) || 0;
+              if (dayItems.length > 1) deduped = true;
+            } else {
+              kasirItems.forEach(k => { sum += Number(k.selisih) || 0; });
+            }
+          });
+          return { total: sum, deduped };
+        };
+        const selisihMeta = calcDedupedSelisih(items);
+        const totalSelisih = selisihMeta.total;
         if (kpiPendingEl) kpiPendingEl.textContent = String(pendingInList);
         if (kpiApprovedEl) kpiApprovedEl.textContent = String(approvedInList);
         if (kpiSelisihEl) {
           kpiSelisihEl.textContent = formatSignedRp(totalSelisih);
           kpiSelisihEl.style.color = totalSelisih < 0 ? 'var(--danger)' : (totalSelisih > 0 ? 'var(--info)' : 'var(--success)');
+          const selisihLabelEl = kpiSelisihEl.previousElementSibling;
+          if (selisihLabelEl) selisihLabelEl.textContent = selisihMeta.deduped ? 'Total Selisih (Netto)' : 'Total Selisih';
         }
 
         if (countEl) countEl.textContent = items.length + ' laporan';
@@ -2041,7 +2082,11 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         listEl.innerHTML = items.map((c, i) => {
           const tgl = c.date ? new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
           const jam = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : '-';
-          const roleTag = String(c.userRole || 'kasir').toUpperCase();
+          const roleLower = String(c.userRole || 'kasir').toLowerCase();
+          const roleTag = roleLower.toUpperCase();
+          const scopeLabel = (roleLower === 'owner' || roleLower === 'developer')
+            ? 'GABUNGAN TOKO'
+            : (roleLower === 'admin' ? 'GABUNGAN TIM' : 'LACI SENDIRI');
           const appr = getApprovalBadgeMeta(c);
           const needMyAction = user ? canApproveClosing(c, user.uid, currentUserRole) : false;
           const kasSistem = Utils.formatRupiah((c.sistem && c.sistem.uangGlobal) || 0);
@@ -2062,6 +2107,7 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
                   <i class="fas fa-user-circle" style="color:var(--primary);"></i>
                   <span>${escHtmlSafe(c.userName || '-')}</span>
                   <span class="arsip-role-chip">${escHtmlSafe(roleTag)}</span>
+                  <span class="arsip-scope-chip">${scopeLabel}</span>
                 </div>
                 <span class="arsip-badge ${appr.cls}">${escHtmlSafe(appr.label)}</span>
               </div>
