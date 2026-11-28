@@ -1,5 +1,5 @@
 // Service Worker WebPOS — Cache halaman & aset agar pindah menu cepat & tetap jalan saat offline
-const CACHE_NAME = 'webpos-hifzi-v5.84';
+const CACHE_NAME = 'webpos-hifzi-v5.85';
 
 const CORE_ASSETS = [
   './',
@@ -29,6 +29,7 @@ const CORE_ASSETS = [
   './page-backup.html',
   './page-log-aktivitas.html',
   './page-printer.html',
+  './page-reset.html',
   './js/firebase-config.js',
   './js/kas-core.js',
   './js/db-offline.js',
@@ -37,7 +38,6 @@ const CORE_ASSETS = [
   './js/printer.js',
   './js/role-guard.js',
   './js/sidebar-filter.js',
-  './js/cordova-shim.js',
   './js/sheets-sync.js',
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js',
