@@ -1746,22 +1746,39 @@
     renderCategoriesGrid();
   };
 
-  function canManageProducts() {
+  function hasProdukActionPerm(permKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem("webpos_user_permissions") || "{}");
+      if (saved && saved[permKey] === undefined && saved.aksi_produk_kelola !== undefined) {
+        const r = String(window.currentUserRole || localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
+        if (r === "developer" || r === "owner") return true;
+        return !!saved.aksi_produk_kelola;
+      }
+    } catch (e) {}
     if (typeof RoleGuard !== "undefined" && typeof RoleGuard.hasPerm === "function") {
-      return RoleGuard.hasPerm("aksi_produk_kelola", true, false);
+      return RoleGuard.hasPerm(permKey, true, false);
     }
     const r = String(window.currentUserRole || localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
     return r === "developer" || r === "owner" || r === "admin";
   }
+  function canAddProduk() { return hasProdukActionPerm("aksi_produk_tambah"); }
+  function canEditProduk() { return hasProdukActionPerm("aksi_produk_edit"); }
+  function canToggleProduk() { return hasProdukActionPerm("aksi_produk_nonaktif"); }
+  function canDeleteProduk() { return hasProdukActionPerm("aksi_produk_hapus"); }
+  function canBulkPriceProduk() { return hasProdukActionPerm("aksi_produk_harga_massal"); }
+  function canImportProduk() { return hasProdukActionPerm("aksi_produk_import"); }
 
   function syncProductManageUI() {
-    const allowed = canManageProducts();
     const btnAddP = document.getElementById("btnAddProduk");
     const btnAddK = document.getElementById("btnAddKategori");
     const btnBulk = document.getElementById("btnOpenBulkPrice");
-    if (btnAddP) btnAddP.style.display = allowed ? "" : "none";
-    if (btnAddK) btnAddK.style.display = allowed ? "" : "none";
-    if (btnBulk) btnBulk.style.display = allowed ? "" : "none";
+    if (btnAddP) btnAddP.style.display = canAddProduk() ? "" : "none";
+    if (btnAddK) btnAddK.style.display = canAddProduk() ? "" : "none";
+    if (btnBulk) btnBulk.style.display = canBulkPriceProduk() ? "" : "none";
+    const btnUploadExcel = document.querySelector('button[onclick*="importExcelInput"]');
+    if (btnUploadExcel) btnUploadExcel.style.display = canImportProduk() ? "" : "none";
+    const btnBulkExcel = document.querySelector('#tab-excel button[onclick="openBulkPriceModal()"]');
+    if (btnBulkExcel) btnBulkExcel.style.display = canBulkPriceProduk() ? "" : "none";
     renderCategoriesGrid();
     renderProducts();
   }
@@ -1771,10 +1788,11 @@
   };
 
   window.toggleCategoryStatus = async function(catId) {
-    if (!canManageProducts()) {
-      toast("Anda tidak memiliki izin mengubah status kategori!", "error");
+    if (!canToggleProduk()) {
+      toast("Anda tidak memiliki izin mengaktifkan/menonaktifkan kategori!", "error");
       return;
     }
+
     const cat = categoriesList.find(c => c.id === catId);
     if (!cat) return;
     const nextStatus = (cat.status === "inactive") ? "active" : "inactive";
@@ -1795,10 +1813,11 @@
   };
 
  window.toggleProductStatus = async function(prodId) {
-    if (!canManageProducts()) {
-      toast("Anda tidak memiliki izin mengubah status produk!", "error");
+    if (!canToggleProduk()) {
+      toast("Anda tidak memiliki izin mengaktifkan/menonaktifkan produk!", "error");
       return;
     }
+   
     const prod = productsList.find(p => p.id === prodId);
     if (!prod) return;
     const nextStatus = (prod.status === "inactive") ? "active" : "inactive";
@@ -2340,10 +2359,10 @@ document.getElementById("filterKategori").onchange = function() {
                   <div style="font-weight:700; font-size:0.84rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}${isOff ? ' <span style="font-size:0.62rem;padding:1px 5px;border-radius:5px;background:var(--text-muted);color:#fff;">Nonaktif</span>' : ''}</div>
                   <div style="font-size:0.72rem; color:var(--text-muted);">${cName} • ${stokTxt} • <strong style="color:var(--primary);">${formatRupiah(p.sellingPrice)}</strong></div>
                 </div>
-                ${canManageProducts() ? `
+                ${(canToggleProduk() || canEditProduk()) ? `
                 <div style="display:flex; gap:0.3rem; flex-shrink:0;">
-                  <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.55rem; font-size:0.74rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk' : 'Sembunyikan Produk'}" onclick="window.toggleProductStatus('${p.id}').then(() => window.triggerRenderCategories())"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
-                  <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.55rem; font-size:0.74rem;" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i></button>
+                  ${canToggleProduk() ? `<button type="button" class="btn btn-secondary" style="padding:0.35rem 0.55rem; font-size:0.74rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk' : 'Sembunyikan Produk'}" onclick="window.toggleProductStatus('${p.id}').then(() => window.triggerRenderCategories())"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>` : ''}
+                  ${canEditProduk() ? `<button type="button" class="btn btn-secondary" style="padding:0.35rem 0.55rem; font-size:0.74rem;" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i></button>` : ''}
                 </div>
                 ` : ''}
               </div>
@@ -2425,11 +2444,11 @@ document.getElementById("filterKategori").onchange = function() {
               <div class="kategori-name">${c.name}${offBadge}</div>
               <div class="kategori-count">${count} produk terdaftar</div>
             </div>
-            ${canManageProducts() ? `
+            ${(canToggleProduk() || canEditProduk() || canDeleteProduk()) ? `
             <div style="display:flex; gap:0.35rem;" onclick="event.stopPropagation()">
-              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
-              <button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+              ${canToggleProduk() ? `<button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>` : ''}
+              ${canEditProduk() ? `<button class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>` : ''}
+              ${canDeleteProduk() ? `<button class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.75rem;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>` : ''}
             </div>
             ` : ''}
           </div>
@@ -2452,11 +2471,11 @@ document.getElementById("filterKategori").onchange = function() {
               <div class="kategori-name" style="white-space:normal !important; font-size:0.74rem; font-weight:700; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;">${c.name}</div>
               <div class="kategori-count" style="font-size:0.64rem; color:var(--text-muted); line-height:1.2;">${isOff ? 'Nonaktif • ' : ''}${count} produk</div>
             </div>
-           ${canManageProducts() ? `
+           ${(canToggleProduk() || canEditProduk() || canDeleteProduk()) ? `
             <div style="display:flex; gap:0.25rem; width:100%; justify-content:center; margin-top:auto; padding-top:0.35rem; border-top:1px solid var(--border); flex-shrink:0;" onclick="event.stopPropagation()">
-              <button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
-              <button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>
+              ${canToggleProduk() ? `<button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Kategori' : 'Sembunyikan di Kasir'}" onclick="window.toggleCategoryStatus('${c.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>` : ''}
+              ${canEditProduk() ? `<button class="btn btn-secondary" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.editKat('${c.id}')"><i class="fas fa-edit"></i></button>` : ''}
+              ${canDeleteProduk() ? `<button class="btn btn-danger" style="flex:1; max-width:30px; padding:0 !important; font-size:0.68rem; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;" onclick="window.deleteKat('${c.id}')"><i class="fas fa-trash"></i></button>` : ''}
             </div>
             ` : ''}
           </div>
@@ -2733,11 +2752,11 @@ document.getElementById("filterKategori").onchange = function() {
                 <div class="produk-list-price">${formatRupiah(p.sellingPrice)}</div>
                 ${resellerBadge}
               </div>
-             ${canManageProducts() ? `
+             ${(canToggleProduk() || canEditProduk() || canDeleteProduk()) ? `
               <div class="produk-actions">
-                <button type="button" class="btn btn-secondary" style="${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
-                <button type="button" class="btn btn-secondary" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i><span>Edit</span></button>
-                <button type="button" class="btn btn-danger" title="Hapus Produk" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i><span>Hapus</span></button>
+                ${canToggleProduk() ? `<button type="button" class="btn btn-secondary" style="${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>` : ''}
+                ${canEditProduk() ? `<button type="button" class="btn btn-secondary" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i><span>Edit</span></button>` : ''}
+                ${canDeleteProduk() ? `<button type="button" class="btn btn-danger" title="Hapus Produk" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i><span>Hapus</span></button>` : ''}
               </div>
               ` : ''}
             </div>
@@ -2780,11 +2799,11 @@ document.getElementById("filterKategori").onchange = function() {
               <div class="produk-price">Jual: ${formatRupiah(p.sellingPrice)}</div>
               ${resellerText}
             </div>
-            ${canManageProducts() ? `
+            ${(canToggleProduk() || canEditProduk() || canDeleteProduk()) ? `
             <div class="produk-actions">
-              <button type="button" class="btn btn-secondary" style="flex:0 0 auto; padding:0.45rem 0.6rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
-              <button type="button" class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>
-              <button type="button" class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i> Hapus</button>
+              ${canToggleProduk() ? `<button type="button" class="btn btn-secondary" style="flex:0 0 auto; padding:0.45rem 0.6rem; ${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>` : ''}
+              ${canEditProduk() ? `<button type="button" class="btn btn-secondary" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i> Edit</button>` : ''}
+              ${canDeleteProduk() ? `<button type="button" class="btn btn-danger" onclick="window.deleteProd('${p.id}')"><i class="fas fa-trash"></i> Hapus</button>` : ''}
             </div>
             ` : ''}
           </div>
@@ -2878,8 +2897,8 @@ document.getElementById("filterKategori").onchange = function() {
   });
 
     function openProductModal(prod = null) {
-    if (!canManageProducts()) {
-      toast("Anda hanya memiliki izin melihat katalog produk!", "error");
+    if (prod ? !canEditProduk() : !canAddProduk()) {
+      toast(prod ? "Anda tidak memiliki izin mengedit produk!" : "Anda tidak memiliki izin menambah produk!", "error");
       return;
     }
     document.getElementById("produkId").value = prod ? prod.id : "";
@@ -2986,8 +3005,8 @@ document.getElementById("filterKategori").onchange = function() {
   };
 
   function openKategoriModal(id = "", name = "", imageUrl = "", iconPreset = "") {
-    if (!canManageProducts()) {
-      toast("Anda hanya memiliki izin melihat kategori!", "error");
+    if (id ? !canEditProduk() : !canAddProduk()) {
+      toast(id ? "Anda tidak memiliki izin mengedit kategori!" : "Anda tidak memiliki izin menambah kategori!", "error");
       return;
     }
     document.getElementById("kategoriId").value = id;
@@ -3078,11 +3097,11 @@ document.getElementById("filterKategori").onchange = function() {
   };
   
   async function saveProduct() {
-    if (!canManageProducts()) {
-      toast("Anda tidak memiliki izin menyimpan produk!", "error");
+    const id = document.getElementById("produkId").value;
+    if (id ? !canEditProduk() : !canAddProduk()) {
+      toast(id ? "Anda tidak memiliki izin mengedit produk!" : "Anda tidak memiliki izin menambah produk!", "error");
       return;
     }
-    const id = document.getElementById("produkId").value;
     const name = document.getElementById("produkName").value.trim();
     const barcode = document.getElementById("produkBarcode").value.trim();
     const categoryId = document.getElementById("produkKategori").value;
@@ -3134,11 +3153,11 @@ document.getElementById("filterKategori").onchange = function() {
   }
 
  async function saveKategori() {
-    if (!canManageProducts()) {
-      toast("Anda tidak memiliki izin menyimpan kategori!", "error");
+    const id = document.getElementById("kategoriId").value;
+    if (id ? !canEditProduk() : !canAddProduk()) {
+      toast(id ? "Anda tidak memiliki izin mengedit kategori!" : "Anda tidak memiliki izin menambah kategori!", "error");
       return;
     }
-    const id = document.getElementById("kategoriId").value;
     const name = document.getElementById("kategoriName").value.trim();
     const imageUrl = document.getElementById("katImageUrl").value;
     const iconPreset = document.getElementById("katIconPreset").value || "";
@@ -3173,13 +3192,13 @@ document.getElementById("filterKategori").onchange = function() {
   }
   
   window.editProd = function(id) {
-    if (!canManageProducts()) { toast("Anda tidak memiliki izin mengedit produk!", "error"); return; }
+    if (!canEditProduk()) { toast("Anda tidak memiliki izin mengedit produk!", "error"); return; }
     const p = productsList.find(x => x.id === id);
     if (p) openProductModal(p);
   };
 
   window.deleteProd = function(id) {
-    if (!canManageProducts()) { toast("Anda tidak memiliki izin menghapus produk!", "error"); return; }
+    if (!canDeleteProduk()) { toast("Anda tidak memiliki izin menghapus produk!", "error"); return; }
     showCustomConfirm("Apakah Anda yakin ingin menghapus produk ini dari daftar?", async () => {
       try {
         await db.collection("products").doc(id).delete();
@@ -3192,13 +3211,13 @@ document.getElementById("filterKategori").onchange = function() {
   };
 
   window.editKat = function(id) {
-    if (!canManageProducts()) { toast("Anda tidak memiliki izin mengedit kategori!", "error"); return; }
+    if (!canEditProduk()) { toast("Anda tidak memiliki izin mengedit kategori!", "error"); return; }
     const c = categoriesList.find(x => x.id === id);
     if (c) openKategoriModal(c.id, c.name || "", c.imageUrl || "", c.iconPreset || "");
   };
 
   window.deleteKat = function(id) {
-    if (!canManageProducts()) { toast("Anda tidak memiliki izin menghapus kategori!", "error"); return; }
+    if (!canDeleteProduk()) { toast("Anda tidak memiliki izin menghapus kategori!", "error"); return; }
     showCustomConfirm("Apakah Anda yakin ingin menghapus kategori ini?", async () => {
       try {
         await db.collection("categories").doc(id).delete();
@@ -3306,7 +3325,7 @@ document.getElementById("filterKategori").onchange = function() {
   }
 
  window.openBulkPriceModal = function() {
-    if (!canManageProducts()) {
+    if (!canBulkPriceProduk()) {
       toast("Anda tidak memiliki izin mengedit harga massal!", "error");
       return;
     }
@@ -3446,7 +3465,7 @@ document.getElementById("filterKategori").onchange = function() {
   };
 
  window.saveBulkPriceChanges = async function() {
-    if (!canManageProducts()) {
+    if (!canBulkPriceProduk()) {
       toast("Anda tidak memiliki izin menyimpan perubahan harga!", "error");
       return;
     }
@@ -3539,7 +3558,7 @@ document.getElementById("filterKategori").onchange = function() {
 
   // ================= CARA 2: IMPORT EXCEL MODE UPDATE (ANTI DUPLIKAT & HEMAT KUOTA) =================
   window.importProductsExcel = function(event) {
-    if (!canManageProducts()) {
+    if (!canImportProduk()) {
       toast("Anda tidak memiliki izin mengimpor Excel produk!", "error");
       if (event && event.target) event.target.value = "";
       return;
