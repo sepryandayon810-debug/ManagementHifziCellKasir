@@ -378,6 +378,11 @@
 #ptrIndicator.spin i { animation: spinOverlay 0.8s linear infinite; }
 
 /* RINGKASAN MINI ARSIP */
+.arsip-search-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.65rem 0.9rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
+@media (max-width: 480px) { .arsip-search-bar { grid-template-columns: 1fr; } }
+.arsip-filter-control { width: 100%; height: 38px; padding: 0 0.75rem; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-main); font-size: 0.8rem; font-weight: 600; font-family: inherit; outline: none; }
+.arsip-filter-control:focus { border-color: var(--primary); background: var(--bg-surface); }
+.shift-appr-meta { font-size: 0.66rem; color: var(--text-muted); font-weight: 600; text-align: right; max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .arsip-kpi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; padding: 0.75rem 0.9rem; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
 .arsip-kpi-box { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.55rem 0.65rem; min-width: 0; }
 .arsip-kpi-label { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -803,6 +808,12 @@
               <div><label style="font-size:0.72rem;">Sampai</label><input type="date" class="form-input" id="arsipTo"></div>
               <div><button class="btn btn-primary btn-sm" id="btnArsipApply" style="width:100%;height:38px;"><i class="fas fa-search"></i></button></div>
             </div>
+            <div class="arsip-search-bar" id="arsipSearchBar">
+              <select class="arsip-filter-control" id="arsipUserFilter" aria-label="Filter Petugas">
+                <option value="">Semua Petugas</option>
+              </select>
+              <input type="search" class="arsip-filter-control" id="arsipSearchInput" placeholder="Cari nama petugas / catatan...">
+            </div>
             <div class="arsip-kpi-strip" id="arsipKpiStrip">
               <div class="arsip-kpi-box">
                 <div class="arsip-kpi-label">Menunggu</div>
@@ -985,6 +996,13 @@
           refreshPendingApprovalBadge();
           const urlParams = new URLSearchParams(window.location.search);
           if (urlParams.get('tab') === 'arsip') {
+            const initialFilter = urlParams.get('filter');
+            if (initialFilter === 'pending') {
+              arsipFilterType = 'pending';
+              document.querySelectorAll('#arsipFilterBar .filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === 'pending');
+              });
+            }
             const arsipTabBtn = document.getElementById('tabBtnArsip');
             if (arsipTabBtn) arsipTabBtn.click();
           }
@@ -1576,6 +1594,18 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         document.getElementById('userName')?.textContent ||
         '-';
 
+      const shiftApprStatus = String(shift.approvalStatus || '').toLowerCase();
+      let shiftApprHtml = '';
+      if (shiftApprStatus === 'pending') {
+        shiftApprHtml = '<span class="arsip-badge appr-pending">Menunggu Approval</span>';
+      } else if (shiftApprStatus === 'approved') {
+        const approverTxt = shift.approvedBy ? `<span class="shift-appr-meta">Oleh: ${escHtmlSafe(shift.approvedBy)}</span>` : '';
+        shiftApprHtml = `<span class="arsip-badge appr-approved">Disetujui</span>${approverTxt}`;
+      } else if (shiftApprStatus === 'rejected') {
+        const approverTxt = shift.approvedBy ? `<span class="shift-appr-meta">Oleh: ${escHtmlSafe(shift.approvedBy)}</span>` : '';
+        shiftApprHtml = `<span class="arsip-badge appr-rejected">Ditolak</span>${approverTxt}`;
+      }
+
       return `
         <div class="shift-item">
 
@@ -1592,7 +1622,7 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
 
             <div class="shift-user">
               <i class="fas fa-user"></i>
-              ${userName}
+              ${escHtmlSafe(userName)}
             </div>
 
           </div>
@@ -1602,6 +1632,8 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
             <span class="shift-badge ${status}">
               ${statusText}
             </span>
+
+            ${shiftApprHtml}
 
             ${
               durationText
@@ -1729,7 +1761,7 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           document.getElementById('tabArsip').style.display = target === 'arsip' ? '' : 'none';
           if (target === 'arsip' && !arsipLoaded) {
             arsipLoaded = true;
-            loadClosingArchive('today');
+            loadClosingArchive(arsipFilterType || 'today');
           }
         });
       });
@@ -1752,6 +1784,14 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         loadClosingArchive('custom', from, to);
       });
 
+      document.getElementById('arsipUserFilter')?.addEventListener('change', () => {
+        if (window._arsipRawPeriodItems) renderClosingArchiveItems(window._arsipRawPeriodItems, arsipFilterType);
+      });
+
+      document.getElementById('arsipSearchInput')?.addEventListener('input', () => {
+        if (window._arsipRawPeriodItems) renderClosingArchiveItems(window._arsipRawPeriodItems, arsipFilterType);
+      });
+      
       // ==========================================================
       // APPROVAL BERTINGKAT CLOSING:
       // - Kasir -> menunggu approval Admin / Owner / Developer
@@ -1861,7 +1901,7 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
             badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
           }
 
-          let items = allItems.filter(c => {
+          const periodItems = allItems.filter(c => {
             if (filterType === 'pending') {
               return String(c.approvalStatus || '').toLowerCase() === 'pending';
             }
@@ -1880,88 +1920,133 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
             return true;
           });
 
-         const formatSignedRp = (val) => {
-            const num = Number(val) || 0;
-            const absText = Utils.formatRupiah(Math.abs(num));
-            if (num < 0) return '-' + absText;
-            if (num > 0) return '+' + absText;
-            return absText;
-          };
-
-          const kpiPendingEl = document.getElementById('kpiArsipPending');
-          const kpiApprovedEl = document.getElementById('kpiArsipApproved');
-          const kpiSelisihEl = document.getElementById('kpiArsipSelisih');
-          const pendingInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'pending').length;
-          const approvedInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'approved').length;
-          const totalSelisih = items.reduce((sum, c) => sum + (Number(c.selisih) || 0), 0);
-          if (kpiPendingEl) kpiPendingEl.textContent = String(pendingInList);
-          if (kpiApprovedEl) kpiApprovedEl.textContent = String(approvedInList);
-          if (kpiSelisihEl) {
-            kpiSelisihEl.textContent = formatSignedRp(totalSelisih);
-            kpiSelisihEl.style.color = totalSelisih < 0 ? 'var(--danger)' : (totalSelisih > 0 ? 'var(--info)' : 'var(--success)');
+          const userSelect = document.getElementById('arsipUserFilter');
+          const searchBar = document.getElementById('arsipSearchBar');
+          if (searchBar) {
+            searchBar.style.display = currentUserRole === 'kasir' ? 'none' : 'grid';
+          }
+          if (userSelect) {
+            const prevVal = userSelect.value;
+            const uniqueUsers = new Map();
+            allItems.forEach(c => {
+              const nm = String(c.userName || '').trim();
+              if (!nm) return;
+              const key = nm.toLowerCase();
+              if (!uniqueUsers.has(key)) {
+                uniqueUsers.set(key, { name: nm, role: String(c.userRole || 'kasir').toUpperCase() });
+              }
+            });
+            const opts = ['<option value="">Semua Petugas</option>'];
+            [...uniqueUsers.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(u => {
+              opts.push(`<option value="${escHtmlSafe(u.name.toLowerCase())}">${escHtmlSafe(u.name)} (${escHtmlSafe(u.role)})</option>`);
+            });
+            userSelect.innerHTML = opts.join('');
+            if (prevVal && uniqueUsers.has(prevVal)) userSelect.value = prevVal;
           }
 
-          countEl.textContent = items.length + ' laporan';
-
-          if (!items.length) {
-            const emptyMsg = filterType === 'pending'
-              ? 'Tidak ada closing yang menunggu approval saat ini.'
-              : 'Laporan muncul setelah kasir/admin melakukan Closing Shift.';
-            listEl.innerHTML = `<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:0.5;margin-bottom:0.75rem;"></i><div style="font-weight:700;">Belum ada laporan closing</div><div style="font-size:0.75rem;margin-top:0.25rem;">${emptyMsg}</div></div>`;
-            return;
-          }
-
-          listEl.innerHTML = items.map((c, i) => {
-            const tgl = c.date ? new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
-            const jam = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : '-';
-            const roleTag = String(c.userRole || 'kasir').toUpperCase();
-            const appr = getApprovalBadgeMeta(c);
-            const needMyAction = canApproveClosing(c, user.uid, currentUserRole);
-            const kasSistem = Utils.formatRupiah((c.sistem && c.sistem.uangGlobal) || 0);
-            const uangFisik = Utils.formatRupiah((c.fisik && c.fisik.total) || 0);
-            const selisihNum = Number(c.selisih) || 0;
-            const selisihColor = selisihNum < 0 ? 'var(--danger)' : (selisihNum > 0 ? 'var(--info)' : 'var(--success)');
-            return `
-              <div class="arsip-item ${needMyAction ? 'needs-action' : ''}" onclick="showArsipDetail(${i})">
-                <div class="arsip-row-top">
-                  <div class="arsip-datetime">
-                    <span>${escHtmlSafe(tgl)}</span>
-                    <span class="arsip-time-sub">&bull; ${escHtmlSafe(jam)}</span>
-                  </div>
-                  <span class="arsip-badge ${escHtmlSafe(c.status || '')}">${c.status === 'balance' ? 'COCOK' : (c.status === 'surplus' ? 'LEBIH' : 'KURANG')}</span>
-                </div>
-                <div class="arsip-row-user">
-                  <div class="arsip-user-left">
-                    <i class="fas fa-user-circle" style="color:var(--primary);"></i>
-                    <span>${escHtmlSafe(c.userName || '-')}</span>
-                    <span class="arsip-role-chip">${escHtmlSafe(roleTag)}</span>
-                  </div>
-                  <span class="arsip-badge ${appr.cls}">${escHtmlSafe(appr.label)}</span>
-                </div>
-                <div class="arsip-metrics">
-                  <div class="arsip-metric-col">
-                    <div class="arsip-metric-lbl">Kas Sistem</div>
-                    <div class="arsip-metric-val">${kasSistem}</div>
-                  </div>
-                  <div class="arsip-metric-col">
-                    <div class="arsip-metric-lbl">Uang Fisik</div>
-                    <div class="arsip-metric-val">${uangFisik}</div>
-                  </div>
-                  <div class="arsip-metric-col">
-                    <div class="arsip-metric-lbl">Selisih</div>
-                    <div class="arsip-metric-val" style="color:${selisihColor};">${formatSignedRp(selisihNum)}</div>
-                  </div>
-                </div>
-                ${c.catatan ? `<div class="arsip-note-bar"><i class="fas fa-sticky-note"></i> <span>${escHtmlSafe(c.catatan.slice(0, 70))}</span></div>` : ''}
-              </div>`;
-          }).join('');
+          window._arsipRawPeriodItems = periodItems;
+          renderClosingArchiveItems(periodItems, filterType);
           
-
-          window._arsipCache = items;
         } catch (err) {
           console.error('Gagal memuat arsip:', err);
           listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--danger);">Gagal memuat arsip: ' + escHtmlSafe(err.message || '') + '</div>';
         }
+      }
+
+      function renderClosingArchiveItems(periodItems, filterType) {
+        const listEl = document.getElementById('arsipList');
+        const countEl = document.getElementById('totalArsipCount');
+        const user = currentUserObj || auth.currentUser;
+        const selectedUser = String(document.getElementById('arsipUserFilter')?.value || '').trim().toLowerCase();
+        const searchQ = String(document.getElementById('arsipSearchInput')?.value || '').trim().toLowerCase();
+
+        const items = (periodItems || []).filter(c => {
+          if (selectedUser && String(c.userName || '').trim().toLowerCase() !== selectedUser) return false;
+          if (searchQ) {
+            const hay = [c.userName, c.userRole, c.catatan, c.approvedBy, c.approvalNote, c.date].join(' ').toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        const formatSignedRp = (val) => {
+          const num = Number(val) || 0;
+          const absText = Utils.formatRupiah(Math.abs(num));
+          if (num < 0) return '-' + absText;
+          if (num > 0) return '+' + absText;
+          return absText;
+        };
+
+        const kpiPendingEl = document.getElementById('kpiArsipPending');
+        const kpiApprovedEl = document.getElementById('kpiArsipApproved');
+        const kpiSelisihEl = document.getElementById('kpiArsipSelisih');
+        const pendingInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'pending').length;
+        const approvedInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'approved').length;
+        const totalSelisih = items.reduce((sum, c) => sum + (Number(c.selisih) || 0), 0);
+        if (kpiPendingEl) kpiPendingEl.textContent = String(pendingInList);
+        if (kpiApprovedEl) kpiApprovedEl.textContent = String(approvedInList);
+        if (kpiSelisihEl) {
+          kpiSelisihEl.textContent = formatSignedRp(totalSelisih);
+          kpiSelisihEl.style.color = totalSelisih < 0 ? 'var(--danger)' : (totalSelisih > 0 ? 'var(--info)' : 'var(--success)');
+        }
+
+        if (countEl) countEl.textContent = items.length + ' laporan';
+        window._arsipCache = items;
+
+        if (!items.length) {
+          const emptyMsg = (selectedUser || searchQ)
+            ? 'Tidak ada laporan closing yang cocok dengan filter petugas/pencarian.'
+            : (filterType === 'pending'
+              ? 'Tidak ada closing yang menunggu approval saat ini.'
+              : 'Laporan muncul setelah kasir/admin melakukan Closing Shift.');
+          listEl.innerHTML = `<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:0.5;margin-bottom:0.75rem;"></i><div style="font-weight:700;">Belum ada laporan closing</div><div style="font-size:0.75rem;margin-top:0.25rem;">${emptyMsg}</div></div>`;
+          return;
+        }
+
+        listEl.innerHTML = items.map((c, i) => {
+          const tgl = c.date ? new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+          const jam = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : '-';
+          const roleTag = String(c.userRole || 'kasir').toUpperCase();
+          const appr = getApprovalBadgeMeta(c);
+          const needMyAction = user ? canApproveClosing(c, user.uid, currentUserRole) : false;
+          const kasSistem = Utils.formatRupiah((c.sistem && c.sistem.uangGlobal) || 0);
+          const uangFisik = Utils.formatRupiah((c.fisik && c.fisik.total) || 0);
+          const selisihNum = Number(c.selisih) || 0;
+          const selisihColor = selisihNum < 0 ? 'var(--danger)' : (selisihNum > 0 ? 'var(--info)' : 'var(--success)');
+          return `
+            <div class="arsip-item ${needMyAction ? 'needs-action' : ''}" onclick="showArsipDetail(${i})">
+              <div class="arsip-row-top">
+                <div class="arsip-datetime">
+                  <span>${escHtmlSafe(tgl)}</span>
+                  <span class="arsip-time-sub">&bull; ${escHtmlSafe(jam)}</span>
+                </div>
+                <span class="arsip-badge ${escHtmlSafe(c.status || '')}">${c.status === 'balance' ? 'COCOK' : (c.status === 'surplus' ? 'LEBIH' : 'KURANG')}</span>
+              </div>
+              <div class="arsip-row-user">
+                <div class="arsip-user-left">
+                  <i class="fas fa-user-circle" style="color:var(--primary);"></i>
+                  <span>${escHtmlSafe(c.userName || '-')}</span>
+                  <span class="arsip-role-chip">${escHtmlSafe(roleTag)}</span>
+                </div>
+                <span class="arsip-badge ${appr.cls}">${escHtmlSafe(appr.label)}</span>
+              </div>
+              <div class="arsip-metrics">
+                <div class="arsip-metric-col">
+                  <div class="arsip-metric-lbl">Kas Sistem</div>
+                  <div class="arsip-metric-val">${kasSistem}</div>
+                </div>
+                <div class="arsip-metric-col">
+                  <div class="arsip-metric-lbl">Uang Fisik</div>
+                  <div class="arsip-metric-val">${uangFisik}</div>
+                </div>
+                <div class="arsip-metric-col">
+                  <div class="arsip-metric-lbl">Selisih</div>
+                  <div class="arsip-metric-val" style="color:${selisihColor};">${formatSignedRp(selisihNum)}</div>
+                </div>
+              </div>
+              ${c.catatan ? `<div class="arsip-note-bar"><i class="fas fa-sticky-note"></i> <span>${escHtmlSafe(c.catatan.slice(0, 70))}</span></div>` : ''}
+            </div>`;
+        }).join('');
       }
 
       // ==========================================================
