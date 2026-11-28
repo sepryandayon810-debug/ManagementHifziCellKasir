@@ -309,6 +309,48 @@
     }
     .shift-master-toggle.active .shift-toggle-knob { transform: translateX(22px); }
 
+    /* BANNER PENGINGAT APPROVAL CLOSING (ADMIN / OWNER / DEVELOPER) */
+    .closing-approval-banner {
+      display: none;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.9rem 1.05rem;
+      margin-bottom: 1.25rem;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #f59e0b;
+      color: #92400e;
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .closing-approval-banner:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .closing-approval-banner.show { display: flex; }
+    .closing-banner-icon {
+      width: 42px; height: 42px; border-radius: var(--radius-md);
+      background: #f59e0b; color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .closing-banner-body { flex: 1; min-width: 0; }
+    .closing-banner-title { font-size: 0.88rem; font-weight: 800; color: #78350f; line-height: 1.25; }
+    .closing-banner-sub { font-size: 0.74rem; font-weight: 600; color: #92400e; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .closing-banner-cta {
+      padding: 0.35rem 0.7rem; border-radius: 99px;
+      background: #d97706; color: #ffffff;
+      font-size: 0.72rem; font-weight: 800; white-space: nowrap; flex-shrink: 0;
+    }
+    [data-theme="dark"] .closing-approval-banner {
+      background: linear-gradient(135deg, rgba(217, 119, 6, 0.22), rgba(180, 83, 9, 0.14));
+      border-color: rgba(245, 158, 11, 0.55);
+      color: #fde68a;
+    }
+    [data-theme="dark"] .closing-banner-title { color: #fef3c7; }
+    [data-theme="dark"] .closing-banner-sub { color: #fcd34d; }
+
     .stats-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem; margin-bottom: 1.5rem;
@@ -918,6 +960,16 @@
           </div>
         </div>
       </div>
+
+      <!-- BANNER PENGINGAT APPROVAL CLOSING (ADMIN / OWNER / DEVELOPER) -->
+      <a href="page-kas-shift.html?tab=arsip&filter=pending" class="closing-approval-banner" id="closingApprovalBanner">
+        <div class="closing-banner-icon"><i class="fas fa-clipboard-check"></i></div>
+        <div class="closing-banner-body">
+          <div class="closing-banner-title" id="closingBannerTitle">0 Closing Menunggu Approval</div>
+          <div class="closing-banner-sub" id="closingBannerSub">Ketuk untuk tinjau &amp; setujui berita acara closing</div>
+        </div>
+        <span class="closing-banner-cta">Tinjau <i class="fas fa-chevron-right"></i></span>
+      </a>
 
       <!-- 4 KARTU STATISTIK -->
       <div class="stats-grid">
@@ -1614,15 +1666,17 @@ async function healLocalUserTransactions(user, displayName, roleName) {
       console.error(err);
     }
 
-    loadDashboardStats(user);
+   loadDashboardStats(user);
     listenShiftStatus(user);
     loadLowStockData();
+    loadPendingClosingBanner(user, currentUserRole);
 
     // <-- TEMPATKAN DI SINI (Perintah yang dijalankan saat layar ditarik):
     refreshPageData = async () => {
       await syncStoreBrandName();
       await loadDashboardStats(user);
       await loadLowStockData();
+      await loadPendingClosingBanner(user, currentUserRole);
     };
     
     document.getElementById("btnToggleShift").onclick = () => toggleShift(user);
@@ -2927,6 +2981,57 @@ async function healLocalUserTransactions(user, displayName, roleName) {
   };
 
   let lowStockItemsCache = [];
+
+  async function loadPendingClosingBanner(user, viewerRole) {
+    const banner = document.getElementById("closingApprovalBanner");
+    if (!banner || !user) return;
+    const role = String(viewerRole || "kasir").toLowerCase();
+    if (role !== "admin" && role !== "owner" && role !== "developer") {
+      banner.classList.remove("show");
+      return;
+    }
+
+    try {
+      const snap = await db.collection("closing").where("approvalStatus", "==", "pending").get();
+      const pendingItems = [];
+      snap.forEach(doc => {
+        const c = doc.data() || {};
+        if (c.userId && c.userId === user.uid) return;
+        const targetRole = String(c.userRole || "kasir").toLowerCase();
+        const allowed =
+          (role === "owner" || role === "developer")
+            ? (targetRole === "kasir" || targetRole === "admin")
+            : (role === "admin" && targetRole === "kasir");
+        if (allowed) pendingItems.push(c);
+      });
+
+      if (!pendingItems.length) {
+        banner.classList.remove("show");
+        return;
+      }
+
+      pendingItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      const todayStr = typeof KasCore !== "undefined" && KasCore.getLocalDateString
+        ? KasCore.getLocalDateString()
+        : new Date().toISOString().split("T")[0];
+      const todayCount = pendingItems.filter(c => c.date === todayStr).length;
+      const names = [...new Set(pendingItems.map(c => c.userName || "Petugas"))].slice(0, 2).join(", ");
+      const extra = pendingItems.length > 2 ? ` +${pendingItems.length - 2} lainnya` : "";
+
+      const titleEl = document.getElementById("closingBannerTitle");
+      const subEl = document.getElementById("closingBannerSub");
+      if (titleEl) {
+        titleEl.textContent = `${pendingItems.length} Closing Menunggu Approval${todayCount > 0 ? ` (${todayCount} hari ini)` : ""}`;
+      }
+      if (subEl) {
+        subEl.textContent = `Oleh: ${names}${extra} • Ketuk untuk tinjau`;
+      }
+      banner.classList.add("show");
+    } catch (err) {
+      console.warn("Gagal memuat banner approval closing:", err);
+      banner.classList.remove("show");
+    }
+  }
 
   async function loadLowStockData() {
     try {
