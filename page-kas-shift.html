@@ -434,18 +434,30 @@
 .struk-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .struk-paper{background:#fff;color:#000;width:100%;padding:20px 16px;font-family:'Courier New',monospace;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .struk-footer{padding:0.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;}
-    .history-list { max-height: 480px; overflow-y: auto; flex: 1; }
-    .shift-item { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    .history-list { max-height: 520px; overflow-y: auto; flex: 1; }
+    .shift-scope-bar { display: flex; gap: 0.4rem; padding: 0.65rem 1rem 0; }
+    .shift-scope-btn { flex: 1; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); border: 1.5px solid var(--border); background: var(--bg-subtle); color: var(--text-sub); font-size: 0.76rem; font-weight: 700; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; transition: all 0.15s; }
+    .shift-scope-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .shift-item { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
     .shift-item:hover { background: var(--bg-subtle); }
     .shift-item:last-child { border-bottom: none; }
-    .shift-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-    .shift-date { font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
-    .shift-time, .shift-user { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
+    .shift-item-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+    .shift-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    .shift-date { font-weight: 700; font-size: 0.88rem; color: var(--text-main); }
+    .shift-time, .shift-user { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
     .shift-status { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; }
-    .shift-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+    .shift-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
     .shift-badge.open { background: var(--success-light); color: var(--success); }
     .shift-badge.closed { background: var(--danger-light); color: var(--danger); }
     .shift-duration { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
+    .shift-ctrl-row { display: flex; justify-content: flex-end; gap: 0.4rem; flex-wrap: wrap; padding-top: 0.4rem; border-top: 1px dashed var(--border); }
+    .shift-ctrl-btn { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.32rem 0.68rem; border-radius: 8px; font-size: 0.71rem; font-weight: 700; font-family: inherit; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
+    .shift-ctrl-btn.reopen { background: var(--primary-light); color: var(--primary); border-color: rgba(79,70,229,0.22); }
+    .shift-ctrl-btn.reopen:hover { background: var(--primary); color: #fff; }
+    .shift-ctrl-btn.close-force { background: rgba(245,158,11,0.14); color: #b45309; border-color: rgba(245,158,11,0.32); }
+    .shift-ctrl-btn.close-force:hover { background: #d97706; color: #fff; }
+    .shift-ctrl-btn.del { background: var(--danger-light); color: var(--danger); border-color: rgba(220,38,38,0.22); }
+    .shift-ctrl-btn.del:hover { background: var(--danger); color: #fff; }
 
     /* MODAL POPUP LOGOUT INTERNAL (KONSISTEN DENGAN MENU LAINNYA) */
     .custom-modal-backdrop {
@@ -755,6 +767,11 @@
               <span id="totalShiftCount" style="font-size: 0.75rem; font-weight:700; color: var(--primary); background: var(--primary-light); padding: 0.25rem 0.65rem; border-radius: 99px;">0 shift</span>
             </div>
             
+           <div class="shift-scope-bar" id="shiftScopeBar" style="display:none;">
+              <button type="button" class="shift-scope-btn active" id="btnScopeAll" onclick="setShiftScope('all')"><i class="fas fa-users"></i> Semua Staf</button>
+              <button type="button" class="shift-scope-btn" id="btnScopeMine" onclick="setShiftScope('mine')"><i class="fas fa-user"></i> Shift Saya</button>
+            </div>
+
             <div class="filter-bar" id="filterBar">
               <button class="filter-btn active" data-filter="today">Hari Ini</button>
               <button class="filter-btn" data-filter="yesterday">Kemarin</button>
@@ -899,6 +916,19 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL KONFIRMASI KONTROL SHIFT STAF (KHUSUS OWNER / DEVELOPER) -->
+  <div class="custom-modal-backdrop" id="customShiftControlModal" style="z-index: 10055;">
+    <div class="custom-dialog-card">
+      <div class="dialog-icon-wrap danger" id="shiftCtrlIconWrap"><i class="fas fa-sliders"></i></div>
+      <h3 class="dialog-title" id="shiftCtrlTitle">Kontrol Shift Staf</h3>
+      <p class="dialog-message" id="shiftCtrlMessage">Lanjutkan tindakan kontrol shift ini?</p>
+      <div class="dialog-btn-group">
+        <button type="button" class="dialog-btn dialog-btn-secondary" onclick="document.getElementById('customShiftControlModal').classList.remove('open')">Batal</button>
+        <button type="button" class="dialog-btn dialog-btn-primary" id="btnConfirmShiftCtrl" onclick="confirmShiftControl()">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
   
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
@@ -920,8 +950,11 @@
       let currentUserDataObj = null;
       let currentUserRole = 'kasir';
       let currentUserDisplayName = 'User';
-      let activeShiftFilter = 'today';
+     let activeShiftFilter = 'today';
       let activeTabName = 'shift';
+      let shiftHistoryScope = 'mine';
+      let pendingShiftCtrl = null;
+      window._shiftHistoryMap = {};
 
       function isFromKasir() {
         return localStorage.getItem('fromKasir') === 'true';
@@ -1090,6 +1123,18 @@
   // ==========================================================
     checkShiftStatus(user, userData);
   
+ // ==========================================================
+  // SCOPE KONTROL SHIFT STAF (KHUSUS OWNER / DEVELOPER)
+  // ==========================================================
+  const scopeBar = document.getElementById('shiftScopeBar');
+  if (currentUserRole === 'owner' || currentUserRole === 'developer') {
+    shiftHistoryScope = 'all';
+    if (scopeBar) scopeBar.style.display = 'flex';
+  } else {
+    shiftHistoryScope = 'mine';
+    if (scopeBar) scopeBar.style.display = 'none';
+  }
+
   // ==========================================================
   // LOAD RIWAYAT SHIFT
   // ==========================================================
@@ -1450,25 +1495,25 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
       return;
     }
 
+   // ==========================================================
+    // 1. AMBIL SHIFT (SEMUA STAF UNTUK OWNER/DEV ATAU SHIFT SENDIRI)
     // ==========================================================
-    // 1. AMBIL SHIFT MILIK USER YANG SEDANG LOGIN
-    // ==========================================================
-    const snapshot = await db
-      .collection('shifts')
-      .where('userId', '==', user.uid)
-      .get();
+    const canManageShifts = (currentUserRole === 'owner' || currentUserRole === 'developer');
+    const fetchAllStaff = canManageShifts && shiftHistoryScope === 'all';
+    const snapshot = fetchAllStaff
+      ? await db.collection('shifts').get()
+      : await db.collection('shifts').where('userId', '==', user.uid).get();
 
     let shifts = [];
+    window._shiftHistoryMap = {};
 
     snapshot.forEach(doc => {
       const data = doc.data() || {};
-
-      shifts.push({
-        id: doc.id,
-        ...data
-      });
+      const item = { id: doc.id, ...data };
+      shifts.push(item);
+      window._shiftHistoryMap[doc.id] = item;
     });
-
+    
     // ==========================================================
     // 2. URUTKAN DARI TERBARU
     // ==========================================================
@@ -1606,43 +1651,33 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         shiftApprHtml = `<span class="arsip-badge appr-rejected">Ditolak</span>${approverTxt}`;
       }
 
+      const shiftRoleText = shift.userRole ? `<span class="arsip-role-chip">${escHtmlSafe(String(shift.userRole).toUpperCase())}</span>` : '';
+      const ctrlHtml = canManageShifts ? `
+        <div class="shift-ctrl-row">
+          ${status === 'open'
+            ? `<button type="button" class="shift-ctrl-btn close-force" onclick="openShiftControl('${shift.id}', 'force_close')"><i class="fas fa-lock"></i> Tutup Paksa</button>`
+            : `<button type="button" class="shift-ctrl-btn reopen" onclick="openShiftControl('${shift.id}', 'reopen')"><i class="fas fa-unlock"></i> Buka Ulang</button>`
+          }
+          <button type="button" class="shift-ctrl-btn del" onclick="openShiftControl('${shift.id}', 'delete')"><i class="fas fa-trash-alt"></i> Hapus Shift</button>
+        </div>
+      ` : '';
+
       return `
         <div class="shift-item">
-
-          <div class="shift-info">
-
-            <div class="shift-date">
-              ${dateText}
+          <div class="shift-item-main">
+            <div class="shift-info">
+              <div class="shift-date">${dateText}</div>
+              <div class="shift-time"><i class="fas fa-clock"></i> ${openTimeText}</div>
+              <div class="shift-user"><i class="fas fa-user"></i> ${escHtmlSafe(userName)} ${shiftRoleText}</div>
             </div>
 
-            <div class="shift-time">
-              <i class="fas fa-clock"></i>
-              ${openTimeText}
+            <div class="shift-status">
+              <span class="shift-badge ${status}">${statusText}</span>
+              ${shiftApprHtml}
+              ${durationText ? `<span class="shift-duration">${durationText}</span>` : ''}
             </div>
-
-            <div class="shift-user">
-              <i class="fas fa-user"></i>
-              ${escHtmlSafe(userName)}
-            </div>
-
           </div>
-
-          <div class="shift-status">
-
-            <span class="shift-badge ${status}">
-              ${statusText}
-            </span>
-
-            ${shiftApprHtml}
-
-            ${
-              durationText
-                ? `<span class="shift-duration">${durationText}</span>`
-                : ''
-            }
-
-          </div>
-
+          ${ctrlHtml}
         </div>
       `;
     }).join('');
@@ -2175,6 +2210,14 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         try {
           await db.collection('closing').doc(docId).set(updatePayload, { merge: true });
           await db.collection('shifts').doc(docId).set(updatePayload, { merge: true }).catch(() => {});
+          if (window.AuditLogger) {
+            await AuditLogger.log(
+              decision === 'approved' ? 'APPROVE_CLOSING' : 'TOLAK_CLOSING',
+              `${decision === 'approved' ? 'Menyetujui' : 'Menolak'} closing ${c.userName || '-'} (${c.date || '-'}) | Selisih: ${Utils.formatRupiah(c.selisih || 0)}${note ? ' | Catatan: ' + note : ''}`,
+              'Kas & Shift',
+              docId
+            );
+          }
           Utils.hideLoading();
           Utils.showToast(
             decision === 'approved' ? 'Closing berhasil disetujui!' : 'Closing ditolak & dikembalikan untuk revisi.',
@@ -2368,6 +2411,14 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
             approvalNote: delField
           }, { merge: true }).catch(() => {});
 
+          if (window.AuditLogger) {
+            await AuditLogger.log(
+              'HAPUS_ARSIP_CLOSING',
+              `Menghapus arsip closing ${c.userName || '-'} tanggal ${c.date || '-'}`,
+              'Kas & Shift',
+              docId
+            );
+          }
           Utils.hideLoading();
           Utils.showToast('Arsip closing berhasil dihapus!', 'success');
           document.getElementById('arsipStrukModal').classList.remove('active');
@@ -2382,6 +2433,124 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           Utils.hideLoading();
           console.error('Gagal hapus arsip closing:', err);
           Utils.showToast('Gagal menghapus arsip: ' + (err.message || err), 'error');
+        }
+      };
+
+      window.setShiftScope = function(scope) {
+        if (currentUserRole !== 'owner' && currentUserRole !== 'developer') return;
+        shiftHistoryScope = scope === 'mine' ? 'mine' : 'all';
+        document.getElementById('btnScopeAll')?.classList.toggle('active', shiftHistoryScope === 'all');
+        document.getElementById('btnScopeMine')?.classList.toggle('active', shiftHistoryScope === 'mine');
+        loadShiftHistory(
+          activeShiftFilter,
+          document.getElementById('dateFrom')?.value || null,
+          document.getElementById('dateTo')?.value || null
+        );
+      };
+
+      window.openShiftControl = function(shiftId, action) {
+        if (currentUserRole !== 'owner' && currentUserRole !== 'developer') {
+          Utils.showToast('Hanya Owner atau Developer yang dapat mengontrol shift staf.', 'error');
+          return;
+        }
+        const s = window._shiftHistoryMap && window._shiftHistoryMap[shiftId];
+        if (!s) return;
+        pendingShiftCtrl = { id: shiftId, action, shift: s };
+
+        const name = s.userName || 'Staf';
+        const tgl = s.date || '-';
+        const titleEl = document.getElementById('shiftCtrlTitle');
+        const msgEl = document.getElementById('shiftCtrlMessage');
+        const btnEl = document.getElementById('btnConfirmShiftCtrl');
+        const iconEl = document.getElementById('shiftCtrlIconWrap');
+
+        if (action === 'force_close') {
+          titleEl.textContent = 'Tutup Paksa Shift?';
+          msgEl.textContent = `Tutup paksa shift milik ${name} (${tgl})? Kasir tidak bisa bertransaksi hingga shift dibuka kembali.`;
+          btnEl.textContent = 'Ya, Tutup Paksa';
+          btnEl.style.background = '#d97706';
+          iconEl.style.background = 'rgba(245,158,11,0.16)';
+          iconEl.style.color = '#d97706';
+          iconEl.innerHTML = '<i class="fas fa-lock"></i>';
+        } else if (action === 'reopen') {
+          titleEl.textContent = 'Buka Ulang Shift?';
+          msgEl.textContent = `Buka ulang shift milik ${name} (${tgl})? Kasir dapat kembali input transaksi dan melakukan closing ulang.`;
+          btnEl.textContent = 'Ya, Buka Ulang';
+          btnEl.style.background = 'var(--primary)';
+          iconEl.style.background = 'var(--primary-light)';
+          iconEl.style.color = 'var(--primary)';
+          iconEl.innerHTML = '<i class="fas fa-unlock"></i>';
+        } else {
+          titleEl.textContent = 'Hapus & Reset Shift?';
+          msgEl.textContent = `Hapus data shift milik ${name} (${tgl})? Status shift kembali ke Belum Dibuka (data transaksi & modal tetap aman).`;
+          btnEl.textContent = 'Ya, Hapus Shift';
+          btnEl.style.background = 'var(--danger)';
+          iconEl.style.background = 'var(--danger-light)';
+          iconEl.style.color = 'var(--danger)';
+          iconEl.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        }
+
+        document.getElementById('customShiftControlModal')?.classList.add('open');
+      };
+
+      window.confirmShiftControl = async function() {
+        if (!pendingShiftCtrl || (currentUserRole !== 'owner' && currentUserRole !== 'developer')) return;
+        const { id, action, shift } = pendingShiftCtrl;
+        pendingShiftCtrl = null;
+        document.getElementById('customShiftControlModal')?.classList.remove('open');
+
+        const staffName = shift.userName || 'Staf';
+        const shiftDate = shift.date || '-';
+        Utils.showLoading('Memproses kontrol shift...');
+
+        try {
+          if (action === 'force_close') {
+            const nowTs = Date.now();
+            await db.collection('shifts').doc(id).set({
+              status: 'closed',
+              closeTime: nowTs,
+              closedAt: nowTs,
+              forceClosedBy: currentUserDisplayName,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            if (window.AuditLogger) {
+              await AuditLogger.log('TUTUP_SHIFT_PAKSA', `Menutup paksa shift ${staffName} (${shiftDate})`, 'Kas & Shift', id);
+            }
+            Utils.showToast(`Shift ${staffName} berhasil ditutup paksa!`, 'success');
+          } else if (action === 'reopen') {
+            const delField = firebase.firestore.FieldValue.delete();
+            await db.collection('shifts').doc(id).set({
+              status: 'open',
+              closeTime: delField,
+              closedAt: delField,
+              reopenedBy: currentUserDisplayName,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            if (window.AuditLogger) {
+              await AuditLogger.log('BUKA_ULANG_SHIFT', `Membuka ulang shift ${staffName} (${shiftDate})`, 'Kas & Shift', id);
+            }
+            Utils.showToast(`Shift ${staffName} berhasil dibuka ulang!`, 'success');
+          } else {
+            await db.collection('shifts').doc(id).delete();
+            if (window.AuditLogger) {
+              await AuditLogger.log('HAPUS_SHIFT', `Menghapus/reset shift ${staffName} (${shiftDate})`, 'Kas & Shift', id);
+            }
+            Utils.showToast(`Shift ${staffName} berhasil dihapus!`, 'success');
+          }
+
+          Utils.hideLoading();
+          if (currentUserObj && currentUserDataObj) {
+            await checkShiftStatus(currentUserObj, currentUserDataObj);
+          }
+          await loadShiftHistory(
+            activeShiftFilter,
+            document.getElementById('dateFrom')?.value || null,
+            document.getElementById('dateTo')?.value || null
+          );
+        } catch (err) {
+          Utils.hideLoading();
+          console.error('Kontrol shift error:', err);
+          Utils.showToast('Gagal memproses shift: ' + (err.message || err), 'error');
         }
       };
 
