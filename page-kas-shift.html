@@ -1877,6 +1877,9 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           const by = c.approvedBy ? ` (${c.approvedBy})` : '';
           return { cls: 'appr-rejected', label: 'DITOLAK' + by, plain: 'DITOLAK' + by };
         }
+        if (st === 'reopened') {
+          return { cls: 'appr-pending', label: 'PERLU CLOSING ULANG', plain: 'PERLU CLOSING ULANG (SHIFT DIBUKA LAGI)' };
+        }
         return { cls: 'appr-legacy', label: 'TERARSIP', plain: 'TERARSIP' };
       }
 
@@ -2021,7 +2024,10 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
         const pendingInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'pending').length;
         const approvedInList = items.filter(c => String(c.approvalStatus || '').toLowerCase() === 'approved').length;
         const calcDedupedSelisih = (list) => {
-          const valid = (list || []).filter(c => String(c.approvalStatus || '').toLowerCase() !== 'rejected');
+          const valid = (list || []).filter(c => {
+            const st = String(c.approvalStatus || '').toLowerCase();
+            return st !== 'rejected' && st !== 'reopened';
+          });
           if (!valid.length) return { total: 0, deduped: false };
           const byDate = {};
           valid.forEach(c => {
@@ -2572,6 +2578,14 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
               reopenedBy: currentUserDisplayName,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            const oldCloseDoc = await db.collection('closing').doc(id).get().catch(() => null);
+            if (oldCloseDoc && oldCloseDoc.exists) {
+              await db.collection('closing').doc(id).set({
+                approvalStatus: 'reopened',
+                reopenedAt: Date.now(),
+                approvalNote: `Shift dibuka ulang oleh ${currentUserDisplayName} — perlu closing ulang`
+              }, { merge: true }).catch(() => {});
+            }
             if (window.AuditLogger) {
               await AuditLogger.log('BUKA_ULANG_SHIFT', `Membuka ulang shift ${staffName} (${shiftDate})`, 'Kas & Shift', id);
             }
