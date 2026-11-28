@@ -1200,7 +1200,9 @@ document.getElementById('sistemNonTunai').textContent =
   Utils.formatRupiah(totalNonTunai);
           document.getElementById('sistemGlobal').textContent = Utils.formatRupiah(todayStats.uangGlobal);
 
-          const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
+         const shiftDoc = await db.collection("shifts").doc(`${today}_${user.uid}`).get();
+          const closingTodayDoc = await db.collection("closing").doc(`${today}_${user.uid}`).get().catch(() => null);
+          const closingToday = (closingTodayDoc && closingTodayDoc.exists) ? closingTodayDoc.data() : null;
           const isClosedToday = Boolean(shiftDoc.exists && shiftDoc.data().status !== 'open');
           isShiftOpen = Boolean(shiftDoc.exists && shiftDoc.data().status === 'open');
 
@@ -1214,9 +1216,29 @@ document.getElementById('sistemNonTunai').textContent =
           if (!isShiftOpen) {
             if (warnEl) warnEl.className = 'closing-shift-banner ' + (isClosedToday ? 'is-closed' : 'is-none');
             if (isClosedToday) {
-              if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-lock"></i>';
-              if (warnTitle) warnTitle.textContent = 'Shift Hari Ini Sudah Ditutup (Closing)';
-              if (warnDesc) warnDesc.textContent = 'Jika ada transaksi susulan dan perlu closing ulang, buka ulang shift terlebih dahulu — arsip closing sebelumnya tetap tersimpan aman.';
+              const apSt = String((closingToday && closingToday.approvalStatus) || (shiftDoc.exists && shiftDoc.data().approvalStatus) || '').toLowerCase();
+              const myRoleNow = String((userData && userData.role) || 'kasir').toLowerCase();
+              const approverLabel = myRoleNow === 'admin' ? 'Owner / Developer' : 'Admin / Owner / Developer';
+              if (apSt === 'pending') {
+                if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-hourglass-half"></i>';
+                if (warnTitle) warnTitle.textContent = 'Closing Menunggu Approval Atasan';
+                if (warnDesc) warnDesc.textContent = `Closing hari ini sudah tersimpan dan sedang menunggu persetujuan dari ${approverLabel}. Pantau statusnya di menu Kas & Shift -> Arsip & Approval Closing.`;
+              } else if (apSt === 'rejected') {
+                const rejBy = (closingToday && closingToday.approvedBy) ? ` oleh ${closingToday.approvedBy}` : '';
+                const rejNote = (closingToday && closingToday.approvalNote) ? ` Alasan: ${closingToday.approvalNote}.` : '';
+                if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-times-circle"></i>';
+                if (warnTitle) warnTitle.textContent = 'Closing Ditolak / Perlu Revisi';
+                if (warnDesc) warnDesc.textContent = `Closing hari ini ditolak${rejBy}.${rejNote} Silakan klik Buka Ulang Shift lalu lakukan closing ulang.`;
+              } else if (apSt === 'approved') {
+                const appBy = (closingToday && closingToday.approvedBy) ? ` oleh ${closingToday.approvedBy} (${String(closingToday.approvedByRole || '').toUpperCase()})` : '';
+                if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                if (warnTitle) warnTitle.textContent = 'Closing Hari Ini Sudah Disetujui';
+                if (warnDesc) warnDesc.textContent = `Berita acara closing hari ini telah disetujui${appBy}. Jika ada transaksi susulan, buka ulang shift untuk closing ulang.`;
+              } else {
+                if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-lock"></i>';
+                if (warnTitle) warnTitle.textContent = 'Shift Hari Ini Sudah Ditutup (Closing)';
+                if (warnDesc) warnDesc.textContent = 'Jika ada transaksi susulan dan perlu closing ulang, buka ulang shift terlebih dahulu — arsip closing sebelumnya tetap tersimpan aman.';
+              }
               if (btnReopen) btnReopen.innerHTML = '<i class="fas fa-rotate-left"></i><span>Buka Ulang Shift</span>';
             } else {
               if (warnIcon) warnIcon.innerHTML = '<i class="fas fa-store-slash"></i>';
@@ -1284,31 +1306,51 @@ document.getElementById('sistemNonTunai').textContent =
             try {
               Utils.showLoading('Menyimpan hasil closing shift...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
-              const timestamp = Date.now();
-              const cashierName = document.getElementById('userName').textContent;
+              const timestamp = Date.now();const cashierName = document.getElementById('userName').textContent;
+              const submitterRole = String((userData && userData.role) || 'kasir').toLowerCase();
+              const isTopApprover = submitterRole === 'owner' || submitterRole === 'developer';
+              const approvalStatus = isTopApprover ? 'approved' : 'pending';
+              const requiredApprovers = isTopApprover
+                ? []
+                : (submitterRole === 'admin' ? ['owner', 'developer'] : ['admin', 'owner', 'developer']);
 
               const closingData = {
+                docId: `${today}_${user.uid}`,
                 timestamp,
                 date: today,
                 userId: user.uid,
                 userName: cashierName,
+                userRole: submitterRole,
                 fisik: { total: fisikData.total, detail: fisikData.detail },
                 sistem: todayStats,
                 selisih,
-                selisih,
                 catatan: document.getElementById('closingNote')?.value.trim() || '',
-                status: selisih === 0 ? 'balance' : (selisih > 0 ? 'surplus' : 'minus')
+                status: selisih === 0 ? 'balance' : (selisih > 0 ? 'surplus' : 'minus'),
+                approvalStatus,
+                requiredApprovers,
+                approvedBy: isTopApprover ? cashierName : '',
+                approvedById: isTopApprover ? user.uid : '',
+                approvedByRole: isTopApprover ? submitterRole : '',
+                approvedAt: isTopApprover ? timestamp : null,
+                approvalNote: isTopApprover ? ('Disetujui otomatis (' + submitterRole.toUpperCase() + ')') : ''
               };
 
               await db.collection("closing").doc(`${today}_${user.uid}`).set(closingData);
-              await db.collection("shifts").doc(`${today}_${user.uid}`).update({
+              await db.collection("shifts").doc(`${today}_${user.uid}`).set({
                 status: 'closed',
                 closedAt: timestamp,
                 selisih,
                 closingStatus: closingData.status,
                 kasAkhir: fisikData.total,
-                kasSistem: todayStats.uangGlobal
-              });
+                kasSistem: todayStats.uangGlobal,
+                userRole: submitterRole,
+                approvalStatus,
+                requiredApprovers,
+                approvedBy: closingData.approvedBy,
+                approvedByRole: closingData.approvedByRole,
+                approvedAt: closingData.approvedAt,
+                approvalNote: closingData.approvalNote
+              }, { merge: true });
 
               isShiftOpen = false;
               try { localStorage.removeItem('active_shift_id'); } catch (e) {}
@@ -1317,7 +1359,12 @@ document.getElementById('sistemNonTunai').textContent =
               }
 
               Utils.hideLoading();
-              Utils.showToast('Closing berhasil disimpan & shift ditutup!', 'success');
+              const apprMsg = isTopApprover
+                ? 'Closing berhasil disimpan & disetujui otomatis!'
+                : (submitterRole === 'admin'
+                    ? 'Closing disimpan! Menunggu approval Owner / Developer.'
+                    : 'Closing disimpan! Menunggu approval Admin / Owner / Developer.');
+              Utils.showToast(apprMsg, 'success');
 
               showStrukModal(closingData);
 
@@ -1372,7 +1419,8 @@ pecahanLines +
 'Uang Fisik   : ' + Utils.formatRupiah(cData.fisik.total) + '\n' +
 'Selisih Kas  : ' + (cData.selisih >= 0 ? '+' : '') + Utils.formatRupiah(cData.selisih) + '\n' +
 'Status       : ' + cData.status.toUpperCase() + '\n' +
-(cData.catatan ? 'Catatan    : ' + cData.catatan + '\n' : '') +
+'Approval     : ' + (cData.approvalStatus === 'approved' ? 'DISETUJUI (' + (cData.approvedBy || '-') + ')' : (cData.userRole === 'admin' ? 'MENUNGGU OWNER / DEV' : 'MENUNGGU ADMIN/OWNER/DEV')) + '\n' +
+(cData.catatan ? 'Catatan      : ' + cData.catatan + '\n' : '') +
 '================================\n' +
 '        Shift Telah Ditutup\n' +
 '            Terima Kasih\n' +
