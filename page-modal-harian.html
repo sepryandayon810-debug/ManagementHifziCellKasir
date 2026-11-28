@@ -672,6 +672,11 @@
               <i class="fas fa-rotate-left"></i> Batalkan / Hapus Modal Hari Ini (Owner / Dev)
             </button>
           </div>
+          <div id="adminRecallModalWrap" style="display:none; margin-top:0.75rem;">
+            <button type="button" class="btn btn-danger-soft" id="btnAdminRecallModal" style="width:100%;">
+              <i class="fas fa-arrow-rotate-left"></i> Tarik Kembali Pembagian ke Modal Admin
+            </button>
+          </div>
         </div>
       </div>
 
@@ -871,7 +876,7 @@
 document.getElementById("currentDateBadge").textContent = todayStr;
 
 await setupTargetKasirDropdown(user);
-loadExistingModal();
+await loadExistingModal();
 loadLatestTelegramKasir();
 
 // Default filter = hari ini
@@ -913,7 +918,11 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     document.getElementById("btnCancelCurrentModal").onclick = () => {
       if (currentExistingModalEntry) openCancelModalDialog(currentExistingModalEntry);
     };
-
+    const btnAdminRecall = document.getElementById("btnAdminRecallModal");
+    if (btnAdminRecall) {
+      btnAdminRecall.onclick = () => recallKasirModalToAdmin();
+    }
+    
     // Tombol toggle dark mode di header
     document.getElementById("btnThemeToggle").onclick = () => {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -1034,8 +1043,21 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     document.querySelectorAll(".chip-btn, .denom-input").forEach(el => {
       el.disabled = !!locked;
     });
+    ["cardSourceManual", "cardSourceTelegram"].forEach(id => {
+      const card = document.getElementById(id);
+      if (card) {
+        card.style.pointerEvents = locked ? "none" : "";
+        card.style.opacity = locked ? "0.55" : "1";
+      }
+    });
+    ["tabModeManual", "tabModePecahan"].forEach(id => {
+      const tab = document.getElementById(id);
+      if (tab) {
+        tab.disabled = !!locked;
+        tab.style.opacity = locked ? "0.55" : "1";
+      }
+    });
   }
-
   async function refreshAdminWalletBox(todayStr) {
     const box = document.getElementById("adminModalWalletBox");
     if (!box) return { hasPool: false, remain: 0, shared: 0 };
@@ -1084,17 +1106,19 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       const docId = `${todayStr}_${targetUid}`;
       const modalDoc = await db.collection("modal").doc(docId).get();
       const cancelWrap = document.getElementById("ownerCancelModalWrap");
+      const recallWrap = document.getElementById("adminRecallModalWrap");
       const md = modalDoc.exists ? (modalDoc.data() || {}) : null;
       const mdAmount = md ? KasCore.normalizeNumber(md.amount) : 0;
 
-      if (md && mdAmount > 0) {
+      if (md) {
         rawModalAmount = mdAmount;
         currentExistingModalEntry = {
           id: docId,
           date: md.date || todayStr,
           userId: md.userId || targetUid,
           userName: md.userName || "-",
-          amount: mdAmount
+          amount: mdAmount,
+          allocatedFromModalId: md.allocatedFromModalId || null
         };
         if (cancelWrap) cancelWrap.style.display = isOwnerOrDev() ? "block" : "none";
       } else {
@@ -1106,24 +1130,44 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       let isLocked = false;
       let lockMsg = "";
       const allocRole = md ? String(md.allocatedByRole || "").toLowerCase() : "";
+      const adminSelfDocId = `${todayStr}_${currentUser.uid}`;
 
       if (currentUserRole === "kasir") {
-        if (md && mdAmount > 0 && ((allocRole && allocRole !== "kasir") || (md.allocatedBy && md.allocatedBy !== currentUser.uid))) {
+        if (md && ((allocRole && allocRole !== "kasir") || (md.allocatedBy && md.allocatedBy !== currentUser.uid))) {
           isLocked = true;
           lockMsg = `Modal hari ini sebesar ${formatRupiah(mdAmount)} sudah ditetapkan oleh ${md.allocatedByName || "Atasan"} dan tidak dapat diubah sendiri.`;
         }
       } else if (currentUserRole === "admin") {
         if (targetUid === currentUser.uid) {
-          if (md && mdAmount > 0 && (allocRole === "owner" || allocRole === "developer")) {
+          if (md && (allocRole === "owner" || allocRole === "developer")) {
             isLocked = true;
-            lockMsg = `Modal Anda sebesar ${formatRupiah(mdAmount)} ditetapkan oleh ${md.allocatedByName || "Owner/Developer"}. Pilih nama Kasir di dropdown atas untuk membagikannya.`;
+            lockMsg = mdAmount > 0
+              ? `Modal Anda (sisa ${formatRupiah(mdAmount)}) ditetapkan oleh ${md.allocatedByName || "Owner/Developer"}. Pilih nama Kasir di dropdown atas untuk membagikannya.`
+              : `Seluruh modal dari ${md.allocatedByName || "Owner/Developer"} sudah habis dibagikan ke kasir (Sisa Rp 0). Tarik pembagian kasir atau hubungi Owner jika perlu perubahan.`;
+          } else if (walletInfo.shared > 0) {
+            isLocked = true;
+            lockMsg = `Sebagian modal Anda (${formatRupiah(walletInfo.shared)}) sedang dibagikan ke kasir. Tarik pembagian kasir terlebih dahulu atau hubungi Owner jika ingin mengubah modal awal Anda.`;
           }
-        } else if (md && mdAmount > 0 && (allocRole === "owner" || allocRole === "developer")) {
+        } else if (md && (allocRole === "owner" || allocRole === "developer")) {
           isLocked = true;
           lockMsg = `Modal kasir ini ditetapkan langsung oleh ${md.allocatedByName || "Owner/Developer"} sehingga tidak dapat diubah Admin.`;
+        } else if (md && allocRole === "admin" && md.allocatedBy && md.allocatedBy !== currentUser.uid) {
+          isLocked = true;
+          lockMsg = `Modal kasir ini dibagikan oleh Admin lain (${md.allocatedByName || "Admin"}) sehingga tidak dapat diubah dari akun Anda.`;
         }
       }
 
+      const canAdminRecall = (
+        currentUserRole === "admin" &&
+        targetUid !== currentUser.uid &&
+        !isLocked &&
+        md && mdAmount > 0 &&
+        allocRole === "admin" &&
+        md.allocatedBy === currentUser.uid &&
+        md.allocatedFromModalId === adminSelfDocId
+      );
+      if (recallWrap) recallWrap.style.display = canAdminRecall ? "block" : "none";
+      
       setModalFormLocked(isLocked, lockMsg);
       const btnSave = document.getElementById("btnSaveModal");
       if (btnSave && !isLocked) {
@@ -1343,30 +1387,67 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Membatalkan modal harian...");
 
     try {
-      await db.collection("modal").doc(entry.id).delete();
+      let refundedAdminAmount = 0;
+      const targetModalRef = db.collection("modal").doc(entry.id);
+      const targetShiftRef = db.collection("shifts").doc(entry.id);
+
+      await db.runTransaction(async (tx) => {
+        const curSnap = await tx.get(targetModalRef);
+        const curData = curSnap.exists ? (curSnap.data() || {}) : {};
+        const curAmt = KasCore.normalizeNumber(curData.amount || entry.amount);
+        const parentModalId = curData.allocatedFromModalId || null;
+
+        if (parentModalId && parentModalId !== entry.id && curAmt > 0) {
+          const parentModalRef = db.collection("modal").doc(parentModalId);
+          const parentShiftRef = db.collection("shifts").doc(parentModalId);
+          const [pModalSnap, pShiftSnap] = await Promise.all([
+            tx.get(parentModalRef),
+            tx.get(parentShiftRef)
+          ]);
+          if (pModalSnap.exists) {
+            const nextParentAmt = KasCore.normalizeNumber(pModalSnap.data().amount) + curAmt;
+            tx.set(parentModalRef, {
+              amount: nextParentAmt,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            if (pShiftSnap.exists) {
+              tx.set(parentShiftRef, {
+                modalAwal: nextParentAmt,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            }
+            refundedAdminAmount = curAmt;
+          }
+        }
+
+        tx.delete(targetModalRef);
+        if (resetShift) {
+          tx.delete(targetShiftRef);
+        } else {
+          tx.set(targetShiftRef, {
+            modalAwal: 0,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+      });
 
       if (resetShift) {
-        await db.collection("shifts").doc(entry.id).delete().catch(() => {});
         const todayStr = getTodayString();
         if (entry.userId === currentUser.uid && entry.date === todayStr && window.KasCore && typeof KasCore.syncShiftCache === "function") {
           KasCore.syncShiftCache(entry.userId, todayStr, "none", null);
         }
-      } else {
-        await db.collection("shifts").doc(entry.id).set({
-          modalAwal: 0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(() => {});
       }
 
-     if (window.AuditLogger) {
+      if (window.AuditLogger) {
+        const refundNote = refundedAdminAmount > 0 ? ` (dikembalikan ${formatRupiah(refundedAdminAmount)} ke saldo Admin)` : "";
         await AuditLogger.log(
           "BATAL_MODAL",
-          `Batalkan modal harian ${entry.userName} (${entry.date}) sebesar ${formatRupiah(entry.amount)}${resetShift ? " + Reset Shift" : ""}`,
+          `Batalkan modal harian ${entry.userName} (${entry.date}) sebesar ${formatRupiah(entry.amount)}${resetShift ? " + Reset Shift" : ""}${refundNote}`,
           "Modal Harian",
           entry.id
         );
       }
-
+      
       if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
       pendingCancelModalEntry = null;
       toast(`Modal ${entry.userName} (${entry.date}) berhasil dibatalkan!`, "success");
@@ -1380,6 +1461,82 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       toast("Gagal membatalkan modal: " + (err.message || err), "error");
     }
   };
+
+  async function recallKasirModalToAdmin() {
+    if (currentUserRole !== "admin" || !currentUser || !currentExistingModalEntry) return;
+    const todayStr = getTodayString();
+    const targetUid = document.getElementById("selectTargetKasir").value;
+    if (!targetUid || targetUid === currentUser.uid) return;
+
+    const adminModalId = `${todayStr}_${currentUser.uid}`;
+    const kasirModalId = `${todayStr}_${targetUid}`;
+    const adminModalRef = db.collection("modal").doc(adminModalId);
+    const adminShiftRef = db.collection("shifts").doc(adminModalId);
+    const kasirModalRef = db.collection("modal").doc(kasirModalId);
+    const kasirShiftRef = db.collection("shifts").doc(kasirModalId);
+
+    if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Menarik kembali modal kasir...");
+
+    try {
+      let recalledAmt = 0;
+      let kasirName = currentExistingModalEntry.userName || "Kasir";
+
+      await db.runTransaction(async (tx) => {
+        const [adminSnap, kasirSnap, adminShiftSnap, kasirShiftSnap] = await Promise.all([
+          tx.get(adminModalRef),
+          tx.get(kasirModalRef),
+          tx.get(adminShiftRef),
+          tx.get(kasirShiftRef)
+        ]);
+
+        if (!kasirSnap.exists) throw new Error("Modal kasir tidak ditemukan.");
+        const kd = kasirSnap.data() || {};
+        if (String(kd.allocatedByRole || "").toLowerCase() !== "admin" || kd.allocatedBy !== currentUser.uid || kd.allocatedFromModalId !== adminModalId) {
+          throw new Error("Modal kasir ini bukan berasal dari pembagian modal Anda.");
+        }
+        if (kasirShiftSnap.exists && String((kasirShiftSnap.data() || {}).status || "").toLowerCase() === "closed") {
+          throw new Error("Shift kasir sudah closing sehingga modal tidak dapat ditarik kembali.");
+        }
+        if (!adminSnap.exists) throw new Error("Dokumen modal Admin tidak ditemukan.");
+
+        recalledAmt = KasCore.normalizeNumber(kd.amount);
+        kasirName = kd.userName || kasirName;
+        const nextAdminAmt = KasCore.normalizeNumber(adminSnap.data().amount) + recalledAmt;
+
+        tx.set(adminModalRef, {
+          amount: nextAdminAmt,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (adminShiftSnap.exists) {
+          tx.set(adminShiftRef, {
+            modalAwal: nextAdminAmt,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+        tx.delete(kasirModalRef);
+        if (kasirShiftSnap.exists) tx.delete(kasirShiftRef);
+      });
+
+      if (window.AuditLogger) {
+        await AuditLogger.log(
+          "TARIK_MODAL_ADMIN",
+          `Admin menarik kembali modal ${formatRupiah(recalledAmt)} dari ${kasirName} ke saldo modal Admin`,
+          "Modal Harian",
+          kasirModalId
+        );
+      }
+
+      if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
+      toast(`Modal ${formatRupiah(recalledAmt)} dari ${kasirName} dikembalikan ke modal Anda.`, "success");
+      await loadExistingModal();
+      const from = document.getElementById("summaryDateFrom")?.value || todayStr;
+      const to = document.getElementById("summaryDateTo")?.value || todayStr;
+      await loadModalSummary(from, to);
+    } catch (err) {
+      if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
+      toast("Gagal menarik modal: " + (err.message || err), "error");
+    }
+  }
 
   window.switchInputMode = function(mode) {
     const btnManual = document.getElementById("tabModeManual");
@@ -1517,8 +1674,11 @@ document.getElementById("btnFilterModalRange").onclick = () => {
         if (kasirSnap.exists) {
           const kd = kasirSnap.data() || {};
           const kRole = String(kd.allocatedByRole || "").toLowerCase();
-          if (KasCore.normalizeNumber(kd.amount) > 0 && (kRole === "owner" || kRole === "developer")) {
+          if (kRole === "owner" || kRole === "developer") {
             throw new Error("Modal kasir ini ditetapkan langsung oleh Owner/Developer dan tidak dapat diubah Admin.");
+          }
+          if (kRole === "admin" && kd.allocatedBy && kd.allocatedBy !== currentUser.uid) {
+            throw new Error("Modal kasir ini dibagikan oleh Admin lain sehingga tidak dapat diubah dari akun Anda.");
           }
         }
 
@@ -1527,9 +1687,13 @@ document.getElementById("btnFilterModalRange").onclick = () => {
           usedAdminPool = true;
           const ad = adminSnap.data() || {};
           const adminCur = KasCore.normalizeNumber(ad.amount);
-          const kasirOldFromAdmin = (kasirSnap.exists && String((kasirSnap.data() || {}).allocatedByRole || "").toLowerCase() === "admin")
-            ? KasCore.normalizeNumber(kasirSnap.data().amount)
-            : 0;
+          const kdCur = kasirSnap.exists ? (kasirSnap.data() || {}) : null;
+          const kasirOldFromAdmin = (
+            kdCur &&
+            String(kdCur.allocatedByRole || "").toLowerCase() === "admin" &&
+            kdCur.allocatedBy === currentUser.uid &&
+            kdCur.allocatedFromModalId === adminModalId
+          ) ? KasCore.normalizeNumber(kdCur.amount) : 0;
           const maxAllowed = adminCur + kasirOldFromAdmin;
           if (amtToSave > maxAllowed) {
             throw new Error(`Sisa modal Admin tidak cukup! Maksimal untuk kasir ini: ${formatRupiah(maxAllowed)}.`);
@@ -1582,13 +1746,18 @@ document.getElementById("btnFilterModalRange").onclick = () => {
       const existingModalSnap = await kasirModalRef.get();
       if (existingModalSnap.exists && !isOwnerOrDev()) {
         const md = existingModalSnap.data() || {};
-        const mdAmt = KasCore.normalizeNumber(md.amount);
         const allocRole = String(md.allocatedByRole || "").toLowerCase();
-        if (currentUserRole === "kasir" && mdAmt > 0 && ((allocRole && allocRole !== "kasir") || (md.allocatedBy && md.allocatedBy !== currentUser.uid))) {
+        if (currentUserRole === "kasir" && ((allocRole && allocRole !== "kasir") || (md.allocatedBy && md.allocatedBy !== currentUser.uid))) {
           throw new Error("Modal Anda sudah ditetapkan oleh atasan dan tidak dapat diubah sendiri.");
         }
-        if (currentUserRole === "admin" && targetUid === currentUser.uid && mdAmt > 0 && (allocRole === "owner" || allocRole === "developer")) {
+        if (currentUserRole === "admin" && targetUid === currentUser.uid && (allocRole === "owner" || allocRole === "developer")) {
           throw new Error("Modal Admin sudah ditetapkan oleh Owner/Developer dan tidak dapat diubah sendiri.");
+        }
+      }
+      if (currentUserRole === "admin" && targetUid === currentUser.uid) {
+        const walletCheck = await refreshAdminWalletBox(todayStr);
+        if (walletCheck.shared > 0) {
+          throw new Error("Sebagian modal Anda sedang dibagikan ke kasir. Tarik pembagian kasir terlebih dahulu sebelum mengubah modal Anda.");
         }
       }
 
@@ -1600,13 +1769,13 @@ document.getElementById("btnFilterModalRange").onclick = () => {
         allocatedBy: currentUser.uid,
         allocatedByName: senderName,
         allocatedByRole: currentUserRole,
+        allocatedFromModalId: null,
         source: currentModalSource || "manual",
         amount: amtToSave,
         category: "modal_awal",
         type: "modal_awal",
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-
       await kasirModalRef.set(modalData, { merge: true });
 
       const existingShift = await shiftRef.get();
