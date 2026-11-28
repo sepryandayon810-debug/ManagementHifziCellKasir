@@ -1720,6 +1720,11 @@
   }
 
   window.deletePayroll = function(id) {
+    const myRoleNow = String(localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
+    if (!["owner", "developer", "admin"].includes(myRoleNow)) {
+      toast("Anda tidak memiliki izin menghapus catatan penggajian!", "error");
+      return;
+    }
     const rec = (typeof allPayrolls !== "undefined" ? allPayrolls : []).find(p => p.id === id);
     showCustomConfirm("Hapus Gaji", "Hapus catatan penggajian ini dari sistem?", "danger", "Ya, Hapus", async () => {
       try {
