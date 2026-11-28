@@ -1563,6 +1563,9 @@ const { start: startTimestamp, end: endTimestamp } = getPeriodRange(
           Utils.showLoading('Menghapus...');
           try {
             await db.collection(COLLECTION_TOPUP).doc(id).delete();
+            if (window.AuditLogger) {
+              await AuditLogger.log("HAPUS_TOPUP_TELEGRAM", `Menghapus rekap top up ${toolName} sebesar ${Utils.formatRupiah(nominal)}`, "Saldo Telegram", id);
+            }
             Utils.hideLoading();
             Utils.showToast('Rekap berhasil dihapus', 'success');
             await loadTopupHistory();
@@ -2214,6 +2217,9 @@ document.getElementById('cardUangTas').classList.remove('active');
           Utils.showLoading('Menghapus...');
           try {
             await db.collection(COLLECTION_SISA).doc(id).delete();
+            if (window.AuditLogger) {
+              await AuditLogger.log("HAPUS_SISA_TELEGRAM", `Menghapus catatan sisa saldo ${toolName} sebesar ${Utils.formatRupiah(nominal)}`, "Saldo Telegram", id);
+            }
             Utils.hideLoading();
             Utils.showToast('Catatan sisa saldo dihapus', 'success');
             await loadSisaHistory();
