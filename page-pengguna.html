@@ -619,6 +619,21 @@
       </div>
 
       <div class="card">
+        <div id="userSearchBar" style="display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; padding:0.8rem 1rem; border-bottom:1px solid var(--border); background:var(--bg-subtle);">
+          <div class="input-wrap" style="flex:1; min-width:210px;">
+            <i class="fas fa-search field-icon"></i>
+            <input type="text" class="form-control" id="userSearchInput" placeholder="Cari nama, @username, email, no HP, atau role..." autocomplete="off" style="padding-right:2.2rem;">
+            <button type="button" id="btnClearUserSearch" title="Hapus pencarian" style="display:none; position:absolute; right:0.55rem; top:50%; transform:translateY(-50%); border:none; background:none; color:var(--text-muted); cursor:pointer; padding:0.25rem;"><i class="fas fa-times-circle"></i></button>
+          </div>
+          <select class="form-select" id="userRoleFilter" style="width:auto; min-width:135px; height:38px; font-size:0.82rem;">
+            <option value="">Semua Role</option>
+            <option value="kasir">Kasir</option>
+            <option value="admin">Admin</option>
+            <option value="owner">Owner</option>
+            <option value="developer">Developer</option>
+          </select>
+          <span id="userSearchCount" style="font-size:0.76rem; font-weight:700; color:var(--text-muted); white-space:nowrap;"></span>
+        </div>
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -1014,6 +1029,34 @@
       if (activeTab) activeTab.innerHTML = '<i class="fas fa-user-circle" style="color:var(--primary)"></i> Akun Saya <span class="counter-badge" id="countActive">0</span>';
       const hdrTitle = document.querySelector(".header-title");
       if (hdrTitle) hdrTitle.textContent = "Akun Saya";
+      const searchBar = document.getElementById("userSearchBar");
+      if (searchBar) searchBar.style.display = "none";
+    } else {
+      const roleFilterEl = document.getElementById("userRoleFilter");
+      if (roleFilterEl) {
+        if (currentUserRole === "owner") {
+          roleFilterEl.querySelector('option[value="developer"]')?.remove();
+        } else if (currentUserRole === "admin") {
+          roleFilterEl.querySelector('option[value="developer"]')?.remove();
+          roleFilterEl.querySelector('option[value="owner"]')?.remove();
+        }
+        roleFilterEl.addEventListener("change", renderTable);
+      }
+      const searchInput = document.getElementById("userSearchInput");
+      const btnClearSearch = document.getElementById("btnClearUserSearch");
+      if (searchInput) {
+        searchInput.addEventListener("input", () => {
+          if (btnClearSearch) btnClearSearch.style.display = searchInput.value.trim() ? "inline-flex" : "none";
+          renderTable();
+        });
+      }
+      if (btnClearSearch) {
+        btnClearSearch.addEventListener("click", () => {
+          if (searchInput) { searchInput.value = ""; searchInput.focus(); }
+          btnClearSearch.style.display = "none";
+          renderTable();
+        });
+      }
     }
 
     loadUsers();
@@ -1143,17 +1186,33 @@
 
   function renderTable() {
     const tbody = document.getElementById("userTableBody");
-    const filtered = allUsers.filter(u => {
-      if (!canViewUser(u)) return false;
-      if (u.status !== currentActiveTab) return false;
-      return true;
+    const q = (document.getElementById("userSearchInput")?.value || "").trim().toLowerCase();
+    const roleFilter = (document.getElementById("userRoleFilter")?.value || "").trim().toLowerCase();
+
+    const baseList = allUsers.filter(u => canViewUser(u) && u.status === currentActiveTab);
+    const filtered = baseList.filter(u => {
+      const r = (u.role || "kasir").toLowerCase();
+      if (roleFilter && r !== roleFilter) return false;
+      if (!q) return true;
+      const phone = String(u.phone || u.noHp || u.no_hp || u.hp || u.whatsapp || "").toLowerCase();
+      const hay = [u.name || "", u.username || "", u.email || "", phone, r].join(" ").toLowerCase();
+      return hay.includes(q);
     });
 
-    if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-user-slash" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block"></i>Tidak ada pengguna pada daftar ini.</td></tr>`;
-      return;
+    const countEl = document.getElementById("userSearchCount");
+    if (countEl) {
+      countEl.textContent = (q || roleFilter)
+        ? `Menampilkan ${filtered.length} dari ${baseList.length} pengguna`
+        : `${baseList.length} pengguna`;
     }
 
+    if (filtered.length === 0) {
+      const emptyMsg = (q || roleFilter)
+        ? "Tidak ditemukan pengguna yang cocok dengan pencarian."
+        : "Tidak ada pengguna pada daftar ini.";
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-${(q || roleFilter) ? 'search' : 'user-slash'}" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block"></i>${emptyMsg}</td></tr>`;
+      return;
+    }
     const escHtml = (v) => String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
     const escJs = (v) => escHtml(String(v == null ? "" : v).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r|\n/g," "));
 
