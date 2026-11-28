@@ -1190,6 +1190,8 @@ kasTersedia = KasCore.normalizeNumber(kasLaci.totalLaci);
             const note = document.getElementById('tarikNote').value.trim();
             const shouldPrint = document.getElementById('printReceiptToggle').checked;
 
+            if (saveBtn.disabled) return;
+            saveBtn.disabled = true;
             try {
               Utils.showLoading('Menyimpan transaksi tarik tunai...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
@@ -1247,6 +1249,8 @@ const transactionData = Object.assign({
               Utils.hideLoading();
               console.error("FIRESTORE TARIK ERROR:", error);
               Utils.showToast('Gagal menyimpan tarik tunai: ' + error.message, 'error');
+            } finally {
+              saveBtn.disabled = false;
             }
           });
         }
