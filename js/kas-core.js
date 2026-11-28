@@ -2126,9 +2126,13 @@ async function savePayroll(options) {
       ).trim();
 
       var modalAmount = 0;
+      var hasModalRecord = false;
       try {
         var modalEntry = await loadModalEntry(today, uid);
-        if (modalEntry) modalAmount = normalizeNumber(modalEntry.amount);
+        if (modalEntry) {
+          hasModalRecord = true;
+          modalAmount = normalizeNumber(modalEntry.amount);
+        }
       } catch (e) {}
 
       var docRef = db.collection('shifts').doc(shiftDocId);
@@ -2136,7 +2140,7 @@ async function savePayroll(options) {
       var wasClosed = false;
       var reopenCount = 0;
 
-      if (!existingSnap.exists && modalAmount <= 0) {
+      if (!existingSnap.exists && !hasModalRecord && modalAmount <= 0) {
         try {
           var curPage = getCurrentPageName();
           if (curPage && curPage !== 'page-modal-harian.html' && curPage !== 'index.html') {
