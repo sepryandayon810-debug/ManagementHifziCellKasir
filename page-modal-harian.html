@@ -1247,10 +1247,18 @@ document.getElementById("btnFilterModalRange").onclick = () => {
         }, { merge: true }).catch(() => {});
       }
 
+     if (window.AuditLogger) {
+        await AuditLogger.log(
+          "BATAL_MODAL",
+          `Batalkan modal harian ${entry.userName} (${entry.date}) sebesar ${formatRupiah(entry.amount)}${resetShift ? " + Reset Shift" : ""}`,
+          "Modal Harian",
+          entry.id
+        );
+      }
+
       if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
       pendingCancelModalEntry = null;
       toast(`Modal ${entry.userName} (${entry.date}) berhasil dibatalkan!`, "success");
-
       await loadExistingModal();
       const from = document.getElementById("summaryDateFrom")?.value || getTodayString();
       const to = document.getElementById("summaryDateTo")?.value || getTodayString();
