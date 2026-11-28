@@ -327,12 +327,19 @@ toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + msg + '</sp
   
   window.openGoogleSheetDirect = function () {
     var sheetInput = document.getElementById('sheetUrlInput');
-var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage.getItem('webpos_spreadsheet_url') || '').trim();
-    if (!sheetUrl) {
-      notifyToast('Masukkan tautan Google Spreadsheet terlebih dahulu', 'warning');
+    var sheetUrl = (sheetInput && sheetInput.value ? sheetInput.value : localStorage.getItem('webpos_spreadsheet_url') || '').trim();
+    if (!sheetUrl || !/^https?:\/\//i.test(sheetUrl)) {
+      notifyToast('Masukkan tautan Google Spreadsheet yang valid terlebih dahulu', 'warning');
       return;
     }
-    window.open(sheetUrl, '_blank');
+    var a = document.createElement('a');
+    a.href = sheetUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { try { a.remove(); } catch (e) {} }, 500);
   };
 
   window.toggleVisibility = function (inputId, eyeId) {
