@@ -1431,6 +1431,8 @@ kasTersedia = kasLaci.totalLaci;
               }
             }
 
+           if (saveBtn.disabled) return;
+            saveBtn.disabled = true;
             try {
               Utils.showLoading('Menyimpan transaksi top up...');
               const today = Utils.getTodayString ? Utils.getTodayString() : new Date().toISOString().split('T')[0];
@@ -1503,6 +1505,8 @@ Utils.hideLoading();
               Utils.hideLoading();
               console.error("FIRESTORE TOPUP ERROR:", error);
               Utils.showToast('Gagal menyimpan top up: ' + error.message, 'error');
+            } finally {
+              saveBtn.disabled = false;
             }
           });
         }
