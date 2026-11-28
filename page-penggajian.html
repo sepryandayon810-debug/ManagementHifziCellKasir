@@ -1361,6 +1361,13 @@
           await settleBatch.commit();
         }
 
+        if (status === "paid") {
+          logPayrollAudit(
+            "BAYAR_GAJI",
+            `Bayar gaji ${staffName} (${periodName}) sebesar ${formatRupiah(netSalary)}${totalDebtDeduction > 0 ? " | Potong hutang: " + formatRupiah(totalDebtDeduction) : ""}`,
+            (saved && saved.id) || ""
+          );
+        }
         toast(
           willAutoSettlePrev
             ? `Gaji ${periodName} disimpan Lunas & ${prevUnpaidInfo.records.length} bulan sebelumnya ikut ditandai Sudah Bayar!`
@@ -1661,6 +1668,12 @@
 
           await batch.commit();
 
+          logPayrollAudit(
+            "BAYAR_GAJI",
+            `Konfirmasi bayar gaji ${currentPayRecord.staffName || "-"} (${currentPayRecord.periodName || currentPayRecord.period || "-"}) sebesar ${formatRupiah(finalPayAmount)}${extraDeduction > 0 ? " | Potong hutang: " + formatRupiah(extraDeduction) : ""}`,
+            currentPayRecord.id
+          );
+
           const extraMsg = [];
           if (newlyPaidDebts.length > 0) extraMsg.push(`${newlyPaidDebts.length} hutang dilunasi`);
           if (hasPrevCarried) extraMsg.push(`${prevUnpaidInfo.records.length} bulan sebelumnya ikut Sudah Bayar`);
@@ -1683,10 +1696,39 @@
     );
   };
   
+  function logPayrollAudit(action, detail, targetDoc) {
+    try {
+      const u = firebase.auth().currentUser;
+      const uName = document.getElementById("userName")?.textContent || (u ? u.email : "Sistem");
+      const uRole = (document.getElementById("userRole")?.textContent || "owner").toLowerCase();
+      const d = new Date();
+      const todayStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      db.collection("audit_logs").add({
+        action: action,
+        detail: detail,
+        module: "Penggajian",
+        targetDoc: targetDoc || "",
+        userName: uName,
+        userEmail: u ? u.email : "",
+        userId: u ? u.uid : "",
+        userRole: uRole,
+        timestamp: Date.now(),
+        date: todayStr,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {}
+  }
+
   window.deletePayroll = function(id) {
+    const rec = (typeof allPayrolls !== "undefined" ? allPayrolls : []).find(p => p.id === id);
     showCustomConfirm("Hapus Gaji", "Hapus catatan penggajian ini dari sistem?", "danger", "Ya, Hapus", async () => {
       try {
         await db.collection("payrolls").doc(id).delete();
+        logPayrollAudit(
+          "HAPUS_GAJI",
+          `Hapus catatan gaji ${rec ? (rec.staffName + " (" + (rec.periodName || rec.period) + ") " + formatRupiah(rec.netSalary || 0)) : id}`,
+          id
+        );
         toast("Catatan penggajian dihapus", "success");
         loadStaffAndPayrolls();
       } catch(err) {
