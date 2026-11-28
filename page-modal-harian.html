@@ -1418,10 +1418,23 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Membatalkan modal harian...");
 
     try {
+      const childSnap = await db.collection("modal").where("allocatedFromModalId", "==", entry.id).get();
+      const activeChildren = [];
+      childSnap.forEach(d => {
+        const cd = d.data() || {};
+        if (d.id !== entry.id && KasCore.normalizeNumber(cd.amount) > 0) {
+          activeChildren.push(`${cd.userName || "Staf"} (${formatRupiah(cd.amount)})`);
+        }
+      });
+      if (activeChildren.length > 0) {
+        if (window.Utils && typeof Utils.hideLoading === "function") Utils.hideLoading();
+        toast("Tidak bisa dibatalkan! Masih ada modal yang dibagikan ke: " + activeChildren.join(", ") + ". Tarik atau batalkan pembagian staf dulu.", "warning");
+        return;
+      }
+
       let refundedAdminAmount = 0;
       const targetModalRef = db.collection("modal").doc(entry.id);
       const targetShiftRef = db.collection("shifts").doc(entry.id);
-
       await db.runTransaction(async (tx) => {
         const curSnap = await tx.get(targetModalRef);
         const curData = curSnap.exists ? (curSnap.data() || {}) : {};
