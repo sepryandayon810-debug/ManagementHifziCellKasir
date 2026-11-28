@@ -3432,21 +3432,25 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return 'Rp 0';
   }
 
-  function loadStoreHeader() {
+ function loadStoreHeader() {
     var hdr = {};
     try { hdr = JSON.parse(localStorage.getItem('receiptHeader')) || {}; } catch (e) {}
     if (!hdr.storeName && !hdr.address && !hdr.phone && !hdr.note) {
       try { hdr = JSON.parse(localStorage.getItem('webpos_receipt_header')) || {}; } catch (e) {}
     }
+    var stName = localStorage.getItem('webpos_store_name');
+    var stAddr = localStorage.getItem('webpos_store_address');
+    var stPhone = localStorage.getItem('webpos_store_phone');
+    var stNote = localStorage.getItem('webpos_store_footer_note');
     return {
-      storeName: (hdr.storeName || localStorage.getItem('webpos_store_name') || 'HIFZI CELL').trim(),
-      address: (hdr.address || localStorage.getItem('webpos_store_address') || '').trim(),
-      phone: (hdr.phone || localStorage.getItem('webpos_store_phone') || '').trim(),
-      note: (hdr.note || localStorage.getItem('webpos_store_footer_note') || 'Terima kasih telah berbelanja').trim(),
+      storeName: (stName || hdr.storeName || 'HIFZI CELL').trim(),
+      address: (stAddr !== null ? stAddr : (hdr.address || '')).trim(),
+      phone: (stPhone !== null ? stPhone : (hdr.phone || '')).trim(),
+      note: (stNote || hdr.note || 'Terima kasih telah berbelanja').trim(),
       logo: localStorage.getItem('webpos_store_logo') || ''
     };
   }
-
+  
   function normalizeTx(tx) {
     if (!tx || typeof tx !== 'object') return null;
     var hdr = loadStoreHeader();
