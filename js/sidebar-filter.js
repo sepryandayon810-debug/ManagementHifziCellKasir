@@ -68,10 +68,14 @@ function applyMenuVisibility() {
 }
 
 function hideMenuItem(selector) {
-  const el = document.querySelector(selector);
-  if (el) {
-    const parentNav = el.closest(".nav-item") || el;
+  document.querySelectorAll(selector).forEach(el => {
+    const parentNav = el.closest(".nav-item") || el.closest("li") || el;
     parentNav.style.display = "none";
+  });
+  if (String(selector || "").indexOf("setting") !== -1) {
+    document.querySelectorAll('.mobile-bar a[href*="page-setting.html"], .mobile-nav-item[href*="setting"]').forEach(m => {
+      m.style.display = "none";
+    });
   }
 }
 
