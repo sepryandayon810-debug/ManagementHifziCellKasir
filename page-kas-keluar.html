@@ -946,14 +946,26 @@ if (saveBtn) {
           document.getElementById('keluarNote').value = '';
           updateDisplay();
           loadKasTersedia();
+          if (window.OwnerKasHistory) OwnerKasHistory.refresh();
         }
 
        refreshPageData = async () => {
           await loadKasTersedia();
           updateDisplay();
+          if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
         };
 
         loadKasTersedia();
+        if (window.OwnerKasHistory) {
+          OwnerKasHistory.mount({
+            title: 'Riwayat Kas Keluar',
+            module: 'Kas Keluar',
+            categories: ['kas_keluar', 'setor_bank'],
+            hasAdmin: false,
+            accent: 'danger',
+            onChanged: loadKasTersedia
+          });
+        }
       }
       // ==========================================================
       // ============ PULL TO REFRESH (MOBILE) ====================
