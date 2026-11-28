@@ -1019,10 +1019,18 @@
           const addrIn = document.getElementById('receiptAddress');
           const phoneIn = document.getElementById('receiptPhone');
           const noteIn = document.getElementById('receiptNote');
-          if (nameIn && !nameIn.value.trim() && s.name) nameIn.value = s.name;
-          if (addrIn && !addrIn.value.trim() && s.address) addrIn.value = s.address;
-          if (phoneIn && !phoneIn.value.trim() && s.phone) phoneIn.value = s.phone;
-          if (noteIn && !noteIn.value.trim() && s.footerNote) noteIn.value = s.footerNote;
+          if (nameIn && s.name) nameIn.value = String(s.name).trim();
+          if (addrIn && typeof s.address === 'string') addrIn.value = s.address.trim();
+          if (phoneIn && typeof s.phone === 'string') phoneIn.value = s.phone.trim();
+          if (noteIn && typeof s.footerNote === 'string' && s.footerNote.trim()) noteIn.value = s.footerNote.trim();
+          const syncedHeader = {
+            storeName: (nameIn ? nameIn.value.trim() : '') || 'HIFZI CELL',
+            address: addrIn ? addrIn.value.trim() : '',
+            phone: phoneIn ? phoneIn.value.trim() : '',
+            note: (noteIn ? noteIn.value.trim() : '') || 'Terima kasih telah bertransaksi'
+          };
+          localStorage.setItem('webpos_receipt_header', JSON.stringify(syncedHeader));
+          localStorage.setItem('receiptHeader', JSON.stringify(syncedHeader));
           updatePreview();
         }
       }
@@ -2248,10 +2256,10 @@ Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, persis dengan strukt
     try { h1 = JSON.parse(localStorage.getItem('webpos_receipt_header') || '{}') || {}; } catch (e) {}
     try { h2 = JSON.parse(localStorage.getItem('receiptHeader') || '{}') || {}; } catch (e) {}
 
-    const storeName = h1.storeName || h2.storeName || localStorage.getItem('webpos_store_name') || 'HIFZI CELL';
-    const address = h1.address || h2.address || localStorage.getItem('webpos_store_address') || '';
-    const phone = h1.phone || h2.phone || localStorage.getItem('webpos_store_phone') || '';
-    const note = h1.note || h2.note || localStorage.getItem('webpos_store_footer_note') || 'Terima kasih telah bertransaksi';
+    const storeName = localStorage.getItem('webpos_store_name') || h1.storeName || h2.storeName || 'HIFZI CELL';
+    const address = localStorage.getItem('webpos_store_address') || h1.address || h2.address || '';
+    const phone = localStorage.getItem('webpos_store_phone') || h1.phone || h2.phone || '';
+    const note = localStorage.getItem('webpos_store_footer_note') || h1.note || h2.note || 'Terima kasih telah bertransaksi';
 
     document.getElementById('receiptStoreName').value = storeName;
     document.getElementById('receiptAddress').value = address;
