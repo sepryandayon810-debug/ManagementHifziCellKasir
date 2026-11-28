@@ -1029,6 +1029,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (c.indexOf('fa-sync') !== -1 || c.indexOf('fa-redo') !== -1 || c.indexOf('fa-undo') !== -1 || c.indexOf('fa-rotate') !== -1) return 'sync';
     if (c.indexOf('fa-lock') !== -1 || c.indexOf('fa-key') !== -1) return 'lock';
     if (c.indexOf('fa-info') !== -1 || c.indexOf('fa-circle-info') !== -1 || c.indexOf('fa-circle-question') !== -1 || c.indexOf('fa-circle-dot') !== -1 || c.indexOf('fa-book') !== -1 || c.indexOf('fa-question') !== -1) return 'info';
+    if (c.indexOf('fa-hourglass') !== -1) return 'clock';
+    if (c.indexOf('fa-sticky-note') !== -1 || c.indexOf('fa-note-sticky') !== -1) return 'list';
+    if (c.indexOf('fa-unlock') !== -1) return 'lock';
+    if (c.indexOf('fa-arrow-rotate') !== -1) return 'sync';
+    if (c.indexOf('fa-share-nodes') !== -1) return 'exchange';
+    if (c.indexOf('fa-phone') !== -1) return 'mobile';
+    if (c.indexOf('fa-eraser') !== -1) return 'trash';
+    if (c.indexOf('fa-magic') !== -1) return 'image';
     return null;
   }
 
