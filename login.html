@@ -610,6 +610,162 @@
     }
   }
 
+  const LOGIN_FAIL_STORAGE_KEY = "webpos_login_fail_map";
+  const MAX_LOGIN_ATTEMPTS = 3;
+
+  function getLoginFailMap() {
+    try {
+      const raw = localStorage.getItem(LOGIN_FAIL_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveLoginFailMap(map) {
+    try {
+      localStorage.setItem(LOGIN_FAIL_STORAGE_KEY, JSON.stringify(map || {}));
+    } catch (e) {}
+  }
+
+  function isAccountLockedForReset(accountKey) {
+    const key = String(accountKey || "").trim().toLowerCase();
+    if (!key) return false;
+    const rec = getLoginFailMap()[key];
+    return !!(rec && (rec.locked || Number(rec.count || 0) >= MAX_LOGIN_ATTEMPTS));
+  }
+
+  function incrementLoginFail(accountKey) {
+    const key = String(accountKey || "").trim().toLowerCase();
+    if (!key) return 0;
+    const map = getLoginFailMap();
+    const prev = map[key] || { count: 0, locked: false };
+    const nextCount = Number(prev.count || 0) + 1;
+    map[key] = {
+      count: nextCount,
+      locked: nextCount >= MAX_LOGIN_ATTEMPTS,
+      updatedAt: Date.now()
+    };
+    saveLoginFailMap(map);
+    return nextCount;
+  }
+
+  function clearLoginFailRecord(accountKey) {
+    const key = String(accountKey || "").trim().toLowerCase();
+    if (!key) return;
+    const map = getLoginFailMap();
+    if (map[key]) {
+      delete map[key];
+      saveLoginFailMap(map);
+    }
+  }
+
+  function isCredentialAuthError(err) {
+    const rawCode = String((err && err.code) || "").toLowerCase();
+    const upperMsg = String((err && err.message) || "").toUpperCase();
+    return (
+      rawCode.includes("wrong-password") ||
+      rawCode.includes("invalid-credential") ||
+      rawCode.includes("invalid-login-credentials") ||
+      rawCode.includes("internal-error") ||
+      upperMsg.includes("INVALID_PASSWORD") ||
+      upperMsg.includes("INVALID_LOGIN_CREDENTIALS")
+    );
+  }
+
+  function redirectToMandatoryReset(emailValue, noticeText) {
+    switchMode("forgot");
+    const forgotInput = document.getElementById("forgotEmail");
+    if (forgotInput && emailValue && emailValue.includes("@")) {
+      forgotInput.value = emailValue;
+    }
+    errBox.textContent = noticeText;
+    errBox.style.display = "block";
+    const card = document.querySelector(".auth-container");
+    if (card) {
+      card.classList.remove("shake");
+      void card.offsetWidth;
+      card.classList.add("shake");
+    }
+  }
+
+  function formatFriendlyAuthError(err, mode, usedUsernameLookup) {
+    const rawCode = String((err && err.code) || "").toLowerCase();
+    const rawMsg = String((err && err.message) || "").trim();
+    const upperMsg = rawMsg.toUpperCase();
+
+    const isSystemMsg = ["FIREBASE", "AUTH/", "INVALID_", "NETWORK", "FETCH", "ERROR", "UNDEFINED", "{"].some(
+      (k) => upperMsg.includes(k)
+    );
+    if (!rawCode && rawMsg && !isSystemMsg) {
+      return rawMsg;
+    }
+
+    if (rawCode.includes("wrong-password") || upperMsg.includes("INVALID_PASSWORD")) {
+      return "Password salah. Periksa kembali huruf besar dan kecil pada password Anda.";
+    }
+    if (
+      rawCode.includes("invalid-credential") ||
+      rawCode.includes("invalid-login-credentials") ||
+      upperMsg.includes("INVALID_LOGIN_CREDENTIALS")
+    ) {
+      return usedUsernameLookup
+        ? "Password salah. Silakan periksa kembali password akun Anda."
+        : "Email tidak sesuai atau password salah. Silakan periksa kembali.";
+    }
+    if (rawCode.includes("user-not-found") || upperMsg.includes("EMAIL_NOT_FOUND")) {
+      return mode === "forgot"
+        ? "Email tidak ditemukan. Pastikan email yang dimasukkan sesuai dengan akun yang terdaftar."
+        : "Email belum terdaftar. Periksa kembali penulisan email atau daftar akun baru.";
+    }
+    if (rawCode.includes("invalid-email") || upperMsg.includes("INVALID_EMAIL")) {
+      return "Format email tidak sesuai. Contoh yang benar: nama@gmail.com.";
+    }
+    if (rawCode.includes("missing-password") || upperMsg.includes("MISSING_PASSWORD")) {
+      return "Password belum diisi. Silakan masukkan password Anda.";
+    }
+    if (rawCode.includes("too-many-requests") || upperMsg.includes("TOO_MANY_ATTEMPTS")) {
+      return "Terlalu banyak percobaan gagal. Demi keamanan, tunggu beberapa menit atau reset password akun Anda.";
+    }
+    if (rawCode.includes("user-disabled") || upperMsg.includes("USER_DISABLED")) {
+      return "Akun Anda sedang dinonaktifkan. Silakan hubungi Owner.";
+    }
+    if (
+      rawCode.includes("network-request-failed") ||
+      rawCode.includes("unavailable") ||
+      upperMsg.includes("NETWORK") ||
+      upperMsg.includes("FAILED TO FETCH")
+    ) {
+      return "Koneksi internet bermasalah. Periksa sinyal WiFi atau paket data Anda lalu coba lagi.";
+    }
+    if (rawCode.includes("email-already-in-use") || upperMsg.includes("EMAIL_EXISTS")) {
+      return "Email ini sudah terdaftar. Silakan langsung masuk atau gunakan menu Lupa Kata Sandi.";
+    }
+    if (rawCode.includes("weak-password") || upperMsg.includes("WEAK_PASSWORD")) {
+      return "Password terlalu pendek atau lemah. Gunakan minimal 6 karakter.";
+    }
+    if (rawCode.includes("permission-denied")) {
+      return "Akses ditolak sementara oleh server. Silakan muat ulang halaman atau hubungi Owner.";
+    }
+    if (rawCode.includes("internal-error")) {
+      if (mode === "login") {
+        return usedUsernameLookup
+          ? "Password salah atau data login tidak sesuai. Silakan coba lagi."
+          : "Email tidak sesuai atau password salah. Silakan periksa kembali.";
+      }
+      return "Terjadi gangguan sementara pada sistem. Silakan periksa data Anda lalu coba lagi.";
+    }
+
+    if (mode === "register") {
+      return "Gagal mendaftarkan akun. Periksa kembali data yang diisi lalu coba lagi.";
+    }
+    if (mode === "forgot") {
+      return "Gagal mengirim link reset password. Periksa kembali alamat email Anda.";
+    }
+    return "Email tidak sesuai atau password salah. Silakan periksa kembali.";
+  }
+
   document.getElementById("formLogin").onsubmit = async (e) => {
     e.preventDefault();
     const identifier = document.getElementById("loginIdentifier").value.trim();
@@ -619,6 +775,9 @@
     clearAlerts();
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
+
+    let usedUsernameLookup = false;
+    let resolvedEmail = "";
 
     try {
       let targetEmail = identifier;
@@ -630,14 +789,31 @@
           .get();
 
         if (usernameQuery.empty) {
-          throw new Error("Username tidak terdaftar di database.");
+          throw new Error("Username tidak terdaftar. Periksa kembali penulisan username Anda.");
         }
         targetEmail = usernameQuery.docs[0].data().email;
+        if (!targetEmail) {
+          throw new Error("Data email untuk username ini belum lengkap. Silakan hubungi Owner.");
+        }
+        usedUsernameLookup = true;
+      }
+
+      resolvedEmail = String(targetEmail || "").trim().toLowerCase();
+
+      if (isAccountLockedForReset(resolvedEmail)) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
+        redirectToMandatoryReset(
+          resolvedEmail,
+          "Akun ini terkunci karena sudah 3x salah password. Wajib reset akun terlebih dahulu dengan mengirim link reset ke email di bawah ini."
+        );
+        return;
       }
 
       const userCred = await auth.signInWithEmailAndPassword(targetEmail, pass);
+      clearLoginFailRecord(resolvedEmail);
       const uid = userCred.user.uid;
-
+      
       try {
         const prevUid = localStorage.getItem("webpos_last_uid");
         if (prevUid && prevUid !== uid) {
@@ -674,17 +850,31 @@
       await recordUserLogin(uid);
       window.location.href = "index.html";
 
-    } catch (err) {
+   } catch (err) {
       btn.disabled = false;
       btn.innerHTML = '<span>Masuk ke Sistem</span> <i class="fas fa-arrow-right"></i>';
-      errBox.textContent = "Gagal masuk: " + (err.code === 'auth/wrong-password' ? 'Password salah.' : err.message);
+
+      if (resolvedEmail && isCredentialAuthError(err)) {
+        const failCount = incrementLoginFail(resolvedEmail);
+        if (failCount >= MAX_LOGIN_ATTEMPTS) {
+          redirectToMandatoryReset(
+            resolvedEmail,
+            "Anda sudah 3x salah memasukkan password. Demi keamanan, akun wajib di-reset terlebih dahulu. Klik tombol di bawah untuk kirim link reset ke email Anda."
+          );
+          return;
+        }
+        const sisa = MAX_LOGIN_ATTEMPTS - failCount;
+        errBox.textContent = formatFriendlyAuthError(err, "login", usedUsernameLookup) + " (Sisa percobaan: " + sisa + "x lagi sebelum wajib reset akun)";
+      } else {
+        errBox.textContent = formatFriendlyAuthError(err, "login", usedUsernameLookup);
+      }
+
       errBox.style.display = "block";
       const card = document.querySelector(".auth-container");
       card.classList.remove("shake");
       void card.offsetWidth;
       card.classList.add("shake");
     }
-  };
 
   document.getElementById("formRegister").onsubmit = async (e) => {
     e.preventDefault();
@@ -751,7 +941,7 @@
     } catch (err) {
       btn.disabled = false;
       btn.innerHTML = '<span>Ajukan Pendaftaran Akun</span> <i class="fas fa-user-plus"></i>';
-      errBox.textContent = "Gagal mendaftar: " + err.message;
+      errBox.textContent = formatFriendlyAuthError(err, "register", false);
       errBox.style.display = "block";
     }
   };
@@ -767,18 +957,19 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
     try {
       await auth.sendPasswordResetEmail(email);
-      succBox.textContent = "Tautan reset kata sandi telah dikirim ke " + email + ". Silakan periksa inbox atau folder spam.";
+      clearLoginFailRecord(email);
+      succBox.textContent = "Tautan reset kata sandi telah dikirim ke " + email + ". Silakan buka inbox/spam email Anda, buat password baru, lalu login kembali.";
       succBox.style.display = "block";
       document.getElementById("formForgot").reset();
     } catch (err) {
-      errBox.textContent = "Gagal mengirim reset password: " + err.message;
+      errBox.textContent = formatFriendlyAuthError(err, "forgot", false);
       errBox.style.display = "block";
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span>Kirim Link Reset Password</span> <i class="fas fa-paper-plane"></i>';
     }
   };
-
+    
   (function initFireflies() {
     const layer = document.getElementById("firefliesLayer");
     if (!layer) return;
