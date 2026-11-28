@@ -1320,6 +1320,14 @@
       const uDoc = await firebase.firestore().collection("users").doc(user.uid).get();
       if (uDoc.exists) {
         const u = uDoc.data();
+        const realRole = String(u.role || "kasir").toLowerCase();
+        const effRole = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(realRole) : realRole;
+        const perms = (u.permissions && typeof u.permissions === "object") ? u.permissions : {};
+        if (typeof RoleGuard !== 'undefined') RoleGuard.apply(effRole);
+        if (effRole !== "owner" && effRole !== "developer" && perms.setting !== true) {
+          window.location.replace("index.html");
+          return;
+        }
         document.getElementById("userFullName").value = u.name || "";
         document.getElementById("userUsername").value = u.username || "-";
         document.getElementById("userEmail").value = user.email || "-";
