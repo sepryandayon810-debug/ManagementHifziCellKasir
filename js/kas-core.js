@@ -380,9 +380,12 @@ if (typeof window.KasCore === 'undefined') {
 
       var category = getCategory(transaction);
 
-      // Jika page sudah menyimpan laba final, gunakan itu (kompatibilitas data lama)
+     // Jika page sudah menyimpan laba final, gunakan itu (kompatibilitas data lama)
       if (transaction.laba !== undefined && transaction.laba !== null && transaction.laba !== '') {
         return normalizeNumber(transaction.laba);
+      }
+      if (transaction.profit !== undefined && transaction.profit !== null && transaction.profit !== '') {
+        return normalizeNumber(transaction.profit);
       }
 
       var nominal = getNominal(transaction);
