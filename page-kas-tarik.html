@@ -1251,13 +1251,14 @@ const transactionData = Object.assign({
           });
         }
         
-        function resetForm() {
+       function resetForm() {
           amount = 0;
           document.getElementById('adminFee').value = '';
           document.getElementById('tarikNote').value = '';
           document.querySelectorAll('.bank-card-btn').forEach(el => el.classList.remove('active'));
           updateDisplay();
           loadKasirSaldoLaci();
+          if (window.OwnerKasHistory) OwnerKasHistory.refresh();
         }
 
         function loadKasirSaldoLaci() {
@@ -1354,9 +1355,20 @@ const transactionData = Object.assign({
         refreshPageData = async () => {
           await loadKasTersedia();
           updateDisplay();
+          if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
         };
 
         loadKasTersedia();
+        if (window.OwnerKasHistory) {
+          OwnerKasHistory.mount({
+            title: 'Riwayat Tarik Tunai',
+            module: 'Tarik Tunai',
+            categories: ['tarik_tunai', 'tarik'],
+            hasAdmin: true,
+            accent: 'danger',
+            onChanged: loadKasTersedia
+          });
+        }
       }
       // ==========================================================
       // ============ PULL TO REFRESH (MOBILE) ====================
