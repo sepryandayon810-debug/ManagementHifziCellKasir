@@ -898,7 +898,12 @@
         
         Utils.showLoading('Menghapus...');
         try {
-          await db.collection(COLLECTION_NAME).doc(pendingDeleteId).delete();
+          const delTargetId = pendingDeleteId;
+          const delName = document.getElementById('deleteCustomerName')?.textContent || delTargetId;
+          await db.collection(COLLECTION_NAME).doc(delTargetId).delete();
+          if (window.AuditLogger) {
+            await AuditLogger.log("HAPUS_PELANGGAN", `Menghapus data pelanggan: ${delName}`, "Data Pelanggan", delTargetId);
+          }
           Utils.hideLoading();
           closeDeleteModal();
           Utils.showToast('Data berhasil dihapus', 'success');
