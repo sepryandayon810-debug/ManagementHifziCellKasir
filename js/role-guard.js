@@ -68,7 +68,7 @@
     "setting": true
   };
 
-  var KASIR_DEFAULT_DENIED = {
+ var KASIR_DEFAULT_DENIED = {
     "pembelian": true,
     "laporan": true,
     "laporan-stok": true,
@@ -84,6 +84,43 @@
     "transfer_shift": true,
     "total_laba": true,
     "modal_awal": true
+  };
+
+  var ADMIN_DEFAULT_DENIED_TABS = {
+    "tab_laporan_audit": true,
+    "tab_setting_toko": true,
+    "tab_setting_lanjutan": true,
+    "tab_backup_transaksi": true,
+    "tab_backup_produk": true,
+    "tab_backup_hutang": true,
+    "tab_backup_kas": true,
+    "tab_backup_pembelian": true,
+    "tab_backup_pelanggan": true,
+    "tab_backup_gaji": true,
+    "tab_backup_saldo": true
+  };
+
+  var KASIR_DEFAULT_DENIED_TABS = {
+    "tab_produk_excel": true,
+    "tab_riwayat_semua": true,
+    "tab_beli_ada": true,
+    "tab_beli_baru": true,
+    "tab_laporan_penjualan": true,
+    "tab_laporan_kas": true,
+    "tab_laporan_audit": true,
+    "tab_tele_topup": true,
+    "tab_tele_sisa": true,
+    "tab_pengguna_pending": true,
+    "tab_setting_toko": true,
+    "tab_setting_lanjutan": true,
+    "tab_backup_transaksi": true,
+    "tab_backup_produk": true,
+    "tab_backup_hutang": true,
+    "tab_backup_kas": true,
+    "tab_backup_pembelian": true,
+    "tab_backup_pelanggan": true,
+    "tab_backup_gaji": true,
+    "tab_backup_saldo": true
   };
 
   var PAGE_TABS_MAP = {
@@ -234,28 +271,31 @@
     });
   }
 
-  function applyPageTabsPermissions(perms) {
-    if (!perms || typeof perms !== "object") return;
+  function applyPageTabsPermissions(perms, role) {
+    var safePerms = (perms && typeof perms === "object") ? perms : {};
+    var r = String(role || window.__webposLastRole || localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
+    if (r === "owner" || r === "developer") return;
+
     var pageName = getCurrentPageName();
     var tabDefs = PAGE_TABS_MAP[pageName];
     if (!tabDefs || !tabDefs.length) return;
 
+    var defaultDeniedTabs = (r === "admin") ? ADMIN_DEFAULT_DENIED_TABS : KASIR_DEFAULT_DENIED_TABS;
     var hiddenActive = false;
     var firstVisibleBtn = null;
 
     tabDefs.forEach(function(def) {
-      var val = perms[def.key];
+      var explicit = safePerms[def.key];
+      var allowed = (explicit === true) ? true : (explicit === false ? false : !defaultDeniedTabs[def.key]);
       var nodes = document.querySelectorAll(def.selector);
       if (!nodes.length) return;
       nodes.forEach(function(btn) {
-        if (val === false) {
+        if (!allowed) {
           if (btn.classList.contains("active")) hiddenActive = true;
           btn.style.display = "none";
-        } else if (val === true) {
+        } else {
           btn.style.display = "";
           if (!firstVisibleBtn) firstVisibleBtn = btn;
-        } else {
-          if (btn.style.display !== "none" && !firstVisibleBtn) firstVisibleBtn = btn;
         }
       });
     });
@@ -267,20 +307,19 @@
     }
   }
 
-  function applyExplicitPermissions(perms) {
-    if (!perms || typeof perms !== "object") return;
-    Object.keys(perms).forEach(function(menuKey) {
-      if (menuKey.indexOf("tab_") === 0) return;
-      if (perms[menuKey] === true) {
+  function applyExplicitPermissions(perms, role) {
+    var safePerms = (perms && typeof perms === "object") ? perms : {};
+    Object.keys(safePerms).forEach(function(menuKey) {
+      if (menuKey.indexOf("tab_") === 0 || menuKey.indexOf("aksi_") === 0) return;
+      if (safePerms[menuKey] === true) {
         setMenuVisibilityByKey(menuKey, true);
-      } else if (perms[menuKey] === false) {
+      } else if (safePerms[menuKey] === false) {
         setMenuVisibilityByKey(menuKey, false);
       }
     });
     syncDropdownAndSections();
-    applyPageTabsPermissions(perms);
+    applyPageTabsPermissions(safePerms, role);
   }
-
   function isPageAllowedForUser(pageName, role, perms) {
     if (role === "owner" || role === "developer") return true;
     var permKey = PAGE_TO_PERM_KEY[pageName];
@@ -320,21 +359,35 @@
       syncDropdownAndSections();
     },
 
+    hasPerm: function(permKey, defaultAdmin, defaultKasir) {
+      var rawRole = String(window.__webposLastRole || window.currentUserRole || localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
+      var role = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(rawRole) : rawRole;
+      if (role === "owner" || role === "developer") return true;
+      var isSim = (typeof window.isDevRoleSimActive === "function" && window.isDevRoleSimActive());
+      var perms = isSim ? {} : (window.currentUserPerms || window.__webposLastPerms || null);
+      if (!perms) {
+        try { perms = JSON.parse(localStorage.getItem("webpos_user_permissions") || "{}"); } catch (e) { perms = {}; }
+      }
+      if (perms && perms[permKey] === true) return true;
+      if (perms && perms[permKey] === false) return false;
+      return role === "admin" ? !!defaultAdmin : !!defaultKasir;
+    },
+
     apply: function(userRole) {
       var role = (userRole || "kasir").toLowerCase();
+      window.__webposLastRole = role;
       if (role === "owner" || role === "developer") return;
 
       this.applyDefaults(role);
 
       try {
         var isSimNow = (typeof window.isDevRoleSimActive === "function" && window.isDevRoleSimActive());
-        if (!isSimNow) {
-          var cached = JSON.parse(localStorage.getItem("webpos_user_permissions") || "{}");
-          window.__webposLastPerms = cached;
-          applyExplicitPermissions(cached);
-        }
-      } catch (e) {}
-
+        var cached = isSimNow ? {} : JSON.parse(localStorage.getItem("webpos_user_permissions") || "{}");
+        window.__webposLastPerms = cached;
+        applyExplicitPermissions(cached, role);
+      } catch (e) {
+        applyPageTabsPermissions({}, role);
+      }
       if (typeof firebase !== "undefined" && firebase.auth && firebase.firestore) {
         if (!window.__webposRouteGuardBound) {
           window.__webposRouteGuardBound = true;
@@ -364,10 +417,14 @@
                 try { localStorage.setItem("webpos_user_permissions", JSON.stringify(livePerms)); } catch (e) {}
               }
 
+              window.__webposLastRole = liveRole;
+              if (typeof window.__onRolePermsSynced === "function") {
+                try { window.__onRolePermsSynced(liveRole, livePerms); } catch (e) {}
+              }
               if (liveRole === "owner" || liveRole === "developer") return;
 
               window.RoleGuard.applyDefaults(liveRole);
-              applyExplicitPermissions(livePerms);
+              applyExplicitPermissions(livePerms, liveRole);
 
               if (!isPageAllowedForUser(pageName, liveRole, livePerms)) {
                 window.location.replace("index.html");
@@ -376,9 +433,10 @@
               console.warn("Gagal sync izin:", err);
               try {
                 var cachedRole = String(localStorage.getItem("webpos_user_role") || "kasir").toLowerCase();
+                window.__webposLastRole = cachedRole;
                 if (cachedRole === "owner" || cachedRole === "developer") return;
                 var cachedPerms = JSON.parse(localStorage.getItem("webpos_user_permissions") || "{}");
-                applyExplicitPermissions(cachedPerms);
+                applyExplicitPermissions(cachedPerms, cachedRole);
                 if (!isPageAllowedForUser(pageName, cachedRole, cachedPerms)) {
                   window.location.replace("index.html");
                 }
@@ -390,9 +448,12 @@
     }
   };
 
-  document.addEventListener("DOMContentLoaded", function() {
+ document.addEventListener("DOMContentLoaded", function() {
+    var r = window.__webposLastRole || localStorage.getItem("webpos_user_role") || "";
     if (window.__webposLastPerms) {
-      applyExplicitPermissions(window.__webposLastPerms);
+      applyExplicitPermissions(window.__webposLastPerms, r);
+    } else if (r) {
+      applyPageTabsPermissions({}, r);
     }
   });
 })();
