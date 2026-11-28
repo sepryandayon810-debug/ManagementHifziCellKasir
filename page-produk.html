@@ -3201,7 +3201,11 @@ document.getElementById("filterKategori").onchange = function() {
     if (!canDeleteProduk()) { toast("Anda tidak memiliki izin menghapus produk!", "error"); return; }
     showCustomConfirm("Apakah Anda yakin ingin menghapus produk ini dari daftar?", async () => {
       try {
+        const prodObj = productsList.find(x => x.id === id);
         await db.collection("products").doc(id).delete();
+        if (window.AuditLogger) {
+          await AuditLogger.log("HAPUS_PRODUK", `Menghapus produk: ${prodObj ? prodObj.name : id}`, "Produk", id);
+        }
         toast("Produk berhasil dihapus", "success");
         loadProducts();
       } catch(err) {
@@ -3220,7 +3224,11 @@ document.getElementById("filterKategori").onchange = function() {
     if (!canDeleteProduk()) { toast("Anda tidak memiliki izin menghapus kategori!", "error"); return; }
     showCustomConfirm("Apakah Anda yakin ingin menghapus kategori ini?", async () => {
       try {
+        const katObj = categoriesList.find(x => x.id === id);
         await db.collection("categories").doc(id).delete();
+        if (window.AuditLogger) {
+          await AuditLogger.log("HAPUS_KATEGORI", `Menghapus kategori produk: ${katObj ? katObj.name : id}`, "Produk", id);
+        }
         toast("Kategori berhasil dihapus", "success");
         loadCategories();
       } catch(err) {
