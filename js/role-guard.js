@@ -45,10 +45,14 @@ if (typeof window.RoleGuard === 'undefined') {
     },
 
     hideMenu: function(selector) {
-      const el = document.querySelector(selector);
-      if (el) {
+      document.querySelectorAll(selector).forEach(function(el) {
         const item = el.closest('.nav-item') || el;
         item.style.display = 'none';
+      });
+      if (selector.indexOf('setting') !== -1) {
+        document.querySelectorAll('.mobile-bar a[href*="page-setting.html"], .mobile-nav-item[href*="setting"]').forEach(function(m) {
+          m.style.display = 'none';
+        });
       }
     }
   };
@@ -65,22 +69,21 @@ var RoleGuard = window.RoleGuard;
     if (!perms || typeof perms !== 'object') return;
 
     Object.keys(perms).forEach(menuKey => {
+      const selectors = [
+        `[data-menu="${menuKey}"]`,
+        `[data-menu="data-${menuKey}"]`
+      ];
+      if (menuKey === 'pelanggan') selectors.push('[data-menu="data-pelanggan"]');
+      if (menuKey === 'data-pelanggan') selectors.push('[data-menu="pelanggan"]');
+
       if (perms[menuKey] === true) {
-        // Cari elemen menu (toleran jika ada awalan data- atau tanpa data-)
-        const selectors = [
-          `[data-menu="${menuKey}"]`,
-          `[data-menu="data-${menuKey}"]`
-        ];
-        if (menuKey === 'pelanggan') selectors.push('[data-menu="data-pelanggan"]');
-        if (menuKey === 'data-pelanggan') selectors.push('[data-menu="pelanggan"]');
-
-        const el = document.querySelector(selectors.join(', '));
-        if (el) {
+        document.querySelectorAll(selectors.join(', ')).forEach(el => {
           const item = el.closest('.nav-item') || el;
-          item.style.display = ''; // Munculkan menu
+          item.style.display = '';
+        });
+        if (menuKey === 'setting') {
+          document.querySelectorAll('.mobile-bar a[href*="page-setting.html"], .mobile-nav-item[href*="setting"]').forEach(m => { m.style.display = ''; });
         }
-
-        // Widget khusus Dashboard
         if (menuKey === 'total_laba') {
           const laba = document.getElementById('totalLaba');
           if (laba && laba.closest('.stat-card')) laba.closest('.stat-card').style.display = '';
@@ -89,11 +92,27 @@ var RoleGuard = window.RoleGuard;
         }
         if (menuKey === 'modal_awal') {
           const modal = document.getElementById('modalAwal');
-          if (modal) modal.closest('.stat-card').style.display = '';
+          if (modal && modal.closest('.stat-card')) modal.closest('.stat-card').style.display = '';
         }
         if (menuKey === 'transfer_shift') {
           const btn = document.getElementById('btnTransferShift');
           if (btn) btn.style.display = '';
+        }
+      } else if (perms[menuKey] === false) {
+        window.RoleGuard.hideMenu(selectors.join(', '));
+        if (menuKey === 'total_laba') {
+          const laba = document.getElementById('totalLaba');
+          if (laba && laba.closest('.stat-card')) laba.closest('.stat-card').style.display = 'none';
+          const headerLaba = document.getElementById('headerLaba');
+          if (headerLaba && headerLaba.closest('.stat-item')) headerLaba.closest('.stat-item').style.display = 'none';
+        }
+        if (menuKey === 'modal_awal') {
+          const modal = document.getElementById('modalAwal');
+          if (modal && modal.closest('.stat-card')) modal.closest('.stat-card').style.display = 'none';
+        }
+        if (menuKey === 'transfer_shift') {
+          const btn = document.getElementById('btnTransferShift');
+          if (btn) btn.style.display = 'none';
         }
       }
     });
