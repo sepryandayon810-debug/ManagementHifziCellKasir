@@ -897,6 +897,7 @@
   let currentActiveTab = "active";
   let currentUserRole = "kasir";
   let currentUserId = null;
+  let currentUserPerms = {};
 
   function toast(msg, type = "success") {
     const box = document.getElementById("toastContainer");
@@ -982,7 +983,9 @@
       if (userDoc.exists) {
         const u = userDoc.data();
         const realRole = (u.role || "kasir").toLowerCase();
+        const isSimRole = (realRole === "developer" && typeof window.isDevRoleSimActive === "function" && window.isDevRoleSimActive());
         currentUserRole = (typeof window.getEffectiveUserRole === "function") ? window.getEffectiveUserRole(realRole) : realRole;
+        currentUserPerms = isSimRole ? {} : ((u.permissions && typeof u.permissions === "object") ? u.permissions : {});
         
         document.getElementById("userName").textContent = u.name || user.email.split("@")[0];
         document.getElementById("userRole").textContent = currentUserRole.toUpperCase();
@@ -1240,7 +1243,29 @@
     }).join("");
   }
   
+  function canManageTargetUser(targetUser, action) {
+    if (!targetUser) return false;
+    const targetRole = (targetUser.role || "kasir").toLowerCase();
+    const isSelf = (targetUser.id === currentUserId);
+    if (isSelf) return false;
+    if (currentUserRole === "developer") return true;
+    if (currentUserRole === "owner") {
+      if (action === "approve") return targetRole !== "developer";
+      return targetRole !== "developer" && targetRole !== "owner";
+    }
+    if (currentUserRole === "admin") {
+      if (action === "role") return false;
+      return targetRole === "kasir";
+    }
+    return false;
+  }
+
   window.approveUser = function(userId, userName) {
+    const targetUser = allUsers.find(x => x.id === userId);
+    if (!canManageTargetUser(targetUser, "approve")) {
+      toast("Anda tidak memiliki izin menyetujui akun ini!", "error");
+      return;
+    }
     showCustomConfirm("Persetujuan Akun", `Setujui pengajuan akun untuk ${userName}?`, "warning", "Ya, Setujui", async () => {
       try {
         await db.collection("users").doc(userId).update({
@@ -1255,7 +1280,12 @@
     });
   };
 
-  window.rejectUser = function(userId) {
+ window.rejectUser = function(userId) {
+    const targetUser = allUsers.find(x => x.id === userId);
+    if (!canManageTargetUser(targetUser, "approve")) {
+      toast("Anda tidak memiliki izin menolak akun ini!", "error");
+      return;
+    }
     showCustomConfirm("Tolak Pengajuan", "Tolak pengajuan akun ini? Pengguna tidak akan bisa login.", "danger", "Ya, Tolak", async () => {
       try {
         await db.collection("users").doc(userId).update({
@@ -1330,7 +1360,16 @@
 
   window.saveNewRole = async function() {
     const uid = document.getElementById("targetRoleUserId").value;
-    const newRole = document.getElementById("newRoleSelect").value;
+    const newRole = String(document.getElementById("newRoleSelect").value || "").toLowerCase();
+    const targetUser = allUsers.find(x => x.id === uid);
+    if (!canManageTargetUser(targetUser, "role")) {
+      toast("Anda tidak memiliki izin mengubah role akun ini!", "error");
+      return;
+    }
+    if (currentUserRole === "owner" && newRole === "developer") {
+      toast("Owner tidak dapat menetapkan role Developer!", "error");
+      return;
+    }
 
     try {
       await db.collection("users").doc(uid).update({ role: newRole });
@@ -1518,8 +1557,27 @@
         { key: "tab_backup_gaji", label: "Backup: Tab Penggajian", defAdmin: false, defKasir: false },
         { key: "tab_backup_saldo", label: "Backup: Tab Saldo Tools", defAdmin: false, defKasir: false }
       ]
+    },
+    {
+      title: "15. Aksi Sensitif Produk & Hutang (2)",
+      highlight: true,
+      items: [
+        { key: "aksi_produk_kelola", label: "Produk: Tambah / Edit / Hapus / Nonaktifkan", defAdmin: true, defKasir: false },
+        { key: "aksi_hutang_hapus", label: "Hutang: Edit / Hapus Data & Pelanggan", defAdmin: true, defKasir: false }
+      ]
     }
   ];
+
+  function canEditorGrantPerm(item) {
+    if (currentUserRole === "developer" || currentUserRole === "owner") return true;
+    if (currentUserRole !== "admin") return false;
+    if (!item) return false;
+    if (item.key === "pelanggan" && currentUserPerms.pelanggan === undefined && currentUserPerms["data-pelanggan"] !== undefined) {
+      return !!currentUserPerms["data-pelanggan"];
+    }
+    if (currentUserPerms[item.key] !== undefined) return !!currentUserPerms[item.key];
+    return !!item.defAdmin;
+  }
 
   function getPermCheckboxId(key) {
     return "perm_" + String(key).replace(/[^a-z0-9_]/gi, "_");
@@ -1537,6 +1595,7 @@
         : "font-size:0.72rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin:0.65rem 0 0.35rem; display:flex; justify-content:space-between; align-items:center;";
       const itemsHtml = g.items.map(item => {
         const cid = getPermCheckboxId(item.key);
+        const editorCanGrant = canEditorGrantPerm(item);
         let checkedVal;
         if (item.key === "pelanggan" && perms.pelanggan === undefined && perms["data-pelanggan"] !== undefined) {
           checkedVal = !!perms["data-pelanggan"];
@@ -1545,10 +1604,13 @@
         } else {
           checkedVal = role === "admin" ? !!item.defAdmin : !!item.defKasir;
         }
+        if (!editorCanGrant) checkedVal = false;
         const searchStr = (g.title + " " + item.label + " " + item.key).toLowerCase().replace(/"/g, "");
-        return '<label class="perm-check-item" data-search="' + searchStr + '" style="display:flex; align-items:center; gap:0.45rem; cursor:pointer;">' +
-          '<input type="checkbox" id="' + cid + '" data-perm-key="' + item.key + '" data-group-idx="' + gIdx + '"' + (checkedVal ? ' checked' : '') + ' style="accent-color:var(--primary); width:16px; height:16px; flex-shrink:0;">' +
-          '<span>' + item.label + '</span></label>';
+        const lockStyle = editorCanGrant ? "cursor:pointer;" : "cursor:not-allowed; opacity:0.5;";
+        const lockBadge = editorCanGrant ? "" : ' <i class="fas fa-lock" style="font-size:0.65rem; color:var(--text-muted);" title="Khusus Owner / tidak dimiliki akun Anda"></i>';
+        return '<label class="perm-check-item" data-search="' + searchStr + '" style="display:flex; align-items:center; gap:0.45rem; ' + lockStyle + '">' +
+          '<input type="checkbox" id="' + cid + '" data-perm-key="' + item.key + '" data-group-idx="' + gIdx + '"' + (checkedVal ? ' checked' : '') + (editorCanGrant ? '' : ' disabled') + ' style="accent-color:var(--primary); width:16px; height:16px; flex-shrink:0;">' +
+          '<span>' + item.label + lockBadge + '</span></label>';
       }).join("");
       return '<div class="perm-group-block" data-group-idx="' + gIdx + '">' +
         '<div style="' + hdrStyle + '"><span>' + g.title + '</span>' +
@@ -1560,27 +1622,30 @@
 
   function collectPermCheckboxes() {
     const out = {};
+    const permItemMap = {};
+    PERMISSION_GROUPS.forEach(g => g.items.forEach(it => { permItemMap[it.key] = it; }));
     document.querySelectorAll("#permChecklistContainer input[data-perm-key]").forEach(cb => {
       const k = cb.getAttribute("data-perm-key");
-      if (k) out[k] = !!cb.checked;
+      if (!k) return;
+      const item = permItemMap[k];
+      out[k] = (cb.disabled || !canEditorGrantPerm(item)) ? false : !!cb.checked;
     });
     if (out.pelanggan !== undefined) out["data-pelanggan"] = out.pelanggan;
     return out;
   }
 
   window.setAllPermCheckboxes = function(val) {
-    document.querySelectorAll("#permChecklistContainer input[data-perm-key]").forEach(cb => {
+    document.querySelectorAll("#permChecklistContainer input[data-perm-key]:not(:disabled)").forEach(cb => {
       cb.checked = !!val;
     });
   };
 
   window.togglePermGroup = function(gIdx) {
-    const boxes = Array.from(document.querySelectorAll('#permChecklistContainer input[data-group-idx="' + gIdx + '"]'));
+    const boxes = Array.from(document.querySelectorAll('#permChecklistContainer input[data-group-idx="' + gIdx + '"]:not(:disabled)'));
     if (!boxes.length) return;
     const allChecked = boxes.every(b => b.checked);
     boxes.forEach(b => { b.checked = !allChecked; });
   };
-
   window.applyRoleDefaultPerms = function() {
     const selRole = (document.getElementById("editUserRole")?.value || "kasir").toLowerCase();
     renderPermCheckboxes(selRole, {});
@@ -1749,6 +1814,11 @@
   };
 
   window.deleteUserRecord = function(userId) {
+    const targetUser = allUsers.find(x => x.id === userId);
+    if (!canManageTargetUser(targetUser, "delete")) {
+      toast("Anda tidak memiliki izin menghapus akun ini!", "error");
+      return;
+    }
     showCustomConfirm("Hapus Pengguna", "Hapus data pengguna ini dari database sistem?", "danger", "Ya, Hapus", async () => {
       try {
         await db.collection("users").doc(userId).delete();
@@ -1803,12 +1873,21 @@ window.saveNewUser = async function() {
     toast("Password minimal 6 karakter!", "error");
     return;
   }
-  // Validasi tambahan: admin hanya boleh buat kasir
+ 
+  // Validasi berjenjang: kasir dilarang, admin hanya boleh kasir, owner tidak boleh developer
+  if (currentUserRole === "kasir") {
+    toast("Kasir tidak memiliki izin membuat akun pengguna!", "error");
+    return;
+  }
   if (currentUserRole === "admin" && role !== "kasir") {
     toast("Admin hanya bisa membuat pengguna dengan role Kasir!", "error");
     return;
   }
-
+  if (currentUserRole === "owner" && role === "developer") {
+    toast("Owner tidak dapat membuat akun Developer!", "error");
+    return;
+  }
+  
  try {
     const secondaryAppName = "secondary-" + Date.now();
     const secondaryApp = firebase.initializeApp(firebase.app().options, secondaryAppName);
