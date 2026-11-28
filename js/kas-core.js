@@ -2184,6 +2184,17 @@ async function savePayroll(options) {
           reopenCount: reopenCount,
           previousClosings: prevClosings
         }, { merge: true });
+        try {
+          var oldClosingRef = db.collection('closing').doc(shiftDocId);
+          var oldClosingSnap = await oldClosingRef.get();
+          if (oldClosingSnap.exists) {
+            await oldClosingRef.set({
+              approvalStatus: 'reopened',
+              reopenedAt: Date.now(),
+              approvalNote: 'Shift dibuka ulang — perlu closing ulang'
+            }, { merge: true });
+          }
+        } catch (reopenCloseErr) {}
       } else {
         await docRef.set({
           id: shiftDocId,
