@@ -869,19 +869,29 @@
         errBox.textContent = formatFriendlyAuthError(err, "login", usedUsernameLookup);
       }
 
+     const passInput = document.getElementById("loginPassword");
+      if (passInput) passInput.value = "";
       errBox.style.display = "block";
       const card = document.querySelector(".auth-container");
       card.classList.remove("shake");
       void card.offsetWidth;
       card.classList.add("shake");
+
+      // Jeda keamanan 1.5 detik untuk mencegah tebak password otomatis (brute-force)
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 1500);
     }
+  };
 
   document.getElementById("formRegister").onsubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById("regName").value.trim();
-    const username = document.getElementById("regUsername").value.trim().toLowerCase().replace(/\s+/g, '');
+    const username = document.getElementById("regUsername").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
     const email = document.getElementById("regEmail").value.trim();
-    const requestedRole = document.getElementById("regRole").value;
+    const rawRequestedRole = String(document.getElementById("regRole").value || "kasir").toLowerCase();
+    const secretUnlocked = document.getElementById("optOwner")?.style.display === "block";
+    const allowedRegRoles = secretUnlocked ? ["kasir", "admin", "owner", "developer"] : ["kasir", "admin"];
+    const requestedRole = allowedRegRoles.includes(rawRequestedRole) ? rawRequestedRole : "kasir";
     const pass = document.getElementById("regPassword").value;
     const btn = document.getElementById("btnSubmitRegister");
 
