@@ -915,6 +915,17 @@ const TYPE_ICONS = {
         });
       }
 
+      function hasRiwayatPerm(permKey) {
+        if (typeof RoleGuard !== 'undefined' && typeof RoleGuard.hasPerm === 'function') {
+          return RoleGuard.hasPerm(permKey, true, false);
+        }
+        return isRiwayatAdminRole();
+      }
+      function canEditRiwayat() { return hasRiwayatPerm('aksi_riwayat_edit'); }
+      function canDeleteRiwayat() { return hasRiwayatPerm('aksi_riwayat_hapus'); }
+      function canImportRiwayat() { return hasRiwayatPerm('aksi_riwayat_import'); }
+      function canExportRiwayat() { return hasRiwayatPerm('aksi_riwayat_export'); }
+
       function applyRiwayatRoleUI() {
         const isAdmin = isRiwayatAdminRole();
         const roleFilterEl = document.getElementById('filterRole');
@@ -924,15 +935,24 @@ const TYPE_ICONS = {
         document.querySelectorAll('.category-tab[data-category="operasional"], .category-tab[data-category="all"]').forEach(tab => {
           tab.style.display = isAdmin ? '' : 'none';
         });
+        const allowImport = canImportRiwayat();
+        const allowExport = canExportRiwayat();
         const btnImport = document.getElementById('btnOpenImportModal');
-        if (btnImport) btnImport.style.display = isAdmin ? '' : 'none';
+        if (btnImport) btnImport.style.display = allowImport ? '' : 'none';
         const btnTemplate = document.querySelector('button[onclick="downloadTemplateRiwayat()"]');
-        if (btnTemplate) btnTemplate.style.display = isAdmin ? '' : 'none';
+        if (btnTemplate) btnTemplate.style.display = allowImport ? '' : 'none';
+        const btnExport = document.getElementById('btnExport');
+        if (btnExport) btnExport.style.display = allowExport ? '' : 'none';
         if (!isAdmin && (currentFilter === 'operasional' || currentFilter === 'all')) {
           currentFilter = 'buku_kasir';
           document.querySelectorAll('.category-tab').forEach(t => t.classList.toggle('active', t.dataset.category === 'buku_kasir'));
         }
       }
+
+      window.__onRolePermsSynced = function() {
+        applyRiwayatRoleUI();
+        if (typeof filterAndRender === 'function' && allTransactions.length > 0) filterAndRender();
+      };
 
       function getTransactionRole(t) {
         if (!t) return 'kasir';
@@ -1638,10 +1658,8 @@ const TYPE_ICONS = {
               <td style="font-weight:800;color:var(--primary); white-space:nowrap;">${Utils.formatRupiah(amountValue)}</td>
               <td style="text-align:center; white-space:nowrap;" onclick="event.stopPropagation()">
                 <button class="btn btn-sm btn-secondary" onclick="printTransaction('${t.id}')" title="Cetak Struk" style="padding:0.25rem 0.45rem;"><i class="fas fa-print"></i></button>
-                ${['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase()) ? `
-                <button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit" style="padding:0.25rem 0.45rem;"><i class="fas fa-pen"></i></button>
-                <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus" style="padding:0.25rem 0.45rem;"><i class="fas fa-trash"></i></button>
-                ` : ''}
+                ${canEditRiwayat() ? `<button class="btn btn-sm btn-secondary btn-edit" onclick="editTransaction('${t.id}')" title="Edit" style="padding:0.25rem 0.45rem;"><i class="fas fa-pen"></i></button>` : ''}
+                ${canDeleteRiwayat() ? `<button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')" title="Hapus" style="padding:0.25rem 0.45rem;"><i class="fas fa-trash"></i></button>` : ''}
               </td>
             </tr>
             <tr class="detail-row" id="detail-${t.id}">
@@ -2048,8 +2066,8 @@ if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
       }
 
       window.deleteTransaction = function(id) {
-        if (!['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
-          Utils.showToast('Hanya Admin / Owner yang boleh menghapus transaksi', 'error');
+        if (!canDeleteRiwayat()) {
+          Utils.showToast('Anda tidak memiliki izin menghapus transaksi', 'error');
           return;
         }
         const transaction = allTransactions.find(item => item.id === id);
@@ -2136,8 +2154,8 @@ if (cat === 'jual' || cat === 'kas_masuk' || cat === 'top_up') {
       };
       
       window.editTransaction = function(id) {
-        if (!['admin','owner','developer'].includes(String(window.__riwayatUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
-          Utils.showToast('Hanya Admin / Owner yang boleh mengedit transaksi', 'error');
+        if (!canEditRiwayat()) {
+          Utils.showToast('Anda tidak memiliki izin mengedit transaksi', 'error');
           return;
         }
         const transaction = allTransactions.find(item => item.id === id);
@@ -2234,6 +2252,10 @@ Utils.showToast('Transaksi berhasil diperbarui', 'success');
       };
 
      function exportData() {
+        if (!canExportRiwayat()) {
+          Utils.showToast('Anda tidak memiliki izin mengexport riwayat transaksi', 'error');
+          return;
+        }
         const exportList = getRoleScopedTransactions(allTransactions);
         if (exportList.length === 0) {
           Utils.showToast('Tidak ada data untuk diexport', 'warning');
@@ -2259,6 +2281,10 @@ Utils.showToast('Transaksi berhasil diperbarui', 'success');
 
       // ================= DOWNLOAD TEMPLATE EXCEL =================
       window.downloadTemplateRiwayat = function() {
+        if (!canImportRiwayat()) {
+          Utils.showToast('Anda tidak memiliki izin mengunduh template import', 'error');
+          return;
+        }
         const templateData = [
           {
             "Tanggal": "2026-09-24",
@@ -2286,8 +2312,8 @@ Utils.showToast('Transaksi berhasil diperbarui', 'success');
 
       // ================= IMPORT DENGAN CHUNKING & LOADING INTERAKTIF =================
       async function processImport() {
-        if (!isRiwayatAdminRole()) {
-          Utils.showToast('Hanya Admin / Owner yang boleh mengimpor transaksi', 'error');
+        if (!canImportRiwayat()) {
+          Utils.showToast('Anda tidak memiliki izin mengimpor transaksi', 'error');
           return;
         }
         const fileInput = document.getElementById('importFile');
