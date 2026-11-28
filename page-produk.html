@@ -1758,8 +1758,10 @@
     const allowed = canManageProducts();
     const btnAddP = document.getElementById("btnAddProduk");
     const btnAddK = document.getElementById("btnAddKategori");
+    const btnBulk = document.getElementById("btnOpenBulkPrice");
     if (btnAddP) btnAddP.style.display = allowed ? "" : "none";
     if (btnAddK) btnAddK.style.display = allowed ? "" : "none";
+    if (btnBulk) btnBulk.style.display = allowed ? "" : "none";
     renderCategoriesGrid();
     renderProducts();
   }
@@ -1894,9 +1896,10 @@ document.getElementById("filterKategori").onchange = function() {
         document.getElementById("userName").textContent = dName;
         document.getElementById("userRole").textContent = role.toUpperCase();
         if (u.name) document.getElementById("userAvatar").textContent = u.name.slice(0, 2).toUpperCase();
-        syncProductManageUI();
+       syncProductManageUI();
       }
     } catch(e) {}
+  }
 
   function setupSidebarEvents() {
     const sidebar = document.getElementById("sidebar");
@@ -2730,8 +2733,7 @@ document.getElementById("filterKategori").onchange = function() {
                 <div class="produk-list-price">${formatRupiah(p.sellingPrice)}</div>
                 ${resellerBadge}
               </div>
-              <div class="produk-actions">
-                ${canManageProducts() ? `
+             ${canManageProducts() ? `
               <div class="produk-actions">
                 <button type="button" class="btn btn-secondary" style="${isOff ? 'background:var(--success);color:#fff;' : ''}" title="${isOff ? 'Aktifkan Produk di Kasir' : 'Nonaktifkan / Sembunyikan di Kasir'}" onclick="window.toggleProductStatus('${p.id}')"><i class="fas ${isOff ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
                 <button type="button" class="btn btn-secondary" title="Edit Produk" onclick="window.editProd('${p.id}')"><i class="fas fa-edit"></i><span>Edit</span></button>
@@ -2875,7 +2877,6 @@ document.getElementById("filterKategori").onchange = function() {
     });
   });
 
-  function openProductModal(prod = null) {
     function openProductModal(prod = null) {
     if (!canManageProducts()) {
       toast("Anda hanya memiliki izin melihat katalog produk!", "error");
@@ -3199,7 +3200,16 @@ document.getElementById("filterKategori").onchange = function() {
   window.deleteKat = function(id) {
     if (!canManageProducts()) { toast("Anda tidak memiliki izin menghapus kategori!", "error"); return; }
     showCustomConfirm("Apakah Anda yakin ingin menghapus kategori ini?", async () => {
-      
+      try {
+        await db.collection("categories").doc(id).delete();
+        toast("Kategori berhasil dihapus", "success");
+        loadCategories();
+      } catch(err) {
+        toast("Gagal menghapus: " + err.message, "error");
+      }
+    });
+  };
+
   // ================= EXPORT & DOWNLOAD TEMPLATE =================
   window.downloadTemplateExcel = function() {
     const templateData = [
@@ -3295,7 +3305,11 @@ document.getElementById("filterKategori").onchange = function() {
     return changed;
   }
 
-  window.openBulkPriceModal = function() {
+ window.openBulkPriceModal = function() {
+    if (!canManageProducts()) {
+      toast("Anda tidak memiliki izin mengedit harga massal!", "error");
+      return;
+    }
     Object.keys(bulkPriceDrafts).forEach(k => delete bulkPriceDrafts[k]);
     const catSelect = document.getElementById("bulkFilterCategory");
     if (catSelect) {
@@ -3431,7 +3445,11 @@ document.getElementById("filterKategori").onchange = function() {
     updateBulkChangedCounter();
   };
 
-  window.saveBulkPriceChanges = async function() {
+ window.saveBulkPriceChanges = async function() {
+    if (!canManageProducts()) {
+      toast("Anda tidak memiliki izin menyimpan perubahan harga!", "error");
+      return;
+    }
     const changes = [];
     Object.keys(bulkPriceDrafts).forEach(id => {
       const p = productsList.find(x => x.id === id);
@@ -3521,6 +3539,11 @@ document.getElementById("filterKategori").onchange = function() {
 
   // ================= CARA 2: IMPORT EXCEL MODE UPDATE (ANTI DUPLIKAT & HEMAT KUOTA) =================
   window.importProductsExcel = function(event) {
+    if (!canManageProducts()) {
+      toast("Anda tidak memiliki izin mengimpor Excel produk!", "error");
+      if (event && event.target) event.target.value = "";
+      return;
+    }
     const file = event.target.files[0];
     if (!file) return;
 
