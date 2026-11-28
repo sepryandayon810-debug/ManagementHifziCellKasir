@@ -1804,12 +1804,15 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
               doc.text(line, 4, topMargin + (idx * lineHeight));
             });
 
-            // Jika di APK Android
-            if (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function') {
+           // Jika di APK Android (dukung AndroidShare & fallback AndroidBT)
+            const nativeSavePdf =
+              (window.AndroidShare && typeof window.AndroidShare.savePdf === 'function' && window.AndroidShare.savePdf.bind(window.AndroidShare)) ||
+              (window.AndroidBT && typeof window.AndroidBT.savePdf === 'function' && window.AndroidBT.savePdf.bind(window.AndroidBT));
+            if (nativeSavePdf) {
               const dataUri = doc.output('datauristring');
               const base64 = dataUri.split(',')[1];
-              const result = window.AndroidBT.savePdf(base64, filename);
-              if (result === 'OK') {
+              const result = String(nativeSavePdf(base64, filename) || '');
+              if (result === 'OK' || result.toLowerCase().includes('ok') || result.toLowerCase().includes('saved') || result.toLowerCase().includes('tersimpan')) {
                 Utils.hideLoading();
                 Utils.showToast('PDF tersimpan di folder Downloads HP!', 'success');
                 return;
