@@ -1902,8 +1902,22 @@
       return;
     }
     showCustomConfirm("Hapus Pengguna", "Hapus data pengguna ini dari database sistem?", "danger", "Ya, Hapus", async () => {
-      try {
+     try {
         await db.collection("users").doc(userId).delete();
+        const todayLog = new Date().toISOString().split("T")[0];
+        await db.collection("audit_logs").add({
+          action: "HAPUS_PENGGUNA",
+          detail: `Menghapus akun: ${targetUser ? (targetUser.name + " (" + (targetUser.role || "kasir") + ")") : userId}`,
+          module: "Pengguna",
+          targetDoc: userId,
+          userName: document.getElementById("userName")?.textContent || "Admin",
+          userEmail: auth.currentUser ? (auth.currentUser.email || "") : "",
+          userId: auth.currentUser ? auth.currentUser.uid : "",
+          userRole: currentUserRole || "admin",
+          timestamp: Date.now(),
+          date: todayLog,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(() => {});
         toast("Data pengguna berhasil dihapus", "success");
         loadUsers();
       } catch(e) {
