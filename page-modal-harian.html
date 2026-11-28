@@ -1061,35 +1061,57 @@ document.getElementById("btnFilterModalRange").onclick = () => {
   async function refreshAdminWalletBox(todayStr) {
     const box = document.getElementById("adminModalWalletBox");
     if (!box) return { hasPool: false, remain: 0, shared: 0 };
-    if (currentUserRole !== "admin" || !currentUser) {
+    const canHavePool = (currentUserRole === "admin" || isOwnerOrDev());
+    if (!canHavePool || !currentUser) {
       box.style.display = "none";
       return { hasPool: false, remain: 0, shared: 0 };
     }
 
     try {
-      const [adminDoc, daySnap] = await Promise.all([
-        db.collection("modal").doc(`${todayStr}_${currentUser.uid}`).get(),
+      const selfDocId = `${todayStr}_${currentUser.uid}`;
+      const [selfDoc, daySnap] = await Promise.all([
+        db.collection("modal").doc(selfDocId).get(),
         db.collection("modal").where("date", "==", todayStr).get()
       ]);
 
-      const adminRemain = adminDoc.exists ? KasCore.normalizeNumber(adminDoc.data().amount) : 0;
+      const selfRemain = selfDoc.exists ? KasCore.normalizeNumber(selfDoc.data().amount) : 0;
       let sharedTotal = 0;
       daySnap.forEach(d => {
         const m = d.data() || {};
-        if (m.userId !== currentUser.uid && String(m.allocatedByRole || "").toLowerCase() === "admin" && m.allocatedBy === currentUser.uid) {
+        const fromMyPool = m.allocatedFromModalId === selfDocId;
+        const legacyAdminShare = (currentUserRole === "admin" && String(m.allocatedByRole || "").toLowerCase() === "admin" && m.allocatedBy === currentUser.uid);
+        if (m.userId !== currentUser.uid && m.allocatedBy === currentUser.uid && (fromMyPool || legacyAdminShare)) {
           sharedTotal += KasCore.normalizeNumber(m.amount);
         }
       });
 
-      const hasPool = adminDoc.exists || sharedTotal > 0;
-      const totalPegangan = adminRemain + sharedTotal;
+      const hasPool = selfDoc.exists || sharedTotal > 0;
+      const totalPegangan = selfRemain + sharedTotal;
 
-      box.style.display = "block";
-      document.getElementById("adminWalletTotal").textContent = formatRupiah(totalPegangan);
-      document.getElementById("adminWalletShared").textContent = formatRupiah(sharedTotal);
-      document.getElementById("adminWalletRemain").textContent = formatRupiah(adminRemain);
+      if (currentUserRole === "admin" || hasPool) {
+        box.style.display = "block";
+        const headerEl = box.firstElementChild;
+        if (headerEl) {
+          headerEl.innerHTML = isOwnerOrDev()
+            ? '<i class="fas fa-wallet"></i> Dompet Modal Induk Owner / Developer (Hari Ini)'
+            : '<i class="fas fa-wallet"></i> Dompet Modal Berjenjang Admin (Hari Ini)';
+        }
+        const sharedEl = document.getElementById("adminWalletShared");
+        const remainEl = document.getElementById("adminWalletRemain");
+        if (sharedEl && sharedEl.previousElementSibling) {
+          sharedEl.previousElementSibling.textContent = isOwnerOrDev() ? "Sudah Dibagi ke Staf" : "Sudah Dibagi ke Kasir";
+        }
+        if (remainEl && remainEl.previousElementSibling) {
+          remainEl.previousElementSibling.textContent = isOwnerOrDev() ? "Sisa di Tangan Anda" : "Sisa di Tangan Admin";
+        }
+        document.getElementById("adminWalletTotal").textContent = formatRupiah(totalPegangan);
+        if (sharedEl) sharedEl.textContent = formatRupiah(sharedTotal);
+        if (remainEl) remainEl.textContent = formatRupiah(selfRemain);
+      } else {
+        box.style.display = "none";
+      }
 
-      return { hasPool, remain: adminRemain, shared: sharedTotal };
+      return { hasPool, remain: selfRemain, shared: sharedTotal };
     } catch (e) {
       box.style.display = "none";
       return { hasPool: false, remain: 0, shared: 0 };
@@ -1157,22 +1179,31 @@ document.getElementById("btnFilterModalRange").onclick = () => {
         }
       }
 
-      const canAdminRecall = (
-        currentUserRole === "admin" &&
+      const canSelfRecall = (
+        (currentUserRole === "admin" || isOwnerOrDev()) &&
         targetUid !== currentUser.uid &&
         !isLocked &&
         md && mdAmount > 0 &&
-        allocRole === "admin" &&
         md.allocatedBy === currentUser.uid &&
         md.allocatedFromModalId === adminSelfDocId
       );
-      if (recallWrap) recallWrap.style.display = canAdminRecall ? "block" : "none";
+      if (recallWrap) {
+        recallWrap.style.display = canSelfRecall ? "block" : "none";
+        const btnRecallEl = document.getElementById("btnAdminRecallModal");
+        if (btnRecallEl && canSelfRecall) {
+          btnRecallEl.innerHTML = isOwnerOrDev()
+            ? '<i class="fas fa-arrow-rotate-left"></i> Tarik Kembali Pembagian ke Dompet Anda'
+            : '<i class="fas fa-arrow-rotate-left"></i> Tarik Kembali Pembagian ke Modal Admin';
+        }
+      }
       
       setModalFormLocked(isLocked, lockMsg);
       const btnSave = document.getElementById("btnSaveModal");
       if (btnSave && !isLocked) {
-        if (currentUserRole === "admin" && targetUid !== currentUser.uid && walletInfo.hasPool) {
-          btnSave.innerHTML = '<i class="fas fa-share-nodes"></i> Bagikan dari Modal Admin';
+        if ((currentUserRole === "admin" || isOwnerOrDev()) && targetUid !== currentUser.uid && walletInfo.hasPool) {
+          btnSave.innerHTML = isOwnerOrDev()
+            ? '<i class="fas fa-share-nodes"></i> Bagikan dari Dompet Modal Anda'
+            : '<i class="fas fa-share-nodes"></i> Bagikan dari Modal Admin';
         } else {
           btnSave.innerHTML = '<i class="fas fa-save"></i> Simpan & Lanjutkan Buka Shift';
         }
@@ -1463,7 +1494,7 @@ document.getElementById("btnFilterModalRange").onclick = () => {
   };
 
   async function recallKasirModalToAdmin() {
-    if (currentUserRole !== "admin" || !currentUser || !currentExistingModalEntry) return;
+    if ((currentUserRole !== "admin" && !isOwnerOrDev()) || !currentUser || !currentExistingModalEntry) return;
     const todayStr = getTodayString();
     const targetUid = document.getElementById("selectTargetKasir").value;
     if (!targetUid || targetUid === currentUser.uid) return;
@@ -1475,11 +1506,11 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     const kasirModalRef = db.collection("modal").doc(kasirModalId);
     const kasirShiftRef = db.collection("shifts").doc(kasirModalId);
 
-    if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Menarik kembali modal kasir...");
+    if (window.Utils && typeof Utils.showLoading === "function") Utils.showLoading("Menarik kembali modal staf...");
 
     try {
       let recalledAmt = 0;
-      let kasirName = currentExistingModalEntry.userName || "Kasir";
+      let kasirName = currentExistingModalEntry.userName || "Staf";
 
       await db.runTransaction(async (tx) => {
         const [adminSnap, kasirSnap, adminShiftSnap, kasirShiftSnap] = await Promise.all([
@@ -1489,15 +1520,15 @@ document.getElementById("btnFilterModalRange").onclick = () => {
           tx.get(kasirShiftRef)
         ]);
 
-        if (!kasirSnap.exists) throw new Error("Modal kasir tidak ditemukan.");
+        if (!kasirSnap.exists) throw new Error("Modal staf tidak ditemukan.");
         const kd = kasirSnap.data() || {};
-        if (String(kd.allocatedByRole || "").toLowerCase() !== "admin" || kd.allocatedBy !== currentUser.uid || kd.allocatedFromModalId !== adminModalId) {
-          throw new Error("Modal kasir ini bukan berasal dari pembagian modal Anda.");
+        if (kd.allocatedBy !== currentUser.uid || kd.allocatedFromModalId !== adminModalId) {
+          throw new Error("Modal staf ini bukan berasal dari pembagian dompet modal Anda.");
         }
         if (kasirShiftSnap.exists && String((kasirShiftSnap.data() || {}).status || "").toLowerCase() === "closed") {
-          throw new Error("Shift kasir sudah closing sehingga modal tidak dapat ditarik kembali.");
+          throw new Error("Shift staf sudah closing sehingga modal tidak dapat ditarik kembali.");
         }
-        if (!adminSnap.exists) throw new Error("Dokumen modal Admin tidak ditemukan.");
+        if (!adminSnap.exists) throw new Error("Dokumen dompet modal Anda tidak ditemukan.");
 
         recalledAmt = KasCore.normalizeNumber(kd.amount);
         kasirName = kd.userName || kasirName;
@@ -1658,7 +1689,7 @@ document.getElementById("btnFilterModalRange").onclick = () => {
     const shiftRef = db.collection("shifts").doc(modalId);
     let finalShiftStatus = "open";
 
-    if (currentUserRole === "admin" && targetUid !== currentUser.uid) {
+    if ((currentUserRole === "admin" || isOwnerOrDev()) && targetUid !== currentUser.uid) {
       const adminModalId = `${todayStr}_${currentUser.uid}`;
       const adminModalRef = db.collection("modal").doc(adminModalId);
       const adminShiftRef = db.collection("shifts").doc(adminModalId);
@@ -1671,7 +1702,7 @@ document.getElementById("btnFilterModalRange").onclick = () => {
           tx.get(shiftRef)
         ]);
 
-        if (kasirSnap.exists) {
+        if (kasirSnap.exists && currentUserRole === "admin") {
           const kd = kasirSnap.data() || {};
           const kRole = String(kd.allocatedByRole || "").toLowerCase();
           if (kRole === "owner" || kRole === "developer") {
@@ -1690,13 +1721,12 @@ document.getElementById("btnFilterModalRange").onclick = () => {
           const kdCur = kasirSnap.exists ? (kasirSnap.data() || {}) : null;
           const kasirOldFromAdmin = (
             kdCur &&
-            String(kdCur.allocatedByRole || "").toLowerCase() === "admin" &&
             kdCur.allocatedBy === currentUser.uid &&
             kdCur.allocatedFromModalId === adminModalId
           ) ? KasCore.normalizeNumber(kdCur.amount) : 0;
           const maxAllowed = adminCur + kasirOldFromAdmin;
           if (amtToSave > maxAllowed) {
-            throw new Error(`Sisa modal Admin tidak cukup! Maksimal untuk kasir ini: ${formatRupiah(maxAllowed)}.`);
+            throw new Error(`Sisa modal di dompet Anda tidak cukup! Maksimal untuk petugas ini: ${formatRupiah(maxAllowed)}.`);
           }
           const nextAdminAmount = maxAllowed - amtToSave;
           tx.set(adminModalRef, {
@@ -1721,9 +1751,9 @@ document.getElementById("btnFilterModalRange").onclick = () => {
           userName: targetUserName,
           allocatedBy: currentUser.uid,
           allocatedByName: senderName,
-          allocatedByRole: "admin",
+          allocatedByRole: currentUserRole,
           allocatedFromModalId: usedAdminPool ? adminModalId : null,
-          source: usedAdminPool ? "pembagian_admin" : (currentModalSource || "manual"),
+          source: usedAdminPool ? ("pembagian_" + currentUserRole) : (currentModalSource || "manual"),
           amount: amtToSave,
           category: "modal_awal",
           type: "modal_awal",
