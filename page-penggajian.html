@@ -346,7 +346,7 @@
     .dialog-icon-wrap.danger { background: var(--danger-light); color: var(--danger); }
     .dialog-icon-wrap.warning { background: var(--warning-light); color: var(--warning); }
     .dialog-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--text-main); }
-    .dialog-message { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.5rem; }
+    .dialog-message { font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.35rem; white-space: pre-line; text-align: left; max-height: 52vh; overflow-y: auto; }
     .dialog-btn-group { display: flex; gap: 0.65rem; }
     .dialog-btn {
       flex: 1; padding: 0.75rem; border-radius: var(--radius-md);
@@ -723,7 +723,7 @@
         <div class="form-group">
           <label class="form-label">Tunggakan Gaji Bulan Lalu (Rp)</label>
           <input type="number" class="form-input" id="prevUnpaidSalary" placeholder="0" value="0" oninput="calculateTakeHomePay()">
-          <small style="color:var(--text-muted); font-size:0.75rem;">Otomatis terdeteksi jika bulan lalu berstatus "Belum Lunas", atau bisa diubah manual.</small>
+         <small id="prevUnpaidInfoText" style="color:var(--text-muted); font-size:0.75rem;">Otomatis terdeteksi dari semua bulan sebelumnya yang berstatus "Belum Lunas", atau bisa diubah manual.</small>
         </div>
 
         <!-- BAGIAN PEMOTONGAN HUTANG STAF -->
@@ -1198,33 +1198,23 @@
     container.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Memuat data hutang & tunggakan...`;
 
     try {
-      const sNameLower = staffName.toLowerCase().trim();
       const monthVal = document.getElementById("payrollMonth").value;
       const yearVal = parseInt(document.getElementById("payrollYear").value);
-      
-      let prevMonthNum = parseInt(monthVal) - 1;
-      let prevYearNum = yearVal;
-      if (prevMonthNum === 0) {
-        prevMonthNum = 12;
-        prevYearNum -= 1;
-      }
-      const prevPeriodKey = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}`;
-
-      let detectedUnpaid = 0;
-      allPayrolls.forEach(p => {
-        const pStaffId = p.staffId || "";
-        const pStaffName = (p.staffName || "").toLowerCase().trim();
-        const pPeriod = p.period || "";
-        const pStatus = p.status || "";
-
-        if (pPeriod === prevPeriodKey && pStatus === "unpaid") {
-          if (pStaffId === staffId || pStaffName === sNameLower) {
-            detectedUnpaid += (p.netSalary || 0);
-          }
+      const currentPeriodKey = `${yearVal}-${String(monthVal).padStart(2, '0')}`;
+      const prevUnpaidResult = getPreviousUnpaidPayrolls(staffId, staffName, currentPeriodKey, null);
+      prevInput.value = prevUnpaidResult.total;
+      const prevInfoEl = document.getElementById("prevUnpaidInfoText");
+      if (prevInfoEl) {
+        if (prevUnpaidResult.records.length > 0) {
+          const labels = prevUnpaidResult.records.map(r => r.periodName || r.period).join(", ");
+          prevInfoEl.textContent = `Tunggakan terdeteksi (${prevUnpaidResult.records.length} bulan belum bayar): ${labels}.`;
+          prevInfoEl.style.color = "var(--warning)";
+        } else {
+          prevInfoEl.textContent = 'Tidak ada tunggakan gaji bulan sebelumnya yang belum lunas.';
+          prevInfoEl.style.color = "var(--text-muted)";
         }
-      });
-      prevInput.value = detectedUnpaid;
-
+      }
+      
       activeStaffDebts = await KasCore.getActiveStaffDebts({
   staffId: staffId,
   staffName: staffName
@@ -1338,46 +1328,114 @@
     });
 
     const netSalary = (baseSalary + prevUnpaidSalary) - totalDebtDeduction;
+    const prevUnpaidInfo = getPreviousUnpaidPayrolls(staffId, staffName, period, null);
+    const willAutoSettlePrev = status === "paid" && prevUnpaidSalary > 0 && prevUnpaidInfo.records.length > 0;
 
-    const btn = document.getElementById("btnSubmitPayroll");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    const executeSavePayroll = async () => {
+      const btn = document.getElementById("btnSubmitPayroll");
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      try {
+        const debtIds = selectedDebts.map(d => d.id);
+        const saved = await KasCore.savePayroll({
+          staffId: staffId,
+          staffName: staffName,
+          period: period,
+          periodName: periodName,
+          baseSalary: baseSalary,
+          prevUnpaidSalary: prevUnpaidSalary,
+          status: status,
+          debtIds: debtIds
+        });
 
-    try {
-  const debtIds = selectedDebts.map(d => d.id);
+        if (willAutoSettlePrev) {
+          const settleBatch = db.batch();
+          prevUnpaidInfo.records.forEach(prevRec => {
+            settleBatch.update(db.collection("payrolls").doc(prevRec.id), {
+              status: "paid",
+              paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+              paidViaPayrollId: (saved && saved.id) || "",
+              paidNote: "Dilunasi bersamaan dengan periode " + periodName
+            });
+          });
+          await settleBatch.commit();
+        }
 
-  await KasCore.savePayroll({
-    staffId: staffId,
-    staffName: staffName,
-    period: period,
-    periodName: periodName,
-    baseSalary: baseSalary,
-    prevUnpaidSalary: prevUnpaidSalary,
-    status: status,
-    debtIds: debtIds
-  });
+        toast(
+          willAutoSettlePrev
+            ? `Gaji ${periodName} disimpan Lunas & ${prevUnpaidInfo.records.length} bulan sebelumnya ikut ditandai Sudah Bayar!`
+            : "Data penggajian berhasil disimpan & hutang staf diperbarui!",
+          "success"
+        );
+        closePayrollModal();
+        loadStaffAndPayrolls();
+      } catch(err) {
+        console.error(err);
+        toast("Gagal menyimpan penggajian: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Simpan Data Penggajian";
+      }
+    };
 
-  toast(
-    "Data penggajian berhasil disimpan & hutang staf diperbarui!",
-    "success"
-  );
+    if (status === "paid") {
+      const checkedSet = new Set(selectedDebts.map(d => d.id));
+      const uncheckedDebts = (activeStaffDebts || []).filter(d => !checkedSet.has(d.id));
+      const uncheckedSum = uncheckedDebts.reduce((acc, d) => acc + (parseFloat(d.remaining || d.amount) || 0), 0);
+      const lines = [
+        `Staf: ${staffName} (${periodName})`,
+        `Total Dibayarkan: ${formatRupiah(netSalary)}`,
+        ""
+      ];
+      if (uncheckedDebts.length > 0) {
+        lines.push(`PERHATIAN! Masih ada ${uncheckedDebts.length} hutang aktif (${formatRupiah(uncheckedSum)}) di list yang BELUM dicentang untuk dipotong.`);
+        lines.push("Pastikan apakah hutang tersebut memang sudah dipotong sebelumnya atau tidak dipotong bulan ini.");
+      } else if (selectedDebts.length > 0) {
+        lines.push(`Potong Hutang: ${selectedDebts.length} hutang aktif sebesar ${formatRupiah(totalDebtDeduction)} akan langsung dilunasi.`);
+      } else {
+        lines.push("Potong Hutang: Tidak ada hutang aktif di list (Rp 0).");
+      }
+      if (willAutoSettlePrev) {
+        const prevNames = prevUnpaidInfo.records.map(r => r.periodName || r.period).join(", ");
+        lines.push("");
+        lines.push(`Status Gaji Sebelumnya (${prevNames}) akan otomatis berubah menjadi SUDAH BAYAR.`);
+      }
+      lines.push("");
+      lines.push("Lanjutkan simpan & tandai Sudah Bayar?");
+      showCustomConfirm(
+        "Konfirmasi Ulang Potong Hutang & Bayar",
+        lines.join("\n"),
+        uncheckedDebts.length > 0 ? "danger" : "warning",
+        "Ya, Sudah Sesuai & Bayar",
+        executeSavePayroll
+      );
+      return;
+    }
 
-  closePayrollModal();
-  loadStaffAndPayrolls();
+    await executeSavePayroll();
+  }
 
-} catch(err) {
-  console.error(err);
+  function getPreviousUnpaidPayrolls(staffId, staffName, currentPeriod, excludeId) {
+    const sNameLower = String(staffName || "").toLowerCase().trim();
+    const prevList = (allPayrolls || []).filter(p => {
+      if (!p || (excludeId && p.id === excludeId)) return false;
+      if (String(p.status || "").toLowerCase() === "paid") return false;
+      const pPeriod = String(p.period || "");
+      if (!pPeriod || (currentPeriod && pPeriod >= currentPeriod)) return false;
+      const pStaffId = String(p.staffId || "");
+      const pStaffName = String(p.staffName || "").toLowerCase().trim();
+      return (staffId && pStaffId === staffId) || (sNameLower && pStaffName === sNameLower);
+    }).sort((a, b) => String(a.period || "").localeCompare(String(b.period || "")));
 
-  toast(
-    "Gagal menyimpan penggajian: " + err.message,
-    "error"
-  );
-
-} finally {
-  btn.disabled = false;
-  btn.innerHTML = "Simpan Data Penggajian";
-}
-}
+    if (!prevList.length) return { total: 0, records: [] };
+    let total = parseFloat(prevList[0].prevUnpaidSalary) || 0;
+    prevList.forEach(p => {
+      const base = parseFloat(p.baseSalary) || 0;
+      const ded = parseFloat(p.totalDebtDeduction) || 0;
+      total += (base - ded);
+    });
+    return { total: Math.max(0, total), records: prevList };
+  }
 
   let currentPayRecord = null;
   let currentPayActiveDebts = [];
@@ -1493,74 +1551,138 @@
     if (warnBox) warnBox.style.display = finalPay < 0 ? "block" : "none";
     syncPayDebtToggleBtn();
   };
-  window.confirmPayPayroll = async function() {
+  window.confirmPayPayroll = function() {
     if (!currentPayRecord) return;
-    const btn = document.getElementById("btnConfirmPayPayroll");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
 
-    try {
-      const checkedIds = Array.from(document.querySelectorAll(".pay-debt-checkbox:checked")).map(c => c.value);
-      const newlyPaidDebts = [];
-      let extraDeduction = 0;
+    const checkedIds = Array.from(document.querySelectorAll(".pay-debt-checkbox:checked")).map(c => c.value);
+    const checkedSet = new Set(checkedIds);
+    const newlyPaidDebts = [];
+    let extraDeduction = 0;
 
-      checkedIds.forEach(dId => {
-        const dObj = currentPayActiveDebts.find(d => d.id === dId);
-        if (!dObj) return;
-        const amt = parseFloat(dObj.remaining || dObj.amount) || 0;
-        if (amt <= 0) return;
-        extraDeduction += amt;
-        newlyPaidDebts.push({
-          id: dObj.id,
-          name: dObj.customerName || dObj.note || currentPayRecord.staffName || "Hutang",
-          amountDeducted: amt
-        });
+    checkedIds.forEach(dId => {
+      const dObj = currentPayActiveDebts.find(d => d.id === dId);
+      if (!dObj) return;
+      const amt = parseFloat(dObj.remaining || dObj.amount) || 0;
+      if (amt <= 0) return;
+      extraDeduction += amt;
+      newlyPaidDebts.push({
+        id: dObj.id,
+        name: dObj.customerName || dObj.note || currentPayRecord.staffName || "Hutang",
+        amountDeducted: amt
       });
+    });
 
-      const oldDeduction = parseFloat(currentPayRecord.totalDebtDeduction) || 0;
-      const oldNet = parseFloat(currentPayRecord.netSalary) || 0;
-      const oldDebts = Array.isArray(currentPayRecord.selectedDebts) ? currentPayRecord.selectedDebts : [];
+    const uncheckedDebts = (currentPayActiveDebts || []).filter(d => !checkedSet.has(d.id));
+    const uncheckedSum = uncheckedDebts.reduce((acc, d) => acc + (parseFloat(d.remaining || d.amount) || 0), 0);
+    const oldDeduction = parseFloat(currentPayRecord.totalDebtDeduction) || 0;
+    const oldNet = parseFloat(currentPayRecord.netSalary) || 0;
+    const finalPayAmount = oldNet - extraDeduction;
 
-      const batch = db.batch();
-      const payrollRef = db.collection("payrolls").doc(currentPayRecord.id);
+    const prevUnpaidInfo = getPreviousUnpaidPayrolls(
+      currentPayRecord.staffId || "",
+      currentPayRecord.staffName || "",
+      currentPayRecord.period || "",
+      currentPayRecord.id
+    );
+    const hasPrevCarried = (parseFloat(currentPayRecord.prevUnpaidSalary) || 0) > 0 && prevUnpaidInfo.records.length > 0;
 
-      batch.update(payrollRef, {
-        status: "paid",
-        totalDebtDeduction: oldDeduction + extraDeduction,
-        netSalary: oldNet - extraDeduction,
-        selectedDebts: oldDebts.concat(newlyPaidDebts),
-        paidAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    const confirmLines = [
+      `Staf: ${currentPayRecord.staffName || "-"} (${currentPayRecord.periodName || currentPayRecord.period || "-"})`,
+      `Potongan Hutang Sebelumnya: ${formatRupiah(oldDeduction)}`,
+      `Potongan Hutang Sekarang: ${formatRupiah(extraDeduction)}`,
+      `Total Dibayarkan ke Staf: ${formatRupiah(finalPayAmount)}`,
+      ""
+    ];
 
-      newlyPaidDebts.forEach(debt => {
-        const debtRef = db.collection("debts").doc(debt.id);
-        batch.update(debtRef, {
-          remaining: 0,
-          status: "paid",
-          paidAt: firebase.firestore.FieldValue.serverTimestamp(),
-          paidViaPayrollId: currentPayRecord.id
-        });
-      });
-
-      await batch.commit();
-
-      toast(
-        newlyPaidDebts.length > 0
-          ? `Gaji ditandai Sudah Bayar & ${newlyPaidDebts.length} hutang staf dilunasi!`
-          : "Gaji berhasil ditandai Sudah Bayar!",
-        "success"
-      );
-      closePayPayrollModal();
-      loadStaffAndPayrolls();
-    } catch (err) {
-      console.error(err);
-      toast("Gagal memproses pembayaran gaji: " + err.message, "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Sudah Bayar';
+    if (uncheckedDebts.length > 0) {
+      confirmLines.push(`PERHATIAN! Masih ada ${uncheckedDebts.length} hutang aktif (${formatRupiah(uncheckedSum)}) di list yang BELUM dicentang untuk dipotong.`);
+      confirmLines.push("Apakah hutang tersebut sudah dipotong sebelumnya atau memang tidak dipotong sekarang?");
+    } else if (newlyPaidDebts.length > 0) {
+      confirmLines.push(`Semua ${newlyPaidDebts.length} hutang aktif yang dipilih (${formatRupiah(extraDeduction)}) akan otomatis dilunasi.`);
+    } else if (oldDeduction > 0) {
+      confirmLines.push(`Tidak ada sisa hutang aktif baru di list (sudah ada potongan hutang ${formatRupiah(oldDeduction)} sebelumnya).`);
+    } else {
+      confirmLines.push("Belum ada potongan hutang tercatat (Rp 0) dan tidak ada hutang aktif di list. Pastikan sudah dicek apakah staf memiliki hutang yang perlu dipotong.");
     }
-  };
 
+    if (hasPrevCarried) {
+      const prevNames = prevUnpaidInfo.records.map(r => r.periodName || r.period).join(", ");
+      confirmLines.push("");
+      confirmLines.push(`Gaji bulan sebelumnya yang masuk tunggakan (${prevNames}) juga akan otomatis berubah status menjadi SUDAH BAYAR.`);
+    }
+
+    confirmLines.push("");
+    confirmLines.push("Yakin proses bayar sekarang?");
+
+    showCustomConfirm(
+      "Konfirmasi Ulang Potong Hutang",
+      confirmLines.join("\n"),
+      uncheckedDebts.length > 0 ? "danger" : "warning",
+      "Ya, Sudah Sesuai & Bayar",
+      async () => {
+        if (!currentPayRecord) return;
+        const btn = document.getElementById("btnConfirmPayPayroll");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
+        try {
+          const oldDebts = Array.isArray(currentPayRecord.selectedDebts) ? currentPayRecord.selectedDebts : [];
+          const batch = db.batch();
+          const payrollRef = db.collection("payrolls").doc(currentPayRecord.id);
+
+          batch.update(payrollRef, {
+            status: "paid",
+            totalDebtDeduction: oldDeduction + extraDeduction,
+            netSalary: finalPayAmount,
+            selectedDebts: oldDebts.concat(newlyPaidDebts),
+            paidAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          newlyPaidDebts.forEach(debt => {
+            const debtRef = db.collection("debts").doc(debt.id);
+            batch.update(debtRef, {
+              remaining: 0,
+              status: "paid",
+              paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+              paidViaPayrollId: currentPayRecord.id
+            });
+          });
+
+          if (hasPrevCarried) {
+            prevUnpaidInfo.records.forEach(prevRec => {
+              batch.update(db.collection("payrolls").doc(prevRec.id), {
+                status: "paid",
+                paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+                paidViaPayrollId: currentPayRecord.id,
+                paidNote: "Dilunasi bersamaan dengan periode " + (currentPayRecord.periodName || currentPayRecord.period || "")
+              });
+            });
+          }
+
+          await batch.commit();
+
+          const extraMsg = [];
+          if (newlyPaidDebts.length > 0) extraMsg.push(`${newlyPaidDebts.length} hutang dilunasi`);
+          if (hasPrevCarried) extraMsg.push(`${prevUnpaidInfo.records.length} bulan sebelumnya ikut Sudah Bayar`);
+          toast(
+            extraMsg.length > 0
+              ? `Gaji ditandai Sudah Bayar (${extraMsg.join(" & ")})!`
+              : "Gaji berhasil ditandai Sudah Bayar!",
+            "success"
+          );
+          closePayPayrollModal();
+          loadStaffAndPayrolls();
+        } catch (err) {
+          console.error(err);
+          toast("Gagal memproses pembayaran gaji: " + err.message, "error");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Sudah Bayar';
+        }
+      }
+    );
+  };
+  
   window.deletePayroll = function(id) {
     showCustomConfirm("Hapus Gaji", "Hapus catatan penggajian ini dari sistem?", "danger", "Ya, Hapus", async () => {
       try {
