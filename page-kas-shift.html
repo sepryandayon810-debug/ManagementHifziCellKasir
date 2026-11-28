@@ -377,6 +377,19 @@
 .arsip-badge.balance { background: var(--success-light); color: var(--success); }
 .arsip-badge.surplus { background: rgba(2,132,199,0.15); color: var(--info); }
 .arsip-badge.minus { background: var(--danger-light); color: var(--danger); }
+.arsip-badge.appr-pending { background: rgba(245,158,11,0.16); color: #b45309; }
+.arsip-badge.appr-approved { background: var(--success-light); color: var(--success); }
+.arsip-badge.appr-rejected { background: var(--danger-light); color: var(--danger); }
+.arsip-badge.appr-legacy { background: var(--bg-subtle); color: var(--text-muted); }
+.pending-tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--danger); color:#fff; font-size:0.68rem; font-weight:800; margin-left:4px; }
+.arsip-summary-meta { display:flex; flex-wrap:wrap; gap:0.4rem 0.75rem; margin-top:0.35rem; font-size:0.72rem; color:var(--text-sub); }
+.arsip-approval-panel { padding:0.85rem 1rem; border-top:1px solid var(--border); background:var(--bg-subtle); display:none; flex-direction:column; gap:0.55rem; }
+.arsip-approval-panel.show { display:flex; }
+.arsip-approval-actions { display:flex; gap:0.5rem; }
+.struk-btn.approve { background:var(--success); color:#fff; border-color:var(--success); }
+.struk-btn.approve:hover { filter:brightness(0.92); }
+.struk-btn.reject { background:#fff; color:var(--danger); border-color:var(--danger); }
+.struk-btn.reject:hover { background:var(--danger-light); }
 
 /* CSS MODAL STRUK (samakan punya page-closing) */
 .struk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all .25s}
@@ -602,7 +615,7 @@
         <!-- TAB BAR LAPORAN -->
         <div class="report-tabs">
           <button class="report-tab active" data-tab="shift"><i class="fas fa-store"></i> Kas &amp; Shift</button>
-          <button class="report-tab" data-tab="arsip"><i class="fas fa-file-pdf"></i> Arsip Closing (Berita Acara)</button>
+          <button class="report-tab" data-tab="arsip" id="tabBtnArsip"><i class="fas fa-clipboard-check"></i> Arsip &amp; Approval Closing <span id="pendingApprovalBadge" class="pending-tab-badge" style="display:none;">0</span></button>
         </div>
 
         <!-- TAB 1: KAS & SHIFT (KONTEN LAMA) -->
@@ -743,6 +756,7 @@
               <span id="totalArsipCount" style="font-size: 0.75rem; font-weight:700; color: var(--primary); background: var(--primary-light); padding: 0.25rem 0.65rem; border-radius: 99px;">0 laporan</span>
             </div>
             <div class="filter-bar" id="arsipFilterBar">
+              <button class="filter-btn" data-filter="pending" id="btnFilterPendingArsip"><i class="fas fa-hourglass-half"></i> Menunggu Approval</button>
               <button class="filter-btn active" data-filter="today">Hari Ini</button>
               <button class="filter-btn" data-filter="yesterday">Kemarin</button>
               <button class="filter-btn" data-filter="week">Minggu Ini</button>
@@ -789,8 +803,18 @@
         <h3 style="font-size:1.05rem;font-weight:700;"><i class="fas fa-receipt" style="color:var(--success);"></i> Berita Acara Closing</h3>
         <button class="btn-icon-box" onclick="document.getElementById('arsipStrukModal').classList.remove('active')" style="width:32px;height:32px;"><i class="fas fa-times"></i></button>
       </div>
-      <div style="background:#f8fafc;padding:1rem;display:flex;justify-content:center;max-height:55vh;overflow-y:auto;">
+      <div style="background:#f8fafc;padding:1rem;display:flex;justify-content:center;max-height:46vh;overflow-y:auto;">
         <div class="struk-paper" id="arsipStrukPaper"></div>
+      </div>
+      <div class="arsip-approval-panel" id="arsipApprovalPanel">
+        <div id="arsipApprovalInfo" style="font-size:0.78rem;font-weight:700;color:var(--text-main);"></div>
+        <div id="arsipApprovalControls" style="display:none;flex-direction:column;gap:0.5rem;">
+          <input type="text" class="form-input" id="arsipApprovalNote" placeholder="Catatan approval (wajib diisi jika menolak/revisi)..." style="font-size:0.8rem;padding:0.5rem 0.7rem;">
+          <div class="arsip-approval-actions">
+            <button type="button" class="struk-btn approve" id="btnApproveClosing" onclick="processClosingApproval('approved')"><i class="fas fa-check-circle"></i> Setujui Closing</button>
+            <button type="button" class="struk-btn reject" id="btnRejectClosing" onclick="processClosingApproval('rejected')"><i class="fas fa-times-circle"></i> Tolak / Revisi</button>
+          </div>
+        </div>
       </div>
             <div class="struk-footer">
         <button class="struk-btn ghost" onclick="document.getElementById('arsipStrukModal').classList.remove('active')"><i class="fas fa-times"></i> Tutup</button>
@@ -816,6 +840,9 @@
 
       let isShiftOpen = false;
       let currentShiftId = null;
+      let currentUserObj = null;
+      let currentUserRole = 'kasir';
+      let currentUserDisplayName = 'User';
 
       function isFromKasir() {
         return localStorage.getItem('fromKasir') === 'true';
@@ -881,8 +908,17 @@
           const avatar = document.getElementById('userAvatar');
           if (avatar) avatar.textContent = dName.slice(0, 2).toUpperCase();
 
+          currentUserObj = user;
+          currentUserRole = String((userData && userData.role) || 'kasir').trim().toLowerCase();
+          currentUserDisplayName = dName;
           setupSidebarEvents();
           initKasShift(user, userData);
+          refreshPendingApprovalBadge();
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('tab') === 'arsip') {
+            const arsipTabBtn = document.getElementById('tabBtnArsip');
+            if (arsipTabBtn) arsipTabBtn.click();
+          }
         });
       });
 
@@ -1646,25 +1682,118 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
       });
 
       // ==========================================================
-      // LOAD ARSIP CLOSING DARI COLLECTION "closing"
+      // APPROVAL BERTINGKAT CLOSING:
+      // - Kasir -> menunggu approval Admin / Owner / Developer
+      // - Admin -> menunggu approval Owner / Developer
+      // - Owner & Developer -> lihat SEMUA closing + bisa approve Kasir & Admin
+      // ==========================================================
+      function escHtmlSafe(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function canApproveClosing(c, viewerUid, viewerRole) {
+        if (!c) return false;
+        if (String(c.approvalStatus || '').toLowerCase() !== 'pending') return false;
+        if (c.userId && viewerUid && c.userId === viewerUid) return false;
+        const role = String(viewerRole || 'kasir').toLowerCase();
+        const targetRole = String(c.userRole || 'kasir').toLowerCase();
+        if (role === 'owner' || role === 'developer') {
+          return targetRole === 'kasir' || targetRole === 'admin';
+        }
+        if (role === 'admin') {
+          return targetRole === 'kasir';
+        }
+        return false;
+      }
+
+      function getApprovalBadgeMeta(c) {
+        const st = String((c && c.approvalStatus) || '').toLowerCase();
+        const tRole = String((c && c.userRole) || 'kasir').toLowerCase();
+        if (st === 'pending') {
+          return {
+            cls: 'appr-pending',
+            label: tRole === 'admin' ? 'MENUNGGU OWNER/DEV' : 'MENUNGGU APPROVAL',
+            plain: tRole === 'admin' ? 'MENUNGGU OWNER / DEV' : 'MENUNGGU ADMIN/OWNER/DEV'
+          };
+        }
+        if (st === 'approved') {
+          const by = c.approvedBy ? ` (${c.approvedBy})` : '';
+          return { cls: 'appr-approved', label: 'DISETUJUI' + by, plain: 'DISETUJUI' + by };
+        }
+        if (st === 'rejected') {
+          const by = c.approvedBy ? ` (${c.approvedBy})` : '';
+          return { cls: 'appr-rejected', label: 'DITOLAK' + by, plain: 'DITOLAK' + by };
+        }
+        return { cls: 'appr-legacy', label: 'TERARSIP', plain: 'TERARSIP' };
+      }
+
+      async function fetchVisibleClosingDocs() {
+        const user = currentUserObj || auth.currentUser;
+        if (!user) return [];
+        const role = String(currentUserRole || 'kasir').toLowerCase();
+        let snapshot;
+        if (role === 'owner' || role === 'developer' || role === 'admin') {
+          snapshot = await db.collection('closing').get();
+        } else {
+          snapshot = await db.collection('closing').where('userId', '==', user.uid).get();
+        }
+        let items = [];
+        snapshot.forEach(doc => {
+          const d = doc.data() || {};
+          d._docId = doc.id;
+          items.push(d);
+        });
+        if (role === 'admin') {
+          items = items.filter(c => c.userId === user.uid || String(c.userRole || 'kasir').toLowerCase() === 'kasir');
+        }
+        items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        return items;
+      }
+
+      async function refreshPendingApprovalBadge() {
+        try {
+          const badge = document.getElementById('pendingApprovalBadge');
+          if (!badge) return;
+          const user = currentUserObj || auth.currentUser;
+          if (!user) return;
+          const items = await fetchVisibleClosingDocs();
+          const pendingForMe = items.filter(c => canApproveClosing(c, user.uid, currentUserRole)).length;
+          if (pendingForMe > 0) {
+            badge.textContent = String(pendingForMe);
+            badge.style.display = 'inline-flex';
+          } else {
+            badge.style.display = 'none';
+          }
+        } catch (e) {}
+      }
+
+      // ==========================================================
+      // LOAD ARSIP CLOSING DARI COLLECTION "closing" (BERTINGKAT)
       // ==========================================================
       async function loadClosingArchive(filterType, from = null, to = null) {
         const listEl = document.getElementById('arsipList');
         const countEl = document.getElementById('totalArsipCount');
-        listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i><div>Memuat arsip...</div></div>';
+        listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i><div>Memuat arsip &amp; approval closing...</div></div>';
 
         try {
-          const user = auth.currentUser;
-          const snapshot = await db.collection('closing').where('userId', '==', user.uid).get();
+          const user = currentUserObj || auth.currentUser;
+          let allItems = await fetchVisibleClosingDocs();
 
-          let items = [];
-          snapshot.forEach(doc => items.push(doc.data()));
+          const pendingCount = allItems.filter(c => canApproveClosing(c, user.uid, currentUserRole)).length;
+          const badge = document.getElementById('pendingApprovalBadge');
+          if (badge) {
+            badge.textContent = String(pendingCount);
+            badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
+          }
 
-          // Urutkan terbaru dulu
-          items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-          // Filter periode berdasarkan field "date" (YYYY-MM-DD)
-          items = items.filter(c => {
+          let items = allItems.filter(c => {
+            if (filterType === 'pending') {
+              return String(c.approvalStatus || '').toLowerCase() === 'pending';
+            }
             if (!c.date) return false;
             if (filterType === 'custom') return c.date >= from && c.date <= to;
             if (filterType === 'all') return true;
@@ -1683,22 +1812,36 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           countEl.textContent = items.length + ' laporan';
 
           if (!items.length) {
-            listEl.innerHTML = '<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:0.5;margin-bottom:0.75rem;"></i><div style="font-weight:700;">Belum ada laporan closing</div><div style="font-size:0.75rem;margin-top:0.25rem;">Laporan muncul setelah kasir melakukan Closing Shift.</div></div>';
+            const emptyMsg = filterType === 'pending'
+              ? 'Tidak ada closing yang menunggu approval saat ini.'
+              : 'Laporan muncul setelah kasir/admin melakukan Closing Shift.';
+            listEl.innerHTML = `<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:0.5;margin-bottom:0.75rem;"></i><div style="font-weight:700;">Belum ada laporan closing</div><div style="font-size:0.75rem;margin-top:0.25rem;">${emptyMsg}</div></div>`;
             return;
           }
 
           listEl.innerHTML = items.map((c, i) => {
-            const tgl = new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+            const tgl = c.date ? new Date(c.date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }) : '-';
             const jam = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB' : '-';
+            const roleTag = String(c.userRole || 'kasir').toUpperCase();
+            const appr = getApprovalBadgeMeta(c);
+            const needMyAction = canApproveClosing(c, user.uid, currentUserRole);
+            const kasSistem = Utils.formatRupiah((c.sistem && c.sistem.uangGlobal) || 0);
+            const uangFisik = Utils.formatRupiah((c.fisik && c.fisik.total) || 0);
             return `
-              <div class="arsip-item" onclick="showArsipDetail(${i})">
-                <div class="shift-info">
-                  <div class="shift-date">${tgl}</div>
-                  <div class="shift-time"><i class="fas fa-clock"></i> ${jam} &nbsp;·&nbsp; <i class="fas fa-user"></i> ${c.userName || '-'}</div>
+              <div class="arsip-item" onclick="showArsipDetail(${i})" style="${needMyAction ? 'border-left:4px solid #f59e0b;background:rgba(245,158,11,0.05);' : ''}">
+                <div class="shift-info" style="flex:1;min-width:0;">
+                  <div class="shift-date">${escHtmlSafe(tgl)}</div>
+                  <div class="shift-time"><i class="fas fa-clock"></i> ${escHtmlSafe(jam)} &nbsp;·&nbsp; <i class="fas fa-user"></i> ${escHtmlSafe(c.userName || '-')} <strong>(${escHtmlSafe(roleTag)})</strong></div>
+                  <div class="arsip-summary-meta">
+                    <span>Sistem: <strong>${kasSistem}</strong></span>
+                    <span>Fisik: <strong>${uangFisik}</strong></span>
+                    ${c.catatan ? `<span>Cat: <em>${escHtmlSafe(c.catatan.slice(0, 45))}</em></span>` : ''}
+                  </div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
-                  <span class="arsip-badge ${c.status}">${c.status === 'balance' ? 'COCOK' : (c.status === 'surplus' ? 'LEBIH' : 'KURANG')}</span>
-                  <span style="font-size:0.72rem;font-weight:700;color:${c.selisih < 0 ? 'var(--danger)' : 'var(--success)'};">${(c.selisih >= 0 ? '+' : '') + Utils.formatRupiah(c.selisih || 0)}</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.28rem;flex-shrink:0;">
+                  <span class="arsip-badge ${escHtmlSafe(c.status || '')}">${c.status === 'balance' ? 'COCOK' : (c.status === 'surplus' ? 'LEBIH' : 'KURANG')}</span>
+                  <span class="arsip-badge ${appr.cls}">${escHtmlSafe(appr.label)}</span>
+                  <span style="font-size:0.72rem;font-weight:700;color:${(c.selisih || 0) < 0 ? 'var(--danger)' : 'var(--success)'};">${((c.selisih || 0) >= 0 ? '+' : '') + Utils.formatRupiah(c.selisih || 0)}</span>
                 </div>
               </div>`;
           }).join('');
@@ -1706,20 +1849,22 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
           window._arsipCache = items;
         } catch (err) {
           console.error('Gagal memuat arsip:', err);
-          listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--danger);">Gagal memuat arsip: ' + (err.message || '') + '</div>';
+          listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--danger);">Gagal memuat arsip: ' + escHtmlSafe(err.message || '') + '</div>';
         }
       }
 
       // ==========================================================
-      // PREVIEW & UNDUH PDF
+      // PREVIEW, APPROVAL BERTINGKAT & UNDUH PDF
       // ==========================================================
       window.showArsipDetail = function(index) {
         const c = window._arsipCache[index];
+        if (!c) return;
         currentArsipData = c;
 
         const storeName = localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
-        const date = new Date(c.timestamp).toLocaleDateString('id-ID');
-        const time = new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+        const date = c.timestamp ? new Date(c.timestamp).toLocaleDateString('id-ID') : (c.date || '-');
+        const time = c.timestamp ? new Date(c.timestamp).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : '-';
+        const appr = getApprovalBadgeMeta(c);
 
         let pecahan = '';
         const DENOM = [100000,50000,20000,10000,5000,2000,1000,500];
@@ -1735,7 +1880,7 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
 '================================\n' +
 'BERITA ACARA CLOSING SHIFT\n' +
 'Waktu   : ' + date + ' ' + time + '\n' +
-'Kasir   : ' + (c.userName || '-') + '\n' +
+'Petugas : ' + (c.userName || '-') + ' (' + String(c.userRole || 'kasir').toUpperCase() + ')\n' +
 '--------------------------------\n' +
 'Modal Awal     : ' + Utils.formatRupiah(c.sistem?.modalAwal || 0) + '\n' +
 'Penjualan Tunai: ' + Utils.formatRupiah(c.sistem?.penjualan || 0) + '\n' +
@@ -1751,12 +1896,95 @@ async function loadShiftHistory(filterType = 'today', from = null, to = null) {
 'Uang Fisik     : ' + Utils.formatRupiah(c.fisik?.total || 0) + '\n' +
 'Selisih Kas    : ' + (c.selisih >= 0 ? '+' : '') + Utils.formatRupiah(c.selisih || 0) + '\n' +
 'Status         : ' + String(c.status || '-').toUpperCase() + '\n' +
+'Approval       : ' + appr.plain + '\n' +
+(c.approvalNote ? 'Cat. Approval  : ' + c.approvalNote + '\n' : '') +
 (c.catatan ? 'Catatan        : ' + c.catatan + '\n' : '') +
 '================================\n' +
 '     Dokumen Arsip Closing\n' +
 '================================';
 
+        const panel = document.getElementById('arsipApprovalPanel');
+        const infoEl = document.getElementById('arsipApprovalInfo');
+        const ctrlEl = document.getElementById('arsipApprovalControls');
+        const noteInp = document.getElementById('arsipApprovalNote');
+        const user = currentUserObj || auth.currentUser;
+        const canAct = canApproveClosing(c, user ? user.uid : '', currentUserRole);
+
+        if (panel && infoEl && ctrlEl) {
+          const st = String(c.approvalStatus || '').toLowerCase();
+          if (noteInp) noteInp.value = '';
+          if (canAct) {
+            panel.classList.add('show');
+            infoEl.textContent = `Approval Dibutuhkan — Closing oleh ${c.userName || '-'} (${String(c.userRole || 'kasir').toUpperCase()})`;
+            infoEl.style.color = '#b45309';
+            ctrlEl.style.display = 'flex';
+          } else if (st === 'pending' || st === 'approved' || st === 'rejected') {
+            panel.classList.add('show');
+            ctrlEl.style.display = 'none';
+            if (st === 'pending') {
+              const targetRole = String(c.userRole || 'kasir').toLowerCase();
+              infoEl.textContent = targetRole === 'admin'
+                ? 'Status: Menunggu Approval Owner / Developer'
+                : 'Status: Menunggu Approval Admin / Owner / Developer';
+              infoEl.style.color = '#b45309';
+            } else if (st === 'approved') {
+              infoEl.textContent = `Disetujui oleh ${c.approvedBy || '-'} (${String(c.approvedByRole || '').toUpperCase()})${c.approvalNote ? ' · ' + c.approvalNote : ''}`;
+              infoEl.style.color = 'var(--success)';
+            } else {
+              infoEl.textContent = `Ditolak oleh ${c.approvedBy || '-'} (${String(c.approvedByRole || '').toUpperCase()})${c.approvalNote ? ' · Alasan: ' + c.approvalNote : ''}`;
+              infoEl.style.color = 'var(--danger)';
+            }
+          } else {
+            panel.classList.remove('show');
+          }
+        }
+
         document.getElementById('arsipStrukModal').classList.add('active');
+      };
+
+      window.processClosingApproval = async function(decision) {
+        const c = currentArsipData;
+        const user = currentUserObj || auth.currentUser;
+        if (!c || !user) return;
+        if (!canApproveClosing(c, user.uid, currentUserRole)) {
+          Utils.showToast('Anda tidak memiliki hak approval untuk closing ini', 'error');
+          return;
+        }
+        const noteEl = document.getElementById('arsipApprovalNote');
+        const note = noteEl ? noteEl.value.trim() : '';
+        if (decision === 'rejected' && !note) {
+          Utils.showToast('Wajib isi alasan penolakan / revisi terlebih dahulu', 'warning');
+          if (noteEl) noteEl.focus();
+          return;
+        }
+
+        const docId = c._docId || c.docId || `${c.date}_${c.userId}`;
+        const nowTs = Date.now();
+        const updatePayload = {
+          approvalStatus: decision,
+          approvedBy: currentUserDisplayName || user.email || 'Atasan',
+          approvedById: user.uid,
+          approvedByRole: currentUserRole,
+          approvedAt: nowTs,
+          approvalNote: note || (decision === 'approved' ? 'Disetujui' : '')
+        };
+
+        Utils.showLoading(decision === 'approved' ? 'Menyetujui closing...' : 'Menolak closing...');
+        try {
+          await db.collection('closing').doc(docId).set(updatePayload, { merge: true });
+          await db.collection('shifts').doc(docId).set(updatePayload, { merge: true }).catch(() => {});
+          Utils.hideLoading();
+          Utils.showToast(
+            decision === 'approved' ? 'Closing berhasil disetujui!' : 'Closing ditolak & dikembalikan untuk revisi.',
+            decision === 'approved' ? 'success' : 'warning'
+          );
+          document.getElementById('arsipStrukModal').classList.remove('active');
+          loadClosingArchive(arsipFilterType, document.getElementById('arsipFrom')?.value || null, document.getElementById('arsipTo')?.value || null);
+        } catch (err) {
+          Utils.hideLoading();
+          console.error('Approval closing gagal:', err);
+          Utils.showToast('Gagal memproses approval: ' + (err.message || err), 'error');
+        }
       };
 
       // ==========================================================
