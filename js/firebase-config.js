@@ -659,8 +659,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
       console.log('Service Worker: AKTIF');
 
-      window.addEventListener('online', function() {
-        try { reg.update(); } catch (e) {}
+     window.addEventListener('online', function() {
+        try { reg.update().catch(function() {}); } catch (e) {}
         checkGithubBuildUpdate(true);
       });
 
@@ -2049,13 +2049,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     recordRuntimeError('JS Error', ev.message || 'Runtime error', (ev.filename || '') + ':' + (ev.lineno || 0));
   });
 
-  window.addEventListener('unhandledrejection', function(ev) {
+ window.addEventListener('unhandledrejection', function(ev) {
     if (!ev) return;
     var r = ev.reason;
     var msg = (r && r.message) ? r.message : String(r || 'Unhandled Promise Rejection');
+    if (/Failed to update a ServiceWorker/i.test(msg)) return;
     recordRuntimeError('Promise Error', msg, (r && r.code) ? String(r.code) : '');
   });
-
+  
   function ensureGuardStyles() {
     if (document.getElementById('webpos-health-guard-style')) return;
     var st = document.createElement('style');
