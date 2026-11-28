@@ -1507,7 +1507,7 @@ Utils.hideLoading();
           });
         }
 
-        function resetForm() {
+       function resetForm() {
           amount = 0;
           document.getElementById('adminFee').value = '';
           document.getElementById('topupNote').value = '';
@@ -1517,8 +1517,9 @@ Utils.hideLoading();
           document.querySelectorAll('.bank-card-btn').forEach(el => el.classList.remove('active'));
           updateDisplay();
           loadKasTersedia();
+          if (window.OwnerKasHistory) OwnerKasHistory.refresh();
         }
-
+        
         function showStrukModal(tx) {
           lastTransactionData = tx;
           const storeName = storeSettings.name || localStorage.getItem('webpos_store_name') || 'WEBPOS STORE';
@@ -1611,9 +1612,20 @@ Utils.hideLoading();
          refreshPageData = async () => {
           await loadKasTersedia();
           updateDisplay();
+          if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
         };
 
         loadKasTersedia();
+        if (window.OwnerKasHistory) {
+          OwnerKasHistory.mount({
+            title: 'Riwayat Top Up',
+            module: 'Top Up',
+            categories: ['top_up', 'topup'],
+            hasAdmin: true,
+            accent: 'success',
+            onChanged: loadKasTersedia
+          });
+        }
       }
       // ==========================================================
       // ============ PULL TO REFRESH (MOBILE) ====================
