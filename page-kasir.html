@@ -5261,13 +5261,19 @@ function getCartProfit() { return Math.round(cart.reduce(function(s,i){return s+
             createFirestoreCompat().ref('users/' + user.uid).once('value').then(snap => {
               const data = snap.val() || {};
               const name = data.name || user.email || 'Kasir';
-              const role = String(data.role || 'kasir').toLowerCase();
-              try { localStorage.setItem('webpos_user_role', role); } catch (e) {}
+              const realRole = String(data.role || 'kasir').toLowerCase();
+              const role = (typeof window.getEffectiveUserRole === 'function') ? window.getEffectiveUserRole(realRole) : realRole;
+              const isSim = (realRole === 'developer' && typeof window.isDevRoleSimActive === 'function' && window.isDevRoleSimActive());
+              const perms = (!isSim && data.permissions && typeof data.permissions === 'object') ? data.permissions : {};
+              try { localStorage.setItem('webpos_user_role', realRole); } catch (e) {}
               window.currentUserRole = role;
+              window.currentUserPerms = perms;
               document.getElementById('userName').textContent = name;
               document.getElementById('userRole').textContent = role.toUpperCase();
               document.getElementById('userAvatar').textContent = name.slice(0, 2).toUpperCase();
-              if (typeof RoleGuard !== 'undefined') RoleGuard.apply(role.toLowerCase());
+              if (typeof RoleGuard !== 'undefined') RoleGuard.apply(role);
+              const allowBeli = role !== 'kasir' || perms.pembelian === true;
+              document.querySelectorAll('.kas-beli').forEach(b => { b.style.display = allowBeli ? '' : 'none'; });
             });
           }
         });
@@ -7532,6 +7538,12 @@ function populateBeliCategoryOptions() {
 }
 
 function openModalBeli() {
+  const role = String(window.currentUserRole || 'kasir').toLowerCase();
+  const perms = window.currentUserPerms || {};
+  if (role === 'kasir' && perms.pembelian !== true) {
+    showToast('Akses Beli Barang / Restock hanya untuk Admin / Owner', 'error');
+    return;
+  }
   populateBeliCategoryOptions();
   document.getElementById('modalBeliBarang').classList.add('active');
   setTimeout(() => document.getElementById('beliSearch')?.focus(), 100);
@@ -8630,9 +8642,10 @@ function renderCustomerKasirList(list) {
           <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.6rem;font-size:0.75rem;color:var(--warning);" onclick="openFormCustomerKasir('${c.id}', '${safeName}', '${safePhone}')" title="Edit">
             <i class="fas fa-pen"></i>
           </button>
+          ${String(window.currentUserRole || 'kasir').toLowerCase() !== 'kasir' ? `
           <button type="button" class="btn btn-sm btn-outline" style="padding:0.35rem 0.6rem;font-size:0.75rem;color:var(--danger);" onclick="deleteCustomerFromKasir('${c.id}', '${safeName}')" title="Hapus">
             <i class="fas fa-trash"></i>
-          </button>
+          </button>` : ''}
         </div>
       </div>
     `;
@@ -8707,6 +8720,10 @@ async function saveCustomerFromKasir() {
 
 // Hapus Pelanggan dari Kasir
 function deleteCustomerFromKasir(id, name) {
+  if (String(window.currentUserRole || 'kasir').toLowerCase() === 'kasir') {
+    showToast('Kasir tidak diperbolehkan menghapus data pelanggan.', 'error');
+    return;
+  }
   showCustomConfirm(`Yakin ingin menghapus "${name}" dari direktori?`, async () => {
     try {
       await firebase.firestore().collection("customer_directory_v2").doc(id).delete();
