@@ -2793,24 +2793,40 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
     // ⬇️ TEMPATKAN KODE ANDA DI SINI:
     if (isShiftOpen) {
+      const canResetTrialShift = currentUserRole === "owner" || currentUserRole === "developer";
+      if (!canResetTrialShift) {
+        showCustomAlert({
+          title: "Shift Sedang Aktif",
+          message: "Shift Anda hari ini sedang berjalan. Untuk menutup shift dan menyetor kas, silakan lanjut ke halaman Closing.",
+          iconType: "success",
+          confirmText: "Buka Halaman Closing",
+          showCancel: true,
+          cancelText: "Tetap di Dashboard",
+          onConfirm: () => {
+            window.location.href = "page-closing.html";
+          },
+          onCancel: () => {
+            closeCustomAlert();
+          }
+        });
+        return;
+      }
+
       showCustomAlert({
         title: "Shift Sedang Berjalan",
-        message: "Operasional kasir sedang aktif. Apakah Anda ingin membatalkan pembukaan shift uji coba ini?",
+        message: "Operasional kasir sedang aktif. Apakah Anda ingin membatalkan pembukaan shift uji coba ini? (Khusus Owner/Developer)",
         iconType: "warning",
         confirmText: "Ya, Batalkan Shift (Reset)",
         showCancel: true,
         cancelText: "Batal / Tetap Buka",
         onConfirm: async () => {
           const modalId = `${today}_${user.uid}`;
-          // Hapus dokumen shift & modal hari ini dari database
           await db.collection("shifts").doc(modalId).delete();
           await db.collection("modal").doc(modalId).delete();
-          
           toast("Shift uji coba berhasil dibatalkan. Status kembali TUTUP.", "success");
           setTimeout(() => location.reload(), 1000);
         },
         onCancel: () => {
-          // Tetap di dashboard atau masuk ke ringkasan shift
           closeCustomAlert();
         }
       });
@@ -2821,7 +2837,7 @@ async function healLocalUserTransactions(user, displayName, roleName) {
         const modalDoc = await db.collection("modal").doc(`${today}_${user.uid}`).get();
         const modalData = modalDoc.exists ? modalDoc.data() : null;
 
-        if (!modalData || !modalData.amount) {
+        if (!modalDoc.exists || !modalData) {
           let tele = null;
           try {
             const cached = localStorage.getItem("webpos_latest_uang_kasir");
@@ -2849,7 +2865,16 @@ async function healLocalUserTransactions(user, displayName, roleName) {
 
               await db.collection("modal").doc(modalId).set({
                 id: modalId, date: today, userId: user.uid, userName: dName,
-                amount: tele.nominal, source: "telegram", category: "modal_awal"
+                allocatedBy: user.uid, allocatedByName: dName, allocatedByRole: currentUserRole,
+                allocatedFromModalId: null,
+                amount: tele.nominal, source: "telegram", category: "modal_awal", type: "modal_awal",
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+
+              await db.collection("shifts").doc(modalId).set({
+                id: "shift_" + Date.now(), date: today, modalId: modalId, status: "open", openTime: Date.now(),
+                userId: user.uid, userName: dName, modalAwal: tele.nominal,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
               }, { merge: true });
 
               await db.collection("shifts").doc(modalId).set({
@@ -2939,33 +2964,72 @@ async function healLocalUserTransactions(user, displayName, roleName) {
     const today = getTodayString();
 
     try {
-      const currentModalDoc = await db.collection("modal").doc(`${today}_${currentUser.uid}`).get();
-      const currentModalAmount = currentModalDoc.exists ? (currentModalDoc.data().amount || 0) : 0;
+      const senderModalId = `${today}_${currentUser.uid}`;
+      const targetModalId = `${today}_${targetUid}`;
+      const senderModalRef = db.collection("modal").doc(senderModalId);
+      const targetModalRef = db.collection("modal").doc(targetModalId);
+      const senderShiftRef = db.collection("shifts").doc(senderModalId);
+      const targetShiftRef = db.collection("shifts").doc(targetModalId);
+      const targetName = targetUser.name || targetUser.username || "Rekan";
+      const senderName = document.getElementById("userName")?.textContent || "Staf";
 
-      await db.collection("modal").doc(`${today}_${targetUid}`).set({
-        id: `${today}_${targetUid}`,
-        date: today,
-        userId: targetUid,
-        userName: targetUser.name || targetUser.username,
-        amount: currentModalAmount,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      await db.runTransaction(async (tx) => {
+        const [sModalSnap, tModalSnap, tShiftSnap] = await Promise.all([
+          tx.get(senderModalRef),
+          tx.get(targetModalRef),
+          tx.get(targetShiftRef)
+        ]);
 
-      await db.collection("shifts").doc(`${today}_${targetUid}`).set({
-        id: "shift_" + Date.now(),
-        userId: targetUid,
-        userName: targetUser.name || targetUser.username,
-        date: today,
-        status: "open",
-        modalAwal: currentModalAmount,
-        openTime: firebase.firestore.FieldValue.serverTimestamp()
+        const sData = sModalSnap.exists ? (sModalSnap.data() || {}) : {};
+        const tData = tModalSnap.exists ? (tModalSnap.data() || {}) : {};
+        const moveAmt = Number(sData.amount) || 0;
+        const nextTargetAmt = (Number(tData.amount) || 0) + moveAmt;
+
+        if (sModalSnap.exists) {
+          tx.set(senderModalRef, {
+            amount: 0,
+            transferredTo: targetUid,
+            transferredToName: targetName,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+
+        tx.set(targetModalRef, {
+          id: targetModalId,
+          date: today,
+          userId: targetUid,
+          userName: targetName,
+          allocatedBy: tData.allocatedBy || sData.allocatedBy || currentUser.uid,
+          allocatedByName: tData.allocatedByName || sData.allocatedByName || senderName,
+          allocatedByRole: tData.allocatedByRole || sData.allocatedByRole || currentUserRole,
+          allocatedFromModalId: tData.allocatedFromModalId || sData.allocatedFromModalId || null,
+          source: "transfer_shift",
+          amount: nextTargetAmt,
+          category: "modal_awal",
+          type: "modal_awal",
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        tx.set(targetShiftRef, {
+          id: (tShiftSnap.exists && tShiftSnap.data().id) ? tShiftSnap.data().id : ("shift_" + Date.now()),
+          userId: targetUid,
+          userName: targetName,
+          date: today,
+          modalId: targetModalId,
+          status: "open",
+          modalAwal: nextTargetAmt,
+          openTime: (tShiftSnap.exists && tShiftSnap.data().openTime) ? tShiftSnap.data().openTime : firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        tx.set(senderShiftRef, {
+          status: "closed",
+          modalAwal: 0,
+          closedReason: `Ditransfer ke ${targetName}`,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
       });
-
-      await db.collection("shifts").doc(`${today}_${currentUser.uid}`).update({
-        status: "closed",
-        closedReason: `Ditransfer ke ${targetUser.name || targetUser.username}`
-      });
-
+      
       closeTransferModal();
       showCustomAlert({
         title: "Shift Berhasil Ditransfer",
