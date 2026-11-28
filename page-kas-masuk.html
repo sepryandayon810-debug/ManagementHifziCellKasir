@@ -1091,6 +1091,7 @@ await db.collection('transactions')
       );
 
       await loadCurrentKas();
+      if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
 
     } catch (error) {
 
@@ -1120,7 +1121,23 @@ await db.collection('transactions')
  */
 refreshPageData = async () => {
   await loadCurrentKas();
+  if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
 };
+
+loadCurrentKas();
+if (window.OwnerKasHistory) {
+  OwnerKasHistory.mount({
+    title: 'Riwayat Kas Masuk',
+    module: 'Kas Masuk',
+    categories: ['kas_masuk'],
+    hasAdmin: false,
+    accent: 'success',
+    onChanged: loadCurrentKas
+  });
+}
+      if (window.OwnerKasHistory) await OwnerKasHistory.refresh();
+
+    } catch (error) {
 
 loadCurrentKas();
       }
