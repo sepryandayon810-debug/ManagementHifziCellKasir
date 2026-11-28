@@ -1274,6 +1274,57 @@ document.getElementById('sistemNonTunai').textContent =
               };
             }
           }
+          window._pendingSubordinateClosingList = [];
+          if (isShiftOpen && (role === 'admin' || role === 'owner' || role === 'developer')) {
+            try {
+              const [usersSnapSub, shiftsSnapSub, closingSnapSub] = await Promise.all([
+                db.collection("users").get(),
+                db.collection("shifts").where("date", "==", today).get(),
+                db.collection("closing").where("date", "==", today).get()
+              ]);
+              const roleMapSub = {};
+              const nameMapSub = {};
+              usersSnapSub.forEach(d => {
+                const u = d.data() || {};
+                roleMapSub[d.id] = String(u.role || 'kasir').toLowerCase();
+                nameMapSub[d.id] = u.name || u.nama || u.username || 'Petugas';
+              });
+              const closingByUid = {};
+              closingSnapSub.forEach(d => {
+                const c = d.data() || {};
+                if (c.userId) closingByUid[c.userId] = c;
+              });
+              const issues = [];
+              shiftsSnapSub.forEach(d => {
+                const s = d.data() || {};
+                const uid = s.userId || (d.id.includes('_') ? d.id.split('_').slice(1).join('_') : '');
+                if (!uid || uid === user.uid) return;
+                const sRole = roleMapSub[uid] || String(s.userRole || 'kasir').toLowerCase();
+                const isSubordinate = (role === 'admin') ? (sRole === 'kasir') : (sRole === 'kasir' || sRole === 'admin');
+                if (!isSubordinate) return;
+                const sName = s.userName || nameMapSub[uid] || 'Petugas';
+                const cDoc = closingByUid[uid] || null;
+                if (String(s.status || '').toLowerCase() === 'open') {
+                  issues.push(`${sName} (${sRole.toUpperCase()} - Shift Masih Buka)`);
+                } else if (cDoc && String(cDoc.approvalStatus || '').toLowerCase() === 'pending') {
+                  issues.push(`${sName} (${sRole.toUpperCase()} - Closing Menunggu Approval)`);
+                }
+              });
+              window._pendingSubordinateClosingList = issues;
+              const oldNotice = document.getElementById('subordinateClosingNotice');
+              if (oldNotice) oldNotice.remove();
+              if (issues.length > 0 && warnEl && warnEl.parentNode) {
+                const notice = document.createElement('div');
+                notice.id = 'subordinateClosingNotice';
+                notice.style.cssText = 'margin-bottom:1rem;padding:0.9rem 1rem;border-radius:12px;background:rgba(245,158,11,0.12);border:1.5px solid rgba(245,158,11,0.45);display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;';
+                const escSub = (t) => String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+                notice.innerHTML = `<div style="flex:1;min-width:220px;"><div style="font-weight:800;font-size:0.86rem;color:#b45309;margin-bottom:0.2rem;"><i class="fas fa-exclamation-triangle"></i> Urutan Closing: Masih Ada Shift Bawahan Belum Selesai</div><div style="font-size:0.78rem;color:var(--text-main);line-height:1.45;">Disarankan selesaikan &amp; approve closing bawahan terlebih dahulu agar kas gabungan tidak selisih: <strong>${escSub(issues.join(', '))}</strong>.</div></div><a href="page-kas-shift.html" class="btn btn-secondary" style="padding:0.45rem 0.85rem;font-size:0.78rem;white-space:nowrap;text-decoration:none;"><i class="fas fa-clipboard-check"></i> Cek Shift &amp; Approval</a>`;
+                warnEl.parentNode.insertBefore(notice, warnEl.nextSibling);
+              }
+            } catch (subErr) {
+              console.warn("Cek shift bawahan dilewati:", subErr);
+            }
+          }
           ClosingCalculator.updateComparison();
         } catch (error) {
           console.error("closing: gagal memuat data closing", error);
@@ -1298,9 +1349,13 @@ document.getElementById('sistemNonTunai').textContent =
             return;
           }
 
-          const pesanKonfirmasi = fisikData.total === 0 
+          const pendingSubs = Array.isArray(window._pendingSubordinateClosingList) ? window._pendingSubordinateClosingList : [];
+          const subWarnPrefix = pendingSubs.length > 0
+            ? `PERHATIAN: Masih ada shift bawahan yang belum selesai/disetujui (${pendingSubs.join(', ')}). Disarankan selesaikan dulu agar kas gabungan tidak selisih.\n\n`
+            : '';
+          const pesanKonfirmasi = subWarnPrefix + (fisikData.total === 0 
             ? 'Uang fisik di laci terhitung Rp 0. Tetap simpan dan tutup shift?' 
-            : 'Simpan hasil closing dan tutup shift sekarang?';
+            : 'Simpan hasil closing dan tutup shift sekarang?');
 
           showCustomConfirm('Tutup Shift', pesanKonfirmasi, async () => {
             try {
