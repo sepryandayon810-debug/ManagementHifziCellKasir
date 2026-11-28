@@ -2821,8 +2821,31 @@ async function healLocalUserTransactions(user, displayName, roleName) {
         cancelText: "Batal / Tetap Buka",
         onConfirm: async () => {
           const modalId = `${today}_${user.uid}`;
+          const sharedSnap = await db.collection("modal").where("allocatedFromModalId", "==", modalId).get();
+          const activeShared = [];
+          sharedSnap.forEach(d => {
+            const cd = d.data() || {};
+            if (d.id !== modalId && Number(cd.amount || 0) > 0) activeShared.push(cd.userName || "Staf");
+          });
+          if (activeShared.length > 0) {
+            toast("Gagal reset shift! Modal Anda masih dibagikan ke: " + activeShared.join(", ") + ". Tarik pembagian di Modal Harian dulu.", "warning");
+            return;
+          }
           await db.collection("shifts").doc(modalId).delete();
           await db.collection("modal").doc(modalId).delete();
+          await db.collection("audit_logs").add({
+            action: "RESET_SHIFT_UJI_COBA",
+            detail: `Membatalkan shift uji coba & modal awal (${today})`,
+            module: "Dashboard",
+            targetDoc: modalId,
+            userName: document.getElementById("userName")?.textContent || user.email || "Owner/Dev",
+            userEmail: user.email || "",
+            userId: user.uid,
+            userRole: currentUserRole || "owner",
+            timestamp: Date.now(),
+            date: today,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(() => {});
           toast("Shift uji coba berhasil dibatalkan. Status kembali TUTUP.", "success");
           setTimeout(() => location.reload(), 1000);
         },
