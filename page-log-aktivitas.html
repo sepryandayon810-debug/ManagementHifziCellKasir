@@ -307,6 +307,8 @@
     .log-action.update { background: #fef3c7; color: #92400e; }
     .log-action.delete { background: #fecaca; color: #991b1b; }
     .log-action.transaction { background: #e0e7ff; color: #3730a3; }
+    .log-action.approval { background: #ede9fe; color: #6d28d9; }
+    .log-module-chip { display: inline-block; font-size: 0.66rem; font-weight: 700; padding: 1px 6px; border-radius: 5px; background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-muted); margin-right: 6px; vertical-align: middle; }
 
     .role-tag { font-weight: 700; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 6px; border: 1px solid var(--border); }
     .role-developer { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
@@ -577,6 +579,7 @@
                 <option value="login">Login/Logout</option>
                 <option value="transaction">Transaksi</option>
                 <option value="create">Tambah Data</option>
+                <option value="approval">Approval & Kontrol</option>
                 <option value="update">Edit Data</option>
                 <option value="delete">Hapus Data</option>
               </select>
@@ -877,13 +880,91 @@ window.recordActivity = function(action, detail) {
     }
   }
 
-  function loadLogs() {
-    let logs = getStorageData('webpos_activity_logs') || [];
-    allLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  function escLogHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function mapAuditAction(rawAction) {
+    const raw = String(rawAction || '').trim();
+    const u = raw.toUpperCase();
+    const labelMap = {
+      APPROVE_CLOSING: { type: 'approval', label: 'Approve Closing' },
+      TOLAK_CLOSING: { type: 'approval', label: 'Tolak Closing' },
+      TUTUP_SHIFT_PAKSA: { type: 'approval', label: 'Tutup Shift Paksa' },
+      BUKA_ULANG_SHIFT: { type: 'approval', label: 'Buka Ulang Shift' },
+      HAPUS_SHIFT: { type: 'delete', label: 'Hapus Shift' },
+      HAPUS_ARSIP_CLOSING: { type: 'delete', label: 'Hapus Arsip' },
+      BATAL_MODAL: { type: 'delete', label: 'Batal Modal' },
+      EDIT_KAS: { type: 'update', label: 'Edit Kas' },
+      HAPUS_KAS: { type: 'delete', label: 'Hapus Kas' },
+      HAPUS_TRANSAKSI: { type: 'delete', label: 'Hapus Transaksi' },
+      BAYAR_GAJI: { type: 'transaction', label: 'Bayar Gaji' },
+      HAPUS_GAJI: { type: 'delete', label: 'Hapus Gaji' }
+    };
+    if (labelMap[u]) return labelMap[u];
+    const low = raw.toLowerCase();
+    if (low === 'login') return { type: 'login', label: 'Login' };
+    if (low === 'logout') return { type: 'logout', label: 'Logout' };
+    if (low === 'create' || u.includes('TAMBAH')) return { type: 'create', label: raw.replace(/_/g, ' ') || 'Tambah' };
+    if (low === 'update' || u.includes('EDIT') || u.includes('UBAH')) return { type: 'update', label: raw.replace(/_/g, ' ') || 'Edit' };
+    if (low === 'delete' || u.includes('HAPUS') || u.includes('BATAL')) return { type: 'delete', label: raw.replace(/_/g, ' ') || 'Hapus' };
+    if (u.includes('APPROV') || u.includes('TOLAK') || u.includes('SHIFT')) return { type: 'approval', label: raw.replace(/_/g, ' ') };
+    if (low === 'transaction' || u.includes('BAYAR') || u.includes('KAS')) return { type: 'transaction', label: raw.replace(/_/g, ' ') || 'Transaksi' };
+    return { type: 'update', label: raw.replace(/_/g, ' ') || 'Aktivitas' };
+  }
+
+  async function loadLogs() {
+    const tbody = document.getElementById('logsTableBody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat jejak audit cloud...</td></tr>';
+    }
+
+    const localLogs = (getStorageData('webpos_activity_logs') || []).map(l => {
+      const m = mapAuditAction(l.action);
+      return {
+        timestamp: new Date(l.timestamp).getTime() || Date.now(),
+        user: l.user || 'Pengguna',
+        role: String(l.role || 'KASIR').toUpperCase(),
+        action: m.type,
+        actionLabel: m.label,
+        module: l.module || 'Sistem',
+        detail: l.detail || '-'
+      };
+    });
+
+    let cloudLogs = [];
+    try {
+      const snap = await firebase.firestore().collection('audit_logs').orderBy('timestamp', 'desc').limit(300).get();
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        let ts = Number(d.timestamp) || 0;
+        if (!ts && d.createdAt && typeof d.createdAt.toDate === 'function') ts = d.createdAt.toDate().getTime();
+        if (!ts && d.date) ts = new Date(d.date).getTime() || Date.now();
+        const m = mapAuditAction(d.action);
+        cloudLogs.push({
+          id: doc.id,
+          timestamp: ts || Date.now(),
+          user: d.userName || d.userEmail || 'Sistem',
+          role: String(d.userRole || 'KASIR').toUpperCase(),
+          action: m.type,
+          actionLabel: m.label,
+          module: d.module || 'WebPOS',
+          detail: d.detail || '-'
+        });
+      });
+    } catch (err) {
+      console.warn('Gagal memuat audit_logs cloud:', err);
+    }
+
+    allLogs = [...cloudLogs, ...localLogs].sort((a, b) => b.timestamp - a.timestamp);
     applyFilters();
     calculateStats();
   }
-
+  
   function applyFilters() {
     const period = document.getElementById('filterPeriod').value;
     const type = document.getElementById('filterType').value;
@@ -919,20 +1000,21 @@ window.recordActivity = function(action, detail) {
 
     tbody.innerHTML = pageLogs.map(log => {
       const dateStr = new Date(log.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const actionLabels = { 'login': 'Login', 'logout': 'Logout', 'create': 'Tambah', 'update': 'Edit', 'delete': 'Hapus', 'transaction': 'Transaksi' };
+      const actionLabels = { 'login': 'Login', 'logout': 'Logout', 'create': 'Tambah', 'update': 'Edit', 'delete': 'Hapus', 'transaction': 'Transaksi', 'approval': 'Approval' };
       const roleClass = (log.role || 'kasir').toLowerCase();
+      const modChip = log.module ? `<span class="log-module-chip">${escLogHtml(log.module)}</span>` : '';
 
       return `
         <tr>
           <td style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap;">${dateStr}</td>
           <td>
             <div style="font-weight: 700; color: var(--text-main); display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-              ${log.user || 'Admin'}
-              <span class="role-tag role-${roleClass}">${log.role || 'KASIR'}</span>
+              ${escLogHtml(log.user || 'Admin')}
+              <span class="role-tag role-${roleClass}">${escLogHtml(log.role || 'KASIR')}</span>
             </div>
           </td>
-          <td><span class="log-action ${log.action || 'login'}">${actionLabels[log.action] || log.action}</span></td>
-          <td style="color: var(--text-sub);">${log.detail || '-'}</td>
+          <td><span class="log-action ${log.action || 'login'}">${escLogHtml(log.actionLabel || actionLabels[log.action] || log.action)}</span></td>
+          <td style="color: var(--text-sub);">${modChip}${escLogHtml(log.detail || '-')}</td>
         </tr>
       `;
     }).join('');
@@ -957,7 +1039,7 @@ window.recordActivity = function(action, detail) {
     document.getElementById('statToday').textContent = todayLogs.length;
     document.getElementById('statLogins').textContent = todayLogs.filter(l => l.action === 'login').length;
     document.getElementById('statTrans').textContent = todayLogs.filter(l => l.action === 'transaction').length;
-    document.getElementById('statChanges').textContent = todayLogs.filter(l => ['create', 'update', 'delete'].includes(l.action)).length;
+    document.getElementById('statChanges').textContent = todayLogs.filter(l => ['create', 'update', 'delete', 'approval'].includes(l.action)).length;
   }
 
   // Hapus semua log via Modal Konfirmasi Internal WebPOS (Bukan confirm windows)
@@ -970,14 +1052,25 @@ window.recordActivity = function(action, detail) {
     const modal = document.getElementById("customClearLogsModal");
     if (modal) {
       modal.classList.add("open");
-      document.getElementById("btnConfirmClearLogsAction").onclick = () => {
+     document.getElementById("btnConfirmClearLogsAction").onclick = async () => {
         modal.classList.remove("open");
         localStorage.removeItem('webpos_activity_logs');
+        try {
+          const dbFs = firebase.firestore();
+          const snap = await dbFs.collection('audit_logs').limit(400).get();
+          if (!snap.empty) {
+            const batch = dbFs.batch();
+            snap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+          }
+        } catch (err) {
+          console.warn('Gagal hapus audit_logs cloud:', err);
+        }
         allLogs = [];
         filteredLogs = [];
         renderLogs();
         calculateStats();
-        toast('Semua log aktivitas berhasil dihapus', 'success');
+        toast('Semua log aktivitas (lokal & cloud) berhasil dihapus', 'success');
       };
     } else {
       localStorage.removeItem('webpos_activity_logs');
