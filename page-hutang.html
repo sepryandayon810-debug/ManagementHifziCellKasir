@@ -2297,7 +2297,6 @@ function getDisplayDebtName(data) {
                           `}
                           ${(typeof window.__canManageHutang === 'function' ? window.__canManageHutang() : false) ? `
                           <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
-                          <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
                             <i class="fas fa-edit" style="font-size:0.74rem;"></i>
                           </button>
                           <button class="btn-icon-sm btn-delete" onclick="window.deleteHutang('${item.id}')" title="Hapus" style="width:28px; height:28px; min-width:28px;">
@@ -2568,7 +2567,13 @@ try {
         }
 
        window.__refreshHutangPermsUI = () => {
-          try { renderHutangList(); renderCustomerManageList(); } catch (e) {}
+          try {
+            const canManage = (typeof window.__canManageHutang === 'function') ? window.__canManageHutang() : false;
+            const btnImp = document.getElementById('btnImport');
+            if (btnImp) btnImp.style.display = canManage ? '' : 'none';
+            renderHutangList();
+            renderCustomerManageList();
+          } catch (e) {}
         };
 
         window.editCustomer = (id) => {
@@ -3420,6 +3425,10 @@ function downloadDebtTemplate() {
 }
 
 async function importData() {
+  if (typeof window.__canManageHutang === 'function' && !window.__canManageHutang()) {
+    Utils.showToast('Anda tidak memiliki izin mengimpor data hutang', 'error');
+    return;
+  }
   const fileInput = document.getElementById('importFile');
   const overwrite = document.getElementById('importOverwrite').checked;
 
