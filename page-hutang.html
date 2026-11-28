@@ -1027,7 +1027,8 @@ name | type | amount | remaining | dueDate | note | status
           const fbUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
           const applyProfile = (name, role, email) => {
             const cleanName = name || (email ? email.split('@')[0] : 'Kasir');
-            const cleanRole = String(role || 'kasir').toLowerCase();
+            const rawRole = String(role || 'kasir').toLowerCase();
+            const cleanRole = (typeof window.getEffectiveUserRole === 'function') ? window.getEffectiveUserRole(rawRole) : rawRole;
             window.Auth._profile = { uid: uid || (fbUser && fbUser.uid) || 'local_user', name: cleanName, email: email || (fbUser && fbUser.email) || '', role: cleanRole };
             window.__hutangUserRole = cleanRole;
             if (nameEl) nameEl.textContent = cleanName;
@@ -1035,11 +1036,12 @@ name | type | amount | remaining | dueDate | note | status
             if (avatarEl) avatarEl.textContent = cleanName.slice(0, 2).toUpperCase();
             try {
               localStorage.setItem('webpos_user_name', cleanName);
-              localStorage.setItem('webpos_user_role', cleanRole);
+              localStorage.setItem('webpos_user_role', rawRole);
             } catch (e) {}
             if (typeof RoleGuard !== 'undefined') RoleGuard.apply(cleanRole);
+            if (typeof window.__refreshHutangPermsUI === 'function') window.__refreshHutangPermsUI();
           };
-
+          
           const cachedName = localStorage.getItem('webpos_user_name');
           const cachedRole = localStorage.getItem('webpos_user_role');
           if (cachedName || (fbUser && fbUser.email)) {
@@ -1059,6 +1061,17 @@ name | type | amount | remaining | dueDate | note | status
         }
       };
     }
+
+window.__canManageHutang = function() {
+      if (typeof RoleGuard !== 'undefined' && typeof RoleGuard.hasPerm === 'function') {
+        return RoleGuard.hasPerm('aksi_hutang_hapus', true, false);
+      }
+      const r = String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase();
+      return ['admin', 'owner', 'developer'].includes(r);
+    };
+    window.__onRolePermsSynced = function() {
+      if (typeof window.__refreshHutangPermsUI === 'function') window.__refreshHutangPermsUI();
+    };
 
     // ===== FIRESTORE COMPATIBILITY LAYER =====
     function createFirestoreCompat() {
@@ -2028,11 +2041,13 @@ document.getElementById('btnDownloadDebtTemplate')
                       ${customer.phone ? `<div style="font-size:0.75rem; color:var(--text-muted);">${customer.phone}</div>` : ''}
                     </div>
                   </div>
+                  ${(typeof window.__canManageHutang === 'function' ? window.__canManageHutang() : false) ? `
                   <div style="display:flex; gap:0.35rem;">
                     <button class="btn-icon-sm btn-edit" onclick="window.editCustomer('${id}')" title="Edit"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon-sm btn-delete" onclick="window.deleteCustomer('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
                   </div>
-                </div>
+                  ` : ''}
+                  </div>
               `;
             });
           }
@@ -2280,7 +2295,8 @@ function getDisplayDebtName(data) {
                               <i class="fas fa-undo" style="font-size:0.74rem;"></i>
                             </button>
                           `}
-                          ${['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase()) ? `
+                          ${(typeof window.__canManageHutang === 'function' ? window.__canManageHutang() : false) ? `
+                          <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
                           <button class="btn-icon-sm btn-edit" onclick="window.editHutang('${item.id}')" title="Edit" style="width:28px; height:28px; min-width:28px;">
                             <i class="fas fa-edit" style="font-size:0.74rem;"></i>
                           </button>
@@ -2551,7 +2567,15 @@ try {
           }
         }
 
+       window.__refreshHutangPermsUI = () => {
+          try { renderHutangList(); renderCustomerManageList(); } catch (e) {}
+        };
+
         window.editCustomer = (id) => {
+          if (typeof window.__canManageHutang === 'function' && !window.__canManageHutang()) {
+            Utils.showToast('Anda tidak memiliki izin mengedit data pelanggan', 'error');
+            return;
+          }
           const customer = customerData[id];
           if (!customer) return;
           
@@ -2563,6 +2587,10 @@ try {
         };
 
         window.deleteCustomer = (id) => {
+          if (typeof window.__canManageHutang === 'function' && !window.__canManageHutang()) {
+            Utils.showToast('Anda tidak memiliki izin menghapus data pelanggan', 'error');
+            return;
+          }
           Utils.confirm('Apakah Anda yakin ingin menghapus pelanggan ini?', async () => {
             try {
               await CustomerStorage.delete(id);
@@ -2687,11 +2715,12 @@ try {
           document.getElementById('paymentModal').classList.add('active');
         };
 
-        window.editHutang = (id) => {
-          if (!['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
-            Utils.showToast('Hanya Admin / Owner yang boleh mengedit data hutang', 'error');
+       window.editHutang = (id) => {
+          if (typeof window.__canManageHutang === 'function' && !window.__canManageHutang()) {
+            Utils.showToast('Anda tidak memiliki izin mengedit data hutang', 'error');
             return;
           }
+         
           const item = hutangData[id];
           if (!item) return;
           
@@ -2708,9 +2737,9 @@ try {
           document.getElementById('hutangModal').classList.add('active');
         };
 
-        window.deleteHutang = (id) => {
-          if (!['admin','owner','developer'].includes(String(window.__hutangUserRole || localStorage.getItem('webpos_user_role') || 'kasir').toLowerCase())) {
-            Utils.showToast('Hanya Admin / Owner yang boleh menghapus data hutang', 'error');
+    window.deleteHutang = (id) => {
+          if (typeof window.__canManageHutang === 'function' && !window.__canManageHutang()) {
+            Utils.showToast('Anda tidak memiliki izin menghapus data hutang', 'error');
             return;
           }
           Utils.confirm('Apakah Anda yakin ingin menghapus data ini?', async () => {
