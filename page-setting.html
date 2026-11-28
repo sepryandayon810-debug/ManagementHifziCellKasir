@@ -1746,9 +1746,19 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      localStorage.setItem("webpos_store_name", name);
+     localStorage.setItem("webpos_store_name", name);
       localStorage.setItem("webpos_store_address", address);
       localStorage.setItem("webpos_store_phone", phone);
+      localStorage.setItem("webpos_store_footer_note", footerNote);
+      const syncedHeader = JSON.stringify({
+        storeName: name,
+        address: address,
+        phone: phone,
+        note: footerNote || "Terima kasih telah berbelanja"
+      });
+      localStorage.setItem("receiptHeader", syncedHeader);
+      localStorage.setItem("webpos_receipt_header", syncedHeader);
+      try { sessionStorage.removeItem("webpos_brand_synced_v2"); } catch (e) {}
       if (logoDataUrl) localStorage.setItem("webpos_store_logo", logoDataUrl);
       else localStorage.removeItem("webpos_store_logo");
       localStorage.setItem("webpos_store_logo_mode", logoMode);
